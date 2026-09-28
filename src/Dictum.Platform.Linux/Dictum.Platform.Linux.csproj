@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="../Dictum.Platform/Dictum.Platform.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SharpHook" />
+    <PackageReference Include="Tmds.DBus.Protocol" />
+  </ItemGroup>
+
+</Project>

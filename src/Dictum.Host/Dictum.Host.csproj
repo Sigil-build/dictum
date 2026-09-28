@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="../Dictum.Audio/Dictum.Audio.csproj" />
+    <ProjectReference Include="../Dictum.Stt.Whisper/Dictum.Stt.Whisper.csproj" />
+    <ProjectReference Include="../Dictum.Stt.OpenAi/Dictum.Stt.OpenAi.csproj" />
+    <ProjectReference Include="../Dictum.Processing/Dictum.Processing.csproj" />
+    <ProjectReference Include="../Dictum.Platform.Windows/Dictum.Platform.Windows.csproj" />
+    <ProjectReference Include="../Dictum.Platform.Linux/Dictum.Platform.Linux.csproj" />
+    <ProjectReference Include="../Dictum.Platform.MacOS/Dictum.Platform.MacOS.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+  </ItemGroup>
+
+</Project>
