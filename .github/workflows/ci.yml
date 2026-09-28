@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+
+jobs:
+  build-test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Build
+        run: dotnet build -c Release
+
+      - name: Test
+        run: dotnet test -c Release --no-build
+
+  publish-cli:
+    needs: build-test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            rid: linux-x64
+          - os: windows-latest
+            rid: win-x64
+          - os: macos-latest
+            rid: osx-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Install native toolchain
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
+
+      - name: Publish (Native AOT)
+        run: dotnet publish src/Dictum.Cli -c Release -r ${{ matrix.rid }} -o out
+
+      - name: Smoke test published binary
+        shell: bash
+        run: |
+          version="$(./out/dictum --version)"
+          echo "dictum --version: $version"
+          test -n "$version"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dictum-${{ matrix.rid }}
+          path: |
+            out/
+            !out/*.pdb
+            !out/*.dbg
+            !out/*.dSYM
