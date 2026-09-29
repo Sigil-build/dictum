@@ -9,4 +9,8 @@
     <ProjectReference Include="../../src/Dictum.Host/Dictum.Host.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="../../fixtures/*.wav" LinkBase="fixtures" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
