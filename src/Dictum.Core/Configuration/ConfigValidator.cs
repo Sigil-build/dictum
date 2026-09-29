@@ -130,6 +130,14 @@ public static class ConfigValidator
 
         if (hasPattern)
         {
+            if (rule.Pattern!.Contains('\b', StringComparison.Ordinal))
+            {
+                issues.Add(new ConfigIssue(
+                    ConfigIssueSeverity.Warning,
+                    $"{path}.pattern",
+                    @"contains a backspace character: in JSON, ""\b"" is a backspace; write ""\\b"" for a regex word boundary"));
+            }
+
             try
             {
                 _ = new Regex(rule.Pattern!, RegexOptions.None, TimeSpan.FromMilliseconds(200));

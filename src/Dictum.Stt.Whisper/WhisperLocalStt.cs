@@ -49,7 +49,12 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
         try
         {
             _ = Factory();
-            return Task.FromResult(HealthStatus.Ok($"{config.Model}, runtime {LoadedRuntime ?? "unknown"}"));
+            var detail = $"{config.Model}, runtime {LoadedRuntime ?? "unknown"}";
+            return Task.FromResult(_configuredRuntime is { } active && active != config.Runtime
+                ? HealthStatus.Warning(
+                    $"{detail} (configured '{config.Runtime.ToString().ToLowerInvariant()}', but this process already uses '{active.ToString().ToLowerInvariant()}')",
+                    "The first Whisper provider loaded picks the runtime for the whole process.")
+                : HealthStatus.Ok(detail));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -177,7 +182,7 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
             {
                 if (existing != runtime)
                 {
-                    log.Warn($"Whisper runtime is already '{existing}'; '{runtime}' applies only after a restart.");
+                    log.Info($"Whisper runtime is already '{existing}'; '{runtime}' applies only after a restart.");
                 }
 
                 return;

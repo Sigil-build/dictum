@@ -50,6 +50,17 @@ public class ConfigValidatorTests
     }
 
     [Fact]
+    public void JsonBackspaceInPatternIsFlagged()
+    {
+        var config = ConfigStore.Parse("""{ "processors": { "r": { "type": "replace", "rules": [ { "pattern": "\bword\b", "to": "x" } ] } } }""");
+
+        var issue = Assert.Single(ConfigValidator.Validate(config));
+
+        Assert.Equal(ConfigIssueSeverity.Warning, issue.Severity);
+        Assert.Contains(@"\\b", issue.Message);
+    }
+
+    [Fact]
     public void PlainTextApiKeyIsOnlyAWarning()
     {
         var config = DefaultConfig.Create() with

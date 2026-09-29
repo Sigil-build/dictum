@@ -1,5 +1,16 @@
 using System.CommandLine;
+using System.Text;
+using Dictum.Cli;
 
-var root = new RootCommand("Dictum: voice to text.");
+var utf8 = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+Console.OutputEncoding = utf8;
+Console.InputEncoding = utf8;
+ConsoleInterrupt.Install();
 
-return root.Parse(args).Invoke();
+var configuration = new InvocationConfiguration
+{
+    // Ctrl+C is handled by ConsoleInterrupt so that 'record' can stop instead of abort.
+    ProcessTerminationTimeout = null,
+};
+
+return await CliApp.BuildRoot().Parse(args).InvokeAsync(configuration, ConsoleInterrupt.Token);

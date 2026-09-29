@@ -161,7 +161,8 @@ public sealed class DictationPipeline(IAudioSource audio, HistoryStore? history,
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            log.Error($"Dictation failed at {stage}: {ex.Message}", ex);
+            // The caller reports the failure; keep the details in the log file only.
+            log.Write(LogLevel.Debug, $"Dictation failed at {stage}: {ex.Message}", ex);
             if (!string.IsNullOrEmpty(rawText))
             {
                 history?.Append(new HistoryEntry(DateTimeOffset.Now, profile.Id, profile.Stt.Id, rawText, rawText, null, clip.Duration.TotalSeconds, $"{stage}: {ex.Message}"));
