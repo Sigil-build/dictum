@@ -6,6 +6,9 @@
 
   <ItemGroup>
     <PackageReference Include="Whisper.net" />
+    <!-- CPU (with Metal on macOS) for every RID; Vulkan for linux-x64 and win-x64. -->
+    <PackageReference Include="Whisper.net.Runtime" />
+    <PackageReference Include="Whisper.net.Runtime.Vulkan" />
   </ItemGroup>
 
 </Project>
