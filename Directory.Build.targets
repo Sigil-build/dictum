@@ -1,0 +1,50 @@
+<Project>
+  <!--
+    Native AOT answers Avx/Avx2/Fma.IsSupported at compile time from the target instruction set. With the
+    default x86-64-v2 baseline they are false, and Whisper.net then refuses its CPU runtime. Target x86-64-v3
+    (AVX2 + FMA; Intel Haswell / AMD Zen and newer), which Whisper's CPU backend needs anyway.
+  -->
+  <PropertyGroup Condition="'$(PublishAot)' == 'true' and $(RuntimeIdentifier.EndsWith('-x64')) and '$(IlcInstructionSet)' == ''">
+    <IlcInstructionSet>x86-64-v3</IlcInstructionSet>
+  </PropertyGroup>
+
+  <!--
+    Whisper.net 1.9.1 reads Assembly.Location in NativeLibraryLoader.GetRuntimePaths, which the AOT compiler
+    reports as IL3000. Under AOT the value is "", which the loader filters out, and AppDomain.BaseDirectory
+    already covers the same folder, so the warning is harmless:
+    https://github.com/sandrohanea/whisper.net/blob/1.9.1/Whisper.net/LibraryLoader/NativeLibraryLoader.cs
+
+    IL3000 is ignored only in the AOT compilation step (ILC), where it can come from package code. Our own
+    projects are still checked for IL3000 at compile time by the single-file analyzer that IsAotCompatible
+    enables, with warnings as errors. Every other AOT/trim warning still fails the publish.
+    Remove this once Whisper.net stops using Assembly.Location.
+  -->
+  <Target Name="DictumIgnorePackageIL3000"
+          BeforeTargets="WriteIlcRspFileForCompilation"
+          Condition="'$(PublishAot)' == 'true'">
+    <PropertyGroup>
+      <NoWarn>$(NoWarn);IL3000</NoWarn>
+    </PropertyGroup>
+  </Target>
+
+  <!--
+    Whisper.net runtime packages copy native libraries for every platform (about 130 MB). A RID-specific
+    publish keeps only the target platform's runtimes/<platform>/ and runtimes/<variant>/<platform>/ folders.
+    Whisper.net names macOS folders "macos-*" instead of "osx-*".
+  -->
+  <Target Name="DictumPruneForeignNativeRuntimes"
+          AfterTargets="ComputeResolvedFilesToPublishList"
+          Condition="'$(RuntimeIdentifier)' != ''">
+    <PropertyGroup>
+      <_DictumNativePlatform>$(RuntimeIdentifier.Replace('osx-', 'macos-'))</_DictumNativePlatform>
+    </PropertyGroup>
+    <ItemGroup>
+      <_DictumForeignNative Include="@(ResolvedFileToPublish)"
+                            Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(ResolvedFileToPublish.RelativePath)', '^runtimes[\\/]'))
+                                       and !$([System.Text.RegularExpressions.Regex]::IsMatch('%(ResolvedFileToPublish.RelativePath)', '^runtimes[\\/]([a-z0-9]+[\\/])?$(_DictumNativePlatform)[\\/]'))" />
+      <_DictumForeignNative Include="@(ResolvedFileToPublish)"
+                            Condition="'%(ResolvedFileToPublish.RelativePath)' == 'ggml-metal.metal' and !$(RuntimeIdentifier.StartsWith('osx-'))" />
+      <ResolvedFileToPublish Remove="@(_DictumForeignNative)" />
+    </ItemGroup>
+  </Target>
+</Project>
