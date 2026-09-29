@@ -1,7 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Unit tests on fakes for Core and the pure-logic libraries (DSP, processors, HTTP clients). -->
   <ItemGroup>
     <ProjectReference Include="../../src/Dictum.Core/Dictum.Core.csproj" />
+    <ProjectReference Include="../../src/Dictum.Audio/Dictum.Audio.csproj" />
   </ItemGroup>
 
 </Project>
