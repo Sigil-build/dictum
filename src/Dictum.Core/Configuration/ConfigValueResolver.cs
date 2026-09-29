@@ -1,0 +1,58 @@
+namespace Dictum.Core.Configuration;
+
+/// <summary>OS-backed storage for API keys (Credential Manager, Keychain, Secret Service).</summary>
+public interface ISecretStore
+{
+    Task<string?> GetAsync(string key, CancellationToken ct);
+
+    Task SetAsync(string key, string value, CancellationToken ct);
+
+    Task DeleteAsync(string key, CancellationToken ct);
+}
+
+/// <summary>Placeholder until the platform secret stores land.</summary>
+public sealed class UnavailableSecretStore : ISecretStore
+{
+    private const string Message = "The OS secret store is not supported yet; use 'env:VAR' for API keys.";
+
+    public Task<string?> GetAsync(string key, CancellationToken ct) => throw new ConfigException(Message);
+
+    public Task SetAsync(string key, string value, CancellationToken ct) => throw new ConfigException(Message);
+
+    public Task DeleteAsync(string key, CancellationToken ct) => throw new ConfigException(Message);
+}
+
+/// <summary>Resolves config values of the form <c>env:VAR</c> and <c>secret:name</c>; other values pass through.</summary>
+public sealed class ConfigValueResolver(ISecretStore secrets)
+{
+    private const string EnvPrefix = "env:";
+    private const string SecretPrefix = "secret:";
+
+    public static bool IsReference(string value) =>
+        value.StartsWith(EnvPrefix, StringComparison.Ordinal) || value.StartsWith(SecretPrefix, StringComparison.Ordinal);
+
+    public async ValueTask<string?> ResolveAsync(string? value, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return null;
+        }
+
+        if (value.StartsWith(EnvPrefix, StringComparison.Ordinal))
+        {
+            var name = value[EnvPrefix.Length..];
+            return Environment.GetEnvironmentVariable(name) is { Length: > 0 } resolved
+                ? resolved
+                : throw new ConfigException($"Environment variable '{name}' is not set.");
+        }
+
+        if (value.StartsWith(SecretPrefix, StringComparison.Ordinal))
+        {
+            var key = value[SecretPrefix.Length..];
+            return await secrets.GetAsync(key, ct).ConfigureAwait(false)
+                ?? throw new ConfigException($"Secret '{key}' is not in the OS secret store.");
+        }
+
+        return value;
+    }
+}
