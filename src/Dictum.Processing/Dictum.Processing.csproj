@@ -4,4 +4,8 @@
     <ProjectReference Include="../Dictum.Core/Dictum.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Prompts/*.md" LogicalName="Dictum.Processing.Prompts.%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>
