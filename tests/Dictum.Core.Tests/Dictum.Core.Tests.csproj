@@ -4,6 +4,8 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Dictum.Core/Dictum.Core.csproj" />
     <ProjectReference Include="../../src/Dictum.Audio/Dictum.Audio.csproj" />
+    <ProjectReference Include="../../src/Dictum.Stt.OpenAi/Dictum.Stt.OpenAi.csproj" />
+    <ProjectReference Include="../../src/Dictum.Processing/Dictum.Processing.csproj" />
   </ItemGroup>
 
 </Project>
