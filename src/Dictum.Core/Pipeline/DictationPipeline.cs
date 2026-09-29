@@ -1,0 +1,201 @@
+using System.Diagnostics;
+using Dictum.Core.Audio;
+using Dictum.Core.Diagnostics;
+using Dictum.Core.History;
+using Dictum.Core.Processing;
+
+namespace Dictum.Core.Pipeline;
+
+/// <summary>
+/// Idle → Recording → Transcribing → Processing → Output → Idle.
+/// Any failure returns to Idle; the raw text, if any, still goes to history so dictation is never lost.
+/// </summary>
+public sealed class DictationPipeline(IAudioSource audio, HistoryStore? history, ILog log)
+{
+    /// <summary>Whisper tends to hallucinate on very short clips, so they are skipped.</summary>
+    public static readonly TimeSpan MinimumClip = TimeSpan.FromMilliseconds(500);
+
+    private readonly Lock _gate = new();
+    private readonly Stopwatch _recording = new();
+    private PipelineState _state = PipelineState.Idle;
+
+    public event Action<PipelineState>? StateChanged;
+
+    public PipelineState State
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _state;
+            }
+        }
+    }
+
+    public async Task StartRecordingAsync(string? deviceId, CancellationToken ct)
+    {
+        Transition(PipelineState.Idle, PipelineState.Recording);
+        try
+        {
+            _recording.Restart();
+            await audio.StartAsync(deviceId, ct).ConfigureAwait(false);
+        }
+        catch
+        {
+            SetState(PipelineState.Idle);
+            throw;
+        }
+    }
+
+    /// <summary>Stops recording and runs the clip through the profile.</summary>
+    public async Task<DictationResult> StopAsync(DictationProfile profile, ITextOutput? output, CancellationToken ct)
+    {
+        Transition(PipelineState.Recording, PipelineState.Transcribing);
+        AudioClip clip;
+        try
+        {
+            clip = await audio.StopAsync(ct).ConfigureAwait(false);
+        }
+        catch
+        {
+            SetState(PipelineState.Idle);
+            throw;
+        }
+
+        _recording.Stop();
+        return await RunCoreAsync(clip, profile, output, _recording.Elapsed, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>Stops recording and discards the audio.</summary>
+    public async Task CancelAsync()
+    {
+        if (State != PipelineState.Recording)
+        {
+            return;
+        }
+
+        try
+        {
+            await audio.StopAsync(CancellationToken.None).ConfigureAwait(false);
+        }
+        finally
+        {
+            SetState(PipelineState.Idle);
+        }
+    }
+
+    /// <summary>Runs an existing clip (e.g. from a file) through the profile.</summary>
+    public Task<DictationResult> RunAsync(AudioClip clip, DictationProfile profile, ITextOutput? output, CancellationToken ct)
+    {
+        Transition(PipelineState.Idle, PipelineState.Transcribing);
+        return RunCoreAsync(clip, profile, output, recordElapsed: null, ct);
+    }
+
+    private async Task<DictationResult> RunCoreAsync(
+        AudioClip clip,
+        DictationProfile profile,
+        ITextOutput? output,
+        TimeSpan? recordElapsed,
+        CancellationToken ct)
+    {
+        var stages = new List<StageTiming>();
+        if (recordElapsed is { } recorded)
+        {
+            stages.Add(new StageTiming("record", recorded));
+        }
+
+        string? rawText = null;
+        var stage = "transcribe";
+        try
+        {
+            if (clip.Duration < MinimumClip)
+            {
+                log.Info($"Clip of {clip.Duration.TotalMilliseconds:F0} ms is too short; skipped");
+                return new DictationResult(profile.Id, profile.Stt.Id, "", "", null, clip.Duration, stages, Skipped: true);
+            }
+
+            SetState(PipelineState.Transcribing);
+            var watch = Stopwatch.StartNew();
+            var transcript = await profile.Stt.TranscribeAsync(clip, profile.Request, ct).ConfigureAwait(false);
+            stages.Add(new StageTiming(stage, watch.Elapsed));
+            rawText = transcript.Text.Trim();
+            log.Info($"Transcribed {clip.Duration.TotalSeconds:F1} s with {profile.Stt.Id} in {watch.ElapsedMilliseconds} ms: {log.Redact(rawText)}");
+
+            var text = rawText;
+            var language = transcript.Language ?? profile.Request.Language;
+            if (text.Length > 0 && profile.Processors.Count > 0)
+            {
+                SetState(PipelineState.Processing);
+                var context = new ProcessingContext(profile.Id, language, ActiveApp: null);
+                foreach (var processor in profile.Processors)
+                {
+                    stage = $"process:{processor.Id}";
+                    watch.Restart();
+                    text = (await processor.ProcessAsync(text, context, ct).ConfigureAwait(false)).Trim();
+                    stages.Add(new StageTiming(stage, watch.Elapsed));
+                }
+            }
+
+            if (output is not null && text.Length > 0)
+            {
+                stage = "output";
+                SetState(PipelineState.Output);
+                watch.Restart();
+                await output.WriteAsync(text, ct).ConfigureAwait(false);
+                stages.Add(new StageTiming(stage, watch.Elapsed));
+            }
+
+            var result = new DictationResult(profile.Id, profile.Stt.Id, rawText, text, language, clip.Duration, stages, transcript.Backend);
+            if (text.Length > 0)
+            {
+                history?.Append(new HistoryEntry(DateTimeOffset.Now, profile.Id, profile.Stt.Id, rawText, text, language, clip.Duration.TotalSeconds));
+            }
+
+            return result;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            log.Error($"Dictation failed at {stage}: {ex.Message}", ex);
+            if (!string.IsNullOrEmpty(rawText))
+            {
+                history?.Append(new HistoryEntry(DateTimeOffset.Now, profile.Id, profile.Stt.Id, rawText, rawText, null, clip.Duration.TotalSeconds, $"{stage}: {ex.Message}"));
+            }
+
+            throw new DictationException($"Dictation failed at {stage}: {ex.Message}", stage, rawText, ex);
+        }
+        finally
+        {
+            SetState(PipelineState.Idle);
+        }
+    }
+
+    private void Transition(PipelineState from, PipelineState to)
+    {
+        lock (_gate)
+        {
+            if (_state != from)
+            {
+                throw new InvalidOperationException($"Pipeline is {_state}, expected {from}.");
+            }
+
+            _state = to;
+        }
+
+        StateChanged?.Invoke(to);
+    }
+
+    private void SetState(PipelineState state)
+    {
+        lock (_gate)
+        {
+            if (_state == state)
+            {
+                return;
+            }
+
+            _state = state;
+        }
+
+        StateChanged?.Invoke(state);
+    }
+}
