@@ -92,7 +92,15 @@ internal static class CliApp
             case ProviderUnavailableException or HttpRequestException:
                 context.Error.WriteLine($"error: {ex.Message}");
                 return ExitCodes.ProviderUnavailable;
-            case AudioDeviceException or WavFormatException or FileNotFoundException or DirectoryNotFoundException:
+            case AudioDeviceException audio:
+                context.Error.WriteLine($"error: {audio.Message}");
+                if (audio.Hint is not null)
+                {
+                    context.Error.WriteLine($"  hint: {audio.Hint}");
+                }
+
+                return ExitCodes.Error;
+            case WavFormatException or FileNotFoundException or DirectoryNotFoundException:
                 context.Error.WriteLine($"error: {ex.Message}");
                 return ExitCodes.Error;
             default:

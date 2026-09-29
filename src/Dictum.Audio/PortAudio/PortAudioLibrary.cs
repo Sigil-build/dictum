@@ -3,7 +3,11 @@ using System.Runtime.InteropServices;
 
 namespace Dictum.Audio.PortAudio;
 
-public sealed class AudioDeviceException(string message) : Exception(message);
+/// <param name="Hint">What the user can do about it, shown separately from the message.</param>
+public sealed class AudioDeviceException(string message, string? hint = null) : Exception(message)
+{
+    public string? Hint { get; } = hint;
+}
 
 /// <summary>
 /// Loads and initialises PortAudio once per process.
@@ -12,8 +16,10 @@ public sealed class AudioDeviceException(string message) : Exception(message);
 /// On Linux the system library is preferred: the bundled build links libjack.so.0, which is not
 /// installed everywhere. <c>DICTUM_PORTAUDIO_LIB</c> overrides the choice with an explicit path.
 /// </remarks>
-public static class PortAudioLibrary
+public static partial class PortAudioLibrary
 {
+    private const string LibC = "libc";
+
     private static readonly Lock Gate = new();
     private static bool _resolverInstalled;
     private static bool _initialized;
@@ -22,6 +28,12 @@ public static class PortAudioLibrary
     public static string? LoadedFrom { get; private set; }
 
     public static string? Version { get; private set; }
+
+    /// <summary>
+    /// When false (the default), the ALSA/JACK chatter that PortAudio's device probing writes to stderr
+    /// on Linux and macOS is discarded.
+    /// </summary>
+    public static bool ShowNativeDiagnostics { get; set; }
 
     public static void EnsureInitialized()
     {
@@ -36,11 +48,11 @@ public static class PortAudioLibrary
             int error;
             try
             {
-                error = PortAudioNative.Pa_Initialize();
+                error = WithStderrSilenced(PortAudioNative.Pa_Initialize);
             }
             catch (DllNotFoundException ex)
             {
-                throw new AudioDeviceException($"PortAudio could not be loaded ({ex.Message}). {InstallHint()}");
+                throw new AudioDeviceException($"PortAudio could not be loaded: {MissingLibraries(ex.Message)}", InstallHint());
             }
 
             if (error != PortAudioNative.NoError)
@@ -60,6 +72,43 @@ public static class PortAudioLibrary
                 ? "Reinstall Dictum or run 'brew install portaudio'."
                 : "Reinstall Dictum; portaudio.dll must sit next to dictum.exe.";
 
+    /// <summary>Keeps only the "cannot open shared object" lines of a loader error.</summary>
+    private static string MissingLibraries(string message)
+    {
+        var lines = message.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(l => l.Contains("cannot open", StringComparison.Ordinal) || l.Contains("not found", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        return lines.Count > 0 ? string.Join("; ", lines) : message;
+    }
+
+    private static T WithStderrSilenced<T>(Func<T> action)
+    {
+        if (ShowNativeDiagnostics || OperatingSystem.IsWindows())
+        {
+            return action();
+        }
+
+        Console.Error.Flush();
+        var saved = LibCNative.dup(2);
+        var devNull = LibCNative.open("/dev/null", 1 /* O_WRONLY */);
+        if (saved < 0 || devNull < 0)
+        {
+            return action();
+        }
+
+        try
+        {
+            LibCNative.dup2(devNull, 2);
+            return action();
+        }
+        finally
+        {
+            LibCNative.dup2(saved, 2);
+            LibCNative.close(saved);
+            LibCNative.close(devNull);
+        }
+    }
+
     private static void InstallResolver()
     {
         if (_resolverInstalled)
@@ -73,6 +122,12 @@ public static class PortAudioLibrary
 
     private static nint Resolve(string name, Assembly assembly, DllImportSearchPath? searchPath)
     {
+        if (name == LibC)
+        {
+            // "libc.so" on Linux is a linker script, not a loadable library.
+            return NativeLibrary.TryLoad(OperatingSystem.IsMacOS() ? "/usr/lib/libSystem.B.dylib" : "libc.so.6", out var libc) ? libc : 0;
+        }
+
         if (name != PortAudioNative.Library)
         {
             return 0;
@@ -119,5 +174,20 @@ public static class PortAudioLibrary
         {
             yield return (Path.Combine(baseDir, "portaudio.dll"), "bundled portaudio.dll");
         }
+    }
+
+    private static partial class LibCNative
+    {
+        [LibraryImport(LibC)]
+        public static partial int dup(int fd);
+
+        [LibraryImport(LibC)]
+        public static partial int dup2(int oldFd, int newFd);
+
+        [LibraryImport(LibC, StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int open(string path, int flags);
+
+        [LibraryImport(LibC)]
+        public static partial int close(int fd);
     }
 }

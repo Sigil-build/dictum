@@ -93,7 +93,7 @@ internal static class DoctorCommand
         }
         catch (AudioDeviceException ex)
         {
-            add("audio library", HealthStatus.Error(ex.Message, PortAudioLibrary.InstallHint()));
+            add("audio library", HealthStatus.Error(ex.Message, ex.Hint));
         }
     }
 

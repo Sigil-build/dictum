@@ -94,19 +94,20 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
 
         var builder = Factory().CreateBuilder()
             .WithThreads(config.Threads > 0 ? config.Threads : Math.Clamp(Environment.ProcessorCount, 1, 8));
-        builder = request.Language is null or "auto" ? builder.WithLanguageDetection() : builder.WithLanguage(request.Language);
+        var language = IsEnglishOnly(config.Model) ? "en" : request.Language;
+        builder = language is null or "auto" ? builder.WithLanguageDetection() : builder.WithLanguage(language);
         if (!string.IsNullOrWhiteSpace(request.Prompt))
         {
             builder = builder.WithPrompt(request.Prompt);
         }
 
         var text = new StringBuilder();
-        string? language = null;
+        string? detected = null;
         await using (var processor = builder.Build())
         {
             await foreach (var segment in processor.ProcessAsync(samples, ct).ConfigureAwait(false))
             {
-                language ??= segment.Language;
+                detected ??= segment.Language;
                 if (!IsNonSpeechTag(segment.Text))
                 {
                     text.Append(segment.Text);
@@ -115,8 +116,12 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
         }
 
         log.Debug($"Whisper '{id}' ({LoadedRuntime}) took {watch.ElapsedMilliseconds} ms for {clip.Duration.TotalSeconds:F1} s");
-        return new Transcript(text.ToString().Trim(), language ?? request.Language, watch.Elapsed, LoadedRuntime);
+        return new Transcript(text.ToString().Trim(), language is null or "auto" ? detected : language, watch.Elapsed, LoadedRuntime);
     }
+
+    /// <summary>English-only models (e.g. ggml-base.en.bin) cannot detect or produce other languages.</summary>
+    private static bool IsEnglishOnly(string model) =>
+        Path.GetFileName(model).Contains(".en.", StringComparison.OrdinalIgnoreCase);
 
     private WhisperFactory Factory()
     {
