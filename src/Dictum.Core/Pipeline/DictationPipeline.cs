@@ -10,7 +10,8 @@ namespace Dictum.Core.Pipeline;
 /// Idle → Recording → Transcribing → Processing → Output → Idle.
 /// Any failure returns to Idle; the raw text, if any, still goes to history so dictation is never lost.
 /// </summary>
-public sealed class DictationPipeline(IAudioSource audio, HistoryStore? history, ILog log)
+/// <param name="clipFilter">Applied to every clip before transcription, e.g. silence trimming.</param>
+public sealed class DictationPipeline(IAudioSource audio, HistoryStore? history, ILog log, Func<AudioClip, AudioClip>? clipFilter = null)
 {
     /// <summary>Whisper tends to hallucinate on very short clips, so they are skipped.</summary>
     public static readonly TimeSpan MinimumClip = TimeSpan.FromMilliseconds(500);
@@ -108,6 +109,11 @@ public sealed class DictationPipeline(IAudioSource audio, HistoryStore? history,
         var stage = "transcribe";
         try
         {
+            if (clipFilter is not null)
+            {
+                clip = clipFilter(clip);
+            }
+
             if (clip.Duration < MinimumClip)
             {
                 log.Info($"Clip of {clip.Duration.TotalMilliseconds:F0} ms is too short; skipped");
