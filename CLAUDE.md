@@ -14,6 +14,7 @@ https://claude.ai/code/artifact/ba039eea-3640-41cc-898a-b1b024e07370
 - Native interop: `[LibraryImport]`, not `[DllImport]`. D-Bus via Tmds.DBus.Protocol.
 - No `Assembly.Load` plugins. External providers run as a process or HTTP service.
 - `PublishAot` is set only in `Dictum.App` and `Dictum.Cli`. Libraries set `IsAotCompatible`.
+- `Directory.Build.targets` holds the only agreed AOT exceptions (x86-64-v3, Whisper.net IL3000, native pruning); read its comments before changing it.
 
 ## Commands
 - Build: `dotnet build`
