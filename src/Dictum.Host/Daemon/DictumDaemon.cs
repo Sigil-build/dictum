@@ -278,9 +278,15 @@ public sealed class DictumDaemon : IAsyncDisposable
                 registered = true;
                 _warning = null;
             }
-            catch (HotkeyUnavailableException ex)
+            catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _warning = ex.Hint is null ? ex.Message : $"{ex.Message} {ex.Hint}";
+                var hint = (ex as HotkeyUnavailableException)?.Hint;
+                _warning = hint is null ? ex.Message : $"{ex.Message} {hint}";
+                if (ex is not HotkeyUnavailableException)
+                {
+                    _log.Error($"Unexpected hotkey backend failure: {ex.Message}", ex);
+                }
+
                 _log.Warn($"Hotkeys unavailable: {_warning}");
                 await _platform.Notifier.NotifyAsync("Dictum: hotkeys unavailable", _warning, NotificationKind.Error, ct).ConfigureAwait(false);
             }

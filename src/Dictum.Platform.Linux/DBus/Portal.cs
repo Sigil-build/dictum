@@ -29,7 +29,10 @@ public sealed class Portal
         {
             if (_connection is null)
             {
-                var connection = DBusConnection.Session ?? throw new InvalidOperationException("No D-Bus session bus.");
+                // Our own connection, not the shared DBusConnection.Session: that one auto-connects and does not
+                // allow UniqueName, which the portal Request paths are built from.
+                var address = DBusAddress.Session ?? throw new InvalidOperationException("No D-Bus session bus (DBUS_SESSION_BUS_ADDRESS is not set).");
+                var connection = new DBusConnection(address);
                 await connection.ConnectAsync().ConfigureAwait(false);
                 _connection = connection;
             }
@@ -56,6 +59,12 @@ public sealed class Portal
             return;
         }
 
+        // The portal looks up <AppId>.desktop, so it must exist before registering.
+        if (Environment.ProcessPath is { } executable)
+        {
+            await DesktopEntry.WriteAsync(executable, ct).ConfigureAwait(false);
+        }
+
         var connection = await ConnectAsync(ct).ConfigureAwait(false);
         try
         {
@@ -64,7 +73,7 @@ public sealed class Portal
         }
         catch (DBusErrorReplyException ex)
         {
-            _log.Debug($"Host app registration not available: {ex.ErrorName}");
+            _log.Info($"Host app registration not available: {ex.ErrorName}: {ex.ErrorMessage}");
         }
 
         _registered = true;

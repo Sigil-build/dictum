@@ -51,7 +51,7 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
         {
             _ = Factory();
             var detail = $"{config.Model}, runtime {LoadedRuntime ?? "unknown"}";
-            return Task.FromResult(_configuredRuntime is { } active && active != config.Runtime
+            return Task.FromResult(_configuredRuntime is { } active && active != config.Runtime && !Satisfies(config.Runtime, LoadedRuntime)
                 ? HealthStatus.Warning(
                     $"{detail} (configured '{config.Runtime.ToString().ToLowerInvariant()}', but this process already uses '{active.ToString().ToLowerInvariant()}')",
                     "The first Whisper provider loaded picks the runtime for the whole process.")
@@ -119,6 +119,16 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
         log.Debug($"Whisper '{id}' ({LoadedRuntime}) took {watch.ElapsedMilliseconds} ms for {clip.Duration.TotalSeconds:F1} s");
         return new Transcript(text.ToString().Trim(), language is null or "auto" ? detected : language, watch.Elapsed, LoadedRuntime);
     }
+
+    /// <summary>Whether the runtime that actually loaded is what the provider asked for.</summary>
+    private static bool Satisfies(WhisperRuntime wanted, string? loaded) => wanted switch
+    {
+        WhisperRuntime.Auto => true,
+        WhisperRuntime.Cpu => loaded is "Cpu" or "CpuNoAvx",
+        WhisperRuntime.Vulkan => loaded == "Vulkan",
+        WhisperRuntime.Cuda => loaded is "Cuda" or "Cuda12",
+        _ => false,
+    };
 
     /// <summary>English-only models (e.g. ggml-base.en.bin) cannot detect or produce other languages.</summary>
     private static bool IsEnglishOnly(string model) =>
