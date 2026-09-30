@@ -36,6 +36,9 @@ internal static unsafe partial class PortAudioNative
     public static partial int Pa_GetDefaultInputDevice();
 
     [LibraryImport(Library)]
+    public static partial int Pa_GetDefaultOutputDevice();
+
+    [LibraryImport(Library)]
     public static partial int Pa_GetDefaultHostApi();
 
     [LibraryImport(Library)]
@@ -72,6 +75,9 @@ internal static unsafe partial class PortAudioNative
 
     [LibraryImport(Library)]
     public static partial int Pa_ReadStream(nint stream, float* buffer, CULong frames);
+
+    [LibraryImport(Library)]
+    public static partial int Pa_WriteStream(nint stream, float* buffer, CULong frames);
 
     public static string ErrorText(int error) =>
         Marshal.PtrToStringUTF8(Pa_GetErrorText(error)) ?? $"PortAudio error {error}";
