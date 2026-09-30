@@ -37,7 +37,24 @@ internal static class SecretCommand
             return ExitCodes.Success;
         }));
 
+        var checkName = new Argument<string>("name") { Description = "Secret name" };
+        var check = new Command("check", "Tell whether a secret is stored, without printing it") { checkName };
+        check.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, async (context, token) =>
+        {
+            var name = parse.GetValue(checkName)!;
+            var value = await context.Platform.Secrets.GetAsync(name, token).ConfigureAwait(false);
+            if (value is null)
+            {
+                context.Error.WriteLine($"'{name}' is not stored.");
+                return ExitCodes.Error;
+            }
+
+            context.Error.WriteLine($"'{name}' is stored ({value.Length} characters).");
+            return ExitCodes.Success;
+        }));
+
         command.Add(set);
+        command.Add(check);
         command.Add(delete);
         return command;
     }

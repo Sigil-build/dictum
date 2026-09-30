@@ -19,14 +19,14 @@ public static class LinuxPlatform
 
         return session.Type switch
         {
-            SessionType.X11 => CreateX11(log, settings, session, notifier, autostart),
+            SessionType.X11 => CreateX11(log, settings, session, portal, notifier, autostart),
             SessionType.Wayland => CreateWayland(log, settings, session, portal, notifier, autostart, stateDirectory),
             _ => UnsupportedPlatform.Create("Linux", "No graphical session found (neither WAYLAND_DISPLAY nor DISPLAY is set)."),
         };
     }
 
     private static PlatformServices CreateX11(
-        ILog log, Func<PlatformSettings> settings, SessionInfo session, INotifier notifier, IAutostart autostart)
+        ILog log, Func<PlatformSettings> settings, SessionInfo session, Portal portal, INotifier notifier, IAutostart autostart)
     {
         // XRecord listens and XTest posts without extra permissions; it must be chosen before any other SharpHook call.
         UioHookProvider.Instance.SetLinuxMode(LinuxMode.XRecord);
@@ -44,7 +44,7 @@ public static class LinuxPlatform
             $"Linux ({session})",
             () => hotkeys,
             injector,
-            new UnavailableSecretStore(),
+            new SecretServiceStore(portal, log),
             autostart,
             notifier,
             ct => Task.FromResult<IReadOnlyList<PlatformCheck>>(
@@ -79,7 +79,7 @@ public static class LinuxPlatform
             $"Linux ({session})",
             () => hotkeys,
             injector,
-            new UnavailableSecretStore(),
+            new SecretServiceStore(portal, log),
             autostart,
             notifier,
             async ct => [

@@ -90,6 +90,12 @@ internal static class DoctorCommand
 
     private static void CheckAudio(CliContext context, Action<string, HealthStatus> add)
     {
+        if (Environment.GetEnvironmentVariable("DICTUM_AUDIO_FILE") is { Length: > 0 } file)
+        {
+            add("microphone", HealthStatus.Warning($"Replaced by DICTUM_AUDIO_FILE={file}", "Unset DICTUM_AUDIO_FILE to record from the microphone."));
+            return;
+        }
+
         try
         {
             var devices = context.Host().Audio.ListDevices();
