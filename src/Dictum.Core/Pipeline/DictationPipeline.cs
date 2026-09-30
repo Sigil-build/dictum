@@ -183,7 +183,7 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
     /// </summary>
     public static string NormalizeWhitespace(string text) => WhitespaceRun().Replace(text, " ").Trim();
 
-    [GeneratedRegex(@"s+")]
+    [GeneratedRegex(@"\s+")]
     private static partial Regex WhitespaceRun();
 
     private void Transition(PipelineState from, PipelineState to)
