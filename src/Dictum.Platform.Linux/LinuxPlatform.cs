@@ -59,21 +59,36 @@ public static class LinuxPlatform
     private static PlatformServices CreateWayland(
         ILog log, Func<PlatformSettings> settings, SessionInfo session, Portal portal, INotifier notifier, IAutostart autostart)
     {
+        var hotkeys = new PortalGlobalShortcuts(portal, log);
         IClipboard clipboard = WlClipboard.IsAvailable ? new WlClipboard() : new MissingClipboard("wl-clipboard");
         var injector = new ClipboardPasteInjector(clipboard, null, null, null, () => settings().TerminalApps, log);
 
         return new PlatformServices(
             $"Linux ({session})",
-            null,
+            () => hotkeys,
             injector,
             new UnavailableSecretStore(),
             autostart,
             notifier,
-            ct => Task.FromResult<IReadOnlyList<PlatformCheck>>(
-            [
+            async ct => [
                 new("session", HealthStatus.Ok(session.ToString())),
+                await PortalCheckAsync(portal, "hotkeys", PortalGlobalShortcuts.Interface, PortalGlobalShortcuts.CompositorHint, ct).ConfigureAwait(false),
                 Tool("clipboard", WlClipboard.IsAvailable, "wl-clipboard", "Install wl-clipboard: 'sudo pacman -S wl-clipboard' or 'sudo apt install wl-clipboard'."),
-            ]));
+            ]);
+    }
+
+    private static async Task<PlatformCheck> PortalCheckAsync(Portal portal, string name, string iface, string hint, CancellationToken ct)
+    {
+        try
+        {
+            return await portal.GetVersionAsync(iface, ct).ConfigureAwait(false) is { } version
+                ? new(name, HealthStatus.Ok($"{iface} v{version}"))
+                : new(name, HealthStatus.Warning($"{iface} is not available", hint));
+        }
+        catch (Exception ex) when (ex is Tmds.DBus.Protocol.DBusExceptionBase or InvalidOperationException)
+        {
+            return new(name, HealthStatus.Error($"No D-Bus session bus: {ex.Message}", hint));
+        }
     }
 
     internal static PlatformCheck Tool(string name, bool present, string tool, string hint) =>
