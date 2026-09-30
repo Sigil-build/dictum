@@ -146,6 +146,27 @@ public class DictumDaemonTests
     }
 
     [Fact]
+    public async Task FailedPlatformSetupIsReportedAndTheDaemonKeepsRunning()
+    {
+        var platform = new PlatformServices(
+            "test",
+            () => _hotkeys,
+            _injector,
+            new UnavailableSecretStore(),
+            null,
+            _notifier,
+            _ => Task.FromResult<IReadOnlyList<PlatformCheck>>([]),
+            PrepareAsync: _ => throw new Dictum.Platform.Injection.InjectionUnavailableException("Keyboard control was not allowed."));
+        await using var daemon = new DictumDaemon(Config(), c => new FakeEngine(c, _stt), platform, _sounds, NullLog.Instance);
+
+        await daemon.StartAsync(_ct);
+        await WaitForAsync(() => _notifier.Shown.Count == 1);
+
+        Assert.Contains("not allowed", _notifier.Shown[0]);
+        Assert.True((await daemon.HandleAsync(new IpcRequest("status"), _ct)).Ok);
+    }
+
+    [Fact]
     public async Task UnsupportedPlatformStillServesIpc()
     {
         var platform = UnsupportedPlatform.Create("macOS", "Not yet.");

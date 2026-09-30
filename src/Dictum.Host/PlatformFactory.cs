@@ -9,7 +9,8 @@ namespace Dictum.Host;
 public static class PlatformFactory
 {
     /// <param name="settings">Read at use time, so hot-reloaded settings apply without rebuilding the platform.</param>
-    public static PlatformServices Create(ILog log, Func<PlatformSettings> settings)
+    /// <param name="stateDirectory">Where the platform may keep state such as portal restore tokens.</param>
+    public static PlatformServices Create(ILog log, Func<PlatformSettings> settings, string stateDirectory)
     {
         if (OperatingSystem.IsWindows())
         {
@@ -18,7 +19,7 @@ public static class PlatformFactory
 
         if (OperatingSystem.IsLinux())
         {
-            return LinuxPlatform.Create(log, settings);
+            return LinuxPlatform.Create(log, settings, stateDirectory);
         }
 
         return UnsupportedPlatform.Create(

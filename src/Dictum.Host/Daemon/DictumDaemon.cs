@@ -67,6 +67,7 @@ public sealed class DictumDaemon : IAsyncDisposable
         Subscribe(_engine);
         await RegisterHotkeysAsync(ct).ConfigureAwait(false);
         _ = WarmUpAsync(_engine);
+        _ = PrepareAsync();
     }
 
     /// <summary>Applies a reloaded config: new providers, re-registered hotkeys.</summary>
@@ -312,6 +313,29 @@ public sealed class DictumDaemon : IAsyncDisposable
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _log.Warn($"Warm-up failed: {ex.Message}");
+        }
+    }
+
+    /// <summary>Platform setup that may show a permission dialog; the daemon keeps serving meanwhile.</summary>
+    private async Task PrepareAsync()
+    {
+        if (_platform.PrepareAsync is not { } prepare)
+        {
+            return;
+        }
+
+        try
+        {
+            await prepare(_stopping.Token).ConfigureAwait(false);
+        }
+        catch (InjectionUnavailableException ex)
+        {
+            _log.Warn($"Paste setup: {ex.Message}");
+            await _platform.Notifier.NotifyAsync("Dictum: paste unavailable", ex.Message, NotificationKind.Error, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _log.Warn($"Platform setup failed: {ex.Message}");
         }
     }
 

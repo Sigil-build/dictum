@@ -56,3 +56,9 @@ public sealed class InjectionUnavailableException(string message, string? hint =
 {
     public string? Hint { get; } = hint;
 }
+
+/// <summary>A backend that can do slow setup (e.g. a permission dialog) before the first use.</summary>
+public interface IPreparable
+{
+    Task PrepareAsync(CancellationToken ct);
+}

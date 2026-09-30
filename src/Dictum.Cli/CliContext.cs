@@ -46,11 +46,14 @@ internal sealed class CliContext : IAsyncDisposable
     public string SocketPath => IpcEndpoint.SocketPath(Paths);
 
     /// <summary>Platform services; settings are re-read from the current config at use time.</summary>
-    public PlatformServices Platform => _platform ??= PlatformFactory.Create(Log, () =>
-    {
-        var general = _config?.General ?? new GeneralSettings();
-        return new PlatformSettings(general.TerminalApps, general.Injector);
-    });
+    public PlatformServices Platform => _platform ??= PlatformFactory.Create(
+        Log,
+        () =>
+        {
+            var general = _config?.General ?? new GeneralSettings();
+            return new PlatformSettings(general.TerminalApps, general.Injector);
+        },
+        Paths.DataDirectory);
 
     /// <summary>The config, or null when the file does not exist. Invalid files throw <see cref="ConfigException"/>.</summary>
     public DictumConfig? TryLoadConfig()
