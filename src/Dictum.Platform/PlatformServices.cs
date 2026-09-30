@@ -52,3 +52,8 @@ public sealed record PlatformServices(
     INotifier Notifier,
     Func<CancellationToken, Task<IReadOnlyList<PlatformCheck>>> DiagnoseAsync,
     string? Unsupported = null);
+
+/// <summary>Config values the platform reads at use time (they can change on hot reload).</summary>
+/// <param name="TerminalApps">Apps that paste with Ctrl+Shift+V.</param>
+/// <param name="Injector">Preferred paste backend on Linux Wayland.</param>
+public sealed record PlatformSettings(IReadOnlyCollection<string> TerminalApps, InjectorBackend Injector);

@@ -9,6 +9,7 @@ using Dictum.Core.History;
 using Dictum.Core.Pipeline;
 using Dictum.Core.Processing;
 using Dictum.Core.Stt;
+using Dictum.Host.Daemon;
 using Dictum.Processing;
 using Dictum.Stt.OpenAi;
 using Dictum.Stt.Whisper;
@@ -20,12 +21,13 @@ namespace Dictum.Host;
 /// Composition root shared by the CLI and (later) the daemon and GUI.
 /// Registrations are explicit; nothing is discovered by reflection.
 /// </summary>
-public sealed class DictumHost : IAsyncDisposable
+public sealed class DictumHost : IDictationEngine
 {
     private readonly ServiceProvider _services;
     private readonly ProviderRegistry _registry;
     private readonly ConcurrentDictionary<string, ISpeechToText> _stt = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, ITextProcessor> _processors = new(StringComparer.Ordinal);
+    private DictationPipeline? _pipeline;
 
     private DictumHost(AppPaths paths, ILog log, DictumConfig config)
     {
@@ -89,6 +91,20 @@ public sealed class DictumHost : IAsyncDisposable
 
     public DictationPipeline CreatePipeline() =>
         new(Audio, History, Log, clip => SilenceTrimmer.Trim(clip));
+
+    /// <summary>The long-lived pipeline used by the daemon.</summary>
+    public DictationPipeline Pipeline => _pipeline ??= CreatePipeline();
+
+    public DictationProfile ResolveProfile(string profileId) => ResolveProfile(new ProfileOverrides(Profile: profileId));
+
+    public async Task WarmUpAsync(CancellationToken ct)
+    {
+        foreach (var id in Config.Profiles.Select(p => p.Stt).Distinct())
+        {
+            var status = await GetStt(id).CheckAsync(ct).ConfigureAwait(false);
+            Log.Info($"Warm-up {id}: {status.Level} {status.Detail}");
+        }
+    }
 
     public async ValueTask DisposeAsync()
     {

@@ -1,0 +1,27 @@
+using Dictum.Core.Configuration;
+using Dictum.Core.Diagnostics;
+using Dictum.Platform.Injection;
+
+namespace Dictum.Platform;
+
+/// <summary>Placeholder services for platforms without hotkey and paste support yet (macOS for now).</summary>
+public static class UnsupportedPlatform
+{
+    public static PlatformServices Create(string name, string reason) => new(
+        name,
+        CreateHotkeys: null,
+        new NoInjector(reason),
+        new UnavailableSecretStore(),
+        Autostart: null,
+        NullNotifier.Instance,
+        _ => Task.FromResult<IReadOnlyList<PlatformCheck>>([new("platform", HealthStatus.Warning(reason))]),
+        reason);
+
+    private sealed class NoInjector(string reason) : ITextInjector
+    {
+        public InjectionCapabilities Capabilities { get; } = new(false, false, false, "none");
+
+        public Task InjectAsync(string text, InjectionOptions options, CancellationToken ct) =>
+            throw new InjectionUnavailableException(reason);
+    }
+}

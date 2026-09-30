@@ -11,10 +11,16 @@ public enum SoundCue
     Error,
 }
 
+/// <summary>Plays short state cues; abstracted so the daemon can be tested without audio.</summary>
+public interface ISoundPlayer
+{
+    Task PlayAsync(SoundCue cue, CancellationToken ct);
+}
+
 /// <summary>
 /// Short synthesised cues on the default output device. Best effort: failures are logged and ignored.
 /// </summary>
-public sealed class SoundPlayer(ILog log)
+public sealed class SoundPlayer(ILog log) : ISoundPlayer
 {
     private const int SampleRate = 48_000;
 
