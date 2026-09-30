@@ -16,11 +16,10 @@ public sealed class AudioDeviceException(string message, string? hint = null) : 
 /// On Linux the system library is preferred: the bundled build links libjack.so.0, which is not
 /// installed everywhere. <c>DICTUM_PORTAUDIO_LIB</c> overrides the choice with an explicit path.
 /// </remarks>
-public static partial class PortAudioLibrary
+public static class PortAudioLibrary
 {
-    private const string LibC = "libc";
-
     private static readonly Lock Gate = new();
+    private static readonly Lock ResolverGate = new();
     private static bool _resolverInstalled;
     private static bool _initialized;
 
@@ -28,12 +27,6 @@ public static partial class PortAudioLibrary
     public static string? LoadedFrom { get; private set; }
 
     public static string? Version { get; private set; }
-
-    /// <summary>
-    /// When false (the default), the ALSA/JACK chatter that PortAudio's device probing writes to stderr
-    /// on Linux and macOS is discarded.
-    /// </summary>
-    public static bool ShowNativeDiagnostics { get; set; }
 
     public static void EnsureInitialized()
     {
@@ -44,11 +37,11 @@ public static partial class PortAudioLibrary
                 return;
             }
 
-            InstallResolver();
+            EnsureResolver();
             int error;
             try
             {
-                error = WithStderrSilenced(PortAudioNative.Pa_Initialize);
+                error = NativeStderr.Silence(PortAudioNative.Pa_Initialize);
             }
             catch (DllNotFoundException ex)
             {
@@ -81,48 +74,24 @@ public static partial class PortAudioLibrary
         return lines.Count > 0 ? string.Join("; ", lines) : message;
     }
 
-    private static T WithStderrSilenced<T>(Func<T> action)
+    /// <summary>One resolver serves every native import of this assembly (PortAudio and libc).</summary>
+    internal static void EnsureResolver()
     {
-        if (ShowNativeDiagnostics || OperatingSystem.IsWindows())
+        lock (ResolverGate)
         {
-            return action();
-        }
+            if (_resolverInstalled)
+            {
+                return;
+            }
 
-        Console.Error.Flush();
-        var saved = LibCNative.dup(2);
-        var devNull = LibCNative.open("/dev/null", 1 /* O_WRONLY */);
-        if (saved < 0 || devNull < 0)
-        {
-            return action();
+            NativeLibrary.SetDllImportResolver(typeof(PortAudioLibrary).Assembly, Resolve);
+            _resolverInstalled = true;
         }
-
-        try
-        {
-            LibCNative.dup2(devNull, 2);
-            return action();
-        }
-        finally
-        {
-            LibCNative.dup2(saved, 2);
-            LibCNative.close(saved);
-            LibCNative.close(devNull);
-        }
-    }
-
-    private static void InstallResolver()
-    {
-        if (_resolverInstalled)
-        {
-            return;
-        }
-
-        NativeLibrary.SetDllImportResolver(typeof(PortAudioLibrary).Assembly, Resolve);
-        _resolverInstalled = true;
     }
 
     private static nint Resolve(string name, Assembly assembly, DllImportSearchPath? searchPath)
     {
-        if (name == LibC)
+        if (name == NativeStderr.LibC)
         {
             // "libc.so" on Linux is a linker script, not a loadable library.
             return NativeLibrary.TryLoad(OperatingSystem.IsMacOS() ? "/usr/lib/libSystem.B.dylib" : "libc.so.6", out var libc) ? libc : 0;
@@ -174,20 +143,5 @@ public static partial class PortAudioLibrary
         {
             yield return (Path.Combine(baseDir, "portaudio.dll"), "bundled portaudio.dll");
         }
-    }
-
-    private static partial class LibCNative
-    {
-        [LibraryImport(LibC)]
-        public static partial int dup(int fd);
-
-        [LibraryImport(LibC)]
-        public static partial int dup2(int oldFd, int newFd);
-
-        [LibraryImport(LibC, StringMarshalling = StringMarshalling.Utf8)]
-        public static partial int open(string path, int flags);
-
-        [LibraryImport(LibC)]
-        public static partial int close(int fd);
     }
 }

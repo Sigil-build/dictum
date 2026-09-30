@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
+using Dictum.Audio;
 using Dictum.Core;
 using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
@@ -139,7 +140,8 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
 
             ConfigureRuntime(config.Runtime, log);
             var watch = Stopwatch.StartNew();
-            _factory = WhisperFactory.FromPath(ModelPath, new WhisperFactoryOptions { UseGpu = config.Runtime != WhisperRuntime.Cpu });
+            var options = new WhisperFactoryOptions { UseGpu = config.Runtime != WhisperRuntime.Cpu };
+            _factory = NativeStderr.Silence(() => WhisperFactory.FromPath(ModelPath, options));
             log.Info($"Loaded {config.Model} with runtime {LoadedRuntime} in {watch.ElapsedMilliseconds} ms");
             return _factory;
         }

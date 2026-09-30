@@ -2,6 +2,8 @@
 
   <ItemGroup>
     <ProjectReference Include="../Dictum.Core/Dictum.Core.csproj" />
+    <!-- NativeStderr: hides Mesa/Vulkan chatter while the model loads. -->
+    <ProjectReference Include="../Dictum.Audio/Dictum.Audio.csproj" />
   </ItemGroup>
 
   <ItemGroup>

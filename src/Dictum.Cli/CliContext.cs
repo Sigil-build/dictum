@@ -1,5 +1,5 @@
 using System.CommandLine;
-using Dictum.Audio.PortAudio;
+using Dictum.Audio;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
@@ -21,7 +21,7 @@ internal sealed class CliContext : IAsyncDisposable
         ConfigPath = parse.GetValue(CliApp.ConfigOption)
             ?? (Environment.GetEnvironmentVariable("DICTUM_CONFIG") is { Length: > 0 } fromEnv ? fromEnv : Paths.ConfigFile);
         Log = new DictumLog(Verbose ? LogLevel.Debug : LogLevel.Warning, includeText: Verbose, Console.Error, Paths.LogsDirectory);
-        PortAudioLibrary.ShowNativeDiagnostics = Verbose;
+        NativeStderr.ShowDiagnostics = Verbose;
         Store = new ConfigStore(ConfigPath, Log);
     }
 
