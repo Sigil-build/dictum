@@ -93,7 +93,7 @@ public sealed class SharpHookHotkeyService(ILog log, string backend) : IHotkeySe
         var finished = await Task.WhenAny(enabled.Task, _run, Task.Delay(StartTimeout, ct)).ConfigureAwait(false);
         if (finished == _run && _run.Exception?.InnerException is HookException hookError)
         {
-            throw new HotkeyUnavailableException($"The keyboard hook failed to start: {hookError.Result}", inner: hookError);
+            throw new HotkeyUnavailableException($"The keyboard hook failed to start: {hookError.Result}", HintFor(hookError.Result), hookError);
         }
 
         if (finished != enabled.Task)
@@ -103,6 +103,16 @@ public sealed class SharpHookHotkeyService(ILog log, string backend) : IHotkeySe
 
         log.Info($"Keyboard hook running ({backend})");
     }
+
+    private static string? HintFor(UioHookResult result) => result switch
+    {
+        // libuiohook-xrecord.so links libX11, libXtst, libXt, libXrandr and libxkbcommon.
+        UioHookResult.ErrorLinuxLoadBackend =>
+            "Install the X11 input libraries: 'sudo pacman -S libxtst libxt libxrandr libxkbcommon' "
+            + "or 'sudo apt install libxtst6 libxt6 libxrandr2 libxkbcommon0'.",
+        UioHookResult.ErrorAxApiDisabled => "Allow Dictum in System Settings → Privacy & Security → Accessibility.",
+        _ => null,
+    };
 
     // Runs on the hook thread: keep it short and never block.
     private void OnKeyPressed(object? sender, KeyboardHookEventArgs e)

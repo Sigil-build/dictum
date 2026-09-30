@@ -88,7 +88,7 @@ jobs:
       - name: Daemon smoke test (X11, Secret Service, hotkey)
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get install -y xvfb xdotool xclip x11-utils dbus-x11 gnome-keyring
+          sudo apt-get install -y xvfb xdotool xclip x11-utils dbus-x11 gnome-keyring libxtst6 libxt6 libxrandr2 libxkbcommon0
           bash .github/scripts/linux-daemon-smoke.sh "$PWD/out" "$PWD/models/ggml-tiny.en.bin" "$PWD/fixtures/en.wav"
 
       - uses: actions/upload-artifact@v7
