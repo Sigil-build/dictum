@@ -5,7 +5,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="SharpHook" />
     <PackageReference Include="Tmds.DBus.Protocol" />
   </ItemGroup>
 

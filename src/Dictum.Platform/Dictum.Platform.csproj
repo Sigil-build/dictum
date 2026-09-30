@@ -4,4 +4,9 @@
     <ProjectReference Include="../Dictum.Core/Dictum.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Keyboard hook and key simulation for Windows and Linux X11. -->
+    <PackageReference Include="SharpHook" />
+  </ItemGroup>
+
 </Project>

@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Dictum.Core.Hotkeys;
 
 namespace Dictum.Core.Configuration;
 
@@ -14,6 +15,11 @@ public static class ConfigValidator
             Error(issues, "general.historySize", "must be zero or positive");
         }
 
+        if (config.General.PasteDelayMs is < 0 or > 5000)
+        {
+            Error(issues, "general.pasteDelayMs", "must be between 0 and 5000");
+        }
+
         foreach (var (id, stt) in config.Stt)
         {
             ValidateStt(issues, $"stt.{id}", stt);
@@ -25,6 +31,7 @@ public static class ConfigValidator
         }
 
         var seen = new HashSet<string>(StringComparer.Ordinal);
+        var hotkeys = new HashSet<Hotkey>();
         for (var i = 0; i < config.Profiles.Count; i++)
         {
             var profile = config.Profiles[i];
@@ -51,6 +58,18 @@ public static class ConfigValidator
             if (!IsValidLanguage(profile.Language))
             {
                 Error(issues, $"{path}.language", $"'{profile.Language}' is not an ISO 639-1 code or 'auto'");
+            }
+
+            if (profile.Hotkey is not null)
+            {
+                if (!Hotkey.TryParse(profile.Hotkey, out var hotkey, out var hotkeyError))
+                {
+                    Error(issues, $"{path}.hotkey", hotkeyError);
+                }
+                else if (!hotkeys.Add(hotkey))
+                {
+                    Error(issues, $"{path}.hotkey", $"{hotkey} is already used by another profile");
+                }
             }
         }
 

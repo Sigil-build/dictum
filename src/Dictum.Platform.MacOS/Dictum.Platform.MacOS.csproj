@@ -4,8 +4,4 @@
     <ProjectReference Include="../Dictum.Platform/Dictum.Platform.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="SharpHook" />
-  </ItemGroup>
-
 </Project>

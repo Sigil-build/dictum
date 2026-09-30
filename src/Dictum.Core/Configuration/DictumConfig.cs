@@ -34,6 +34,48 @@ public sealed record GeneralSettings
 
     /// <summary>Microphone name, or null for the system default.</summary>
     public string? AudioDevice { get; init; }
+
+    /// <summary>How simulated paste reaches other apps on Linux Wayland.</summary>
+    public InjectorBackend Injector { get; set; } = InjectorBackend.Auto;
+
+    /// <summary>How long to wait after the paste keystroke before restoring the previous clipboard.</summary>
+    public int PasteDelayMs { get; set; } = 150;
+
+    /// <summary>Apps (process or window class names) that paste with Ctrl+Shift+V; used where the active app is known.</summary>
+    public List<string> TerminalApps { get; set; } =
+    [
+        "konsole", "gnome-terminal-server", "kitty", "alacritty", "org.wezfurlong.wezterm", "wezterm-gui",
+        "foot", "footclient", "xterm", "tilix", "terminator", "ghostty", "com.mitchellh.ghostty", "xfce4-terminal",
+    ];
+}
+
+public enum InjectorBackend
+{
+    /// <summary>RemoteDesktop portal, then ydotool, then wtype.</summary>
+    [JsonStringEnumMemberName("auto")]
+    Auto,
+
+    [JsonStringEnumMemberName("portal")]
+    Portal,
+
+    [JsonStringEnumMemberName("ydotool")]
+    Ydotool,
+
+    [JsonStringEnumMemberName("wtype")]
+    Wtype,
+}
+
+public enum PasteShortcut
+{
+    /// <summary>Ctrl+Shift+V for known terminals, Ctrl+V otherwise.</summary>
+    [JsonStringEnumMemberName("auto")]
+    Auto,
+
+    [JsonStringEnumMemberName("ctrl+v")]
+    CtrlV,
+
+    [JsonStringEnumMemberName("ctrl+shift+v")]
+    CtrlShiftV,
 }
 
 public enum HotkeyMode
@@ -78,4 +120,7 @@ public sealed record ProfileConfig
     public List<string> Pipeline { get; set; } = [];
 
     public OutputMode Output { get; set; } = OutputMode.Paste;
+
+    /// <summary>On Wayland the active app is unknown, so terminal profiles set this explicitly.</summary>
+    public PasteShortcut PasteShortcut { get; set; } = PasteShortcut.Auto;
 }
