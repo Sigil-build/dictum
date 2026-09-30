@@ -7,6 +7,7 @@
     <ProjectReference Include="../../src/Dictum.Stt.OpenAi/Dictum.Stt.OpenAi.csproj" />
     <ProjectReference Include="../../src/Dictum.Processing/Dictum.Processing.csproj" />
     <ProjectReference Include="../../src/Dictum.Platform/Dictum.Platform.csproj" />
+    <ProjectReference Include="../../src/Dictum.Platform.Linux/Dictum.Platform.Linux.csproj" />
   </ItemGroup>
 
 </Project>
