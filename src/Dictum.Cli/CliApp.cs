@@ -6,6 +6,9 @@ using Dictum.Cli.Commands;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Pipeline;
+using Dictum.Host.Ipc;
+using Dictum.Platform.Hotkeys;
+using Dictum.Platform.Injection;
 
 namespace Dictum.Cli;
 
@@ -53,13 +56,24 @@ internal static class CliApp
         root.Add(ConfigCommand.Create());
         root.Add(HistoryCommand.Create());
         root.Add(DoctorCommand.Create());
+        root.Add(DaemonCommand.Create());
+        foreach (var control in ControlCommands.Create())
+        {
+            root.Add(control);
+        }
+
+        root.Add(SecretCommand.Create());
         return root;
     }
 
     /// <summary>Runs a command body with a <see cref="CliContext"/> and maps exceptions to exit codes.</summary>
-    public static async Task<int> RunAsync(ParseResult parse, CancellationToken ct, Func<CliContext, CancellationToken, Task<int>> body)
+    public static async Task<int> RunAsync(
+        ParseResult parse,
+        CancellationToken ct,
+        Func<CliContext, CancellationToken, Task<int>> body,
+        Core.Diagnostics.LogLevel? consoleLevel = null)
     {
-        await using var context = new CliContext(parse);
+        await using var context = new CliContext(parse, consoleLevel);
         try
         {
             return await body(context, ct).ConfigureAwait(false);
@@ -73,6 +87,17 @@ internal static class CliApp
         {
             return Report(context, ex);
         }
+    }
+
+    private static int WithHint(CliContext context, string message, string? hint)
+    {
+        context.Error.WriteLine($"error: {message}");
+        if (hint is not null)
+        {
+            context.Error.WriteLine($"  hint: {hint}");
+        }
+
+        return ExitCodes.Error;
     }
 
     private static int Report(CliContext context, Exception ex)
@@ -92,14 +117,16 @@ internal static class CliApp
             case ProviderUnavailableException or HttpRequestException:
                 context.Error.WriteLine($"error: {ex.Message}");
                 return ExitCodes.ProviderUnavailable;
+            case DaemonNotRunningException:
+                context.Error.WriteLine($"error: {inner.Message}");
+                return ExitCodes.DaemonNotRunning;
             case AudioDeviceException audio:
-                context.Error.WriteLine($"error: {audio.Message}");
-                if (audio.Hint is not null)
-                {
-                    context.Error.WriteLine($"  hint: {audio.Hint}");
-                }
-
-                return ExitCodes.Error;
+                return WithHint(context, audio.Message, audio.Hint);
+            case HotkeyUnavailableException hotkey:
+                return WithHint(context, hotkey.Message, hotkey.Hint);
+            case InjectionUnavailableException injection:
+                return WithHint(context, injection.Message, injection.Hint);
+            case DaemonAlreadyRunningException:
             case WavFormatException or FileNotFoundException or DirectoryNotFoundException:
                 context.Error.WriteLine($"error: {ex.Message}");
                 return ExitCodes.Error;

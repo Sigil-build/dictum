@@ -4,6 +4,8 @@ using System.Text.Json;
 using Dictum.Audio;
 using Dictum.Cli.Output;
 using Dictum.Core.Audio;
+using Dictum.Core.Configuration;
+using Dictum.Host.Daemon;
 
 namespace Dictum.Cli.Commands;
 
@@ -19,10 +21,10 @@ internal static class RecordCommand
         var device = new Option<string?>("--device", "-d") { Description = "Microphone name or id from 'dictum devices'" };
         var output = new Option<string>("--out")
         {
-            Description = "Where the text goes: stdout (clipboard and paste come with the daemon)",
+            Description = "Where the text goes: stdout, clipboard, or paste into the focused app",
             DefaultValueFactory = _ => "stdout",
         };
-        output.AcceptOnlyFromAmong("stdout");
+        output.AcceptOnlyFromAmong("stdout", "clipboard", "paste");
         var dumpFrames = new Option<string?>("--dump-frames") { Description = "Write level and spectrum frames to a JSON file (for the overlay prototype)" };
 
         var command = new Command("record", "Record from the microphone, then transcribe. Enter or Ctrl+C stops, Esc cancels.")
@@ -82,13 +84,25 @@ internal static class RecordCommand
             }
 
             context.Error.WriteLine("Transcribing…");
-            var result = await pipeline.StopAsync(profile, output: null, token).ConfigureAwait(false);
+            var target = parse.GetValue(output);
+            var sink = target == "stdout" ? null : InjectorOutput.For(
+                context.Platform.Injector,
+                target == "paste" ? OutputMode.Paste : OutputMode.Clipboard,
+                context.TryLoadConfig()?.Profiles.FirstOrDefault(p => p.Id == profile.Id)?.PasteShortcut ?? PasteShortcut.Auto,
+                context.TryLoadConfig()?.General ?? new GeneralSettings());
+            var result = await pipeline.StopAsync(profile, sink, token).ConfigureAwait(false);
 
             if (parse.GetValue(dumpFrames) is { } dumpPath && frames is not null)
             {
                 var dump = new FrameDumpJson(50, frames.FirstOrDefault()?.Bands.Length ?? 0, frames);
                 await File.WriteAllTextAsync(dumpPath, JsonSerializer.Serialize(dump, CliJsonContext.Readable.FrameDumpJson), token).ConfigureAwait(false);
                 context.Error.WriteLine($"Wrote {frames.Count} frames to {dumpPath}");
+            }
+
+            if (sink is not null && !parse.GetValue(options.Json))
+            {
+                context.Error.WriteLine(result.Text.Length == 0 ? "No speech detected." : target == "paste" ? "Pasted." : "Copied to the clipboard.");
+                return ExitCodes.Success;
             }
 
             return Results.Print(context, result, parse.GetValue(options.Json));

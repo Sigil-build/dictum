@@ -31,7 +31,23 @@ public static class IpcEndpoint
         }
 
         // macOS and Linux without XDG_RUNTIME_DIR use the per-user data directory; Windows uses %LOCALAPPDATA%\Dictum.
-        return Path.Combine(paths.DataDirectory, "dictum.sock");
+        return Shorten(Path.Combine(paths.DataDirectory, "dictum.sock"));
+    }
+
+    /// <summary>
+    /// Socket paths are limited to 108 bytes (104 on macOS). A longer path is replaced by a short one in
+    /// the temp directory, derived from the original so each data directory keeps its own socket.
+    /// </summary>
+    public static string Shorten(string path)
+    {
+        const int Limit = 100;
+        if (Encoding.UTF8.GetByteCount(path) <= Limit)
+        {
+            return path;
+        }
+
+        var hash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(path)))[..12];
+        return Path.Combine(Path.GetTempPath(), $"dictum-{hash}.sock");
     }
 }
 

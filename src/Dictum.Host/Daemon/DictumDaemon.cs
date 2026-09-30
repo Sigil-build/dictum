@@ -225,10 +225,7 @@ public sealed class DictumDaemon : IAsyncDisposable
         }
 
         Cue(SoundCue.Stop);
-        var config = engine.Config.Profiles.First(p => p.Id == profileId);
-        var output = new InjectorOutput(
-            _platform.Injector,
-            new InjectionOptions(config.Output, config.PasteShortcut, TimeSpan.FromMilliseconds(engine.Config.General.PasteDelayMs)));
+        var output = InjectorOutput.For(_platform.Injector, engine.Config.Profiles.First(p => p.Id == profileId), engine.Config.General);
         try
         {
             var result = await engine.Pipeline.StopAsync(profile, output, token).ConfigureAwait(false);
@@ -344,11 +341,5 @@ public sealed class DictumDaemon : IAsyncDisposable
         {
             await ReportAsync(ex).ConfigureAwait(false);
         }
-    }
-
-    /// <summary>Sends the pipeline result to the platform injector with the profile's options.</summary>
-    private sealed class InjectorOutput(ITextInjector injector, InjectionOptions options) : ITextOutput
-    {
-        public Task WriteAsync(string text, CancellationToken ct) => injector.InjectAsync(text, options, ct);
     }
 }

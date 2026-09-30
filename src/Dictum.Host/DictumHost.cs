@@ -29,7 +29,7 @@ public sealed class DictumHost : IDictationEngine
     private readonly ConcurrentDictionary<string, ITextProcessor> _processors = new(StringComparer.Ordinal);
     private DictationPipeline? _pipeline;
 
-    private DictumHost(AppPaths paths, ILog log, DictumConfig config)
+    private DictumHost(AppPaths paths, ILog log, DictumConfig config, ISecretStore secrets)
     {
         Paths = paths;
         Log = log;
@@ -39,12 +39,14 @@ public sealed class DictumHost : IDictationEngine
         services.AddSingleton(paths);
         services.AddSingleton(log);
         services.AddSingleton(config);
-        services.AddSingleton<ISecretStore>(new UnavailableSecretStore());
+        services.AddSingleton(secrets);
         services.AddSingleton(sp => new ConfigValueResolver(sp.GetRequiredService<ISecretStore>()));
         services.AddSingleton(_ => CreateHttpClient());
         services.AddSingleton(_ => new PromptTemplates(paths.PromptsDirectory));
         services.AddSingleton(_ => new HistoryStore(paths.HistoryFile, config.General.HistorySize));
-        services.AddSingleton<IAudioSource>(_ => new PortAudioSource(log));
+        services.AddSingleton<IAudioSource>(_ => Environment.GetEnvironmentVariable("DICTUM_AUDIO_FILE") is { Length: > 0 } file
+            ? new FileAudioSource(file)
+            : new PortAudioSource(log));
         _services = services.BuildServiceProvider();
 
         _registry = new ProviderRegistry()
@@ -69,8 +71,9 @@ public sealed class DictumHost : IDictationEngine
     public HistoryStore History => _services.GetRequiredService<HistoryStore>();
 
     /// <param name="config">Null when no config file exists; ad-hoc providers (e.g. <c>--model</c>) still work.</param>
-    public static DictumHost Create(AppPaths paths, ILog log, DictumConfig? config) =>
-        new(paths, log, config ?? new DictumConfig());
+    /// <param name="secrets">Backs <c>secret:</c> values; defaults to a store that explains it is unavailable.</param>
+    public static DictumHost Create(AppPaths paths, ILog log, DictumConfig? config, ISecretStore? secrets = null) =>
+        new(paths, log, config ?? new DictumConfig(), secrets ?? new UnavailableSecretStore());
 
     public ISpeechToText GetStt(string id) =>
         _stt.GetOrAdd(id, key => Config.Stt.TryGetValue(key, out var config)

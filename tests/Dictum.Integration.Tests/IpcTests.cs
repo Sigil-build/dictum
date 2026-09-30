@@ -75,5 +75,18 @@ public class IpcTests : IDisposable
         Assert.Equal("fresh", (await new IpcClient(SocketPath).SendAsync(new IpcRequest("status"), _ct)).Status!.State);
     }
 
+    [Fact]
+    public void LongSocketPathsAreShortenedDeterministically()
+    {
+        var deep = Path.Combine(Path.GetTempPath(), new string('d', 120), "dictum.sock");
+
+        var shortened = IpcEndpoint.Shorten(deep);
+
+        Assert.True(shortened.Length <= 100, shortened);
+        Assert.Equal(shortened, IpcEndpoint.Shorten(deep));
+        Assert.NotEqual(shortened, IpcEndpoint.Shorten(deep + "2"));
+        Assert.Equal(SocketPath, IpcEndpoint.Shorten(SocketPath));
+    }
+
     private static DaemonStatus Status(string state) => new(state, null, [], "test", "test", Environment.ProcessId);
 }

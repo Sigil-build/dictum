@@ -1,5 +1,6 @@
 using System.CommandLine;
 using Dictum.Core.Configuration;
+using Dictum.Core.Hotkeys;
 
 namespace Dictum.Cli.Commands;
 
@@ -46,7 +47,38 @@ internal static class ProfilesCommand
             return Task.FromResult(ExitCodes.Success);
         }));
 
+        var hotkeyProfile = new Argument<string>("id") { Description = "Profile id" };
+        var hotkeyValue = new Argument<string>("hotkey") { Description = "Combination, e.g. \"Ctrl+Alt+Space\" or \"Ctrl+Alt+`\"" };
+        var setHotkey = new Command("set-hotkey", "Change a profile's hotkey; a running daemon picks it up at once") { hotkeyProfile, hotkeyValue };
+        setHotkey.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, (context, _) =>
+        {
+            var config = context.LoadConfig();
+            var id = parse.GetValue(hotkeyProfile);
+            var index = config.Profiles.FindIndex(p => p.Id == id);
+            if (index < 0)
+            {
+                throw new ConfigException($"Unknown profile '{id}'.");
+            }
+
+            if (!Hotkey.TryParse(parse.GetValue(hotkeyValue), out var hotkey, out var error))
+            {
+                throw new ConfigException($"Invalid hotkey: {error}.");
+            }
+
+            config.Profiles[index] = config.Profiles[index] with { Hotkey = hotkey.ToString() };
+            var errors = ConfigValidator.Validate(config).Where(i => i.Severity == ConfigIssueSeverity.Error).ToList();
+            if (errors.Count > 0)
+            {
+                throw new ConfigException("The change would make the config invalid.", errors);
+            }
+
+            context.Store.Save(config);
+            context.Error.WriteLine($"{id}: {hotkey}");
+            return Task.FromResult(ExitCodes.Success);
+        }));
+
         command.Add(list);
+        command.Add(setHotkey);
         command.Add(show);
         return command;
     }

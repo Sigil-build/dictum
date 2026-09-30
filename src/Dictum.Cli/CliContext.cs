@@ -4,23 +4,27 @@ using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Host;
+using Dictum.Host.Ipc;
+using Dictum.Platform;
 
 namespace Dictum.Cli;
 
-/// <summary>Per-invocation state: paths, logging, config and a lazily built host.</summary>
+/// <summary>Per-invocation state: paths, logging, config, the platform and a lazily built host.</summary>
 internal sealed class CliContext : IAsyncDisposable
 {
     private DictumHost? _host;
     private DictumConfig? _config;
     private bool _configLoaded;
+    private PlatformServices? _platform;
 
-    public CliContext(ParseResult parse)
+    /// <param name="consoleLevel">Overrides the stderr log level (the daemon logs Info by default).</param>
+    public CliContext(ParseResult parse, LogLevel? consoleLevel = null)
     {
         Paths = AppPaths.FromEnvironment();
         Verbose = parse.GetValue(CliApp.VerboseOption);
         ConfigPath = parse.GetValue(CliApp.ConfigOption)
             ?? (Environment.GetEnvironmentVariable("DICTUM_CONFIG") is { Length: > 0 } fromEnv ? fromEnv : Paths.ConfigFile);
-        Log = new DictumLog(Verbose ? LogLevel.Debug : LogLevel.Warning, includeText: Verbose, Console.Error, Paths.LogsDirectory);
+        Log = new DictumLog(Verbose ? LogLevel.Debug : consoleLevel ?? LogLevel.Warning, includeText: Verbose, Console.Error, Paths.LogsDirectory);
         NativeStderr.ShowDiagnostics = Verbose;
         Store = new ConfigStore(ConfigPath, Log);
     }
@@ -38,6 +42,15 @@ internal sealed class CliContext : IAsyncDisposable
     public TextWriter Out => Console.Out;
 
     public TextWriter Error => Console.Error;
+
+    public string SocketPath => IpcEndpoint.SocketPath(Paths);
+
+    /// <summary>Platform services; settings are re-read from the current config at use time.</summary>
+    public PlatformServices Platform => _platform ??= PlatformFactory.Create(Log, () =>
+    {
+        var general = _config?.General ?? new GeneralSettings();
+        return new PlatformSettings(general.TerminalApps, general.Injector);
+    });
 
     /// <summary>The config, or null when the file does not exist. Invalid files throw <see cref="ConfigException"/>.</summary>
     public DictumConfig? TryLoadConfig()
@@ -63,7 +76,16 @@ internal sealed class CliContext : IAsyncDisposable
 
     public DictumConfig LoadConfig() => TryLoadConfig() ?? Store.Load();
 
-    public DictumHost Host() => _host ??= DictumHost.Create(Paths, Log, TryLoadConfig());
+    /// <summary>Replaces the config seen by later platform calls (the daemon updates it on reload).</summary>
+    public void UseConfig(DictumConfig config)
+    {
+        _config = config;
+        _configLoaded = true;
+    }
+
+    public DictumHost Host() => _host ??= CreateHost(TryLoadConfig());
+
+    public DictumHost CreateHost(DictumConfig? config) => DictumHost.Create(Paths, Log, config, Platform.Secrets);
 
     public async ValueTask DisposeAsync()
     {

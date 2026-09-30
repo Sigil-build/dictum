@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.History;
 using Dictum.Core.Pipeline;
+using Dictum.Host.Ipc;
 
 namespace Dictum.Cli.Output;
 
@@ -57,6 +58,7 @@ internal sealed record FrameDumpJson(int FramesPerSecond, int Bands, IReadOnlyLi
 [JsonSerializable(typeof(DoctorJson))]
 [JsonSerializable(typeof(FrameDumpJson))]
 [JsonSerializable(typeof(List<HistoryEntry>))]
+[JsonSerializable(typeof(DaemonStatus))]
 internal sealed partial class CliJsonContext : JsonSerializerContext
 {
     /// <summary>Keeps non-ASCII text (e.g. Cyrillic) readable instead of \u-escaped.</summary>

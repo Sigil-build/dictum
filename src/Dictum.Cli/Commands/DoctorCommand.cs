@@ -5,6 +5,7 @@ using Dictum.Audio.PortAudio;
 using Dictum.Cli.Output;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Host.Ipc;
 
 namespace Dictum.Cli.Commands;
 
@@ -38,6 +39,13 @@ internal static class DoctorCommand
 
             Add("models", HealthStatus.Ok(context.Paths.ModelsDirectory));
             CheckAudio(context, Add);
+
+            foreach (var check in await context.Platform.DiagnoseAsync(token).ConfigureAwait(false))
+            {
+                Add(check.Name, check.Status);
+            }
+
+            Add("daemon", await CheckDaemonAsync(context, token).ConfigureAwait(false));
 
             if (config is not null)
             {
@@ -94,6 +102,21 @@ internal static class DoctorCommand
         catch (AudioDeviceException ex)
         {
             add("audio library", HealthStatus.Error(ex.Message, ex.Hint));
+        }
+    }
+
+    private static async Task<HealthStatus> CheckDaemonAsync(CliContext context, CancellationToken ct)
+    {
+        try
+        {
+            var status = (await new IpcClient(context.SocketPath).SendAsync(new IpcRequest("status"), ct).ConfigureAwait(false)).Status!;
+            var registered = status.Profiles.Count(p => p.Registered);
+            var detail = $"running (pid {status.ProcessId}), {status.State}; {registered} hotkey(s) registered via {status.HotkeyBackend}";
+            return status.Warning is null ? HealthStatus.Ok(detail) : HealthStatus.Warning(detail, status.Warning);
+        }
+        catch (DaemonNotRunningException)
+        {
+            return HealthStatus.Warning("not running", "Start it with 'dictum daemon', or at login with 'dictum daemon --install-autostart'.");
         }
     }
 
