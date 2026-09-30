@@ -58,12 +58,10 @@ internal static class Tools
             throw new TimeoutException($"{file} did not finish within {timeoutMs} ms.");
         }
 
-        return new Result(process.ExitCode, await ReadOrEmpty(output).ConfigureAwait(false), await ReadOrEmpty(error).ConfigureAwait(false));
+        // A forked child keeps the pipes open, so give the output a short grace period, not an unbounded wait.
+        await Task.WhenAny(Task.WhenAll(output, error), Task.Delay(100, CancellationToken.None)).ConfigureAwait(false);
+        return new Result(process.ExitCode, Completed(output), Completed(error));
     }
 
-    private static async Task<string> ReadOrEmpty(Task<string> read)
-    {
-        var finished = await Task.WhenAny(read, Task.Delay(200)).ConfigureAwait(false);
-        return finished == read && read.IsCompletedSuccessfully ? read.Result : string.Empty;
-    }
+    private static string Completed(Task<string> read) => read.IsCompletedSuccessfully ? read.Result : string.Empty;
 }
