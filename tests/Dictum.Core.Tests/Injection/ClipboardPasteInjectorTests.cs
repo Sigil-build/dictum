@@ -74,14 +74,14 @@ public class ClipboardPasteInjectorTests
     [Fact]
     public async Task WithoutKeystrokesTheTextStaysOnTheClipboardAndTheCallerIsTold()
     {
-        var injector = new ClipboardPasteInjector(_clipboard, null, null, null, Terminals, NullLog.Instance);
+        var injector = new ClipboardPasteInjector(_clipboard, null, null, null, () => Terminals, NullLog.Instance);
 
         await Assert.ThrowsAsync<InjectionUnavailableException>(() => injector.InjectAsync("dictated", Options(), _ct));
         Assert.False(injector.Capabilities.Paste);
     }
 
     private ClipboardPasteInjector Create(string? activeApp = null, IModifierState? modifiers = null) =>
-        new(_clipboard, _keys, new FakeActiveApp(activeApp), modifiers, Terminals, NullLog.Instance);
+        new(_clipboard, _keys, new FakeActiveApp(activeApp), modifiers, () => Terminals, NullLog.Instance);
 
     private static InjectionOptions Options(OutputMode mode = OutputMode.Paste, PasteShortcut shortcut = PasteShortcut.Auto) =>
         new(mode, shortcut, TimeSpan.Zero);

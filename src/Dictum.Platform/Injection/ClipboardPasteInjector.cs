@@ -13,7 +13,7 @@ public sealed class ClipboardPasteInjector(
     IKeystrokeSender? keystrokes,
     IActiveAppProvider? activeApp,
     IModifierState? modifiers,
-    IReadOnlyCollection<string> terminalApps,
+    Func<IReadOnlyCollection<string>> terminalApps,
     ILog log) : ITextInjector
 {
     private static readonly TimeSpan ModifierTimeout = TimeSpan.FromSeconds(2);
@@ -74,7 +74,7 @@ public sealed class ClipboardPasteInjector(
     {
         PasteShortcut.CtrlV => PasteKeys.CtrlV,
         PasteShortcut.CtrlShiftV => PasteKeys.CtrlShiftV,
-        _ => activeApp?.GetActiveApp() is { } app && terminalApps.Contains(app, StringComparer.OrdinalIgnoreCase)
+        _ => activeApp?.GetActiveApp() is { } app && terminalApps().Contains(app, StringComparer.OrdinalIgnoreCase)
             ? PasteKeys.CtrlShiftV
             : PasteKeys.CtrlV,
     };
