@@ -85,12 +85,6 @@ jobs:
           echo "transcript: $text"
           grep -qi "country" <<< "$text"
 
-      - name: Daemon smoke test (X11, Secret Service, hotkey)
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get install -y xvfb xdotool xclip x11-utils dbus-x11 gnome-keyring libxtst6 libxt6 libxrandr2 libxkbcommon0
-          bash .github/scripts/linux-daemon-smoke.sh "$PWD/out" "$PWD/models/ggml-tiny.en.bin" "$PWD/fixtures/en.wav"
-
       - uses: actions/upload-artifact@v7
         with:
           name: dictum-${{ matrix.rid }}
@@ -99,3 +93,34 @@ jobs:
             !out/*.pdb
             !out/*.dbg
             !out/*.dSYM
+
+  # SharpHook's X11 backend needs glibc 2.38+, so the daemon runs on a newer image than the build.
+  linux-daemon-smoke:
+    needs: publish-cli
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: dictum-linux-x64
+          path: out
+
+      - name: Cache Whisper test model
+        uses: actions/cache@v6
+        with:
+          path: models
+          key: whisper-ggml-tiny.en
+
+      - name: Download Whisper test model
+        run: |
+          mkdir -p models
+          test -f models/ggml-tiny.en.bin || curl -fsSL -o models/ggml-tiny.en.bin \
+            https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin
+
+      - name: Daemon smoke test (X11, Secret Service, hotkey)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libportaudio2 xvfb xdotool xclip x11-utils dbus-x11 gnome-keyring libxtst6 libxt6 libxrandr2 libxkbcommon0
+          chmod +x out/dictum
+          bash .github/scripts/linux-daemon-smoke.sh "$PWD/out" "$PWD/models/ggml-tiny.en.bin" "$PWD/fixtures/en.wav"

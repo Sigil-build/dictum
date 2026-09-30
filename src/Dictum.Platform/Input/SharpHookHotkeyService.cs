@@ -106,10 +106,10 @@ public sealed class SharpHookHotkeyService(ILog log, string backend) : IHotkeySe
 
     private static string? HintFor(UioHookResult result) => result switch
     {
-        // libuiohook-xrecord.so links libX11, libXtst, libXt, libXrandr and libxkbcommon.
+        // libuiohook-xrecord.so (SharpHook 8) links libX11, libXtst, libXt, libXrandr, libxkbcommon and needs glibc 2.38+.
         UioHookResult.ErrorLinuxLoadBackend =>
-            "Install the X11 input libraries: 'sudo pacman -S libxtst libxt libxrandr libxkbcommon' "
-            + "or 'sudo apt install libxtst6 libxt6 libxrandr2 libxkbcommon0'.",
+            "The X11 hook needs glibc 2.38+ (e.g. Ubuntu 24.04+) and the libraries libXtst, libXt, libXrandr, libxkbcommon "
+            + "('sudo apt install libxtst6 libxt6 libxrandr2 libxkbcommon0'). Otherwise bind 'dictum toggle' in your desktop's shortcut settings.",
         UioHookResult.ErrorAxApiDisabled => "Allow Dictum in System Settings → Privacy & Security → Accessibility.",
         _ => null,
     };
