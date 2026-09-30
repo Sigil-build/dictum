@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using Dictum.Core.Audio;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.History;
@@ -11,7 +12,7 @@ namespace Dictum.Core.Pipeline;
 /// Any failure returns to Idle; the raw text, if any, still goes to history so dictation is never lost.
 /// </summary>
 /// <param name="clipFilter">Applied to every clip before transcription, e.g. silence trimming.</param>
-public sealed class DictationPipeline(IAudioSource audio, HistoryStore? history, ILog log, Func<AudioClip, AudioClip>? clipFilter = null)
+public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? history, ILog log, Func<AudioClip, AudioClip>? clipFilter = null)
 {
     /// <summary>Whisper tends to hallucinate on very short clips, so they are skipped.</summary>
     public static readonly TimeSpan MinimumClip = TimeSpan.FromMilliseconds(500);
@@ -124,7 +125,7 @@ public sealed class DictationPipeline(IAudioSource audio, HistoryStore? history,
             var watch = Stopwatch.StartNew();
             var transcript = await profile.Stt.TranscribeAsync(clip, profile.Request, ct).ConfigureAwait(false);
             stages.Add(new StageTiming(stage, watch.Elapsed));
-            rawText = transcript.Text.Trim();
+            rawText = NormalizeWhitespace(transcript.Text);
             log.Info($"Transcribed {clip.Duration.TotalSeconds:F1} s with {profile.Stt.Id} in {watch.ElapsedMilliseconds} ms: {log.Redact(rawText)}");
 
             var text = rawText;
@@ -175,6 +176,15 @@ public sealed class DictationPipeline(IAudioSource audio, HistoryStore? history,
             SetState(PipelineState.Idle);
         }
     }
+
+    /// <summary>
+    /// STT segments may be joined with line breaks; pasted into a terminal a line break is Enter, so the raw
+    /// transcript is collapsed to single spaces. Processors (e.g. an email template) may still add line breaks.
+    /// </summary>
+    public static string NormalizeWhitespace(string text) => WhitespaceRun().Replace(text, " ").Trim();
+
+    [GeneratedRegex(@"s+")]
+    private static partial Regex WhitespaceRun();
 
     private void Transition(PipelineState from, PipelineState to)
     {

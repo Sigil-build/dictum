@@ -42,6 +42,18 @@ public class DictationPipelineTests : IDisposable
     }
 
     [Fact]
+    public async Task LineBreaksFromSttNeverReachTheOutput()
+    {
+        var output = new CollectingOutput();
+        var pipeline = new DictationPipeline(new FakeAudioSource(Clips.Seconds(1)), null, NullLog.Instance);
+
+        var result = await pipeline.RunAsync(Clips.Seconds(1), Profile(new FakeStt(" Перевіряю з LamaSwap\n і подивимося \r\n на результат. ")), output, _ct);
+
+        Assert.Equal("Перевіряю з LamaSwap і подивимося на результат.", result.RawText);
+        Assert.Equal(["Перевіряю з LamaSwap і подивимося на результат."], output.Written);
+    }
+
+    [Fact]
     public async Task ProfileRequestReachesTheProvider()
     {
         var stt = new FakeStt("text");
