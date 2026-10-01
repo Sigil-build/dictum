@@ -93,7 +93,7 @@ public sealed class DictumHost : IDictationEngine
         ProfileResolver.Resolve(Config, overrides, GetStt, GetProcessor, CreateAdHocStt);
 
     public DictationPipeline CreatePipeline() =>
-        new(Audio, History, Log, clip => SilenceTrimmer.Trim(clip));
+        new(Audio, History, Log, clip => SilenceTrimmer.Trim(GainNormalizer.Normalize(clip)));
 
     /// <summary>The long-lived pipeline used by the daemon.</summary>
     public DictationPipeline Pipeline => _pipeline ??= CreatePipeline();

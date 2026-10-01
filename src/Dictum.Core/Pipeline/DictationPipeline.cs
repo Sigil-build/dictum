@@ -130,6 +130,11 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
             var transcript = await profile.Stt.TranscribeAsync(clip, profile.Request, ct).ConfigureAwait(false);
             stages.Add(new StageTiming(stage, watch.Elapsed));
             rawText = NormalizeWhitespace(transcript.Text);
+            if (IsKnownHallucination(rawText))
+            {
+                log.Info($"Dropped a typical silence hallucination: {log.Redact(rawText)}");
+                rawText = string.Empty;
+            }
             log.Info($"Transcribed {clip.Duration.TotalSeconds:F1} s with {profile.Stt.Id} in {watch.ElapsedMilliseconds} ms: {log.Redact(rawText)}");
 
             var text = rawText;
@@ -189,6 +194,23 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
 
     [GeneratedRegex(@"\s+")]
     private static partial Regex WhitespaceRun();
+
+    /// <summary>
+    /// Phrases Whisper emits for silence or noise (learned from video subtitles). Only a transcript that is
+    /// nothing but one of these is dropped; real speech containing them is kept.
+    /// </summary>
+    private static readonly HashSet<string> Hallucinations = new(StringComparer.Ordinal)
+    {
+        "дякую за перегляд", "дякуємо за перегляд", "субтитри створено спільнотою",
+        "спасибо за просмотр", "продолжение следует", "субтитры сделал dimatorzok", "субтитры создавал dimatorzok",
+        "thank you for watching", "thanks for watching", "you",
+    };
+
+    public static bool IsKnownHallucination(string text) =>
+        Hallucinations.Contains(NonLetters().Replace(text.ToLowerInvariant(), " ").Trim());
+
+    [GeneratedRegex(@"[^\p{L}\p{N}]+")]
+    private static partial Regex NonLetters();
 
     private void Transition(PipelineState from, PipelineState to)
     {

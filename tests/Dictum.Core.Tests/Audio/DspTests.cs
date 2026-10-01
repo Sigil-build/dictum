@@ -45,6 +45,26 @@ public class DspTests
     }
 
     [Fact]
+    public void QuietSpeechIsBoostedToTheTargetPeak()
+    {
+        var quiet = new AudioClip(Signals.Sine(300, 16_000, 1.0, amplitude: 0.05f));
+
+        var boosted = GainNormalizer.Normalize(quiet);
+
+        Assert.Equal(-3f, Levels.ToDb(boosted.Samples.Span.ToArray().Max()), 0.2f);
+    }
+
+    [Fact]
+    public void GainIsCappedAndNeverReduces()
+    {
+        var almostSilent = new AudioClip(Signals.Sine(300, 16_000, 1.0, amplitude: 0.0005f));
+        var loud = new AudioClip(Signals.Sine(300, 16_000, 1.0, amplitude: 0.9f));
+
+        Assert.Equal(-66f + 30f, Levels.ToDb(GainNormalizer.Normalize(almostSilent).Samples.Span.ToArray().Max()), 0.5f);
+        Assert.Same(loud, GainNormalizer.Normalize(loud));
+    }
+
+    [Fact]
     public void TrimmerReturnsEmptyClipForPureSilence() =>
         Assert.Equal(TimeSpan.Zero, SilenceTrimmer.Trim(new AudioClip(Signals.Silence(16_000, 1.0))).Duration);
 

@@ -18,7 +18,7 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
     private nint _stream;
     private volatile bool _stopping;
     private Exception? _captureError;
-    private List<float> _samples = [];
+    private List<float>[] _channels = [];
     private int _sampleRate;
 
     public event Action<AudioFrame>? FrameCaptured;
@@ -66,13 +66,14 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
             var index = int.Parse(device.Id, System.Globalization.CultureInfo.InvariantCulture);
             var info = Pa_GetDeviceInfo(index);
             _sampleRate = (int)device.DefaultSampleRate;
-            var channels = ChooseChannelCount(index, info->MaxInputChannels, info->DefaultLowInputLatency);
+            // Dictation does not need low latency; a larger buffer avoids dropped chunks on a blocking read.
+            var channels = ChooseChannelCount(index, info->MaxInputChannels, info->DefaultHighInputLatency);
             var parameters = new StreamParameters
             {
                 Device = index,
                 ChannelCount = channels,
                 SampleFormat = new CULong((nuint)Float32),
-                SuggestedLatency = info->DefaultLowInputLatency,
+                SuggestedLatency = info->DefaultHighInputLatency,
             };
 
             var framesPerBuffer = _sampleRate / FramesPerSecond;
@@ -90,7 +91,7 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
             }
 
             log.Info($"Recording from '{device.Name}' ({device.HostApi}, {_sampleRate} Hz, {channels} ch)");
-            _samples = new List<float>(_sampleRate * 30);
+            _channels = [.. Enumerable.Range(0, channels).Select(_ => new List<float>(_sampleRate * 30))];
             _captureError = null;
             _stopping = false;
             var handle = stream;
@@ -132,8 +133,9 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
                         throw new AudioDeviceException($"Recording failed: {error.Message}");
                     }
 
-                    var samples = Resampler.Resample(CollectionsMarshal.AsSpan(_samples), _sampleRate, AudioClip.WhisperSampleRate);
-                    _samples = [];
+                    var best = LoudestChannel(_channels);
+                    var samples = Resampler.Resample(CollectionsMarshal.AsSpan(_channels[best]), _sampleRate, AudioClip.WhisperSampleRate);
+                    _channels = [];
                     return new AudioClip(samples);
                 }
             },
@@ -158,8 +160,10 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
     {
         var buffer = new float[framesPerBuffer * channels];
         var mono = new float[framesPerBuffer];
+        var channel = new float[framesPerBuffer];
         var spectrum = new SpectrumAnalyzer(_sampleRate, framesPerBuffer);
         var captured = 0L;
+        var overflows = 0;
         try
         {
             while (!_stopping)
@@ -170,23 +174,34 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
                     error = Pa_ReadStream(stream, p, new CULong((nuint)framesPerBuffer));
                 }
 
-                if (error != NoError && error != InputOverflowed)
+                if (error == InputOverflowed)
+                {
+                    overflows++;
+                }
+                else if (error != NoError)
                 {
                     throw new AudioDeviceException(ErrorText(error));
                 }
 
-                for (var f = 0; f < framesPerBuffer; f++)
+                // Channels are kept apart: averaging them can halve the level (voice in one channel only) or cancel it
+                // (phase-inverted second channel on some headsets and microphone arrays).
+                var loudest = -1f;
+                for (var c = 0; c < channels; c++)
                 {
-                    var sum = 0f;
-                    for (var c = 0; c < channels; c++)
+                    for (var f = 0; f < framesPerBuffer; f++)
                     {
-                        sum += buffer[(f * channels) + c];
+                        channel[f] = buffer[(f * channels) + c];
                     }
 
-                    mono[f] = sum / channels;
+                    _channels[c].AddRange(channel);
+                    var rms = Levels.Rms(channel);
+                    if (rms > loudest)
+                    {
+                        loudest = rms;
+                        channel.CopyTo(mono, 0);
+                    }
                 }
 
-                _samples.AddRange(mono);
                 captured += framesPerBuffer;
                 FrameCaptured?.Invoke(new AudioFrame(
                     Levels.Rms(mono),
@@ -199,6 +214,32 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
             log.Error($"Audio capture stopped: {ex.Message}", ex);
             _captureError = ex;
         }
+        finally
+        {
+            if (overflows > 0)
+            {
+                log.Warn($"Audio input overflowed {overflows} time(s); parts of the recording were lost");
+            }
+        }
+    }
+
+    /// <summary>Index of the channel with the most energy over the whole recording.</summary>
+    private int LoudestChannel(List<float>[] channels)
+    {
+        var best = 0;
+        var bestRms = -1f;
+        for (var c = 0; c < channels.Length; c++)
+        {
+            var rms = Levels.Rms(CollectionsMarshal.AsSpan(channels[c]));
+            log.Debug($"Channel {c}: {Levels.ToDb(rms):F0} dBFS RMS");
+            if (rms > bestRms)
+            {
+                best = c;
+                bestRms = rms;
+            }
+        }
+
+        return best;
     }
 
     private void CloseStream()
@@ -232,10 +273,10 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
             ?? throw new AudioDeviceException($"Microphone '{deviceId}' not found. Run 'dictum devices' to list them.");
     }
 
-    /// <summary>Mono when the device accepts it, otherwise up to two channels that are downmixed here.</summary>
+    /// <summary>The device's own channels (up to two), so the loudest one can be picked; mono only as a fallback.</summary>
     private unsafe int ChooseChannelCount(int device, int maxChannels, double latency)
     {
-        foreach (var channels in new[] { 1, Math.Min(2, maxChannels), maxChannels })
+        foreach (var channels in new[] { Math.Min(2, maxChannels), 1, maxChannels })
         {
             var parameters = new StreamParameters
             {

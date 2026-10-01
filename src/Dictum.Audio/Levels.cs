@@ -98,3 +98,40 @@ public sealed class SilenceDetector(TimeSpan silence, float speechAboveFloorDb =
         return _heardSpeech && _quietFor >= silence;
     }
 }
+
+/// <summary>
+/// Brings quiet recordings up to a normal level before recognition. It only ever boosts, and by a capped
+/// amount, so near-silence is not blown up into loud noise.
+/// </summary>
+public static class GainNormalizer
+{
+    public static AudioClip Normalize(AudioClip clip, float targetPeakDb = -3f, float maxGainDb = 30f)
+    {
+        var samples = clip.Samples.Span;
+        var peak = 0f;
+        foreach (var s in samples)
+        {
+            peak = Math.Max(peak, Math.Abs(s));
+        }
+
+        if (peak <= 0)
+        {
+            return clip;
+        }
+
+        var gainDb = Math.Clamp(targetPeakDb - Levels.ToDb(peak), 0f, maxGainDb);
+        if (gainDb < 0.5f)
+        {
+            return clip;
+        }
+
+        var gain = MathF.Pow(10f, gainDb / 20f);
+        var boosted = new float[samples.Length];
+        for (var i = 0; i < samples.Length; i++)
+        {
+            boosted[i] = Math.Clamp(samples[i] * gain, -1f, 1f);
+        }
+
+        return new AudioClip(boosted, clip.SampleRate);
+    }
+}

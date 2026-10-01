@@ -53,6 +53,28 @@ public class DictationPipelineTests : IDisposable
         Assert.Equal(["Перевіряю з LamaSwap і подивимося на результат."], output.Written);
     }
 
+    [Theory]
+    [InlineData("Дякую за перегляд!", true)]
+    [InlineData(" Thanks for watching. ", true)]
+    [InlineData("Субтитры сделал DimaTorzok", true)]
+    [InlineData("Дякую за перегляд цього документа, колего.", false)]
+    [InlineData("Thank you.", false)]
+    public void RecognisesSilenceHallucinationsOnlyWhenTheyAreTheWholeText(string text, bool expected) =>
+        Assert.Equal(expected, DictationPipeline.IsKnownHallucination(text));
+
+    [Fact]
+    public async Task HallucinationIsNotPasted()
+    {
+        var output = new CollectingOutput();
+        var pipeline = new DictationPipeline(new FakeAudioSource(Clips.Seconds(1)), _history, NullLog.Instance);
+
+        var result = await pipeline.RunAsync(Clips.Seconds(1), Profile(new FakeStt("Дякую за перегляд!")), output, _ct);
+
+        Assert.Equal("", result.Text);
+        Assert.Empty(output.Written);
+        Assert.Empty(_history.ReadLast(10));
+    }
+
     [Fact]
     public async Task ProfileRequestReachesTheProvider()
     {
