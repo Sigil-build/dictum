@@ -26,6 +26,7 @@ internal static class RecordCommand
         };
         output.AcceptOnlyFromAmong("stdout", "clipboard", "paste");
         var dumpFrames = new Option<string?>("--dump-frames") { Description = "Write level and spectrum frames to a JSON file (for the overlay prototype)" };
+        var saveAudio = new Option<string?>("--save-audio") { Description = "Also save the recording as a 16 kHz WAV file, e.g. to check the microphone" };
 
         var command = new Command("record", "Record from the microphone, then transcribe. Enter or Ctrl+C stops, Esc cancels.")
         {
@@ -34,6 +35,7 @@ internal static class RecordCommand
             device,
             output,
             dumpFrames,
+            saveAudio,
         };
         options.AddTo(command);
 
@@ -42,6 +44,25 @@ internal static class RecordCommand
             var host = context.Host();
             var profile = host.ResolveProfile(options.Read(parse));
             var pipeline = host.CreatePipeline();
+            if (parse.GetValue(saveAudio) is { } savePath)
+            {
+                pipeline.ClipRecorded += clip =>
+                {
+                    using (var file = File.Create(savePath))
+                    {
+                        Wav.WritePcm16(file, clip.Samples.Span, clip.SampleRate);
+                    }
+
+                    var peak = 0f;
+                    foreach (var s in clip.Samples.Span)
+                    {
+                        peak = Math.Max(peak, Math.Abs(s));
+                    }
+
+                    context.Error.WriteLine($"Saved {clip.Duration.TotalSeconds:F1} s to {savePath} (level {Levels.ToDb(Levels.Rms(clip.Samples.Span)):F0} dBFS RMS, peak {Levels.ToDb(peak):F0} dBFS)");
+                };
+            }
+
 
             var stop = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             var frames = parse.GetValue(dumpFrames) is null ? null : new List<FrameJson>();

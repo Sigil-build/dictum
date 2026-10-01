@@ -23,6 +23,9 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
 
     public event Action<PipelineState>? StateChanged;
 
+    /// <summary>The clip as recorded (16 kHz mono, before trimming), e.g. to save it for diagnostics.</summary>
+    public event Action<AudioClip>? ClipRecorded;
+
     public PipelineState State
     {
         get
@@ -110,6 +113,7 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
         var stage = "transcribe";
         try
         {
+            ClipRecorded?.Invoke(clip);
             if (clipFilter is not null)
             {
                 clip = clipFilter(clip);
