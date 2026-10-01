@@ -51,6 +51,18 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
         {
             _ = Factory();
             var detail = $"{config.Model}, runtime {LoadedRuntime ?? "unknown"}";
+            if (LoadedRuntime == "Vulkan" && !VulkanProbe.HasHardwareGpu)
+            {
+                return Task.FromResult(HealthStatus.Warning(
+                    $"{detail} on a software Vulkan device ({string.Join(", ", VulkanProbe.Devices)})",
+                    "This is slow and can produce wrong text; set \"runtime\": \"cpu\"."));
+            }
+
+            if (LoadedRuntime == "Vulkan")
+            {
+                detail += $" on {string.Join(", ", VulkanProbe.Devices.Where(d => d.IsHardware))}";
+            }
+
             return Task.FromResult(_configuredRuntime is { } active && active != config.Runtime && !Satisfies(config.Runtime, LoadedRuntime)
                 ? HealthStatus.Warning(
                     $"{detail} (configured '{config.Runtime.ToString().ToLowerInvariant()}', but this process already uses '{active.ToString().ToLowerInvariant()}')",
@@ -212,6 +224,20 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
                 WhisperRuntime.Cuda => [RuntimeLibrary.Cuda12, RuntimeLibrary.Cuda],
                 _ => [RuntimeLibrary.Vulkan, RuntimeLibrary.Cuda12, RuntimeLibrary.Cuda, RuntimeLibrary.CoreML, RuntimeLibrary.Cpu, RuntimeLibrary.CpuNoAvx],
             };
+
+            // 'auto' only uses Vulkan on real graphics hardware, never on a software renderer such as WARP or llvmpipe.
+            if (runtime == WhisperRuntime.Auto && !VulkanProbe.HasHardwareGpu)
+            {
+                order.Remove(RuntimeLibrary.Vulkan);
+                log.Info(VulkanProbe.Devices.Count == 0
+                    ? "No Vulkan device; using the CPU runtime"
+                    : $"Vulkan has no hardware GPU ({string.Join(", ", VulkanProbe.Devices)}); using the CPU runtime");
+            }
+            else if (runtime == WhisperRuntime.Vulkan && !VulkanProbe.HasHardwareGpu)
+            {
+                log.Warn($"\"runtime\": \"vulkan\" without a hardware GPU ({string.Join(", ", VulkanProbe.Devices)}) is slow and may give wrong text; consider \"cpu\".");
+            }
+
             RuntimeOptions.RuntimeLibraryOrder = order;
             _configuredRuntime = runtime;
         }
