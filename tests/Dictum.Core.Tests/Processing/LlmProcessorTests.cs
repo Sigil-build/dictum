@@ -78,11 +78,12 @@ public class LlmProcessorTests : IDisposable
     }
 
     [Fact]
-    public async Task VocabularyReachesThePrompt()
+    public async Task VocabularyReachesUserTemplatesThatAskForIt()
     {
+        File.WriteAllText(_prompts.File("custom.md"), "{{vocabulary}}\n\nText:\n{{text}}");
         var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer("Відкрий Notepad++."));
 
-        await Create(http).ProcessAsync("відкрий ноутпад", _context with { Vocabulary = "Notepad++, VS Code" }, _ct);
+        await Create(http, prompt: "custom").ProcessAsync("відкрий ноутпад", _context with { Vocabulary = "Notepad++, VS Code" }, _ct);
 
         Assert.Contains(
             "never add a word that was not said: Notepad++, VS Code.",
@@ -92,12 +93,23 @@ public class LlmProcessorTests : IDisposable
     [Fact]
     public async Task WithoutVocabularyThePlaceholderDisappears()
     {
+        File.WriteAllText(_prompts.File("custom.md"), "{{vocabulary}}\n\nText:\n{{text}}");
         var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer("Текст."));
 
-        await Create(http).ProcessAsync("текст", _context, _ct);
+        await Create(http, prompt: "custom").ProcessAsync("текст", _context, _ct);
 
         Assert.DoesNotContain("{{vocabulary}}", http.Requests[0].Body);
         Assert.DoesNotContain("The speaker often uses", http.Requests[0].Body);
+    }
+
+    [Fact]
+    public async Task BuiltInCleanupLeavesTheVocabularyToWhisper()
+    {
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer("Відкрий ноутпад."));
+
+        await Create(http).ProcessAsync("відкрий ноутпад", _context with { Vocabulary = "Notepad++, VS Code" }, _ct);
+
+        Assert.DoesNotContain("Notepad++", System.Text.RegularExpressions.Regex.Unescape(http.Requests[0].Body));
     }
 
     [Fact]
@@ -111,22 +123,13 @@ public class LlmProcessorTests : IDisposable
     }
 
     [Fact]
-    public void EveryBuiltInTemplateHasTheVocabularyPlaceholder()
+    public void BuiltInTemplatesLeaveTheVocabularyOut()
     {
+        // With small local models the word list made answers worse (appended terms, lost case endings), so it only
+        // reaches the Whisper hint; user templates may still ask for {{vocabulary}}.
         var templates = new PromptTemplates(_prompts.Path);
 
-        Assert.All(PromptTemplates.BuiltIn, name => Assert.Contains("{{vocabulary}}", templates.Load(name)));
-    }
-
-    [Fact]
-    public void FindsUserTemplatesWithoutTheVocabularyPlaceholder()
-    {
-        File.WriteAllText(_prompts.File("old.md"), "Fix: {{text}}");
-        File.WriteAllText(_prompts.File("new.md"), "{{vocabulary}} Fix: {{text}}");
-
-        Assert.True(PromptTemplates.UserTemplateLacksVocabulary(_prompts.Path, "old"));
-        Assert.False(PromptTemplates.UserTemplateLacksVocabulary(_prompts.Path, "new"));
-        Assert.False(PromptTemplates.UserTemplateLacksVocabulary(_prompts.Path, "cleanup"));
+        Assert.All(PromptTemplates.BuiltIn, name => Assert.DoesNotContain("{{vocabulary}}", templates.Load(name)));
     }
 
     [Fact]

@@ -35,19 +35,16 @@ public sealed partial class PromptTemplates(string userDirectory)
             _ => DescribeVocabulary(context.Vocabulary),
         });
 
-    /// <summary>The sentence <c>{{vocabulary}}</c> becomes; empty when the profile has no word list.</summary>
+    /// <summary>
+    /// The sentence <c>{{vocabulary}}</c> becomes; empty when the profile has no word list. Only user templates use it:
+    /// with small local models the word list made cleanup worse (appended terms, lost case endings), so the built-in
+    /// prompts leave it to the Whisper hint.
+    /// </summary>
     public static string DescribeVocabulary(string? vocabulary) =>
         string.IsNullOrWhiteSpace(vocabulary)
             ? string.Empty
             : "The speaker often uses these words and names. If a word in the text looks misheard and one of them fits, "
               + $"use its exact spelling, but never add a word that was not said: {vocabulary}.";
-
-    /// <summary>True when <c>prompts/&lt;name&gt;.md</c> overrides a template but has no <c>{{vocabulary}}</c>.</summary>
-    public static bool UserTemplateLacksVocabulary(string userDirectory, string name)
-    {
-        var file = Path.Combine(userDirectory, name + ".md");
-        return File.Exists(file) && !File.ReadAllText(file).Contains("{{vocabulary}}", StringComparison.Ordinal);
-    }
 
     [GeneratedRegex(@"\{\{(text|language|app|vocabulary)\}\}")]
     private static partial Regex Placeholder();

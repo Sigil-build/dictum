@@ -53,30 +53,50 @@ public class CleanupPromptTests
         var failures = new List<string>();
         foreach (var phrase in Phrases())
         {
-            var answer = await processor.ProcessAsync(phrase.Text, new ProcessingContext("test", phrase.Language, null), ct);
-            if (TextChecks.HasLineBreak(answer))
+            // Every phrase runs with and without a word list: in October 2026 a vocabulary sentence in this prompt made
+            // MamayLM append terms ("…з новим Notepad++.") and drop case endings ("з тогл").
+            foreach (var vocabulary in new[] { null, Vocabulary })
             {
-                failures.Add($"{phrase.Id}: added line breaks: {answer}");
-            }
+                var label = vocabulary is null ? phrase.Id : $"{phrase.Id} (with vocabulary)";
+                var answer = await processor.ProcessAsync(phrase.Text, new ProcessingContext("test", phrase.Language, null, vocabulary), ct);
+                if (TextChecks.HasLineBreak(answer))
+                {
+                    failures.Add($"{label}: added line breaks: {answer}");
+                }
 
-            if (TextChecks.WordCount(answer) * 3 < TextChecks.WordCount(phrase.Text))
-            {
-                failures.Add($"{phrase.Id}: dropped most words: {answer}");
-            }
+                if (TextChecks.WordCount(answer) * 3 < TextChecks.WordCount(phrase.Text))
+                {
+                    failures.Add($"{label}: dropped most words: {answer}");
+                }
 
-            if (TextChecks.IsScriptFlip(phrase.Text, answer))
-            {
-                failures.Add($"{phrase.Id}: translated: {answer}");
-            }
+                if (TextChecks.IsScriptFlip(phrase.Text, answer))
+                {
+                    failures.Add($"{label}: translated: {answer}");
+                }
 
-            if (phrase.Expect == "not-answered" && !string.Equals(FirstWord(answer), FirstWord(phrase.Text), StringComparison.OrdinalIgnoreCase))
-            {
-                failures.Add($"{phrase.Id}: answered the request: {answer}");
+                if (phrase.Expect == "not-answered" && !string.Equals(FirstWord(answer), FirstWord(phrase.Text), StringComparison.OrdinalIgnoreCase))
+                {
+                    failures.Add($"{label}: answered the request: {answer}");
+                }
+
+                if (vocabulary is not null && AddedTerm(phrase.Text, answer, vocabulary) is { } term)
+                {
+                    failures.Add($"{label}: added '{term}': {answer}");
+                }
             }
         }
 
         Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
     }
+
+    private const string Vocabulary = "Notepad++, VS Code, Dictum, тогл";
+
+    /// <summary>A vocabulary term the answer gained while also getting longer, i.e. one that was appended, not swapped in.</summary>
+    private static string? AddedTerm(string input, string answer, string vocabulary) =>
+        TextChecks.WordCount(answer) > TextChecks.WordCount(input)
+            ? vocabulary.Split(", ").FirstOrDefault(t =>
+                answer.Contains(t, StringComparison.OrdinalIgnoreCase) && !input.Contains(t, StringComparison.OrdinalIgnoreCase))
+            : null;
 
     private static string FirstWord(string text) =>
         new string(text.TrimStart().TakeWhile(char.IsLetter).ToArray());

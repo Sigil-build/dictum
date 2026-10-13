@@ -115,7 +115,7 @@ internal static class VocabCommand
         if (dropped.Count > 0)
         {
             context.Error.WriteLine(
-                $"warning: the speech hint holds {SttPromptBuilder.MaxLength} characters, so these words reach only the LLM: "
+                $"warning: the speech hint holds {SttPromptBuilder.MaxLength} characters, so these words are left out: "
                 + $"{string.Join(", ", dropped)}. Put the most important words first.");
         }
     }
