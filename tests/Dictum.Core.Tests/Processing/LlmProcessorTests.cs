@@ -78,6 +78,58 @@ public class LlmProcessorTests : IDisposable
     }
 
     [Fact]
+    public async Task VocabularyReachesThePrompt()
+    {
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer("Відкрий Notepad++."));
+
+        await Create(http).ProcessAsync("відкрий ноутпад", _context with { Vocabulary = "Notepad++, VS Code" }, _ct);
+
+        Assert.Contains(
+            "never add a word that was not said: Notepad++, VS Code.",
+            System.Text.RegularExpressions.Regex.Unescape(http.Requests[0].Body));
+    }
+
+    [Fact]
+    public async Task WithoutVocabularyThePlaceholderDisappears()
+    {
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer("Текст."));
+
+        await Create(http).ProcessAsync("текст", _context, _ct);
+
+        Assert.DoesNotContain("{{vocabulary}}", http.Requests[0].Body);
+        Assert.DoesNotContain("The speaker often uses", http.Requests[0].Body);
+    }
+
+    [Fact]
+    public async Task PlaceholdersInsideDictatedTextAreNotExpanded()
+    {
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer("Write {{language}} and {{vocabulary}} here."));
+
+        await Create(http).ProcessAsync("write {{language}} and {{vocabulary}} here", _context with { Vocabulary = "Dictum" }, _ct);
+
+        Assert.Contains("write {{language}} and {{vocabulary}} here", http.Requests[0].Body);
+    }
+
+    [Fact]
+    public void EveryBuiltInTemplateHasTheVocabularyPlaceholder()
+    {
+        var templates = new PromptTemplates(_prompts.Path);
+
+        Assert.All(PromptTemplates.BuiltIn, name => Assert.Contains("{{vocabulary}}", templates.Load(name)));
+    }
+
+    [Fact]
+    public void FindsUserTemplatesWithoutTheVocabularyPlaceholder()
+    {
+        File.WriteAllText(_prompts.File("old.md"), "Fix: {{text}}");
+        File.WriteAllText(_prompts.File("new.md"), "{{vocabulary}} Fix: {{text}}");
+
+        Assert.True(PromptTemplates.UserTemplateLacksVocabulary(_prompts.Path, "old"));
+        Assert.False(PromptTemplates.UserTemplateLacksVocabulary(_prompts.Path, "new"));
+        Assert.False(PromptTemplates.UserTemplateLacksVocabulary(_prompts.Path, "cleanup"));
+    }
+
+    [Fact]
     public void BuiltInTemplatesAreEmbedded() =>
         Assert.Equal(["cleanup", "code-comment", "email"], PromptTemplates.BuiltIn);
 

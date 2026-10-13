@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Text.RegularExpressions;
 using Dictum.Core.Configuration;
 using Dictum.Core.Processing;
 
@@ -7,9 +8,10 @@ namespace Dictum.Processing;
 
 /// <summary>
 /// LLM prompt templates: <c>&lt;config&gt;/prompts/&lt;name&gt;.md</c> overrides the built-in
-/// <c>cleanup</c>, <c>email</c> and <c>code-comment</c>. Placeholders: <c>{{text}}</c>, <c>{{language}}</c>, <c>{{app}}</c>.
+/// <c>cleanup</c>, <c>email</c> and <c>code-comment</c>. Placeholders: <c>{{text}}</c>, <c>{{language}}</c>, <c>{{app}}</c>,
+/// <c>{{vocabulary}}</c>.
 /// </summary>
-public sealed class PromptTemplates(string userDirectory)
+public sealed partial class PromptTemplates(string userDirectory)
 {
     private const string ResourcePrefix = "Dictum.Processing.Prompts.";
 
@@ -23,11 +25,32 @@ public sealed class PromptTemplates(string userDirectory)
 
     public string Load(string name) => _cache.GetOrAdd(name, LoadUncached);
 
+    /// <summary>Fills placeholders in one pass, so placeholders inside the dictated text stay as they are.</summary>
     public string Render(string name, string text, ProcessingContext context) =>
-        Load(name)
-            .Replace("{{text}}", text, StringComparison.Ordinal)
-            .Replace("{{language}}", DescribeLanguage(context.Language), StringComparison.Ordinal)
-            .Replace("{{app}}", context.ActiveApp ?? "unknown", StringComparison.Ordinal);
+        Placeholder().Replace(Load(name), match => match.Groups[1].Value switch
+        {
+            "text" => text,
+            "language" => DescribeLanguage(context.Language),
+            "app" => context.ActiveApp ?? "unknown",
+            _ => DescribeVocabulary(context.Vocabulary),
+        });
+
+    /// <summary>The sentence <c>{{vocabulary}}</c> becomes; empty when the profile has no word list.</summary>
+    public static string DescribeVocabulary(string? vocabulary) =>
+        string.IsNullOrWhiteSpace(vocabulary)
+            ? string.Empty
+            : "The speaker often uses these words and names. If a word in the text looks misheard and one of them fits, "
+              + $"use its exact spelling, but never add a word that was not said: {vocabulary}.";
+
+    /// <summary>True when <c>prompts/&lt;name&gt;.md</c> overrides a template but has no <c>{{vocabulary}}</c>.</summary>
+    public static bool UserTemplateLacksVocabulary(string userDirectory, string name)
+    {
+        var file = Path.Combine(userDirectory, name + ".md");
+        return File.Exists(file) && !File.ReadAllText(file).Contains("{{vocabulary}}", StringComparison.Ordinal);
+    }
+
+    [GeneratedRegex(@"\{\{(text|language|app|vocabulary)\}\}")]
+    private static partial Regex Placeholder();
 
     /// <summary>"Ukrainian (uk)" for a known code, otherwise a neutral phrase.</summary>
     public static string DescribeLanguage(string? code)
