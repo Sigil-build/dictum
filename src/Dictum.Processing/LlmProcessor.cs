@@ -37,7 +37,7 @@ public sealed partial class LlmProcessor(
         try
         {
             var prompt = templates.Render(config.Prompt, text, context);
-            var (content, finishReason) = await CompleteAsync(prompt, MaxTokensFor(text), ct).ConfigureAwait(false);
+            var (content, finishReason) = await CompleteAsync(prompt, config.MaxTokens ?? MaxTokensFor(text), ct).ConfigureAwait(false);
             var answer = TextChecks.StripInvisible(StripThinking(content)).Trim();
             if (Rejection(text, answer, finishReason) is { } reason)
             {
@@ -65,7 +65,11 @@ public sealed partial class LlmProcessor(
     {
         if (finishReason == "length")
         {
-            return "was cut off at the token limit";
+            // An unclosed <think> block, or no content at all (llama-server moves reasoning to reasoning_content),
+            // means the model spent the whole budget thinking.
+            return answer.Length == 0 || answer.Contains("<think>", StringComparison.Ordinal)
+                ? $"was cut off at the token limit while the model was still reasoning; turn reasoning off on the server, or raise processors.{id}.maxTokens"
+                : "was cut off at the token limit";
         }
 
         if (answer.Length == 0)

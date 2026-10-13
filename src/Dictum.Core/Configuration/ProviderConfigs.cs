@@ -121,4 +121,10 @@ public sealed record LlmProcessorConfig : ProcessorConfig
     /// another script are rejected. Null means on for the built-in <c>cleanup</c> prompt only.
     /// </summary>
     public bool? PreserveText { get; init; }
+
+    /// <summary>
+    /// Upper limit for the answer in tokens. Null scales it to the input; raise it for models that reason before
+    /// answering, or turn reasoning off on the server.
+    /// </summary>
+    public int? MaxTokens { get; init; }
 }

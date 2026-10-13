@@ -239,18 +239,59 @@ public class LlmProcessorTests : IDisposable
         Assert.Equal("зустріч завтра", result);
     }
 
+    [Fact]
+    public async Task MaxTokensFromTheConfigReplacesTheEstimate()
+    {
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer("Привіт, світ."));
+
+        await Create(http, maxTokens: 600).ProcessAsync("привіт світ", _context, _ct);
+
+        Assert.Contains("\"max_tokens\":600", http.Requests[0].Body);
+    }
+
+    [Theory]
+    [InlineData("<think>\\nThe user dictated a greeting, so first I")]
+    [InlineData("")]
+    public async Task ReasoningThatUsesUpTheTokenLimitIsExplained(string content)
+    {
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer(content, finishReason: "length"));
+        var log = new RecordingLog();
+
+        Assert.Equal("привіт світ", await Create(http, log: log).ProcessAsync("привіт світ", _context, _ct));
+        Assert.Contains(log.Messages, m => m.Contains("reasoning", StringComparison.Ordinal) && m.Contains("maxTokens", StringComparison.Ordinal));
+    }
+
     private LlmProcessor Create(
         FakeHttpHandler http,
         LlmErrorMode onError = LlmErrorMode.Passthrough,
         string prompt = "cleanup",
-        bool? preserveText = null) =>
+        bool? preserveText = null,
+        int? maxTokens = null,
+        ILog? log = null) =>
         new(
             "cleanup-uk",
-            new LlmProcessorConfig { BaseUrl = "http://llm/v1", Model = "qwen3-4b", Prompt = prompt, OnError = onError, PreserveText = preserveText },
+            new LlmProcessorConfig
+            {
+                BaseUrl = "http://llm/v1",
+                Model = "qwen3-4b",
+                Prompt = prompt,
+                OnError = onError,
+                PreserveText = preserveText,
+                MaxTokens = maxTokens,
+            },
             http.Client(),
             new ConfigValueResolver(new UnavailableSecretStore()),
             new PromptTemplates(_prompts.Path),
-            NullLog.Instance);
+            log ?? NullLog.Instance);
+
+    private sealed class RecordingLog : ILog
+    {
+        public List<string> Messages { get; } = [];
+
+        public bool IncludeText => false;
+
+        public void Write(LogLevel level, string message, Exception? exception = null) => Messages.Add(message);
+    }
 
     private static string Answer(string content, string finishReason = "stop") =>
         $$"""{ "choices": [ { "index": 0, "finish_reason": "{{finishReason}}", "message": { "role": "assistant", "content": "{{content}}" } } ] }""";

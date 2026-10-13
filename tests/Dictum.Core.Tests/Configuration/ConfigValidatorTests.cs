@@ -103,6 +103,24 @@ public class ConfigValidatorTests
     }
 
     [Theory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    public void LlmMaxTokensMustBePositive(int maxTokens)
+    {
+        var config = DefaultConfig.Create() with
+        {
+            Processors = new()
+            {
+                ["cleanup"] = new LlmProcessorConfig { BaseUrl = "http://localhost:8080/v1", Model = "m", Prompt = "cleanup", MaxTokens = maxTokens },
+            },
+        };
+
+        var issue = Assert.Single(ConfigValidator.Validate(config));
+
+        Assert.Equal((ConfigIssueSeverity.Error, "processors.cleanup.maxTokens"), (issue.Severity, issue.Path));
+    }
+
+    [Theory]
     [InlineData(null)]
     [InlineData("auto")]
     public void VocabularyWithoutAFixedLanguageIsAWarning(string? language)

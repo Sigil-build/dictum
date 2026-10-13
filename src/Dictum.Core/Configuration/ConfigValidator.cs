@@ -136,6 +136,11 @@ public static class ConfigValidator
                     Error(issues, $"{path}.timeoutMs", "must be positive");
                 }
 
+                if (llm.MaxTokens <= 0)
+                {
+                    Error(issues, $"{path}.maxTokens", "must be positive");
+                }
+
                 break;
         }
     }
