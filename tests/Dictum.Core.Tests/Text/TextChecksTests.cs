@@ -6,7 +6,7 @@ public class TextChecksTests
 {
     [Fact]
     public void StripsByteOrderMarkAndZeroWidthCharacters() =>
-        Assert.Equal("Привіт, світ.", TextChecks.StripInvisible("﻿Привіт,​ світ.⁠"));
+        Assert.Equal("Привіт, світ.", TextChecks.StripInvisible("\uFEFFПривіт,\u200B світ.\u2060"));
 
     [Theory]
     [InlineData("Тест того, що я кажу", 5)]

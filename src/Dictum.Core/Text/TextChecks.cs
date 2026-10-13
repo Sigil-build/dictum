@@ -36,11 +36,11 @@ public static partial class TextChecks
             }
 
             letters++;
-            if (char.IsAsciiLetter(c) || c is >= 'À' and <= 'ɏ')
+            if (char.IsAsciiLetter(c) || c is >= '\u00C0' and <= '\u024F')
             {
                 latin++;
             }
-            else if (c is >= 'Ѐ' and <= 'ӿ')
+            else if (c is >= '\u0400' and <= '\u04FF')
             {
                 cyrillic++;
             }
@@ -56,6 +56,6 @@ public static partial class TextChecks
     public static bool IsScriptFlip(string input, string output) =>
         (DominantScript(input), DominantScript(output)) is (Script.Latin, Script.Cyrillic) or (Script.Cyrillic, Script.Latin);
 
-    [GeneratedRegex(@"[﻿​-‍⁠]")]
+    [GeneratedRegex(@"[\uFEFF\u200B-\u200D\u2060]")]
     private static partial Regex Invisible();
 }

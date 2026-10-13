@@ -226,7 +226,7 @@ public class DictationPipelineTests : IDisposable
     public async Task InvisibleCharactersFromProcessorsNeverReachTheOutput()
     {
         var output = new CollectingOutput();
-        var bom = new FakeProcessor("llm", t => "﻿" + t + "​");
+        var bom = new FakeProcessor("llm", t => "\uFEFF" + t + "\u200B");
         var pipeline = new DictationPipeline(new FakeAudioSource(Clips.Seconds(1)), null, NullLog.Instance);
 
         await pipeline.RunAsync(Clips.Seconds(1), Profile(new FakeStt("Привіт."), bom), output, _ct);
