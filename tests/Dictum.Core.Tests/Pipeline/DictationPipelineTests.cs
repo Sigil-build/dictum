@@ -191,6 +191,20 @@ public class DictationPipelineTests : IDisposable
     public void RealSpeechWithVocabularyTermsIsKept(string text) =>
         Assert.False(DictationPipeline.IsHintEcho(text, "Notepad++, VS Code, Dictum, тогл.", Words));
 
+    [Theory]
+    [InlineData("Kubernetes", "Kubernetes.", new[] { "Kubernetes" })]
+    [InlineData("VS Code, Dictum", "VS Code, Dictum.", new[] { "VS Code", "Dictum" })]
+    [InlineData("Avalonia", "Avalonia", new string[0])]
+    public void ShortHintsNeverDropTheSameWordsSpoken(string text, string hint, string[] vocabulary) =>
+        Assert.False(DictationPipeline.IsHintEcho(text, hint, vocabulary));
+
+    [Fact]
+    public void ALongSttPromptEchoedBackIsDropped() =>
+        Assert.True(DictationPipeline.IsHintEcho(
+            "Перевіряю диктування українською на Windows.",
+            "Перевіряю диктування українською на Windows.",
+            []));
+
     [Fact]
     public async Task HintEchoIsNotPasted()
     {

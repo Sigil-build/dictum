@@ -132,9 +132,14 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
             var transcript = await profile.Stt.TranscribeAsync(clip, profile.Request, ct).ConfigureAwait(false);
             stages.Add(new StageTiming(stage, watch.Elapsed));
             rawText = NormalizeWhitespace(transcript.Text);
-            if (IsKnownHallucination(rawText) || IsHintEcho(rawText, profile.Request.Prompt, profile.Vocabulary))
+            if (IsKnownHallucination(rawText))
             {
                 log.Info($"Dropped a typical silence hallucination: {log.Redact(rawText)}");
+                rawText = string.Empty;
+            }
+            else if (IsHintEcho(rawText, profile.Request.Prompt, profile.Vocabulary))
+            {
+                log.Info($"Dropped an echo of the vocabulary hint: {log.Redact(rawText)}");
                 rawText = string.Empty;
             }
             log.Info($"Transcribed {clip.Duration.TotalSeconds:F1} s with {profile.Stt.Id} in {watch.ElapsedMilliseconds} ms: {log.Redact(rawText)}");
@@ -211,9 +216,13 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
     public static bool IsKnownHallucination(string text) =>
         Hallucinations.Contains(NonLetters().Replace(text.ToLowerInvariant(), " ").Trim());
 
+    /// <summary>A hint shorter than this may well be exactly what was said, so it is never treated as an echo.</summary>
+    public const int MinHintEchoWords = 4;
+
     /// <summary>
-    /// With a vocabulary hint, Whisper may echo the hint on near-silence. A transcript that is the hint itself, or
-    /// three or more consecutive vocabulary terms in list order, is dropped; real speech is never only that.
+    /// With a vocabulary hint, Whisper may echo the hint on near-silence. A transcript that is the hint itself (when the
+    /// hint has at least <see cref="MinHintEchoWords"/> words), or three or more consecutive vocabulary terms in list
+    /// order, is dropped; real speech is never only that.
     /// </summary>
     public static bool IsHintEcho(string text, string? hint, IReadOnlyList<string>? vocabulary)
     {
@@ -223,7 +232,7 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
             return false;
         }
 
-        if (hint is not null && words == Words(hint))
+        if (hint is not null && words == Words(hint) && words.Split(' ').Length >= MinHintEchoWords)
         {
             return true;
         }
