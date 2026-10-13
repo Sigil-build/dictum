@@ -25,6 +25,7 @@ public class ProfileResolverTests
         [
             new ProfileConfig { Id = "uk", Stt = "local", Language = "uk", SttPrompt = "Avalonia", Pipeline = ["terms", "cleanup"] },
             new ProfileConfig { Id = "en", Stt = "remote", Language = "en" },
+            new ProfileConfig { Id = "vocab", Stt = "local", Language = "uk", SttPrompt = "Avalonia", Vocabulary = ["Notepad++", " VS Code ", "notepad++"] },
         ],
     };
 
@@ -48,6 +49,19 @@ public class ProfileResolverTests
         Assert.Equal("auto", profile.Request.Language);
         Assert.Equal(["cleanup"], profile.Processors.Select(p => p.Id));
     }
+
+    [Fact]
+    public void VocabularyJoinsTheSttPromptAndTravelsWithTheProfile()
+    {
+        var profile = Resolve(new ProfileOverrides(Profile: "vocab"));
+
+        Assert.Equal(new SttRequest("uk", "Avalonia Notepad++, VS Code."), profile.Request);
+        Assert.Equal(["Notepad++", "VS Code"], profile.Vocabulary);
+    }
+
+    [Fact]
+    public void ProfileWithoutVocabularyHasAnEmptyList() =>
+        Assert.Empty(Resolve(new ProfileOverrides(Profile: "en")).Vocabulary!);
 
     [Fact]
     public void RawSkipsProcessing() =>

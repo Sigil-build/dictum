@@ -8,4 +8,5 @@ public interface ITextProcessor
     Task<string> ProcessAsync(string text, ProcessingContext context, CancellationToken ct);
 }
 
-public sealed record ProcessingContext(string ProfileId, string? Language, string? ActiveApp);
+/// <param name="Vocabulary">The profile's word list as one line ("Notepad++, VS Code"), or null.</param>
+public sealed record ProcessingContext(string ProfileId, string? Language, string? ActiveApp, string? Vocabulary = null);

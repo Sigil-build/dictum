@@ -2,6 +2,7 @@ using Dictum.Core.Configuration;
 using Dictum.Core.Pipeline;
 using Dictum.Core.Processing;
 using Dictum.Core.Stt;
+using Dictum.Core.Vocabulary;
 
 namespace Dictum.Host;
 
@@ -54,11 +55,13 @@ public static class ProfileResolver
         }
 
         IReadOnlyList<string> steps = overrides.Raw ? [] : overrides.Pipeline ?? profile?.Pipeline ?? [];
+        var vocabulary = VocabularyList.Normalize(profile?.Vocabulary ?? []);
         return new DictationProfile(
             profile?.Id ?? AdHocProfileId,
             stt,
-            new SttRequest(language, profile?.SttPrompt),
-            [.. steps.Select(getProcessor)]);
+            new SttRequest(language, SttPromptBuilder.Build(profile?.SttPrompt, vocabulary).Prompt),
+            [.. steps.Select(getProcessor)],
+            vocabulary);
     }
 
     private static string Known(IEnumerable<string> ids) =>

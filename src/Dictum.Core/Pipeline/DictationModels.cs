@@ -13,11 +13,13 @@ public enum PipelineState
 }
 
 /// <summary>A profile with its providers already created.</summary>
+/// <param name="Vocabulary">The profile's normalized word list, for the hint echo guard.</param>
 public sealed record DictationProfile(
     string Id,
     ISpeechToText Stt,
     SttRequest Request,
-    IReadOnlyList<ITextProcessor> Processors);
+    IReadOnlyList<ITextProcessor> Processors,
+    IReadOnlyList<string>? Vocabulary = null);
 
 /// <param name="Stage"><c>record</c>, <c>transcribe</c>, <c>process:&lt;id&gt;</c> or <c>output</c>.</param>
 public sealed record StageTiming(string Stage, TimeSpan Elapsed);

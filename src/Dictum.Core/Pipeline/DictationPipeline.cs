@@ -4,6 +4,7 @@ using Dictum.Core.Audio;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.History;
 using Dictum.Core.Processing;
+using Dictum.Core.Vocabulary;
 
 namespace Dictum.Core.Pipeline;
 
@@ -142,7 +143,7 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
             if (text.Length > 0 && profile.Processors.Count > 0)
             {
                 SetState(PipelineState.Processing);
-                var context = new ProcessingContext(profile.Id, language, ActiveApp: null);
+                var context = new ProcessingContext(profile.Id, language, ActiveApp: null, VocabularyList.Render(profile.Vocabulary));
                 foreach (var processor in profile.Processors)
                 {
                     stage = $"process:{processor.Id}";

@@ -87,6 +87,17 @@ public class DictationPipelineTests : IDisposable
     }
 
     [Fact]
+    public async Task ProcessorsSeeTheVocabularyAsOneLine()
+    {
+        var upper = new FakeProcessor("upper", t => t.ToUpperInvariant());
+        var pipeline = new DictationPipeline(new FakeAudioSource(Clips.Seconds(1)), null, NullLog.Instance);
+
+        await pipeline.RunAsync(Clips.Seconds(1), Profile(new FakeStt("текст"), upper) with { Vocabulary = ["Notepad++", "VS Code"] }, null, _ct);
+
+        Assert.Equal("Notepad++, VS Code", upper.LastContext!.Vocabulary);
+    }
+
+    [Fact]
     public async Task ShortClipIsSkippedWithoutCallingStt()
     {
         var stt = new FakeStt("hallucination");

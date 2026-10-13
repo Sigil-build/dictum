@@ -4,6 +4,7 @@ using System.Text.Json;
 using Dictum.Cli.Output;
 using Dictum.Core.Configuration;
 using Dictum.Core.Processing;
+using Dictum.Core.Vocabulary;
 
 namespace Dictum.Cli.Commands;
 
@@ -48,7 +49,11 @@ internal static class ProcessCommand
                 throw new ConfigException("No processors to run: pass --pipeline <ids> or use a profile with a pipeline.");
             }
 
-            var ctx = new ProcessingContext(chosen?.Id ?? "cli", parse.GetValue(language) ?? chosen?.Language, ActiveApp: null);
+            var ctx = new ProcessingContext(
+                chosen?.Id ?? "cli",
+                parse.GetValue(language) ?? chosen?.Language,
+                ActiveApp: null,
+                VocabularyList.Render(VocabularyList.Normalize(chosen?.Vocabulary ?? [])));
             var stages = new List<StageJson>();
             var result = input;
             foreach (var step in steps)
