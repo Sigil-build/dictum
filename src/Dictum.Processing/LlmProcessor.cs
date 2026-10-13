@@ -8,6 +8,7 @@ using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Processing;
+using Dictum.Core.Text;
 
 namespace Dictum.Processing;
 
@@ -28,22 +29,19 @@ public sealed partial class LlmProcessor(
 
     public string Id => id;
 
+    /// <summary>The shrink guard needs at least this many input words; short phrases change a lot legitimately.</summary>
+    public const int MinWordsForShrinkCheck = 6;
+
     public async Task<string> ProcessAsync(string text, ProcessingContext context, CancellationToken ct)
     {
         try
         {
             var prompt = templates.Render(config.Prompt, text, context);
-            var answer = StripThinking(await CompleteAsync(prompt, ct).ConfigureAwait(false)).Trim();
-
-            if (answer.Length == 0)
+            var (content, finishReason) = await CompleteAsync(prompt, MaxTokensFor(text), ct).ConfigureAwait(false);
+            var answer = TextChecks.StripInvisible(StripThinking(content)).Trim();
+            if (Rejection(text, answer, finishReason) is { } reason)
             {
-                log.Warn($"Processor '{id}' returned an empty answer; keeping the input text");
-                return text;
-            }
-
-            if (answer.Length > text.Length * MaxGrowthFactor)
-            {
-                log.Warn($"Processor '{id}' answer is {answer.Length} chars for {text.Length} of input; keeping the input text");
+                log.Warn($"Processor '{id}' answer {reason}; keeping the input text");
                 return text;
             }
 
@@ -54,6 +52,50 @@ public sealed partial class LlmProcessor(
             log.Warn($"Processor '{id}' failed, keeping the input text: {ex.Message}");
             return text;
         }
+    }
+
+    /// <summary>Room for an answer up to <see cref="MaxGrowthFactor"/> times the input, at about 3 characters per token.</summary>
+    public static int MaxTokensFor(string input) =>
+        Math.Min(2048, (int)Math.Ceiling(input.Length / 3.0) * MaxGrowthFactor + 64);
+
+    private bool PreservesText => config.PreserveText ?? config.Prompt == "cleanup";
+
+    /// <summary>Why the answer cannot replace the input, or null when it can.</summary>
+    private string? Rejection(string input, string answer, string? finishReason)
+    {
+        if (finishReason == "length")
+        {
+            return "was cut off at the token limit";
+        }
+
+        if (answer.Length == 0)
+        {
+            return "is empty";
+        }
+
+        if (answer.Length > input.Length * MaxGrowthFactor)
+        {
+            return $"is {answer.Length} chars for {input.Length} of input";
+        }
+
+        if (!PreservesText)
+        {
+            return null;
+        }
+
+        if (TextChecks.HasLineBreak(answer) && !TextChecks.HasLineBreak(input))
+        {
+            return "added line breaks";
+        }
+
+        var inputWords = TextChecks.WordCount(input);
+        var answerWords = TextChecks.WordCount(answer);
+        if (inputWords >= MinWordsForShrinkCheck && answerWords * 3 < inputWords)
+        {
+            return $"kept {answerWords} of {inputWords} words";
+        }
+
+        return TextChecks.IsScriptFlip(input, answer) ? "is in another script" : null;
     }
 
     public async Task<HealthStatus> CheckAsync(CancellationToken ct)
@@ -80,12 +122,12 @@ public sealed partial class LlmProcessor(
         }
     }
 
-    private async Task<string> CompleteAsync(string prompt, CancellationToken ct)
+    private async Task<(string Content, string? FinishReason)> CompleteAsync(string prompt, int maxTokens, CancellationToken ct)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(config.TimeoutMs);
 
-        var request = new ChatRequest(config.Model, [new ChatMessage("user", prompt)], config.Temperature, Stream: false);
+        var request = new ChatRequest(config.Model, [new ChatMessage("user", prompt)], config.Temperature, Stream: false, maxTokens);
         using var message = new HttpRequestMessage(HttpMethod.Post, Endpoint("chat/completions"))
         {
             Content = JsonContent.Create(request, LlmJsonContext.Default.ChatRequest),
@@ -102,8 +144,8 @@ public sealed partial class LlmProcessor(
             }
 
             var parsed = JsonSerializer.Deserialize(body, LlmJsonContext.Default.ChatResponse);
-            return parsed?.Choices is [{ Message.Content: { } content }, ..]
-                ? content
+            return parsed?.Choices is [{ Message.Content: { } content } choice, ..]
+                ? (content, choice.FinishReason)
                 : throw new ProviderUnavailableException($"LLM '{id}' returned no choices: {Snippet(body)}");
         }
         catch (OperationCanceledException ex) when (!ct.IsCancellationRequested)
@@ -141,9 +183,14 @@ public sealed partial class LlmProcessor(
 
 internal sealed record ChatMessage(string Role, string Content);
 
-internal sealed record ChatRequest(string Model, IReadOnlyList<ChatMessage> Messages, double Temperature, bool Stream);
+internal sealed record ChatRequest(
+    string Model,
+    IReadOnlyList<ChatMessage> Messages,
+    double Temperature,
+    bool Stream,
+    [property: JsonPropertyName("max_tokens")] int MaxTokens);
 
-internal sealed record ChatChoice(ChatMessage? Message);
+internal sealed record ChatChoice(ChatMessage? Message, [property: JsonPropertyName("finish_reason")] string? FinishReason = null);
 
 internal sealed record ChatResponse(IReadOnlyList<ChatChoice>? Choices);
 

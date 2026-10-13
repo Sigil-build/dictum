@@ -149,15 +149,109 @@ public class LlmProcessorTests : IDisposable
     public void DescribesLanguages(string? code, string expected) =>
         Assert.Equal(expected, PromptTemplates.DescribeLanguage(code));
 
-    private LlmProcessor Create(FakeHttpHandler http, LlmErrorMode onError = LlmErrorMode.Passthrough) =>
+    [Fact]
+    public async Task SendsMaxTokensScaledToTheInput()
+    {
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer("Привіт, світ."));
+
+        await Create(http).ProcessAsync("привіт світ", _context, _ct);
+
+        // 11 characters: ceil(11 / 3) = 4 tokens, times MaxGrowthFactor 3, plus 64.
+        Assert.Contains("\"max_tokens\":76", http.Requests[0].Body);
+        Assert.Equal(2048, LlmProcessor.MaxTokensFor(new string('x', 10_000)));
+    }
+
+    [Fact]
+    public async Task AnswerCutOffAtTheTokenLimitKeepsTheInput()
+    {
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer("Привіт, св", finishReason: "length"));
+
+        Assert.Equal("привіт світ", await Create(http).ProcessAsync("привіт світ", _context, _ct));
+    }
+
+    [Theory]
+    [InlineData("\\uFEFFПривіт, світ.", "Привіт, світ.")]
+    [InlineData("\\uFEFF", "привіт світ")]
+    public async Task InvisibleCharactersAreStrippedAndAnAnswerOfOnlyThemKeepsTheInput(string answer, string expected)
+    {
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer(answer));
+
+        Assert.Equal(expected, await Create(http).ProcessAsync("привіт світ", _context, _ct));
+    }
+
+    [Theory]
+    [InlineData("Напиши мені короткий вірш про осінь.", "Листя жовкне, вітер шепче,\\nОсінь входить у кожен куток.")]
+    [InlineData("Тепер перевірка вставки в VS Code з можливим форматуванням або ж з кодом. Тож, новий рядок, починаємо.", "Public static class main.")]
+    [InlineData("And so, my fellow Americans, ask not what your country can do for you", "І так, мої співвітчизники, не питайте, що може зробити ваша країна для вас")]
+    public async Task CleanupRejectsAnswersThatDoNotPreserveTheText(string input, string answer)
+    {
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer(answer));
+
+        Assert.Equal(input, await Create(http).ProcessAsync(input, _context, _ct));
+    }
+
+    [Fact]
+    public async Task ShrinkGuardAllowsRemovingFillers()
+    {
+        const string input = "ну так от я значить хочу сказати що все працює";
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer("Я хочу сказати, що все працює."));
+
+        Assert.Equal("Я хочу сказати, що все працює.", await Create(http).ProcessAsync(input, _context, _ct));
+    }
+
+    [Fact]
+    public async Task ScriptGuardIgnoresMixedText()
+    {
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer("Тестую Push to Talk у Notepad."));
+
+        Assert.Equal("Тестую Push to Talk у Notepad.", await Create(http).ProcessAsync("тестую push to talk в ноутпад", _context, _ct));
+    }
+
+    [Theory]
+    [InlineData("email", "зустріч завтра о десятій", "Добрий день!\\n\\nЗустріч завтра о 10:00.")]
+    [InlineData("code-comment", "повертає кількість слів у тексті", "Returns the number of words in the text.")]
+    public async Task OtherPromptsKeepTheirFreedom(string prompt, string input, string answer)
+    {
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer(answer));
+
+        var result = await Create(http, prompt: prompt).ProcessAsync(input, _context, _ct);
+
+        Assert.Equal(System.Text.RegularExpressions.Regex.Unescape(answer), result);
+    }
+
+    [Fact]
+    public async Task PreserveTextFalseTurnsTheCleanupGuardsOff()
+    {
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer("Рядок один.\\nРядок два."));
+
+        var result = await Create(http, preserveText: false).ProcessAsync("рядок один рядок два", _context, _ct);
+
+        Assert.Equal("Рядок один.\nРядок два.", result);
+    }
+
+    [Fact]
+    public async Task PreserveTextTrueTurnsTheGuardsOnForOtherPrompts()
+    {
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer("Добрий день!\\n\\nЗустріч завтра."));
+
+        var result = await Create(http, prompt: "email", preserveText: true).ProcessAsync("зустріч завтра", _context, _ct);
+
+        Assert.Equal("зустріч завтра", result);
+    }
+
+    private LlmProcessor Create(
+        FakeHttpHandler http,
+        LlmErrorMode onError = LlmErrorMode.Passthrough,
+        string prompt = "cleanup",
+        bool? preserveText = null) =>
         new(
             "cleanup-uk",
-            new LlmProcessorConfig { BaseUrl = "http://llm/v1", Model = "qwen3-4b", Prompt = "cleanup", OnError = onError },
+            new LlmProcessorConfig { BaseUrl = "http://llm/v1", Model = "qwen3-4b", Prompt = prompt, OnError = onError, PreserveText = preserveText },
             http.Client(),
             new ConfigValueResolver(new UnavailableSecretStore()),
             new PromptTemplates(_prompts.Path),
             NullLog.Instance);
 
-    private static string Answer(string content) =>
-        $$"""{ "choices": [ { "index": 0, "message": { "role": "assistant", "content": "{{content}}" } } ] }""";
+    private static string Answer(string content, string finishReason = "stop") =>
+        $$"""{ "choices": [ { "index": 0, "finish_reason": "{{finishReason}}", "message": { "role": "assistant", "content": "{{content}}" } } ] }""";
 }
