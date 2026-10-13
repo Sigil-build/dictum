@@ -6,6 +6,7 @@ using Dictum.Cli.Output;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Host.Ipc;
+using Dictum.Processing;
 
 namespace Dictum.Cli.Commands;
 
@@ -60,6 +61,16 @@ internal static class DoctorCommand
                     if (host.GetProcessor(id) is IHealthCheck check)
                     {
                         Add($"processor:{id}", await CheckAsync(() => check.CheckAsync(token), token).ConfigureAwait(false));
+                    }
+                }
+
+                foreach (var prompt in config.Processors.Values.OfType<LlmProcessorConfig>().Select(l => l.Prompt).Distinct())
+                {
+                    if (PromptTemplates.UserTemplateLacksVocabulary(context.Paths.PromptsDirectory, prompt))
+                    {
+                        Add($"prompt:{prompt}", HealthStatus.Warning(
+                            $"{Path.Combine(context.Paths.PromptsDirectory, prompt + ".md")} has no {{{{vocabulary}}}} line",
+                            "Add a line with {{vocabulary}} so the profile's word list reaches the model."));
                     }
                 }
             }

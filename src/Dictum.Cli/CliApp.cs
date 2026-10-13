@@ -52,6 +52,7 @@ internal static class CliApp
         root.Add(ProcessCommand.Create());
         root.Add(SttCommand.Create());
         root.Add(ProfilesCommand.Create());
+        root.Add(VocabCommand.Create());
         root.Add(DevicesCommand.Create());
         root.Add(ConfigCommand.Create());
         root.Add(HistoryCommand.Create());

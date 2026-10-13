@@ -37,6 +37,7 @@ internal static class ProfilesCommand
             o.WriteLine($"stt:        {profile.Stt}  {(config.Stt.TryGetValue(profile.Stt, out var stt) ? SttCommand.Describe(stt) : "(missing)")}");
             o.WriteLine($"language:   {profile.Language ?? "auto"}");
             o.WriteLine($"sttPrompt:  {profile.SttPrompt ?? "-"}");
+            o.WriteLine($"vocabulary: {(profile.Vocabulary.Count == 0 ? "-" : string.Join(", ", profile.Vocabulary))}");
             o.WriteLine($"pipeline:   {(profile.Pipeline.Count == 0 ? "-" : string.Join(" → ", profile.Pipeline))}");
             foreach (var step in profile.Pipeline)
             {
