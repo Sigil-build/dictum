@@ -4,6 +4,7 @@ using System.Text.Json;
 using Dictum.Cli.Output;
 using Dictum.Core.Configuration;
 using Dictum.Core.Processing;
+using Dictum.Core.Text;
 using Dictum.Core.Vocabulary;
 
 namespace Dictum.Cli.Commands;
@@ -60,7 +61,7 @@ internal static class ProcessCommand
             {
                 var processor = host.GetProcessor(step);
                 var watch = Stopwatch.StartNew();
-                result = (await processor.ProcessAsync(result, ctx, token).ConfigureAwait(false)).Trim();
+                result = TextChecks.StripInvisible(await processor.ProcessAsync(result, ctx, token).ConfigureAwait(false)).Trim();
                 stages.Add(new StageJson($"process:{step}", watch.ElapsedMilliseconds));
             }
 

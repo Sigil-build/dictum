@@ -4,6 +4,7 @@ using Dictum.Core.Audio;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.History;
 using Dictum.Core.Processing;
+using Dictum.Core.Text;
 using Dictum.Core.Vocabulary;
 
 namespace Dictum.Core.Pipeline;
@@ -131,7 +132,7 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
             var transcript = await profile.Stt.TranscribeAsync(clip, profile.Request, ct).ConfigureAwait(false);
             stages.Add(new StageTiming(stage, watch.Elapsed));
             rawText = NormalizeWhitespace(transcript.Text);
-            if (IsKnownHallucination(rawText))
+            if (IsKnownHallucination(rawText) || IsHintEcho(rawText, profile.Request.Prompt, profile.Vocabulary))
             {
                 log.Info($"Dropped a typical silence hallucination: {log.Redact(rawText)}");
                 rawText = string.Empty;
@@ -148,7 +149,7 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
                 {
                     stage = $"process:{processor.Id}";
                     watch.Restart();
-                    text = (await processor.ProcessAsync(text, context, ct).ConfigureAwait(false)).Trim();
+                    text = TextChecks.StripInvisible(await processor.ProcessAsync(text, context, ct).ConfigureAwait(false)).Trim();
                     stages.Add(new StageTiming(stage, watch.Elapsed));
                 }
             }
@@ -209,6 +210,45 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
 
     public static bool IsKnownHallucination(string text) =>
         Hallucinations.Contains(NonLetters().Replace(text.ToLowerInvariant(), " ").Trim());
+
+    /// <summary>
+    /// With a vocabulary hint, Whisper may echo the hint on near-silence. A transcript that is the hint itself, or
+    /// three or more consecutive vocabulary terms in list order, is dropped; real speech is never only that.
+    /// </summary>
+    public static bool IsHintEcho(string text, string? hint, IReadOnlyList<string>? vocabulary)
+    {
+        var words = Words(text);
+        if (words.Length == 0)
+        {
+            return false;
+        }
+
+        if (hint is not null && words == Words(hint))
+        {
+            return true;
+        }
+
+        if (vocabulary is not { Count: >= 3 })
+        {
+            return false;
+        }
+
+        var terms = vocabulary.Select(Words).ToArray();
+        for (var start = 0; start + 3 <= terms.Length; start++)
+        {
+            for (var end = start + 3; end <= terms.Length; end++)
+            {
+                if (words == string.Join(' ', terms[start..end]))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static string Words(string text) => NonLetters().Replace(text.ToLowerInvariant(), " ").Trim();
 
     [GeneratedRegex(@"[^\p{L}\p{N}]+")]
     private static partial Regex NonLetters();

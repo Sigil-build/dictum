@@ -176,6 +176,50 @@ public class DictationPipelineTests : IDisposable
         Assert.Empty(output.Written);
     }
 
+    private static readonly string[] Words = ["Notepad++", "VS Code", "Dictum", "тогл"];
+
+    [Theory]
+    [InlineData("Notepad++, VS Code, Dictum, тогл.")]
+    [InlineData("notepad++ vs code dictum")]
+    public void HintEchoIsRecognised(string text) =>
+        Assert.True(DictationPipeline.IsHintEcho(text, "Notepad++, VS Code, Dictum, тогл.", Words));
+
+    [Theory]
+    [InlineData("VS Code, Dictum")]
+    [InlineData("Відкрий Notepad++ і VS Code")]
+    [InlineData("")]
+    public void RealSpeechWithVocabularyTermsIsKept(string text) =>
+        Assert.False(DictationPipeline.IsHintEcho(text, "Notepad++, VS Code, Dictum, тогл.", Words));
+
+    [Fact]
+    public async Task HintEchoIsNotPasted()
+    {
+        var output = new CollectingOutput();
+        var pipeline = new DictationPipeline(new FakeAudioSource(Clips.Seconds(1)), _history, NullLog.Instance);
+        var profile = Profile(new FakeStt("Notepad++, VS Code, Dictum, тогл.")) with
+        {
+            Request = new SttRequest("uk", "Notepad++, VS Code, Dictum, тогл."),
+            Vocabulary = Words,
+        };
+
+        var result = await pipeline.RunAsync(Clips.Seconds(1), profile, output, _ct);
+
+        Assert.Equal("", result.Text);
+        Assert.Empty(output.Written);
+    }
+
+    [Fact]
+    public async Task InvisibleCharactersFromProcessorsNeverReachTheOutput()
+    {
+        var output = new CollectingOutput();
+        var bom = new FakeProcessor("llm", t => "﻿" + t + "​");
+        var pipeline = new DictationPipeline(new FakeAudioSource(Clips.Seconds(1)), null, NullLog.Instance);
+
+        await pipeline.RunAsync(Clips.Seconds(1), Profile(new FakeStt("Привіт."), bom), output, _ct);
+
+        Assert.Equal(["Привіт."], output.Written);
+    }
+
     private static DictationProfile Profile(ISpeechToText stt, params ITextProcessor[] processors) =>
         new("p", stt, new SttRequest("uk", null), processors);
 }
