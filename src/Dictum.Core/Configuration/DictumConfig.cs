@@ -117,6 +117,9 @@ public sealed record ProfileConfig
     /// <summary>Vocabulary hint for the STT model.</summary>
     public string? SttPrompt { get; init; }
 
+    /// <summary>Words, names and terms to spell exactly; they reach the Whisper hint and LLM prompts.</summary>
+    public List<string> Vocabulary { get; set; } = [];
+
     public List<string> Pipeline { get; set; } = [];
 
     public OutputMode Output { get; set; } = OutputMode.Paste;

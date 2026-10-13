@@ -115,4 +115,10 @@ public sealed record LlmProcessorConfig : ProcessorConfig
     public int TimeoutMs { get; set; } = 4_000;
 
     public LlmErrorMode OnError { get; set; } = LlmErrorMode.Passthrough;
+
+    /// <summary>
+    /// The answer must keep the dictated text and only fix it: answers with new line breaks, far fewer words or
+    /// another script are rejected. Null means on for the built-in <c>cleanup</c> prompt only.
+    /// </summary>
+    public bool? PreserveText { get; init; }
 }

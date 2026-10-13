@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Dictum.Core.Hotkeys;
+using Dictum.Core.Vocabulary;
 
 namespace Dictum.Core.Configuration;
 
@@ -59,6 +60,8 @@ public static class ConfigValidator
             {
                 Error(issues, $"{path}.language", $"'{profile.Language}' is not an ISO 639-1 code or 'auto'");
             }
+
+            ValidateVocabulary(issues, path, profile);
 
             if (profile.Hotkey is not null)
             {
@@ -168,6 +171,34 @@ public static class ConfigValidator
         }
     }
 
+    private static void ValidateVocabulary(List<ConfigIssue> issues, string path, ProfileConfig profile)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < profile.Vocabulary.Count; i++)
+        {
+            var term = profile.Vocabulary[i];
+            if (string.IsNullOrWhiteSpace(term))
+            {
+                Error(issues, $"{path}.vocabulary[{i}]", "must not be empty");
+            }
+            else if (!seen.Add(term.Trim()))
+            {
+                Warning(issues, $"{path}.vocabulary[{i}]", $"'{term.Trim()}' is listed twice");
+            }
+        }
+
+        if (profile.Vocabulary.Count > 0 && profile.Language is null or "auto")
+        {
+            Warning(issues, $"{path}.vocabulary", "a word list can pull language detection towards its own language; set 'language' for this profile");
+        }
+
+        var dropped = SttPromptBuilder.Build(profile.SttPrompt, VocabularyList.Normalize(profile.Vocabulary)).Dropped;
+        if (dropped.Count > 0)
+        {
+            Warning(issues, $"{path}.vocabulary", $"the speech hint holds {SttPromptBuilder.MaxLength} characters; left out: {string.Join(", ", dropped)}");
+        }
+    }
+
     private static void ValidateUrl(List<ConfigIssue> issues, string path, string? url)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
@@ -197,4 +228,7 @@ public static class ConfigValidator
 
     private static void Error(List<ConfigIssue> issues, string path, string message) =>
         issues.Add(new ConfigIssue(ConfigIssueSeverity.Error, path, message));
+
+    private static void Warning(List<ConfigIssue> issues, string path, string message) =>
+        issues.Add(new ConfigIssue(ConfigIssueSeverity.Warning, path, message));
 }

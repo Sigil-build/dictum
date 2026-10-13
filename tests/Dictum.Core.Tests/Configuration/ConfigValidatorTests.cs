@@ -89,6 +89,50 @@ public class ConfigValidatorTests
         Assert.Equal("stt.local.baseUrl", Assert.Single(ConfigValidator.Validate(config)).Path);
     }
 
+    [Fact]
+    public void EmptyVocabularyEntryIsAnErrorAndADuplicateAWarning()
+    {
+        var config = DefaultConfig.Create();
+        config.Profiles[0] = config.Profiles[0] with { Language = "uk", Vocabulary = ["Notepad++", " ", "notepad++"] };
+
+        var issues = ConfigValidator.Validate(config).Select(i => (i.Severity, i.Path)).ToList();
+
+        Assert.Equal(
+            [(ConfigIssueSeverity.Error, "profiles[0].vocabulary[1]"), (ConfigIssueSeverity.Warning, "profiles[0].vocabulary[2]")],
+            issues);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("auto")]
+    public void VocabularyWithoutAFixedLanguageIsAWarning(string? language)
+    {
+        var config = DefaultConfig.Create();
+        config.Profiles[0] = config.Profiles[0] with { Language = language, Vocabulary = ["Notepad++"] };
+
+        var issue = Assert.Single(ConfigValidator.Validate(config));
+
+        Assert.Equal((ConfigIssueSeverity.Warning, "profiles[0].vocabulary"), (issue.Severity, issue.Path));
+        Assert.Contains("language", issue.Message);
+    }
+
+    [Fact]
+    public void VocabularyBeyondTheHintBudgetIsAWarningNamingTheDroppedTerms()
+    {
+        var config = DefaultConfig.Create();
+        config.Profiles[0] = config.Profiles[0] with
+        {
+            Language = "uk",
+            Vocabulary = [new string('a', 300), new string('b', 150), "Kubernetes"],
+        };
+
+        var issue = Assert.Single(ConfigValidator.Validate(config));
+
+        Assert.Equal((ConfigIssueSeverity.Warning, "profiles[0].vocabulary"), (issue.Severity, issue.Path));
+        Assert.Contains("Kubernetes", issue.Message);
+        Assert.Contains(new string('b', 150), issue.Message);
+    }
+
     [Theory]
     [InlineData(null, true)]
     [InlineData("auto", true)]

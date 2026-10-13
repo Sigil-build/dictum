@@ -18,11 +18,12 @@ public class ConfigStoreTests
           },
           "processors": {
             "dev-terms":  { "type": "replace", "rules": [ { "from": "дот нет", "to": ".NET" }, { "pattern": "(?i)\\bавалоні[яї]\\b", "to": "Avalonia" } ] },
-            "cleanup-uk": { "type": "llm", "baseUrl": "http://localhost:8080/v1", "model": "qwen3-4b", "prompt": "cleanup", "temperature": 0.2, "timeoutMs": 4000, "onError": "passthrough" }
+            "cleanup-uk": { "type": "llm", "baseUrl": "http://localhost:8080/v1", "model": "qwen3-4b", "prompt": "cleanup", "temperature": 0.2, "timeoutMs": 4000, "onError": "passthrough", "preserveText": true }
           },
           "profiles": [
             { "id": "dictate-uk", "name": "Диктовка UA", "hotkey": "Ctrl+Alt+Space", "mode": "PushToTalk",
               "stt": "local-turbo", "language": "uk", "sttPrompt": "Avalonia, .NET, llama.cpp",
+              "vocabulary": ["Notepad++", "VS Code"],
               "pipeline": ["dev-terms", "cleanup-uk"], "output": "paste" },
             { "id": "raw-en", "name": "Raw EN", "hotkey": "Ctrl+Alt+E", "mode": "Toggle",
               "stt": "llama-swap", "language": "en", "pipeline": [], "output": "paste" }
@@ -53,6 +54,9 @@ public class ConfigStoreTests
 
         Assert.Equal(HotkeyMode.Toggle, config.Profiles[1].Mode);
         Assert.Equal(["dev-terms", "cleanup-uk"], config.Profiles[0].Pipeline);
+        Assert.True(cleanup.PreserveText);
+        Assert.Equal(["Notepad++", "VS Code"], config.Profiles[0].Vocabulary);
+        Assert.Empty(config.Profiles[1].Vocabulary);
         Assert.Empty(ConfigValidator.Validate(config).Select(i => i.ToString()));
     }
 
@@ -67,6 +71,8 @@ public class ConfigStoreTests
         Assert.Contains("\"type\": \"whisper-local\"", json);
         Assert.Contains("\"output\": \"paste\"", json);
         Assert.Contains("\"runtime\": \"auto\"", json);
+        Assert.Contains("\"vocabulary\": [", json);
+        Assert.Contains("\"preserveText\": true", json);
         Assert.Equal(ConfigStore.Serialize(copy), json);
     }
 
