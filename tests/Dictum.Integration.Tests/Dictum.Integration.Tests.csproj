@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <None Include="../../fixtures/*.wav" LinkBase="fixtures" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../fixtures/*.json" LinkBase="fixtures" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

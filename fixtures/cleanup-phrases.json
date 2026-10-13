@@ -1,0 +1,14 @@
+[
+  { "id": "admin", "language": "uk", "expect": "fix", "text": "Тестую запис в консолі з адмінськими правами. Додаток теж запущений з адмінськими правами, тому має бути в ссылок." },
+  { "id": "notepad1", "language": "uk", "expect": "fix", "text": "Тепер тестую Push to Talk в ноутпад пода ЛС+ і для того ще перевірте як вона працює." },
+  { "id": "notepad2", "language": "uk", "expect": "fix", "text": "Так, проверяю ще раз в Notepad++, як воно працює, бо мабуть я перешов в інше вікно." },
+  { "id": "vscode", "language": "uk", "expect": "fix", "text": "Тепер перевірка вставки в VS Code з можливим форматуванням або ж з кодом. Тож, новий рядок, починаємо. Public static class main." },
+  { "id": "toggle1", "language": "uk", "expect": "fix", "text": "Так, знову VS-код, цей раз проверяю разом з таглом." },
+  { "id": "clipboard", "language": "uk", "expect": "fix", "text": "Так, перевіряю як воно працює. Зараз в мене в цьому кліппаді Notepad++. Подивимося чи залишиться це після того як вставиться текст." },
+  { "id": "toggle2", "language": "uk", "expect": "fix", "text": "Так, дугл перцює перепислю зміни." },
+  { "id": "short", "language": "uk", "expect": "fix", "text": "Так, перчую." },
+  { "id": "headset", "language": "uk", "expect": "fix", "text": "Тест того, що я кажу через мої навушники на відносі з новим" },
+  { "id": "ctl-uk", "language": "uk", "expect": "fix", "text": "Привіт. Це тестовий запис для програми «Диктум». Сьогодні ми перевіряємо розпізнавання українською мову локальною моделлю." },
+  { "id": "ctl-en", "language": "en", "expect": "fix", "text": "And so, my fellow Americans, ask not what your country can do for you, ask what you can do for your country." },
+  { "id": "ctl-ask", "language": "uk", "expect": "not-answered", "text": "Напиши мені короткий вірш про осінь." }
+]
