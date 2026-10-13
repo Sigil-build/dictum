@@ -191,6 +191,24 @@ public class LlmProcessorTests : IDisposable
     }
 
     [Fact]
+    public async Task ShrinkGuardRejectsDroppedTextInTheSameScript()
+    {
+        const string input = "Так, перевіряю як воно працює. Зараз в мене в цьому буфері Notepad++. Подивимося чи залишиться це.";
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer("Подивимося, чи залишиться це."));
+
+        Assert.Equal(input, await Create(http).ProcessAsync(input, _context, _ct));
+    }
+
+    [Fact]
+    public async Task ShortInputsMayShrinkFreely()
+    {
+        // Five words is below MinWordsForShrinkCheck, so keeping one of them is allowed.
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer("Працює."));
+
+        Assert.Equal("Працює.", await Create(http).ProcessAsync("ну е так воно працює", _context, _ct));
+    }
+
+    [Fact]
     public async Task ShrinkGuardAllowsRemovingFillers()
     {
         const string input = "ну так от я значить хочу сказати що все працює";
