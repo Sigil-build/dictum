@@ -49,6 +49,7 @@ internal static class CliApp
             VerboseOption,
         };
 
+        root.Add(InitCommand.Create());
         root.Add(TranscribeCommand.Create());
         root.Add(RecordCommand.Create());
         root.Add(ProcessCommand.Create());

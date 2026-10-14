@@ -1,5 +1,4 @@
 using System.CommandLine;
-using System.Text;
 
 namespace Dictum.Cli.Commands;
 
@@ -16,7 +15,7 @@ internal static class SecretCommand
             var name = parse.GetValue(setName)!;
             var value = Console.IsInputRedirected
                 ? (await Console.In.ReadToEndAsync(token).ConfigureAwait(false)).Trim()
-                : ReadHidden(context, $"Value for '{name}': ");
+                : new ConsolePrompt(context.Error).ReadHidden($"Value for '{name}': ");
             if (value.Length == 0)
             {
                 context.Error.WriteLine("error: the value is empty.");
@@ -57,34 +56,5 @@ internal static class SecretCommand
         command.Add(check);
         command.Add(delete);
         return command;
-    }
-
-    private static string ReadHidden(CliContext context, string prompt)
-    {
-        context.Error.Write(prompt);
-        var value = new StringBuilder();
-        while (true)
-        {
-            var key = Console.ReadKey(intercept: true);
-            if (key.Key == ConsoleKey.Enter)
-            {
-                break;
-            }
-
-            if (key.Key == ConsoleKey.Backspace)
-            {
-                if (value.Length > 0)
-                {
-                    value.Length--;
-                }
-            }
-            else if (!char.IsControl(key.KeyChar))
-            {
-                value.Append(key.KeyChar);
-            }
-        }
-
-        context.Error.WriteLine();
-        return value.ToString().Trim();
     }
 }
