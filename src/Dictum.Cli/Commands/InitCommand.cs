@@ -6,6 +6,7 @@ using Dictum.Core.Diagnostics;
 using Dictum.Core.Vocabulary;
 using Dictum.Host;
 using Dictum.Host.Ipc;
+using Dictum.Platform;
 using Dictum.Setup;
 
 namespace Dictum.Cli.Commands;
@@ -275,25 +276,19 @@ internal static class InitCommand
 
     private static async Task ApplyAutostartAsync(CliContext context, bool? enable, CancellationToken ct)
     {
-        if (enable is not { } on || context.Platform.Autostart is not { } autostart || on == autostart.IsInstalled)
+        if (enable is not { } on || context.Platform.Autostart is not { } autostart)
         {
             return;
         }
 
-        if (on)
+        var executable = Environment.ProcessPath ?? throw new InvalidOperationException("Cannot determine the dictum executable path.");
+        if (await autostart.ApplyAsync(on, executable, ct).ConfigureAwait(false))
         {
-            var executable = Environment.ProcessPath ?? throw new InvalidOperationException("Cannot determine the dictum executable path.");
-            await autostart.InstallAsync(executable, ct).ConfigureAwait(false);
-            context.Error.WriteLine($"Dictum will start at login ({autostart.Location}).");
-        }
-        else
-        {
-            await autostart.UninstallAsync(ct).ConfigureAwait(false);
-            context.Error.WriteLine("Dictum will no longer start at login.");
+            context.Error.WriteLine(on ? $"Dictum will start at login ({autostart.Location})." : "Dictum will no longer start at login.");
         }
     }
 
-    /// <param name="pendingSecret">A key not yet in the secret store; the check uses a copy of the config that holds it.</param>
+    /// <summary>A <paramref name="pendingSecret"/> is not in the secret store yet, so the check uses a copy of the config that holds it.</summary>
     private static async Task WarnIfUnreachableAsync(CliContext context, DictumConfig config, string? pendingSecret, CancellationToken ct)
     {
         var id = SetupPlanner.CleanupProcessorId(config);
