@@ -107,7 +107,8 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
 
         var builder = Factory().CreateBuilder()
             .WithThreads(config.Threads > 0 ? config.Threads : Math.Clamp(Environment.ProcessorCount, 1, 8));
-        var language = IsEnglishOnly(config.Model) ? "en" : request.Language;
+        var candidates = !IsEnglishOnly(config.Model) && request is { Language: null, Candidates.Count: > 1 } ? request.Candidates : null;
+        var language = IsEnglishOnly(config.Model) ? "en" : request.Language ?? candidates?[0];
         builder = language is null or "auto" ? builder.WithLanguageDetection() : builder.WithLanguage(language);
         if (!string.IsNullOrWhiteSpace(request.Prompt))
         {
@@ -118,6 +119,12 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
         string? detected = null;
         await using (var processor = builder.Build())
         {
+            if (candidates is not null)
+            {
+                language = await PickLanguageAsync(processor, samples, candidates, ct).ConfigureAwait(false);
+                processor.ChangeLanguage(language);
+            }
+
             await foreach (var segment in processor.ProcessAsync(samples, ct).ConfigureAwait(false))
             {
                 detected ??= segment.Language;
@@ -130,6 +137,16 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
 
         log.Debug($"Whisper '{id}' ({LoadedRuntime}) took {watch.ElapsedMilliseconds} ms for {clip.Duration.TotalSeconds:F1} s");
         return new Transcript(text.ToString().Trim(), language is null or "auto" ? detected : language, watch.Elapsed, LoadedRuntime);
+    }
+
+    /// <summary>The most likely of <paramref name="candidates"/>; the first one when the model names none of them.</summary>
+    private async Task<string> PickLanguageAsync(WhisperProcessor processor, float[] samples, IReadOnlyList<string> candidates, CancellationToken ct)
+    {
+        var watch = Stopwatch.StartNew();
+        var (detected, probability) = await Task.Run(() => processor.DetectLanguageWithProbability(samples, [.. candidates]), ct).ConfigureAwait(false);
+        var picked = detected is not null && candidates.Contains(detected) ? detected : candidates[0];
+        log.Debug($"Whisper '{id}' picked '{picked}' from {string.Join(", ", candidates)} (p={probability:F2}) in {watch.ElapsedMilliseconds} ms");
+        return picked;
     }
 
     /// <summary>Whether the runtime that actually loaded is what the provider asked for.</summary>
