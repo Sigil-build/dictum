@@ -47,33 +47,28 @@ internal static class InitCommand
 
             var prompt = new ConsolePrompt(context.Error);
             var current = context.TryLoadConfig();
-            var first = current?.Profiles.FirstOrDefault();
             var hardware = HardwareProbe.Detect(context.Paths);
             var catalog = Catalog.BuiltIn;
+            var defaults = SetupPlanner.Defaults(current, hardware, catalog, m => File.Exists(context.Paths.ResolveModel(m)));
             context.Error.WriteLine(hardware.GpuName is null
                 ? "No GPU that Whisper can use was found; recommending a model that is fast on a CPU."
                 : $"GPU: {hardware.GpuName}.");
 
             // 1. Language
             var languageAnswer = parse.GetValue(language)
-                ?? (interactive ? prompt.Ask("Language you dictate in (uk, en, … or auto)", first?.Language ?? "uk") : first?.Language ?? "auto");
+                ?? (interactive ? prompt.Ask("Language you dictate in (uk, en, … or auto)", defaults.Language) : defaults.Language);
             if (!ConfigValidator.IsValidLanguage(languageAnswer))
             {
                 throw new ConfigException($"'{languageAnswer}' is not an ISO 639-1 language code or 'auto'.");
             }
 
             // 2. Speech model
-            var currentModel = current?.Stt.Values.OfType<WhisperLocalSttConfig>().Select(w => catalog.ForFile(w.Model)?.Id).FirstOrDefault(id => id is not null);
             var recommended = SetupPlanner.RecommendSpeechModel(hardware);
             var sttAnswer = parse.GetValue(stt)
-                ?? (interactive ? ChooseModel(prompt, catalog, languageAnswer, currentModel ?? recommended, recommended) : currentModel ?? recommended);
+                ?? (interactive ? ChooseModel(prompt, catalog, languageAnswer, defaults, recommended) : defaults.SpeechModel);
 
             // 3. Text cleanup
-            var currentServer = first is not null && first.Pipeline.Contains(SetupPlanner.CleanupId)
-                && current!.Processors.TryGetValue(SetupPlanner.CleanupId, out var processor) && processor is LlmProcessorConfig existing
-                    ? new ExistingLlmServer(existing.BaseUrl, existing.Model, existing.ApiKey)
-                    : null;
-            var server = await AskCleanupAsync(context, prompt, interactive, parse.GetValue(llm), parse.GetValue(llmModel), parse.GetValue(llmApiKey), currentServer, token).ConfigureAwait(false);
+            var server = await AskCleanupAsync(context, prompt, interactive, parse.GetValue(llm), parse.GetValue(llmModel), parse.GetValue(llmApiKey), defaults.Server, token).ConfigureAwait(false);
 
             // 4. Your words
             var words = new List<string>();
@@ -138,7 +133,7 @@ internal static class InitCommand
 
             context.Out.WriteLine(parse.GetValue(json)
                 ? JsonSerializer.Serialize(
-                    new InitJson(context.ConfigPath, sttAnswer, [.. plan.Downloads.Select(d => d.Id)], server?.BaseUrl ?? "none", autostartAnswer),
+                    new InitJson(context.ConfigPath, sttAnswer ?? defaults.KeptModelFile ?? "", [.. plan.Downloads.Select(d => d.Id)], server?.BaseUrl ?? "none", autostartAnswer),
                     CliJsonContext.Readable.InitJson)
                 : context.ConfigPath);
             return ExitCodes.Success;
@@ -147,11 +142,19 @@ internal static class InitCommand
         return command;
     }
 
-    private static string ChooseModel(ConsolePrompt prompt, Catalog catalog, string language, string preselected, string recommended)
+    /// <returns>A catalog id, or null to keep the current model file.</returns>
+    private static string? ChooseModel(ConsolePrompt prompt, Catalog catalog, string language, SetupDefaults defaults, string recommended)
     {
         var models = catalog.Entries.Where(e => e is { Kind: CatalogKind.Whisper, Hidden: false } && e.Understands(language)).ToList();
         var options = models.Select(m => $"{m.Title}, {SetupRunner.Format(m.Size)}{(m.Id == recommended ? " (recommended)" : "")}").ToList();
-        var index = Math.Max(0, models.FindIndex(m => m.Id == preselected));
+        if (defaults.KeptModelFile is { } kept)
+        {
+            options.Insert(0, $"Keep {kept} (current)");
+            var choice = prompt.Choose("Speech model:", options, 0);
+            return choice == 0 ? null : models[choice - 1].Id;
+        }
+
+        var index = Math.Max(0, models.FindIndex(m => m.Id == (defaults.SpeechModel ?? recommended)));
         return models[prompt.Choose("Speech model:", options, index)].Id;
     }
 

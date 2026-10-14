@@ -17,16 +17,21 @@ public enum CleanupChoice
 public sealed record ExistingLlmServer(string BaseUrl, string Model, string? ApiKey);
 
 /// <param name="Language">ISO 639-1 code or "auto".</param>
-/// <param name="SpeechModel">Catalog id of the Whisper model.</param>
+/// <param name="SpeechModel">Catalog id of the Whisper model, or null to keep the current one.</param>
 /// <param name="Vocabulary">Words to add to the first profile's list.</param>
 /// <param name="ForceCpu">Use the CPU runtime even when a GPU is present.</param>
 public sealed record SetupAnswers(
     string Language,
-    string SpeechModel,
+    string? SpeechModel,
     CleanupChoice Cleanup,
     ExistingLlmServer? Server,
     IReadOnlyList<string> Vocabulary,
     bool ForceCpu = false);
+
+/// <summary>What <c>dictum init</c> offers first: the current config's choices, or recommendations on a fresh machine.</summary>
+/// <param name="SpeechModel">Catalog id to offer first, or null to keep <paramref name="KeptModelFile"/>.</param>
+/// <param name="KeptModelFile">A model file outside the catalog that the config already uses and that exists.</param>
+public sealed record SetupDefaults(string Language, string? SpeechModel, string? KeptModelFile, ExistingLlmServer? Server);
 
 /// <param name="Downloads">Catalog files that are not installed yet.</param>
 public sealed record SetupPlan(DictumConfig Config, IReadOnlyList<CatalogEntry> Downloads)
@@ -59,28 +64,76 @@ public static class SetupPlanner
 
     public static string RecommendSpeechModel(HardwareInfo hardware) => hardware.GpuName is null ? CpuModel : GpuModel;
 
+    /// <summary>
+    /// The provider init manages: the local Whisper provider the first profile uses, otherwise <see cref="SttId"/>
+    /// (or <see cref="FallbackSttId"/> when that id already names something else).
+    /// </summary>
+    public static string SpeechProviderId(DictumConfig config) =>
+        config.Profiles.FirstOrDefault() is { } first && config.Stt.TryGetValue(first.Stt, out var used) && used is WhisperLocalSttConfig
+            ? first.Stt
+            : config.Stt.TryGetValue(SttId, out var named) && named is not WhisperLocalSttConfig ? FallbackSttId : SttId;
+
+    /// <param name="modelFileExists">Whether a model file name (as written in the config) exists on disk.</param>
+    public static SetupDefaults Defaults(DictumConfig? current, HardwareInfo hardware, Catalog catalog, Func<string, bool> modelFileExists)
+    {
+        var first = current?.Profiles.FirstOrDefault();
+        var language = first is null ? "uk" : first.Language ?? "auto";
+        var recommended = RecommendSpeechModel(hardware);
+        if (current is null)
+        {
+            return new SetupDefaults(language, recommended, null, null);
+        }
+
+        var whisper = current.Stt.TryGetValue(SpeechProviderId(current), out var stt) ? stt as WhisperLocalSttConfig : null;
+        if (whisper is not null && catalog.ForFile(whisper.Model) is { Kind: CatalogKind.Whisper } entry)
+        {
+            return new SetupDefaults(language, entry.Id, null, CurrentServer(current));
+        }
+
+        return whisper is not null && modelFileExists(whisper.Model)
+            ? new SetupDefaults(language, null, whisper.Model, CurrentServer(current))
+            : new SetupDefaults(language, recommended, null, CurrentServer(current));
+    }
+
+    private static ExistingLlmServer? CurrentServer(DictumConfig config) =>
+        config.Profiles.FirstOrDefault() is { } first
+        && first.Pipeline.Contains(CleanupId)
+        && config.Processors.TryGetValue(CleanupId, out var processor)
+        && processor is LlmProcessorConfig llm
+            ? new ExistingLlmServer(llm.BaseUrl, llm.Model, llm.ApiKey)
+            : null;
+
     /// <param name="isInstalled">Whether a catalog file is already in place (see <see cref="ModelFiles.IsInstalled"/>).</param>
     public static SetupPlan Plan(DictumConfig? current, SetupAnswers answers, Catalog catalog, Func<CatalogEntry, bool> isInstalled)
     {
-        var speech = catalog.Get(answers.SpeechModel);
-        if (speech.Kind != CatalogKind.Whisper)
-        {
-            throw new ConfigException($"'{speech.Id}' is not a speech model.");
-        }
-
-        if (!speech.Understands(answers.Language))
-        {
-            throw new ConfigException($"'{speech.Id}' only understands {string.Join(", ", speech.Languages)}; choose another model or language.");
-        }
-
         var vad = catalog.Get(VadId);
         var config = current is null ? DefaultConfig.Create() : ConfigStore.Parse(ConfigStore.Serialize(current));
-
-        var sttId = config.Stt.TryGetValue(SttId, out var named) && named is not WhisperLocalSttConfig ? FallbackSttId : SttId;
+        var sttId = SpeechProviderId(config);
         var whisper = config.Stt.TryGetValue(sttId, out var existing) ? existing as WhisperLocalSttConfig : null;
-        config.Stt[sttId] = (whisper ?? new WhisperLocalSttConfig { Model = speech.File }) with
+
+        CatalogEntry? speech = null;
+        if (answers.SpeechModel is { } id)
         {
-            Model = speech.File,
+            speech = catalog.Get(id);
+            if (speech.Kind != CatalogKind.Whisper)
+            {
+                throw new ConfigException($"'{speech.Id}' is not a speech model.");
+            }
+
+            if (!speech.Understands(answers.Language))
+            {
+                throw new ConfigException($"'{speech.Id}' only understands {string.Join(", ", speech.Languages)}; choose another model or language.");
+            }
+        }
+        else if (current is null || whisper is null)
+        {
+            throw new ConfigException("There is no current speech model to keep; choose one with --stt.");
+        }
+
+        var model = speech?.File ?? whisper!.Model;
+        config.Stt[sttId] = (whisper ?? new WhisperLocalSttConfig { Model = model }) with
+        {
+            Model = model,
             Vad = true,
             VadModel = vad.File,
             Runtime = answers.ForceCpu ? WhisperRuntime.Cpu : whisper?.Runtime ?? WhisperRuntime.Auto,
@@ -123,6 +176,7 @@ public static class SetupPlanner
             Pipeline = pipeline,
         };
 
-        return new SetupPlan(config, [.. new[] { speech, vad }.Where(e => !isInstalled(e))]);
+        CatalogEntry[] wanted = speech is null ? [vad] : [speech, vad];
+        return new SetupPlan(config, [.. wanted.Where(e => !isInstalled(e))]);
     }
 }

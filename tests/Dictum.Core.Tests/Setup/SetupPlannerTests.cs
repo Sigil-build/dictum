@@ -124,12 +124,72 @@ public class SetupPlannerTests
         Assert.Equal("whisper-local", plan.Config.Profiles[0].Stt);
     }
 
+    [Fact]
+    public void KeepingTheCurrentModelDownloadsOnlyVad()
+    {
+        var plan = SetupPlanner.Plan(DefaultConfig.Create(), Answers(speechModel: null), Catalog, _ => false);
+
+        Assert.Equal("ggml-base.bin", Assert.IsType<WhisperLocalSttConfig>(plan.Config.Stt["local"]).Model);
+        Assert.Equal(["vad-silero-6.2"], plan.Downloads.Select(d => d.Id));
+    }
+
+    [Fact]
+    public void KeepingWithoutACurrentModelIsAConfigError() =>
+        Assert.Throws<ConfigException>(() => SetupPlanner.Plan(null, Answers(speechModel: null), Catalog, _ => true));
+
+    [Fact]
+    public void TheProviderTheFirstProfileUsesIsUpdatedInPlace()
+    {
+        var current = DefaultConfig.Create();
+        current.Stt.Clear();
+        current.Stt["local-turbo"] = new WhisperLocalSttConfig { Model = "ggml-large-v3-turbo.bin", Threads = 8 };
+        current.Profiles[0] = current.Profiles[0] with { Stt = "local-turbo" };
+
+        var plan = SetupPlanner.Plan(current, Answers(), Catalog, _ => true);
+
+        var stt = Assert.IsType<WhisperLocalSttConfig>(Assert.Single(plan.Config.Stt).Value);
+        Assert.Equal(("ggml-large-v3-turbo-q8_0.bin", 8), (stt.Model, stt.Threads));
+        Assert.Equal("local-turbo", plan.Config.Profiles[0].Stt);
+    }
+
+    [Fact]
+    public void DefaultsOnAFreshMachineRecommendFromTheHardware()
+    {
+        var defaults = SetupPlanner.Defaults(null, new HardwareInfo("GPU", 1), Catalog, _ => false);
+
+        Assert.Equal(new SetupDefaults("uk", "whisper-large-v3-turbo-q8", null, null), defaults);
+    }
+
+    [Fact]
+    public void DefaultsKeepAHandPlacedModelAndAutoDetection()
+    {
+        var defaults = SetupPlanner.Defaults(DefaultConfig.Create(), new HardwareInfo("GPU", 1), Catalog, file => file == "ggml-base.bin");
+
+        Assert.Equal(new SetupDefaults("auto", null, "ggml-base.bin", null), defaults);
+    }
+
+    [Fact]
+    public void DefaultsUseTheCatalogIdOfTheCurrentModel()
+    {
+        var current = DefaultConfig.Create();
+        current.Stt["local"] = new WhisperLocalSttConfig { Model = "ggml-small-q8_0.bin" };
+        current.Profiles[0] = current.Profiles[0] with { Language = "uk" };
+
+        var defaults = SetupPlanner.Defaults(current, new HardwareInfo("GPU", 1), Catalog, _ => false);
+
+        Assert.Equal(("uk", "whisper-small-q8", (string?)null), (defaults.Language, defaults.SpeechModel, defaults.KeptModelFile));
+    }
+
+    [Fact]
+    public void DefaultsRecommendAModelWhenTheCurrentFileIsGone() =>
+        Assert.Equal("whisper-small-q8", SetupPlanner.Defaults(DefaultConfig.Create(), new HardwareInfo(null, 1), Catalog, _ => false).SpeechModel);
+
     /// <summary>Profiles hold lists, which records compare by reference; compare what would be written instead.</summary>
     private static string Serialized(ProfileConfig profile) => ConfigStore.Serialize(new DictumConfig { Profiles = [profile] });
 
     private static SetupAnswers Answers(
         string language = "uk",
-        string speechModel = "whisper-large-v3-turbo-q8",
+        string? speechModel = "whisper-large-v3-turbo-q8",
         CleanupChoice cleanup = CleanupChoice.None,
         ExistingLlmServer? server = null,
         string[]? vocabulary = null) =>
