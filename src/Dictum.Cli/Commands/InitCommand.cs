@@ -57,7 +57,7 @@ internal static class InitCommand
 
             // 1. Language
             var languageAnswer = parse.GetValue(language)
-                ?? (interactive ? prompt.Ask("Language you dictate in (uk, en, … or auto)", defaults.Language) : defaults.Language);
+                ?? (interactive ? AskLanguage(context, prompt, defaults.Language) : defaults.Language);
             if (!ConfigValidator.IsValidLanguage(languageAnswer))
             {
                 throw new ConfigException($"'{languageAnswer}' is not an ISO 639-1 language code or 'auto'.");
@@ -143,6 +143,20 @@ internal static class InitCommand
         }));
 
         return command;
+    }
+
+    private static string AskLanguage(CliContext context, ConsolePrompt prompt, string defaultValue)
+    {
+        while (true)
+        {
+            var answer = prompt.Ask("Language you dictate in (uk, en, … or auto)", defaultValue);
+            if (ConfigValidator.IsValidLanguage(answer))
+            {
+                return answer;
+            }
+
+            context.Error.WriteLine($"'{answer}' is not a language code. Enter one code, such as uk or en, or auto to detect the language each time.");
+        }
     }
 
     /// <returns>A catalog id, or null to keep the current model file.</returns>
