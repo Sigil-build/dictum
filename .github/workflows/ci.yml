@@ -27,6 +27,11 @@ jobs:
       - name: Test
         run: dotnet test -c Release --no-build
 
+      - name: Check catalog URLs
+        env:
+          DICTUM_CHECK_CATALOG: 1
+        run: dotnet test -c Release --no-build --project tests/Dictum.Integration.Tests/Dictum.Integration.Tests.csproj --filter-class Dictum.Integration.Tests.CatalogUrlTests
+
   publish-cli:
     needs: build-test
     strategy:
@@ -54,19 +59,6 @@ jobs:
       - name: Publish (Native AOT)
         run: dotnet publish src/Dictum.Cli -c Release -r ${{ matrix.rid }} -o out
 
-      - name: Cache Whisper test model
-        uses: actions/cache@v6
-        with:
-          path: models
-          key: whisper-ggml-tiny.en
-
-      - name: Download Whisper test model
-        shell: bash
-        run: |
-          mkdir -p models
-          test -f models/ggml-tiny.en.bin || curl -fsSL -o models/ggml-tiny.en.bin \
-            https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin
-
       - name: Smoke test published binary
         shell: bash
         env:
@@ -80,8 +72,14 @@ jobs:
 
           ./out/dictum doctor --json
 
+          # dictum init downloads the English test model and the VAD model, pinned and SHA-256 checked.
+          ./out/dictum init --yes --language en --stt whisper-tiny-en --llm none --json
+          # A second run finds every file in place (output captured first: grep -q would close the pipe early).
+          again="$(./out/dictum init --yes --language en --stt whisper-tiny-en --llm none 2>&1)"
+          grep -q "already in place" <<< "$again"
+
           # Runners have no GPU, so the 'auto' runtime falls back to CPU.
-          text="$(./out/dictum transcribe fixtures/en.wav --model "$PWD/models/ggml-tiny.en.bin" --raw)"
+          text="$(./out/dictum transcribe fixtures/en.wav --raw)"
           echo "transcript: $text"
           grep -qi "country" <<< "$text"
 
