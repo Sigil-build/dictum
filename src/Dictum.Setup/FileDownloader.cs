@@ -87,7 +87,20 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
             request.Headers.Range = new RangeHeaderValue(existing, null);
         }
 
-        using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+        // The stall timer also covers the wait for headers: a server can accept the connection and never answer.
+        using var stall = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        stall.CancelAfter(_stallTimeout);
+        HttpResponseMessage sent;
+        try
+        {
+            sent = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, stall.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            throw Stalled();
+        }
+
+        using var response = sent;
         if (response.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable)
         {
             File.Delete(partial);
@@ -108,7 +121,6 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
         var written = resume ? existing : 0;
         await using var source = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
         await using var file = new FileStream(partial, resume ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.None, BufferSize, useAsync: true);
-        using var stall = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var buffer = new byte[BufferSize];
         var sinceReport = Stopwatch.StartNew();
         progress?.Report(new DownloadProgress(entry.File, written, entry.Size));
@@ -122,7 +134,7 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
-                throw new IOException($"no data for {_stallTimeout.TotalSeconds:F0} s");
+                throw Stalled();
             }
 
             if (read == 0)
@@ -150,6 +162,9 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
             throw new IOException($"the connection closed after {written} of {entry.Size} bytes");
         }
     }
+
+    /// <summary>Transient, so the download is retried and resumes.</summary>
+    private IOException Stalled() => new($"no data for {_stallTimeout.TotalSeconds:F0} s");
 
     private static async Task VerifyAsync(CatalogEntry entry, string partial, CancellationToken ct)
     {

@@ -78,6 +78,20 @@ public class FileDownloaderTests : IDisposable
         Assert.Equal(Data, File.ReadAllBytes(Target));
     }
 
+    [Fact(Timeout = 10_000)]
+    public async Task ServerThatNeverAnswersIsRetried()
+    {
+        var http = new FakeHttpHandler()
+            .Hang()
+            .Respond(_ => Ok(Data));
+        var downloader = new FileDownloader(http.Client(), [TimeSpan.Zero], stallTimeout: TimeSpan.FromMilliseconds(200));
+
+        await downloader.DownloadAsync(Entry(), Target, null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, http.Requests.Count);
+        Assert.Equal(Data, File.ReadAllBytes(Target));
+    }
+
     [Fact]
     public async Task WrongHashDeletesTheDownloadAndThrows()
     {
