@@ -111,7 +111,7 @@ public sealed record ProfileConfig
 
     public required string Stt { get; init; }
 
-    /// <summary>ISO 639-1 code; null or "auto" detects the language.</summary>
+    /// <summary>ISO 639-1 code; a list such as "uk, en" to pick from on each dictation; null or "auto" detects any language.</summary>
     public string? Language { get; init; }
 
     /// <summary>Vocabulary hint for the STT model.</summary>

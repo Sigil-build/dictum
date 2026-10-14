@@ -56,9 +56,13 @@ public static class ConfigValidator
                 Error(issues, $"{path}.pipeline", $"unknown processor '{step}'");
             }
 
-            if (!IsValidLanguage(profile.Language))
+            if (LanguageList.Parse(profile.Language) is not { } languages)
             {
-                Error(issues, $"{path}.language", $"'{profile.Language}' is not an ISO 639-1 code or 'auto'");
+                Error(issues, $"{path}.language", $"'{profile.Language}' is not an ISO 639-1 code, a comma-separated list of codes, or 'auto'");
+            }
+            else if (languages.Count > 1 && config.Stt.GetValueOrDefault(profile.Stt) is OpenAiCompatibleSttConfig)
+            {
+                Warning(issues, $"{path}.language", $"'{profile.Stt}' takes a single language, so with a list the server detects any language");
             }
 
             ValidateVocabulary(issues, path, profile);
@@ -80,10 +84,7 @@ public static class ConfigValidator
     }
 
     /// <summary>Null, "auto", or a two/three-letter language code.</summary>
-    public static bool IsValidLanguage(string? language) =>
-        language is null
-        || language == "auto"
-        || (language.Length is 2 or 3 && language.All(char.IsAsciiLetterLower));
+    public static bool IsValidLanguage(string? language) => LanguageList.Parse(language) is not null;
 
     private static void ValidateStt(List<ConfigIssue> issues, string path, SttConfig stt)
     {

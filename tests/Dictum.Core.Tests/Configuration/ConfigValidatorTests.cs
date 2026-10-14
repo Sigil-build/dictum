@@ -156,8 +156,32 @@ public class ConfigValidatorTests
     [InlineData("auto", true)]
     [InlineData("uk", true)]
     [InlineData("haw", true)]
+    [InlineData("uk, en", true)]
     [InlineData("UK", false)]
     [InlineData("ukrainian", false)]
+    [InlineData("uk, auto", false)]
     public void LanguageCodes(string? language, bool valid) =>
         Assert.Equal(valid, ConfigValidator.IsValidLanguage(language));
+
+    [Fact]
+    public void ALanguageListOnAnOpenAiCompatibleProviderIsAWarning()
+    {
+        var config = DefaultConfig.Create();
+        config.Stt["remote"] = new OpenAiCompatibleSttConfig { BaseUrl = "https://api.openai.com/v1", Model = "whisper-1" };
+        config.Profiles[0] = config.Profiles[0] with { Stt = "remote", Language = "uk, en" };
+
+        var issue = Assert.Single(ConfigValidator.Validate(config));
+
+        Assert.Equal(ConfigIssueSeverity.Warning, issue.Severity);
+        Assert.Equal("profiles[0].language", issue.Path);
+    }
+
+    [Fact]
+    public void ALanguageListOnWhisperIsValid()
+    {
+        var config = DefaultConfig.Create();
+        config.Profiles[0] = config.Profiles[0] with { Language = "uk, en" };
+
+        Assert.Empty(ConfigValidator.Validate(config));
+    }
 }
