@@ -1,0 +1,64 @@
+using System.Globalization;
+using Dictum.Core;
+using Dictum.Core.Configuration;
+
+namespace Dictum.Setup;
+
+public abstract record SetupEvent;
+
+public sealed record DownloadStarted(CatalogEntry Entry) : SetupEvent;
+
+public sealed record DownloadProgressed(DownloadProgress Progress) : SetupEvent;
+
+public sealed record DownloadFinished(CatalogEntry Entry, string Path) : SetupEvent;
+
+public sealed record ConfigSaved(string Path) : SetupEvent;
+
+/// <summary>Downloads what a plan needs, then validates and saves its config.</summary>
+public sealed class SetupRunner(FileDownloader downloader, AppPaths paths)
+{
+    /// <summary>Kept free beyond the downloads themselves, so the system never runs out of disk because of Dictum.</summary>
+    public const long SpareBytes = 200_000_000;
+
+    public async Task DownloadAsync(IReadOnlyList<CatalogEntry> entries, long freeDiskBytes, IProgress<SetupEvent>? progress, CancellationToken ct)
+    {
+        var missing = entries.Where(e => !ModelFiles.IsInstalled(paths, e)).ToList();
+        var needed = (long)(missing.Sum(e => e.Size) * 1.1) + SpareBytes;
+        if (missing.Count > 0 && freeDiskBytes < needed)
+        {
+            throw new DownloadException(
+                $"Not enough disk space in {paths.ModelsDirectory}: {Format(needed)} needed, {Format(freeDiskBytes)} free.");
+        }
+
+        foreach (var entry in missing)
+        {
+            var target = paths.ResolveModel(entry.File);
+            progress?.Report(new DownloadStarted(entry));
+            var forward = progress is null ? null : new SyncProgress<DownloadProgress>(p => progress.Report(new DownloadProgressed(p)));
+            await downloader.DownloadAsync(entry, target, forward, ct).ConfigureAwait(false);
+            progress?.Report(new DownloadFinished(entry, target));
+        }
+    }
+
+    /// <summary>The config is saved last, so a running daemon only ever reloads a setup whose files are all in place.</summary>
+    public async Task RunAsync(SetupPlan plan, ConfigStore store, long freeDiskBytes, IProgress<SetupEvent>? progress, CancellationToken ct)
+    {
+        await DownloadAsync(plan.Downloads, freeDiskBytes, progress, ct).ConfigureAwait(false);
+        var errors = ConfigValidator.Validate(plan.Config).Where(i => i.Severity == ConfigIssueSeverity.Error).ToList();
+        if (errors.Count > 0)
+        {
+            throw new ConfigException("The new config would be invalid.", errors);
+        }
+
+        store.Save(plan.Config);
+        progress?.Report(new ConfigSaved(store.Path));
+    }
+
+    /// <summary>Decimal units, as model sites show them: "874 MB", "0.9 MB", "2.5 GB".</summary>
+    public static string Format(long bytes) => bytes switch
+    {
+        >= 1_000_000_000 => string.Create(CultureInfo.InvariantCulture, $"{bytes / 1e9:F1} GB"),
+        >= 10_000_000 => string.Create(CultureInfo.InvariantCulture, $"{bytes / 1e6:F0} MB"),
+        _ => string.Create(CultureInfo.InvariantCulture, $"{bytes / 1e6:F1} MB"),
+    };
+}
