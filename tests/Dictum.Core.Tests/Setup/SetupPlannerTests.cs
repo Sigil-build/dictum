@@ -125,6 +125,29 @@ public class SetupPlannerTests
     }
 
     [Fact]
+    public void ExistingServerTakesTheApiKeyAsGiven()
+    {
+        var withKey = SetupPlanner.Plan(null, Answers(cleanup: CleanupChoice.ExistingServer, server: new("https://api.openai.com/v1", "m", "env:OPENAI_API_KEY")), Catalog, _ => true);
+
+        var withoutKey = SetupPlanner.Plan(withKey.Config, Answers(cleanup: CleanupChoice.ExistingServer, server: new("http://192.168.1.50:8080/v1", "qwen", null)), Catalog, _ => true);
+
+        Assert.Null(Assert.IsType<LlmProcessorConfig>(withoutKey.Config.Processors["cleanup"]).ApiKey);
+    }
+
+    [Theory]
+    [InlineData("https://api.openai.com/v1", "https://api.openai.com/v2", true)]
+    [InlineData("https://api.openai.com/v1", "http://192.168.1.50:8080/v1", false)]
+    [InlineData("https://api.openai.com/v1", "http://api.openai.com/v1", false)]
+    [InlineData("http://box:8080/v1", "http://box:9090/v1", false)]
+    [InlineData("http://box:8080/v1", "not a url", false)]
+    public void AKeyOnlyStaysWithTheSameServer(string before, string after, bool kept) =>
+        Assert.Equal(kept ? "env:KEY" : null, SetupPlanner.CarriedApiKey(new ExistingLlmServer(before, "m", "env:KEY"), after));
+
+    [Fact]
+    public void NoCurrentServerCarriesNoKey() =>
+        Assert.Null(SetupPlanner.CarriedApiKey(null, "http://box:8080/v1"));
+
+    [Fact]
     public void AReplaceProcessorNamedCleanupStaysInThePipeline()
     {
         var plan = SetupPlanner.Plan(WithReplaceCleanup(), Answers(), Catalog, _ => true);

@@ -176,7 +176,7 @@ internal static class InitCommand
             }
 
             var model = llmModel ?? current?.Model ?? throw new ConfigException("Pass --llm-model with --llm <url>.");
-            var key = llmApiKey is null ? current?.ApiKey : await KeepKeyOutOfConfigAsync(context, llmApiKey, ct).ConfigureAwait(false);
+            var key = llmApiKey is null ? SetupPlanner.CarriedApiKey(current, llm) : await KeepKeyOutOfConfigAsync(context, llmApiKey, ct).ConfigureAwait(false);
             return new ExistingLlmServer(llm, model, key);
         }
 
@@ -196,9 +196,15 @@ internal static class InitCommand
 
         var baseUrl = prompt.Ask("Server URL, including /v1", current?.BaseUrl ?? "http://localhost:8080/v1");
         var modelName = prompt.Ask("Model name on that server", current?.Model);
-        var apiKey = current?.ApiKey;
-        var typed = prompt.ReadHidden("API key (Enter if the server needs none): ");
-        if (typed.Length > 0)
+        var apiKey = SetupPlanner.CarriedApiKey(current, baseUrl);
+        var typed = prompt.ReadHidden(apiKey is null
+            ? "API key (Enter if the server needs none): "
+            : "API key (Enter keeps the current one, - for none): ");
+        if (typed == "-")
+        {
+            apiKey = null;
+        }
+        else if (typed.Length > 0)
         {
             try
             {

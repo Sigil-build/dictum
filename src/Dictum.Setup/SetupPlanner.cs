@@ -98,6 +98,20 @@ public static class SetupPlanner
             : new SetupDefaults(language, recommended, null, CurrentServer(current));
     }
 
+    /// <summary>
+    /// The current API key, only when the new URL points at the same scheme, host and port; a key never follows the
+    /// processor to another server.
+    /// </summary>
+    public static string? CarriedApiKey(ExistingLlmServer? current, string newBaseUrl) =>
+        current is not null
+        && Uri.TryCreate(current.BaseUrl, UriKind.Absolute, out var before)
+        && Uri.TryCreate(newBaseUrl, UriKind.Absolute, out var after)
+        && before.Scheme == after.Scheme
+        && string.Equals(before.Host, after.Host, StringComparison.OrdinalIgnoreCase)
+        && before.Port == after.Port
+            ? current.ApiKey
+            : null;
+
     /// <summary>The LLM cleanup processor init manages; a user's own non-LLM processor named "cleanup" is left alone.</summary>
     public static string CleanupProcessorId(DictumConfig config) =>
         config.Processors.TryGetValue(CleanupId, out var named) && named is not LlmProcessorConfig ? LlmCleanupFallbackId : CleanupId;
@@ -157,7 +171,7 @@ public static class SetupPlanner
         if (answers is { Cleanup: CleanupChoice.ExistingServer, Server: { } server })
         {
             config.Processors[cleanupId] = config.Processors.TryGetValue(cleanupId, out var old) && old is LlmProcessorConfig llm
-                ? llm with { BaseUrl = server.BaseUrl, Model = server.Model, ApiKey = server.ApiKey ?? llm.ApiKey }
+                ? llm with { BaseUrl = server.BaseUrl, Model = server.Model, ApiKey = server.ApiKey }
                 : new LlmProcessorConfig
                 {
                     BaseUrl = server.BaseUrl,
