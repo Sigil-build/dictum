@@ -9,6 +9,7 @@ using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 using Dictum.Platform.Hotkeys;
 using Dictum.Platform.Injection;
+using Dictum.Setup;
 
 namespace Dictum.Cli;
 
@@ -19,6 +20,7 @@ internal static class ExitCodes
     public const int InvalidConfig = 2;
     public const int ProviderUnavailable = 3;
     public const int DaemonNotRunning = 4;
+    public const int DownloadFailed = 5;
     public const int Interrupted = 130;
 }
 
@@ -127,6 +129,9 @@ internal static class CliApp
                 return WithHint(context, hotkey.Message, hotkey.Hint);
             case InjectionUnavailableException injection:
                 return WithHint(context, injection.Message, injection.Hint);
+            case DownloadException download:
+                context.Error.WriteLine($"error: {download.Message}");
+                return ExitCodes.DownloadFailed;
             case DaemonAlreadyRunningException:
             case WavFormatException or FileNotFoundException or DirectoryNotFoundException:
                 context.Error.WriteLine($"error: {ex.Message}");

@@ -117,7 +117,7 @@ public class ConfigStoreTests
 
         var ex = Assert.Throws<ConfigException>(store.Load);
 
-        Assert.Contains("dictum config init", ex.Message);
+        Assert.Contains("Run 'dictum init'", ex.Message);
     }
 
     [Fact]

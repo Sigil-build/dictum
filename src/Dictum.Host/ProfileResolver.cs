@@ -45,7 +45,7 @@ public static class ProfileResolver
         }
         else
         {
-            throw new ConfigException("No STT provider: pass --stt <id> or --model <file>, or run 'dictum config init'.");
+            throw new ConfigException("No STT provider: pass --stt <id> or --model <file>, or run 'dictum init'.");
         }
 
         var language = overrides.Language ?? profile?.Language;

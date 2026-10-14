@@ -97,7 +97,7 @@ internal static class VocabCommand
     {
         if (config.Profiles.Count == 0)
         {
-            throw new ConfigException("The config has no profiles. Run 'dictum config init'.");
+            throw new ConfigException("The config has no profiles. Run 'dictum init'.");
         }
 
         if (profileId is null)

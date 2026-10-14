@@ -1,7 +1,6 @@
 using System.CommandLine;
 using System.Diagnostics;
 using Dictum.Core.Configuration;
-using Dictum.Stt.Whisper;
 
 namespace Dictum.Cli.Commands;
 
@@ -19,7 +18,8 @@ internal static class ConfigCommand
         }));
 
         var force = new Option<bool>("--force") { Description = "Overwrite an existing config" };
-        var init = new Command("init", "Write a starter config") { force };
+        var init = new Command("init", "Write a starter config without downloading anything (see 'dictum init')") { force };
+        init.Hidden = true;
         init.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, (context, _) =>
         {
             if (context.Store.Exists && !parse.GetValue(force))
@@ -30,9 +30,8 @@ internal static class ConfigCommand
             context.Store.Save(DefaultConfig.Create());
             Directory.CreateDirectory(context.Paths.ModelsDirectory);
             context.Out.WriteLine(context.ConfigPath);
-            context.Error.WriteLine($"Created the config. Next, put a Whisper model into {context.Paths.ModelsDirectory}:");
-            context.Error.WriteLine($"  {WhisperLocalStt.DownloadHint(DefaultConfig.DefaultModel)}");
-            context.Error.WriteLine("Then run 'dictum doctor'.");
+            context.Error.WriteLine("Created a starter config. Download a speech model with 'dictum models pull whisper-small-q8',");
+            context.Error.WriteLine("or run 'dictum init' instead, which also chooses a model for this machine.");
             return Task.FromResult(ExitCodes.Success);
         }));
 
@@ -54,7 +53,7 @@ internal static class ConfigCommand
         {
             if (!context.Store.Exists)
             {
-                context.Store.Save(DefaultConfig.Create());
+                throw new ConfigException($"No config at {context.ConfigPath}. Run 'dictum init' first.");
             }
 
             var editor = Environment.GetEnvironmentVariable("VISUAL") is { Length: > 0 } visual ? visual

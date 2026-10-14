@@ -52,7 +52,7 @@ public sealed class ConfigStore
     {
         if (!Exists)
         {
-            throw new ConfigException($"Config file not found: {Path}. Run 'dictum config init' to create one.");
+            throw new ConfigException($"Config file not found: {Path}. Run 'dictum init' to set Dictum up.");
         }
 
         var text = File.ReadAllText(Path);

@@ -27,7 +27,7 @@ internal static class DoctorCommand
             {
                 config = context.TryLoadConfig();
                 Add("config", config is null
-                    ? HealthStatus.Warning($"No config at {context.ConfigPath}", "Run 'dictum config init'.")
+                    ? HealthStatus.Warning($"No config at {context.ConfigPath}", "Run 'dictum init'.")
                     : HealthStatus.Ok($"{context.ConfigPath} ({config.Stt.Count} STT, {config.Processors.Count} processors, {config.Profiles.Count} profiles)"));
             }
             catch (ConfigException ex)
