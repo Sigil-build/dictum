@@ -83,6 +83,55 @@ public class SetupRunnerTests : IDisposable
         Assert.False(Store.Exists);
     }
 
+    [Fact]
+    public async Task BeforeSaveRunsAfterTheDownloadsAndBeforeTheConfigIsWritten()
+    {
+        var http = new FakeHttpHandler().Respond(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(Data) });
+        (bool Downloaded, bool Saved)? seen = null;
+
+        await Runner(http).RunAsync(new SetupPlan(DefaultConfig.Create(), [Entry()]), Store, long.MaxValue, null, _ct, beforeSave: _ =>
+        {
+            seen = (File.Exists(Paths.ResolveModel("test.bin")), Store.Exists);
+            return Task.CompletedTask;
+        });
+
+        Assert.Equal((true, false), seen);
+        Assert.True(Store.Exists);
+    }
+
+    [Fact]
+    public async Task BeforeSaveIsSkippedWhenADownloadFails()
+    {
+        var http = new FakeHttpHandler().Respond(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
+        var called = false;
+
+        await Assert.ThrowsAsync<DownloadException>(() =>
+            Runner(http).RunAsync(new SetupPlan(DefaultConfig.Create(), [Entry()]), Store, long.MaxValue, null, _ct, beforeSave: _ =>
+            {
+                called = true;
+                return Task.CompletedTask;
+            }));
+
+        Assert.False(called);
+    }
+
+    [Fact]
+    public async Task BeforeSaveIsSkippedWhenTheConfigIsInvalid()
+    {
+        var broken = DefaultConfig.Create();
+        broken.Profiles[0] = broken.Profiles[0] with { Stt = "missing" };
+        var called = false;
+
+        await Assert.ThrowsAsync<ConfigException>(() =>
+            Runner(new FakeHttpHandler()).RunAsync(new SetupPlan(broken, []), Store, long.MaxValue, null, _ct, beforeSave: _ =>
+            {
+                called = true;
+                return Task.CompletedTask;
+            }));
+
+        Assert.False(called);
+    }
+
     [Theory]
     [InlineData(874188075L, "874 MB")]
     [InlineData(885098L, "0.9 MB")]

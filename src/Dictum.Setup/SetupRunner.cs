@@ -41,13 +41,28 @@ public sealed class SetupRunner(FileDownloader downloader, AppPaths paths)
     }
 
     /// <summary>The config is saved last, so a running daemon only ever reloads a setup whose files are all in place.</summary>
-    public async Task RunAsync(SetupPlan plan, ConfigStore store, long freeDiskBytes, IProgress<SetupEvent>? progress, CancellationToken ct)
+    /// <param name="beforeSave">
+    /// Runs after the downloads and validation succeeded, right before the save, e.g. to store an API key the new
+    /// config refers to; nothing outside the models directory changes unless the whole setup goes through.
+    /// </param>
+    public async Task RunAsync(
+        SetupPlan plan,
+        ConfigStore store,
+        long freeDiskBytes,
+        IProgress<SetupEvent>? progress,
+        CancellationToken ct,
+        Func<CancellationToken, Task>? beforeSave = null)
     {
         await DownloadAsync(plan.Downloads, freeDiskBytes, progress, ct).ConfigureAwait(false);
         var errors = ConfigValidator.Validate(plan.Config).Where(i => i.Severity == ConfigIssueSeverity.Error).ToList();
         if (errors.Count > 0)
         {
             throw new ConfigException("The new config would be invalid.", errors);
+        }
+
+        if (beforeSave is not null)
+        {
+            await beforeSave(ct).ConfigureAwait(false);
         }
 
         store.Save(plan.Config);

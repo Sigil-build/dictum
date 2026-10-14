@@ -68,7 +68,7 @@ internal static class InitCommand
                 ?? (interactive ? ChooseModel(prompt, catalog, languageAnswer, defaults, recommended) : defaults.SpeechModel);
 
             // 3. Text cleanup
-            var server = await AskCleanupAsync(context, prompt, interactive, parse.GetValue(llm), parse.GetValue(llmModel), parse.GetValue(llmApiKey), defaults.Server, token).ConfigureAwait(false);
+            var (server, pendingSecret) = AskCleanup(context, prompt, interactive, parse.GetValue(llm), parse.GetValue(llmModel), parse.GetValue(llmApiKey), defaults.Server);
 
             // 4. Your words
             var words = new List<string>();
@@ -117,14 +117,16 @@ internal static class InitCommand
 
             if (server is not null)
             {
-                await WarnIfUnreachableAsync(context, plan.Config, token).ConfigureAwait(false);
+                await WarnIfUnreachableAsync(context, plan.Config, pendingSecret, token).ConfigureAwait(false);
             }
 
             using (var http = FileDownloader.CreateHttpClient($"dictum/{CliApp.Version}"))
             using (var view = new SetupProgressView(context.Error, redraw: !Console.IsErrorRedirected))
             {
                 await new SetupRunner(new FileDownloader(http), context.Paths)
-                    .RunAsync(plan, context.Store, hardware.FreeDiskBytes, view, token).ConfigureAwait(false);
+                    .RunAsync(plan, context.Store, hardware.FreeDiskBytes, view, token, beforeSave: pendingSecret is null
+                        ? null
+                        : c => context.Platform.Secrets.SetAsync(CleanupSecret, pendingSecret, c)).ConfigureAwait(false);
             }
 
             await ApplyAutostartAsync(context, autostartAnswer, token).ConfigureAwait(false);
@@ -158,31 +160,31 @@ internal static class InitCommand
         return models[prompt.Choose("Speech model:", options, index)].Id;
     }
 
-    private static async Task<ExistingLlmServer?> AskCleanupAsync(
+    /// <returns>The server to use (or null for no cleanup) and a key value still to be written to the secret store.</returns>
+    private static (ExistingLlmServer? Server, string? PendingSecret) AskCleanup(
         CliContext context,
         ConsolePrompt prompt,
         bool interactive,
         string? llm,
         string? llmModel,
         string? llmApiKey,
-        ExistingLlmServer? current,
-        CancellationToken ct)
+        ExistingLlmServer? current)
     {
         if (llm is not null)
         {
             if (llm == "none")
             {
-                return null;
+                return (null, null);
             }
 
             var model = llmModel ?? current?.Model ?? throw new ConfigException("Pass --llm-model with --llm <url>.");
-            var key = llmApiKey is null ? SetupPlanner.CarriedApiKey(current, llm) : await KeepKeyOutOfConfigAsync(context, llmApiKey, ct).ConfigureAwait(false);
-            return new ExistingLlmServer(llm, model, key);
+            var (key, pending) = llmApiKey is null ? (SetupPlanner.CarriedApiKey(current, llm), null) : KeepKeyOutOfConfig(context, llmApiKey);
+            return (new ExistingLlmServer(llm, model, key), pending);
         }
 
         if (!interactive)
         {
-            return current;
+            return (current, null);
         }
 
         var choice = prompt.Choose(
@@ -191,12 +193,13 @@ internal static class InitCommand
             current is null ? 0 : 1);
         if (choice == 0)
         {
-            return null;
+            return (null, null);
         }
 
         var baseUrl = prompt.Ask("Server URL, including /v1", current?.BaseUrl ?? "http://localhost:8080/v1");
         var modelName = prompt.Ask("Model name on that server", current?.Model);
         var apiKey = SetupPlanner.CarriedApiKey(current, baseUrl);
+        string? pendingSecret = null;
         var typed = prompt.ReadHidden(apiKey is null
             ? "API key (Enter if the server needs none): "
             : "API key (Enter keeps the current one, - for none): ");
@@ -208,7 +211,7 @@ internal static class InitCommand
         {
             try
             {
-                apiKey = await KeepKeyOutOfConfigAsync(context, typed, ct).ConfigureAwait(false);
+                (apiKey, pendingSecret) = KeepKeyOutOfConfig(context, typed);
             }
             catch (ConfigException ex)
             {
@@ -216,31 +219,28 @@ internal static class InitCommand
             }
         }
 
-        return new ExistingLlmServer(baseUrl, modelName, apiKey);
+        return (new ExistingLlmServer(baseUrl, modelName, apiKey), pendingSecret);
     }
 
     /// <summary>
-    /// A key given as a value goes into the OS secret store, so config.json (which may roam between machines) only ever
-    /// holds a reference to it.
+    /// A key given as a value never goes into config.json (which may roam between machines): the config gets
+    /// <c>secret:dictum-cleanup</c>, and the value is written to the OS secret store only once the downloads and
+    /// validation succeeded, right before the config is saved.
     /// </summary>
-    private static async Task<string> KeepKeyOutOfConfigAsync(CliContext context, string key, CancellationToken ct)
+    private static (string Reference, string? PendingSecret) KeepKeyOutOfConfig(CliContext context, string key)
     {
         if (ConfigValueResolver.IsReference(key))
         {
-            return key;
+            return (key, null);
         }
 
-        try
-        {
-            await context.Platform.Secrets.SetAsync(CleanupSecret, key, ct).ConfigureAwait(false);
-        }
-        catch (ConfigException ex)
+        if (context.Platform.Secrets is UnavailableSecretStore)
         {
             throw new ConfigException(
-                $"{ex.Message} The key is not written to the config in plain text; pass it as env:VAR instead (\"apiKey\": \"env:VAR\").");
+                "This system has no secret store Dictum can use, and the key is not written to the config in plain text. Pass it as env:VAR instead.");
         }
 
-        return $"secret:{CleanupSecret}";
+        return ($"secret:{CleanupSecret}", key);
     }
 
     private static bool? AskAutostart(CliContext context, ConsolePrompt prompt, bool interactive, bool flag)
@@ -288,10 +288,18 @@ internal static class InitCommand
         }
     }
 
-    private static async Task WarnIfUnreachableAsync(CliContext context, DictumConfig config, CancellationToken ct)
+    /// <param name="pendingSecret">A key not yet in the secret store; the check uses a copy of the config that holds it.</param>
+    private static async Task WarnIfUnreachableAsync(CliContext context, DictumConfig config, string? pendingSecret, CancellationToken ct)
     {
+        var id = SetupPlanner.CleanupProcessorId(config);
+        if (pendingSecret is not null && config.Processors[id] is LlmProcessorConfig llm)
+        {
+            config = ConfigStore.Parse(ConfigStore.Serialize(config));
+            config.Processors[id] = llm with { ApiKey = pendingSecret };
+        }
+
         await using var host = context.CreateHost(config);
-        if (host.GetProcessor(SetupPlanner.CleanupProcessorId(config)) is IHealthCheck check)
+        if (host.GetProcessor(id) is IHealthCheck check)
         {
             var status = await check.CheckAsync(ct).ConfigureAwait(false);
             if (status.Level != HealthLevel.Ok)
