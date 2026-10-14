@@ -14,7 +14,7 @@ internal sealed class TranscriptionOptions
 
     public Option<string?> Model { get; } = new("--model", "-m") { Description = "Whisper model file (name in the models directory, or a path); needs no config" };
 
-    public Option<string?> Language { get; } = new("--lang", "-l") { Description = "Language code, e.g. uk or en; 'auto' detects it" };
+    public Option<string?> Language { get; } = new("--lang", "-l") { Description = "Language code such as uk, a list such as \"uk, en\" to pick from, or auto" };
 
     public Option<string?> Pipeline { get; } = new("--pipeline") { Description = "Comma-separated processor ids, replacing the profile's chain" };
 

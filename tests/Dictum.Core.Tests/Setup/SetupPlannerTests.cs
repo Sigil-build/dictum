@@ -108,6 +108,15 @@ public class SetupPlannerTests
     }
 
     [Fact]
+    public void ALanguageListIsWrittenInItsCanonicalForm() =>
+        Assert.Equal("uk, en", SetupPlanner.Plan(null, Answers(language: "uk,en"), Catalog, _ => true).Config.Profiles[0].Language);
+
+    [Fact]
+    public void EnglishOnlyModelIsRefusedForALanguageList() =>
+        Assert.Throws<ConfigException>(() =>
+            SetupPlanner.Plan(null, Answers(language: "uk, en", speechModel: "whisper-tiny-en"), Catalog, _ => true));
+
+    [Fact]
     public void AServerUrlWithoutASchemeIsRefusedWhenPlanning()
     {
         var ex = Assert.Throws<ConfigException>(() => SetupPlanner.Plan(

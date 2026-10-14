@@ -52,7 +52,8 @@ public sealed partial class PromptTemplates(string userDirectory)
     /// <summary>"Ukrainian (uk)" for a known code, otherwise a neutral phrase.</summary>
     public static string DescribeLanguage(string? code)
     {
-        if (code is null or "auto")
+        // A profile's list ("uk, en") says which languages may come, not which one this text is in.
+        if (code is null or "auto" || code.Contains(','))
         {
             return "the same language as the text";
         }

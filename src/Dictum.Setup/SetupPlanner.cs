@@ -193,7 +193,7 @@ public static class SetupPlanner
         config.Profiles[0] = first with
         {
             Stt = sttId,
-            Language = answers.Language,
+            Language = LanguageList.Parse(answers.Language) is { } codes ? LanguageList.Format(codes) : answers.Language,
             Vocabulary = VocabularyList.Merge(first.Vocabulary, answers.Vocabulary),
             Pipeline = pipeline,
         };

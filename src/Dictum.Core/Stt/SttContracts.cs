@@ -1,4 +1,5 @@
 using Dictum.Core.Audio;
+using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 
 namespace Dictum.Core.Stt;
@@ -24,7 +25,17 @@ public sealed record SttCapabilities(bool LanguageDetection, bool Prompt, bool S
 /// With no <paramref name="Language"/>: the languages to pick from, in order of preference. Providers that cannot
 /// limit detection detect any language.
 /// </param>
-public sealed record SttRequest(string? Language, string? Prompt, IReadOnlyList<string>? Candidates = null);
+public sealed record SttRequest(string? Language, string? Prompt, IReadOnlyList<string>? Candidates = null)
+{
+    /// <summary>The request for a profile's language setting (see <see cref="LanguageList"/>); null when it is not valid.</summary>
+    public static SttRequest? ForSetting(string? language, string? prompt) => LanguageList.Parse(language) switch
+    {
+        null => null,
+        [] => new(language is null ? null : "auto", prompt),
+        [var single] => new(single, prompt),
+        var codes => new(null, prompt, codes),
+    };
+}
 
 /// <param name="Backend">Provider-specific detail, e.g. the loaded Whisper runtime.</param>
 public sealed record Transcript(string Text, string? Language, TimeSpan Elapsed, string? Backend = null);

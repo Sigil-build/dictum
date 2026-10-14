@@ -148,6 +148,8 @@ public class LlmProcessorTests : IDisposable
 
     [Theory]
     [InlineData(null, "the same language as the text")]
+    [InlineData("auto", "the same language as the text")]
+    [InlineData("uk, en", "the same language as the text")]
     [InlineData("en", "English (en)")]
     public void DescribesLanguages(string? code, string expected) =>
         Assert.Equal(expected, PromptTemplates.DescribeLanguage(code));

@@ -22,7 +22,7 @@ internal static class InitCommand
     public static Command Create()
     {
         var yes = new Option<bool>("--yes", "-y") { Description = "Do not ask: use the options given and keep or recommend everything else" };
-        var language = new Option<string?>("--language") { Description = "Language you dictate in: uk, en, … or auto" };
+        var language = new Option<string?>("--language") { Description = "Language you dictate in: one code such as uk, several such as \"uk, en\" to pick from, or auto" };
         var stt = new Option<string?>("--stt") { Description = "Speech model id (see 'dictum models list')" };
         var llm = new Option<string?>("--llm") { Description = "Text cleanup: none, or the base URL of an OpenAI-compatible server, e.g. http://192.168.1.10:8080/v1" };
         var llmModel = new Option<string?>("--llm-model") { Description = "Model name on that server" };
@@ -60,7 +60,7 @@ internal static class InitCommand
                 ?? (interactive ? AskLanguage(context, prompt, defaults.Language) : defaults.Language);
             if (!ConfigValidator.IsValidLanguage(languageAnswer))
             {
-                throw new ConfigException($"'{languageAnswer}' is not an ISO 639-1 language code or 'auto'.");
+                throw new ConfigException($"'{languageAnswer}' is not an ISO 639-1 language code, a comma-separated list of codes, or 'auto'.");
             }
 
             // 2. Speech model
@@ -149,13 +149,13 @@ internal static class InitCommand
     {
         while (true)
         {
-            var answer = prompt.Ask("Language you dictate in (uk, en, … or auto)", defaultValue);
+            var answer = prompt.Ask("Language you dictate in: one code such as uk, several such as uk, en to pick from on each dictation, or auto", defaultValue);
             if (ConfigValidator.IsValidLanguage(answer))
             {
                 return answer;
             }
 
-            context.Error.WriteLine($"'{answer}' is not a language code. Enter one code, such as uk or en, or auto to detect the language each time.");
+            context.Error.WriteLine($"'{answer}' is not a language setting. Enter one code such as uk, codes separated by commas such as uk, en, or auto.");
         }
     }
 

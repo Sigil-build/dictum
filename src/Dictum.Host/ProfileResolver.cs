@@ -49,18 +49,14 @@ public static class ProfileResolver
         }
 
         var language = overrides.Language ?? profile?.Language;
-        var languages = LanguageList.Parse(language)
-            ?? throw new ConfigException($"'{language}' is not an ISO 639-1 language code, a comma-separated list of codes, or 'auto'.");
 
         IReadOnlyList<string> steps = overrides.Raw ? [] : overrides.Pipeline ?? profile?.Pipeline ?? [];
         var vocabulary = VocabularyList.Normalize(profile?.Vocabulary ?? []);
         return new DictationProfile(
             profile?.Id ?? AdHocProfileId,
             stt,
-            new SttRequest(
-                languages.Count switch { 0 => language is null ? null : "auto", 1 => languages[0], _ => null },
-                SttPromptBuilder.Build(profile?.SttPrompt, vocabulary).Prompt,
-                languages.Count > 1 ? languages : null),
+            SttRequest.ForSetting(language, SttPromptBuilder.Build(profile?.SttPrompt, vocabulary).Prompt)
+                ?? throw new ConfigException($"'{language}' is not an ISO 639-1 language code, a comma-separated list of codes, or 'auto'."),
             [.. steps.Select(getProcessor)],
             vocabulary);
     }

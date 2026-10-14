@@ -36,7 +36,7 @@ internal static class SttCommand
     {
         var id = new Argument<string>("id") { Description = "Provider id" };
         var file = new Option<string?>("--file", "-f") { Description = "WAV file to transcribe instead of recording 5 seconds" };
-        var language = new Option<string?>("--lang", "-l") { Description = "Language code, or auto" };
+        var language = new Option<string?>("--lang", "-l") { Description = "Language code, a list such as \"uk, en\" to pick from, or auto" };
         var command = new Command("test", "Check a provider and transcribe a sample with it") { id, file, language };
 
         command.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, async (context, token) =>
@@ -71,7 +71,9 @@ internal static class SttCommand
                 clip = await audio.StopAsync(token).ConfigureAwait(false);
             }
 
-            var transcript = await stt.TranscribeAsync(clip, new SttRequest(parse.GetValue(language), null), token).ConfigureAwait(false);
+            var request = SttRequest.ForSetting(parse.GetValue(language), null)
+                ?? throw new ConfigException($"'{parse.GetValue(language)}' is not an ISO 639-1 language code, a comma-separated list of codes, or 'auto'.");
+            var transcript = await stt.TranscribeAsync(clip, request, token).ConfigureAwait(false);
             context.Out.WriteLine(transcript.Text);
             context.Error.WriteLine(
                 $"{clip.Duration.TotalSeconds:F1} s of audio in {transcript.Elapsed.TotalMilliseconds:F0} ms" +
