@@ -285,7 +285,7 @@ internal static class InitCommand
     private static async Task WarnIfUnreachableAsync(CliContext context, DictumConfig config, CancellationToken ct)
     {
         await using var host = context.CreateHost(config);
-        if (host.GetProcessor(SetupPlanner.CleanupId) is IHealthCheck check)
+        if (host.GetProcessor(SetupPlanner.CleanupProcessorId(config)) is IHealthCheck check)
         {
             var status = await check.CheckAsync(ct).ConfigureAwait(false);
             if (status.Level != HealthLevel.Ok)

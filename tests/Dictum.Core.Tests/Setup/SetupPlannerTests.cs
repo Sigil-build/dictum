@@ -125,6 +125,28 @@ public class SetupPlannerTests
     }
 
     [Fact]
+    public void AReplaceProcessorNamedCleanupStaysInThePipeline()
+    {
+        var plan = SetupPlanner.Plan(WithReplaceCleanup(), Answers(), Catalog, _ => true);
+
+        Assert.Equal(["cleanup"], plan.Config.Profiles[0].Pipeline);
+        Assert.IsType<ReplaceProcessorConfig>(plan.Config.Processors["cleanup"]);
+    }
+
+    [Fact]
+    public void ExistingServerUsesAnotherIdWhenCleanupIsTaken()
+    {
+        var server = new ExistingLlmServer("http://localhost:8080/v1", "m", null);
+
+        var plan = SetupPlanner.Plan(WithReplaceCleanup(), Answers(cleanup: CleanupChoice.ExistingServer, server: server), Catalog, _ => true);
+
+        Assert.IsType<ReplaceProcessorConfig>(plan.Config.Processors["cleanup"]);
+        Assert.IsType<LlmProcessorConfig>(plan.Config.Processors["llm-cleanup"]);
+        Assert.Equal(["cleanup", "llm-cleanup"], plan.Config.Profiles[0].Pipeline);
+        Assert.Equal(server, SetupPlanner.Defaults(plan.Config, new HardwareInfo(null, 1), Catalog, _ => true).Server);
+    }
+
+    [Fact]
     public void KeepingTheCurrentModelDownloadsOnlyVad()
     {
         var plan = SetupPlanner.Plan(DefaultConfig.Create(), Answers(speechModel: null), Catalog, _ => false);
@@ -183,6 +205,14 @@ public class SetupPlannerTests
     [Fact]
     public void DefaultsRecommendAModelWhenTheCurrentFileIsGone() =>
         Assert.Equal("whisper-small-q8", SetupPlanner.Defaults(DefaultConfig.Create(), new HardwareInfo(null, 1), Catalog, _ => false).SpeechModel);
+
+    private static DictumConfig WithReplaceCleanup()
+    {
+        var config = DefaultConfig.Create();
+        config.Processors["cleanup"] = new ReplaceProcessorConfig { Rules = [new ReplaceRule { From = "ноутпад", To = "Notepad" }] };
+        config.Profiles[0] = config.Profiles[0] with { Pipeline = ["cleanup"] };
+        return config;
+    }
 
     /// <summary>Profiles hold lists, which records compare by reference; compare what would be written instead.</summary>
     private static string Serialized(ProfileConfig profile) => ConfigStore.Serialize(new DictumConfig { Profiles = [profile] });
