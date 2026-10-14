@@ -10,6 +10,7 @@
     <Project Path="src/Dictum.Platform.Windows/Dictum.Platform.Windows.csproj" />
     <Project Path="src/Dictum.Platform/Dictum.Platform.csproj" />
     <Project Path="src/Dictum.Processing/Dictum.Processing.csproj" />
+    <Project Path="src/Dictum.Setup/Dictum.Setup.csproj" />
     <Project Path="src/Dictum.Stt.OpenAi/Dictum.Stt.OpenAi.csproj" />
     <Project Path="src/Dictum.Stt.Whisper/Dictum.Stt.Whisper.csproj" />
   </Folder>

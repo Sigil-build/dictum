@@ -26,6 +26,7 @@ https://claude.ai/code/artifact/ba039eea-3640-41cc-898a-b1b024e07370
 ## Layout
 - `src/Dictum.Core`: contracts, pipeline, profiles, history. No references and no OS code.
 - `src/Dictum.Audio`, `Dictum.Stt.Whisper`, `Dictum.Stt.OpenAi`, `Dictum.Processing`: reference Core.
+- `src/Dictum.Setup`: model catalog, downloader, setup planner and runner (`dictum init`). References Core only.
 - `src/Dictum.Platform`: platform abstractions (hotkeys, injection, clipboard, secrets, autostart). References Core.
 - `src/Dictum.Platform.{Windows,Linux,MacOS}`: per-OS implementations. Reference Platform.
 - `src/Dictum.Host`: composition root, provider registry, IPC server. References everything above.

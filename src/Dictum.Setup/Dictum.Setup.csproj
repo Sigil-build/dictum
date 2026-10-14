@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="../Dictum.Core/Dictum.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="catalog.json" LogicalName="Dictum.Setup.catalog.json" />
+  </ItemGroup>
+
+</Project>

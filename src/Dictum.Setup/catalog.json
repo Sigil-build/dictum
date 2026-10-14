@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "entries": [
+    {
+      "id": "whisper-large-v3-turbo-q8", "kind": "whisper", "tier": "gpu",
+      "title": "Whisper large-v3-turbo, 8-bit: best quality, needs a GPU",
+      "file": "ggml-large-v3-turbo-q8_0.bin",
+      "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-large-v3-turbo-q8_0.bin",
+      "sha256": "317eb69c11673c9de1e1f0d459b253999804ec71ac4c23c17ecf5fbe24e259a1", "size": 874188075,
+      "languages": ["*"],
+      "licence": { "name": "MIT", "url": "https://huggingface.co/ggerganov/whisper.cpp" }
+    },
+    {
+      "id": "whisper-medium-q8", "kind": "whisper", "tier": "cpu",
+      "title": "Whisper medium, 8-bit: slower on a CPU, more accurate",
+      "file": "ggml-medium-q8_0.bin",
+      "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-medium-q8_0.bin",
+      "sha256": "42a1ffcbe4167d224232443396968db4d02d4e8e87e213d3ee2e03095dea6502", "size": 823369779,
+      "languages": ["*"],
+      "licence": { "name": "MIT", "url": "https://huggingface.co/ggerganov/whisper.cpp" }
+    },
+    {
+      "id": "whisper-small-q8", "kind": "whisper", "tier": "cpu",
+      "title": "Whisper small, 8-bit: fast on a CPU",
+      "file": "ggml-small-q8_0.bin",
+      "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-small-q8_0.bin",
+      "sha256": "49c8fb02b65e6049d5fa6c04f81f53b867b5ec9540406812c643f177317f779f", "size": 264464607,
+      "languages": ["*"],
+      "licence": { "name": "MIT", "url": "https://huggingface.co/ggerganov/whisper.cpp" }
+    },
+    {
+      "id": "whisper-tiny-en", "kind": "whisper", "tier": "ci", "hidden": true,
+      "title": "Whisper tiny, English only: for tests",
+      "file": "ggml-tiny.en.bin",
+      "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-tiny.en.bin",
+      "sha256": "921e4cf8686fdd993dcd081a5da5b6c365bfde1162e72b08d75ac75289920b1f", "size": 77704715,
+      "languages": ["en"],
+      "licence": { "name": "MIT", "url": "https://huggingface.co/ggerganov/whisper.cpp" }
+    },
+    {
+      "id": "vad-silero-6.2", "kind": "vad",
+      "title": "Silero voice activity detector",
+      "file": "ggml-silero-v6.2.0.bin",
+      "url": "https://huggingface.co/ggml-org/whisper-vad/resolve/9ffd54a1e1ee413ddf265af9913beaf518d1639b/ggml-silero-v6.2.0.bin",
+      "sha256": "2aa269b785eeb53a82983a20501ddf7c1d9c48e33ab63a41391ac6c9f7fb6987", "size": 885098,
+      "languages": ["*"],
+      "licence": { "name": "MIT", "url": "https://huggingface.co/ggml-org/whisper-vad" }
+    }
+  ]
+}
