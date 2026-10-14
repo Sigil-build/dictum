@@ -198,6 +198,13 @@ public static class SetupPlanner
             Pipeline = pipeline,
         };
 
+        // Checked here, before the summary, consent and any download, so a bad answer fails with the field that is wrong.
+        var errors = ConfigValidator.Validate(config).Where(i => i.Severity == ConfigIssueSeverity.Error).ToList();
+        if (errors.Count > 0)
+        {
+            throw new ConfigException("The new config would be invalid.", errors);
+        }
+
         CatalogEntry[] wanted = speech is null ? [vad] : [speech, vad];
         return new SetupPlan(config, [.. wanted.Where(e => !isInstalled(e))]);
     }

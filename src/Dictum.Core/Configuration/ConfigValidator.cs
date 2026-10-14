@@ -204,9 +204,12 @@ public static class ConfigValidator
         }
     }
 
+    public static bool IsHttpUrl(string? url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+
     private static void ValidateUrl(List<ConfigIssue> issues, string path, string? url)
     {
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        if (!IsHttpUrl(url))
         {
             Error(issues, path, $"'{url}' is not an absolute http(s) URL");
         }

@@ -108,6 +108,18 @@ public class SetupPlannerTests
     }
 
     [Fact]
+    public void AServerUrlWithoutASchemeIsRefusedWhenPlanning()
+    {
+        var ex = Assert.Throws<ConfigException>(() => SetupPlanner.Plan(
+            null,
+            Answers(cleanup: CleanupChoice.ExistingServer, server: new("localhost:8080/v1", "m", null)),
+            Catalog,
+            _ => true));
+
+        Assert.Contains(ex.Issues, i => i.Path.EndsWith(".baseUrl", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void VadModelIsNotASpeechModel() =>
         Assert.Throws<ConfigException>(() => SetupPlanner.Plan(null, Answers(speechModel: "vad-silero-6.2"), Catalog, _ => true));
 

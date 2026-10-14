@@ -197,6 +197,11 @@ internal static class InitCommand
         }
 
         var baseUrl = prompt.Ask("Server URL, including /v1", current?.BaseUrl ?? "http://localhost:8080/v1");
+        while (!ConfigValidator.IsHttpUrl(baseUrl))
+        {
+            context.Error.WriteLine($"'{baseUrl}' is not a server URL; it starts with http:// or https://, e.g. http://localhost:8080/v1.");
+            baseUrl = prompt.Ask("Server URL, including /v1", current?.BaseUrl ?? "http://localhost:8080/v1");
+        }
         var modelName = prompt.Ask("Model name on that server", current?.Model);
         var apiKey = SetupPlanner.CarriedApiKey(current, baseUrl);
         string? pendingSecret = null;
