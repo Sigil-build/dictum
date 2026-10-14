@@ -5,7 +5,9 @@ using Dictum.Audio.PortAudio;
 using Dictum.Cli.Output;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core;
 using Dictum.Host.Ipc;
+using Dictum.Setup;
 
 namespace Dictum.Cli.Commands;
 
@@ -37,7 +39,7 @@ internal static class DoctorCommand
                     "Fix the file, then run 'dictum config validate'."));
             }
 
-            Add("models", HealthStatus.Ok(context.Paths.ModelsDirectory));
+            Add("models", CheckModels(config, context.Paths));
             CheckAudio(context, Add);
 
             foreach (var check in await context.Platform.DiagnoseAsync(token).ConfigureAwait(false))
@@ -85,6 +87,24 @@ internal static class DoctorCommand
         }));
 
         return command;
+    }
+
+    private static HealthStatus CheckModels(DictumConfig? config, AppPaths paths)
+    {
+        var needed = (config is null ? [] : config.Stt.Values.OfType<WhisperLocalSttConfig>())
+            .SelectMany(w => w.Vad ? new[] { w.Model, w.VadModel } : [w.Model])
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        var missing = needed.Where(m => !File.Exists(paths.ResolveModel(m))).ToList();
+        if (missing.Count == 0)
+        {
+            return HealthStatus.Ok($"{paths.ModelsDirectory} ({needed.Count} configured file(s) present)");
+        }
+
+        var pulls = missing.Select(m => Catalog.BuiltIn.ForFile(m)?.Id).OfType<string>().ToList();
+        return HealthStatus.Error(
+            $"Missing in {paths.ModelsDirectory}: {string.Join(", ", missing)}",
+            pulls.Count == missing.Count ? $"Run 'dictum models pull {string.Join(' ', pulls)}'." : "Run 'dictum init', or copy the files there.");
     }
 
     private static void CheckAudio(CliContext context, Action<string, HealthStatus> add)

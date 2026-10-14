@@ -40,6 +40,8 @@ internal sealed record ProcessJson(string Text, string Input, IReadOnlyList<Stag
 
 internal sealed record DeviceJson(string Id, string Name, string HostApi, int Channels, double SampleRate, bool IsDefault);
 
+internal sealed record ModelJson(string Id, string Kind, string Title, string File, long Size, bool Installed, bool InCatalog);
+
 internal sealed record CheckJson(string Name, HealthLevel Level, string Detail, string? Hint);
 
 internal sealed record DoctorJson(string Version, string Os, string Rid, IReadOnlyList<CheckJson> Checks);
@@ -56,6 +58,7 @@ internal sealed record FrameDumpJson(int FramesPerSecond, int Bands, IReadOnlyLi
 [JsonSerializable(typeof(ProcessJson))]
 [JsonSerializable(typeof(List<DeviceJson>))]
 [JsonSerializable(typeof(DoctorJson))]
+[JsonSerializable(typeof(List<ModelJson>))]
 [JsonSerializable(typeof(FrameDumpJson))]
 [JsonSerializable(typeof(List<HistoryEntry>))]
 [JsonSerializable(typeof(DaemonStatus))]
