@@ -87,8 +87,18 @@ public class ProfileResolverTests
     [Theory]
     [InlineData("missing", null, null)]
     [InlineData(null, null, "Ukrainian")]
+    [InlineData(null, null, "uk, auto")]
     public void InvalidOverridesAreConfigErrors(string? profile, string? stt, string? language) =>
         Assert.Throws<ConfigException>(() => Resolve(new ProfileOverrides(Profile: profile, Stt: stt, Language: language)));
+
+    [Fact]
+    public void ALanguageListBecomesTheCandidates()
+    {
+        var profile = Resolve(new ProfileOverrides(Profile: "uk", Language: "uk,en"));
+
+        Assert.Null(profile.Request.Language);
+        Assert.Equal(["uk", "en"], profile.Request.Candidates!);
+    }
 
     [Fact]
     public void NoProviderAtAllExplainsWhatToDo()

@@ -44,6 +44,17 @@ public class OpenAiCompatibleSttTests
     }
 
     [Fact]
+    public async Task ALanguageListSendsNoLanguage()
+    {
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, """{ "text": "hi", "language": "en" }""");
+
+        var transcript = await Create(http).TranscribeAsync(Clips.Seconds(1), new SttRequest(null, null, ["uk", "en"]), _ct);
+
+        Assert.DoesNotContain("name=language", http.Requests[0].Body);
+        Assert.Equal("en", transcript.Language);
+    }
+
+    [Fact]
     public async Task HttpErrorBecomesProviderUnavailable()
     {
         var http = new FakeHttpHandler().Respond(HttpStatusCode.BadGateway, """{ "error": "model not loaded" }""");
