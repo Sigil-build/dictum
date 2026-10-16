@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Dictum.Platform.Injection;
@@ -9,15 +10,19 @@ namespace Dictum.Platform.Windows;
 /// CF_UNICODETEXT clipboard access. A message-only window owns the clipboard while writing:
 /// with a null owner, EmptyClipboard leaves no owner and SetClipboardData fails.
 /// </summary>
+/// <param name="openTimeout">How long to wait for another app to close the clipboard; 2 s when not set.</param>
 [SupportedOSPlatform("windows")]
-public sealed unsafe class Win32Clipboard : IClipboard
+public sealed unsafe class Win32Clipboard(TimeSpan? openTimeout = null) : IClipboard
 {
-    private const int OpenAttempts = 10;
+    private static readonly TimeSpan FirstPause = TimeSpan.FromMilliseconds(10);
+    private static readonly TimeSpan LongestPause = TimeSpan.FromMilliseconds(200);
+
+    private readonly TimeSpan _openTimeout = openTimeout ?? TimeSpan.FromSeconds(2);
 
     public string Backend => "Win32 clipboard";
 
     public Task<string?> GetTextAsync(CancellationToken ct) =>
-        Task.FromResult(WithClipboard(nint.Zero, () =>
+        Task.FromResult(WithClipboard(nint.Zero, ct, () =>
         {
             var handle = Win32.GetClipboardData(Win32.CfUnicodeText);
             if (handle == 0)
@@ -42,7 +47,7 @@ public sealed unsafe class Win32Clipboard : IClipboard
         var owner = Win32.CreateWindowEx(0, "STATIC", null, 0, 0, 0, 0, 0, Win32.HwndMessage, 0, 0, 0);
         try
         {
-            WithClipboard(owner, () =>
+            WithClipboard(owner, ct, () =>
             {
                 Win32.EmptyClipboard();
                 var bytes = (nuint)((text.Length + 1) * sizeof(char));
@@ -79,17 +84,26 @@ public sealed unsafe class Win32Clipboard : IClipboard
         return Task.CompletedTask;
     }
 
-    /// <summary>Another app may hold the clipboard open briefly, so opening is retried.</summary>
-    private static string? WithClipboard(nint owner, Func<string?> action)
+    /// <summary>
+    /// The clipboard history, clipboard managers and apps that hand over their data late keep the clipboard open
+    /// for a moment, sometimes for hundreds of milliseconds, so opening is retried with growing pauses. The wait
+    /// blocks the thread: the clipboard is opened, used and closed on one thread.
+    /// </summary>
+    private string? WithClipboard(nint owner, CancellationToken ct, Func<string?> action)
     {
-        for (var attempt = 1; !Win32.OpenClipboard(owner); attempt++)
+        var waited = Stopwatch.StartNew();
+        var pause = FirstPause;
+        while (!Win32.OpenClipboard(owner))
         {
-            if (attempt == OpenAttempts)
+            var error = Marshal.GetLastPInvokeError();
+            if (waited.Elapsed >= _openTimeout)
             {
-                throw new Win32Exception(Marshal.GetLastPInvokeError(), "The clipboard is in use by another application");
+                throw new Win32Exception(error, $"The clipboard is in use by another application (waited {_openTimeout.TotalSeconds:0.#} s)");
             }
 
-            Thread.Sleep(20);
+            ct.WaitHandle.WaitOne(pause);
+            ct.ThrowIfCancellationRequested();
+            pause = TimeSpan.FromTicks(Math.Min(pause.Ticks * 2, LongestPause.Ticks));
         }
 
         try

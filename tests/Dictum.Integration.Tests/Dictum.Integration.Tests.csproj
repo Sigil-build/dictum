@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <!-- Integration tests are gated by DICTUM_INTEGRATION=1, so a run with zero tests (exit code 8) is expected. -->
+    <!-- LibraryImport in the clipboard tests. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <TestingPlatformCommandLineArguments>$(TestingPlatformCommandLineArguments) --ignore-exit-code 8</TestingPlatformCommandLineArguments>
   </PropertyGroup>
 

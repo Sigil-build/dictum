@@ -1,3 +1,6 @@
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Dictum.Platform;
 using Dictum.Platform.Windows;
@@ -34,6 +37,60 @@ public class WindowsPlatformTests
                 await clipboard.SetTextAsync(original, _ct);
             }
         }
+    }
+
+    [Fact]
+    public async Task AClipboardHeldForHalfASecondIsWaitedFor()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Windows only");
+            return;
+        }
+
+        // The clipboard history, a clipboard manager or an app that renders its data late can hold it this long.
+        await using var hold = await ClipboardHold.StartAsync(TimeSpan.FromMilliseconds(500));
+        var waited = Stopwatch.StartNew();
+
+        await new Win32Clipboard().GetTextAsync(_ct);
+
+        Assert.True(waited.Elapsed >= TimeSpan.FromMilliseconds(400), $"The read did not wait for the holder: {waited.Elapsed}");
+    }
+
+    // The platform analyzer does not carry the IsWindows check into the lambdas of the next two tests.
+    [Fact]
+    [SupportedOSPlatform("windows")]
+    public async Task AClipboardHeldPastTheTimeoutIsReported()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Windows only");
+            return;
+        }
+
+        await using var hold = await ClipboardHold.StartAsync(TimeSpan.FromSeconds(1));
+        var clipboard = new Win32Clipboard(openTimeout: TimeSpan.FromMilliseconds(200));
+
+        var error = await Assert.ThrowsAsync<Win32Exception>(() => clipboard.GetTextAsync(_ct));
+
+        Assert.Contains("in use by another application", error.Message);
+    }
+
+    [Fact]
+    [SupportedOSPlatform("windows")]
+    public async Task CancellingStopsWaitingForABusyClipboard()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Windows only");
+            return;
+        }
+
+        await using var hold = await ClipboardHold.StartAsync(TimeSpan.FromSeconds(1));
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(_ct);
+        cts.CancelAfter(TimeSpan.FromMilliseconds(100));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => new Win32Clipboard().GetTextAsync(cts.Token));
     }
 
     [Fact]
@@ -118,4 +175,74 @@ public class WindowsPlatformTests
     [InlineData(null, false)]
     [InlineData("1", false)]
     public void TheTaskbarThemeIsReadFromItsRegistryValue(object? value, bool light) => Assert.Equal(light, TaskbarInfo.IsLight(value));
+}
+
+/// <summary>Keeps the clipboard open from another thread, the way a slow clipboard manager does.</summary>
+[SupportedOSPlatform("windows")]
+internal sealed partial class ClipboardHold(Task closed) : IAsyncDisposable
+{
+    /// <summary>Returns once the clipboard is open.</summary>
+    public static async Task<ClipboardHold> StartAsync(TimeSpan duration)
+    {
+        // Asynchronous continuations: the test must not carry on on the thread that is about to close the clipboard.
+        var opened = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var released = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        // The clipboard is closed on the thread that opened it, so the hold gets a thread of its own. It opens with a
+        // window of its own too: a second open with no window succeeds while the first one, also with no window, holds it.
+        var thread = new Thread(() =>
+        {
+            var owner = CreateWindowEx(0, "STATIC", null, 0, 0, 0, 0, 0, HwndMessage, 0, 0, 0);
+            try
+            {
+                var waited = Stopwatch.StartNew();
+                while (!OpenClipboard(owner))
+                {
+                    if (waited.Elapsed > TimeSpan.FromSeconds(5))
+                    {
+                        opened.SetException(new InvalidOperationException("Could not open the clipboard to hold it."));
+                        return;
+                    }
+
+                    Thread.Sleep(5);
+                }
+
+                opened.SetResult();
+                Thread.Sleep(duration);
+                CloseClipboard();
+                released.SetResult();
+            }
+            finally
+            {
+                DestroyWindow(owner);
+            }
+        })
+        { IsBackground = true };
+        thread.Start();
+
+        await opened.Task;
+        return new ClipboardHold(released.Task);
+    }
+
+    /// <summary>Waits for the hold to end, so a failed test does not leave the clipboard held for the next one.</summary>
+    public async ValueTask DisposeAsync() => await closed;
+
+    [LibraryImport("user32", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool OpenClipboard(nint newOwner);
+
+    [LibraryImport("user32", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool CloseClipboard();
+
+    private const nint HwndMessage = -3;
+
+    [LibraryImport("user32", EntryPoint = "CreateWindowExW", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
+    private static partial nint CreateWindowEx(
+        uint exStyle, string className, string? windowName, uint style,
+        int x, int y, int width, int height, nint parent, nint menu, nint instance, nint param);
+
+    [LibraryImport("user32")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool DestroyWindow(nint window);
 }
