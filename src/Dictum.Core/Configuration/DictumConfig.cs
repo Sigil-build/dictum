@@ -47,6 +47,12 @@ public sealed record GeneralSettings
         "konsole", "gnome-terminal-server", "kitty", "alacritty", "org.wezfurlong.wezterm", "wezterm-gui",
         "foot", "footclient", "xterm", "tilix", "terminator", "ghostty", "com.mitchellh.ghostty", "xfce4-terminal",
     ];
+
+    /// <summary>The listening overlay drawn by dictum-gui; the daemon ignores it.</summary>
+    public OverlaySettings Overlay { get; set; } = new();
+
+    /// <summary>Language of dictum-gui: null follows the OS, otherwise "en" or "uk".</summary>
+    public string? UiLanguage { get; init; }
 }
 
 public enum InjectorBackend
@@ -126,4 +132,51 @@ public sealed record ProfileConfig
 
     /// <summary>On Wayland the active app is unknown, so terminal profiles set this explicitly.</summary>
     public PasteShortcut PasteShortcut { get; set; } = PasteShortcut.Auto;
+}
+
+public sealed record OverlaySettings
+{
+    public bool Enabled { get; set; } = true;
+
+    public OverlayPosition Position { get; set; } = OverlayPosition.Bottom;
+
+    public OverlaySize Size { get; set; } = OverlaySize.Medium;
+
+    /// <summary>0.3–1.0, applied to the whole overlay window.</summary>
+    public double Opacity { get; set; } = 1.0;
+
+    public OverlayPalette Palette { get; set; } = OverlayPalette.Aurora;
+}
+
+public enum OverlayPosition
+{
+    [JsonStringEnumMemberName("bottom")]
+    Bottom,
+
+    [JsonStringEnumMemberName("top")]
+    Top,
+}
+
+public enum OverlaySize
+{
+    [JsonStringEnumMemberName("small")]
+    Small,
+
+    [JsonStringEnumMemberName("medium")]
+    Medium,
+
+    [JsonStringEnumMemberName("large")]
+    Large,
+}
+
+public enum OverlayPalette
+{
+    [JsonStringEnumMemberName("aurora")]
+    Aurora,
+
+    [JsonStringEnumMemberName("ember")]
+    Ember,
+
+    [JsonStringEnumMemberName("mist")]
+    Mist,
 }

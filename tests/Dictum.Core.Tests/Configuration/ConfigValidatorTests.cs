@@ -199,4 +199,17 @@ public class ConfigValidatorTests
         Assert.Equal((ConfigIssueSeverity.Warning, "profiles[0].language"), (issue.Severity, issue.Path));
         Assert.Contains("'uk' and 'be'", issue.Message);
     }
+
+    [Theory]
+    [InlineData(0.2, null, "general.overlay.opacity")]
+    [InlineData(1.0, "de", "general.uiLanguage")]
+    public void OverlayOpacityAndUiLanguageAreChecked(double opacity, string? uiLanguage, string path)
+    {
+        var config = DefaultConfig.Create() with
+        {
+            General = new GeneralSettings { UiLanguage = uiLanguage, Overlay = new OverlaySettings { Opacity = opacity } },
+        };
+
+        Assert.Equal(path, Assert.Single(ConfigValidator.Validate(config)).Path);
+    }
 }

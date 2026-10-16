@@ -21,6 +21,16 @@ public static class ConfigValidator
             Error(issues, "general.pasteDelayMs", "must be between 0 and 5000");
         }
 
+        if (config.General.Overlay.Opacity is < 0.3 or > 1.0)
+        {
+            Error(issues, "general.overlay.opacity", "must be between 0.3 and 1.0");
+        }
+
+        if (config.General.UiLanguage is not (null or "en" or "uk"))
+        {
+            Error(issues, "general.uiLanguage", $"'{config.General.UiLanguage}' is not a UI language; use \"en\" or \"uk\", or leave it out to follow the system");
+        }
+
         foreach (var (id, stt) in config.Stt)
         {
             ValidateStt(issues, $"stt.{id}", stt);

@@ -179,4 +179,17 @@ public class ConfigStoreTests
 
         public void Apply(JsonObject root) => root["general"]!["historySize"] = 50;
     }
+
+    [Fact]
+    public void OverlaySettingsDefaultWhenMissingAndKeepWhatIsGiven()
+    {
+        var config = ConfigStore.Parse("""{ "general": { "overlay": { "palette": "mist", "opacity": 0.6 } } }""");
+
+        Assert.Equal(OverlayPalette.Mist, config.General.Overlay.Palette);
+        Assert.Equal(0.6, config.General.Overlay.Opacity);
+        Assert.True(config.General.Overlay.Enabled);
+        Assert.Equal(OverlayPosition.Bottom, config.General.Overlay.Position);
+        Assert.Equal(OverlaySize.Medium, config.General.Overlay.Size);
+        Assert.Contains("\"palette\": \"mist\"", ConfigStore.Serialize(config));
+    }
 }
