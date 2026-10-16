@@ -24,6 +24,9 @@ public sealed class AppPaths
 
     public string HistoryFile => Path.Combine(DataDirectory, "history.jsonl");
 
+    /// <summary>Downloads that dictum-gui has not finished yet, so a restart continues them.</summary>
+    public string DownloadsFile => Path.Combine(DataDirectory, "downloads.json");
+
     public string LogsDirectory => Path.Combine(DataDirectory, "logs");
 
     /// <summary>Resolves a model reference: absolute paths are kept, bare names live in <see cref="ModelsDirectory"/>.</summary>
