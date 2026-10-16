@@ -31,7 +31,10 @@ public sealed class DownloadQueue(FileDownloader downloader, AppPaths paths, Cat
     private readonly HashSet<string> _cancelled = new(StringComparer.Ordinal);
     private CancellationTokenSource? _current;
     private Task _worker = Task.CompletedTask;
+
+    // The user's pause, saved and restored; closing the app is not a pause, so a restart continues the downloads.
     private bool _paused;
+    private bool _disposing;
 
     /// <summary>Raised on a worker thread after every change of one item.</summary>
     public event Action<QueuedDownload>? Changed;
@@ -167,7 +170,17 @@ public sealed class DownloadQueue(FileDownloader downloader, AppPaths paths, Cat
             return;
         }
 
-        var saved = JsonSerializer.Deserialize(File.ReadAllText(paths.DownloadsFile), DownloadQueueJsonContext.Default.SavedDownloads);
+        SavedDownloads? saved;
+        try
+        {
+            saved = JsonSerializer.Deserialize(File.ReadAllText(paths.DownloadsFile), DownloadQueueJsonContext.Default.SavedDownloads);
+        }
+        catch (JsonException)
+        {
+            // A damaged file must not stop the app from starting; the user can start the downloads again.
+            return;
+        }
+
         if (saved is null)
         {
             return;
@@ -208,7 +221,7 @@ public sealed class DownloadQueue(FileDownloader downloader, AppPaths paths, Cat
         Task worker;
         lock (_gate)
         {
-            _paused = true;
+            _disposing = true;
             _current?.Cancel();
             worker = _worker;
         }
@@ -220,7 +233,7 @@ public sealed class DownloadQueue(FileDownloader downloader, AppPaths paths, Cat
     {
         lock (_gate)
         {
-            if (_worker.IsCompleted && !_paused)
+            if (_worker.IsCompleted && !_paused && !_disposing)
             {
                 _worker = Task.Run(RunAsync);
             }
@@ -236,7 +249,7 @@ public sealed class DownloadQueue(FileDownloader downloader, AppPaths paths, Cat
             lock (_gate)
             {
                 var index = _items.FindIndex(i => i.State == DownloadState.Queued);
-                if (_paused || index < 0)
+                if (_paused || _disposing || index < 0)
                 {
                     return;
                 }
@@ -262,7 +275,7 @@ public sealed class DownloadQueue(FileDownloader downloader, AppPaths paths, Cat
             }
             catch (OperationCanceledException) when (cts.IsCancellationRequested)
             {
-                Update(entry.Id, i => i with { State = DownloadState.Paused, Bytes = PartialBytes(entry) });
+                Update(entry.Id, i => i with { State = _paused ? DownloadState.Paused : DownloadState.Queued, Bytes = PartialBytes(entry) });
             }
             catch (Exception ex) when (ex is DownloadException or IOException or HttpRequestException)
             {

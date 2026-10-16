@@ -1,5 +1,6 @@
 using System.Net;
 using System.Security.Cryptography;
+using System.Text.Json;
 using Dictum.Setup;
 
 namespace Dictum.Core.Tests.Setup;
@@ -152,6 +153,62 @@ public class DownloadQueueTests : IDisposable
         await queue.WhenIdleAsync(TestContext.Current.CancellationToken);
 
         Assert.True(File.Exists(Paths.DownloadsFile));
+    }
+
+    [Fact(Timeout = 10_000)]
+    public async Task ClosingTheAppMidDownloadContinuesItOnTheNextStart()
+    {
+        var stalling = new StallingStream(DataA[..1000]);
+        var http = new FakeHttpHandler().Respond(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stalling) });
+        var queue = Queue(http);
+        queue.Enqueue([TestCatalog().Get("a")]);
+        await stalling.Drained.WaitAsync(TestContext.Current.CancellationToken);
+
+        await queue.DisposeAsync();
+
+        using (var saved = JsonDocument.Parse(File.ReadAllText(Paths.DownloadsFile)))
+        {
+            Assert.False(saved.RootElement.GetProperty("paused").GetBoolean());
+            Assert.Equal("a", saved.RootElement.GetProperty("ids")[0].GetString());
+        }
+
+        var next = new FakeHttpHandler().Respond(_ => new HttpResponseMessage(HttpStatusCode.PartialContent) { Content = new ByteArrayContent(DataA[1000..]) });
+        await using var restarted = Queue(next);
+        restarted.Restore();
+        await restarted.WhenIdleAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(DataA, File.ReadAllBytes(Paths.ResolveModel("a.bin")));
+    }
+
+    [Fact(Timeout = 10_000)]
+    public async Task PauseThenAnImmediateResumeStillFinishesTheDownload()
+    {
+        var stalling = new StallingStream(DataA[..1000]);
+        var http = new FakeHttpHandler()
+            .Respond(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(stalling) })
+            .Respond(_ => new HttpResponseMessage(HttpStatusCode.PartialContent) { Content = new ByteArrayContent(DataA[1000..]) });
+        await using var queue = Queue(http);
+        queue.Enqueue([TestCatalog().Get("a")]);
+        await stalling.Drained.WaitAsync(TestContext.Current.CancellationToken);
+
+        queue.Pause();
+        queue.Resume();
+        await queue.WhenIdleAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(DownloadState.Done, queue.Items[0].State);
+        Assert.False(queue.IsPaused);
+    }
+
+    [Fact]
+    public async Task AMalformedQueueFileIsIgnored()
+    {
+        Directory.CreateDirectory(Paths.DataDirectory);
+        File.WriteAllText(Paths.DownloadsFile, "{ not json");
+        await using var queue = Queue(new FakeHttpHandler());
+
+        queue.Restore();
+
+        Assert.Empty(queue.Items);
     }
 
     private static HttpResponseMessage Ok(byte[] data) => new(HttpStatusCode.OK) { Content = new ByteArrayContent(data) };
