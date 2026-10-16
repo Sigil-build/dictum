@@ -44,6 +44,33 @@ public sealed class IpcEventHub
         }
     }
 
+    /// <summary>Waits until every subscriber has been sent everything published so far; false when time ran out.</summary>
+    /// <remarks>The daemon calls this after announcing that it stops, so the announcement reaches clients before the socket closes.</remarks>
+    public async Task<bool> WhenDeliveredAsync(TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (true)
+        {
+            IpcSubscriber[] targets;
+            lock (_gate)
+            {
+                targets = [.. _subscribers];
+            }
+
+            if (targets.All(t => t.IsIdle))
+            {
+                return true;
+            }
+
+            if (DateTime.UtcNow >= deadline)
+            {
+                return false;
+            }
+
+            await Task.Delay(10).ConfigureAwait(false);
+        }
+    }
+
     internal void Remove(IpcSubscriber subscriber)
     {
         lock (_gate)
@@ -64,10 +91,14 @@ public sealed class IpcSubscriber : IDisposable
     private readonly SemaphoreSlim _signal = new(0, 1);
     private IpcEvent? _frame;
     private int _queued;
+    private int _inFlight;
 
     internal IpcSubscriber(IpcEventHub hub) => _hub = hub;
 
     public bool Overflowed => Volatile.Read(ref _queued) > MaxQueued;
+
+    /// <summary>Everything posted so far has been taken and written to the client.</summary>
+    public bool IsIdle => Volatile.Read(ref _queued) == 0 && Volatile.Read(ref _frame) is null && Volatile.Read(ref _inFlight) == 0;
 
     public void Post(IpcEvent message)
     {
@@ -106,8 +137,12 @@ public sealed class IpcSubscriber : IDisposable
             batch.Add(frame);
         }
 
+        Volatile.Write(ref _inFlight, batch.Count > 0 ? 1 : 0);
         return batch;
     }
+
+    /// <summary>Called by the writer once the last batch from <see cref="NextAsync"/> went out.</summary>
+    public void Written() => Volatile.Write(ref _inFlight, 0);
 
     public void Dispose() => _hub.Remove(this);
 }

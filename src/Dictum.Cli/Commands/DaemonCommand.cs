@@ -81,6 +81,7 @@ internal static class DaemonCommand
             await Task.WhenAny(Task.Delay(Timeout.Infinite, token), terminated.Task, daemon.ShutdownRequested).ConfigureAwait(false);
 
             log.Info("Daemon stopping");
+            await daemon.AnnounceStoppingAsync(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
             return ExitCodes.Success;
         }, consoleLevel: LogLevel.Info));
 

@@ -319,6 +319,7 @@ public sealed class IpcServer : IAsyncDisposable
                 try
                 {
                     await stream.WriteAsync(Encoding.UTF8.GetBytes(text.ToString()), write.Token).ConfigureAwait(false);
+                    subscriber.Written();
                 }
                 catch (OperationCanceledException) when (!closed.IsCancellationRequested)
                 {

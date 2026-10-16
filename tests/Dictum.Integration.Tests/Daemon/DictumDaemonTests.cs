@@ -521,6 +521,20 @@ public class DictumDaemonTests
         Assert.Equal("daemon", Assert.Single(response.Checks!).Name);
     }
 
+    [Fact]
+    public async Task StoppingIsAnnouncedOnceWithTheReason()
+    {
+        var daemon = await StartAsync(Config());
+        using var subscriber = _events.Subscribe();
+        await daemon.HandleAsync(new IpcRequest("shutdown"), _ct);
+
+        await daemon.AnnounceStoppingAsync(TimeSpan.FromMilliseconds(50));
+        await daemon.DisposeAsync();
+        var events = await DrainAsync(subscriber);
+
+        Assert.Equal("shutdown", Assert.Single(events, e => e.Event == "stopping").Reason);
+    }
+
     private async Task<List<IpcEvent>> CollectAsync(IpcSubscriber subscriber, Func<List<IpcEvent>, bool> until)
     {
         var events = new List<IpcEvent>();

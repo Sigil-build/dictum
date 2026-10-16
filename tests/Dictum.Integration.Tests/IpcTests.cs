@@ -157,5 +157,27 @@ public class IpcTests : IDisposable
         }
     }
 
+    [Fact(Timeout = 10_000)]
+    public async Task EventsDeliveredBeforeDisposeReachTheClient()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var hub = new IpcEventHub();
+        var server = new IpcServer(SocketPath, NullLog.Instance, hub);
+        await server.StartAsync((_, _) => Task.FromResult(IpcResponse.Success(Status("Idle"))), ct);
+        await using var subscription = await new IpcClient(SocketPath).SubscribeAsync(ct);
+
+        hub.Publish(IpcEvent.Stopping("shutdown"));
+        Assert.True(await hub.WhenDeliveredAsync(TimeSpan.FromSeconds(2)));
+        await server.DisposeAsync();
+
+        var events = new List<IpcEvent>();
+        await foreach (var e in subscription.ReadEventsAsync(ct))
+        {
+            events.Add(e);
+        }
+
+        Assert.Equal(("stopping", "shutdown"), (events.Single().Event, events.Single().Reason));
+    }
+
     private static DaemonStatus Status(string state) => new(state, null, [], "test", "test", Environment.ProcessId);
 }

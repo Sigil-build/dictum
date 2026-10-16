@@ -44,6 +44,7 @@ public sealed class DictumDaemon : IAsyncDisposable
     private bool _monitoring;
     private DateTimeOffset _monitorUntil;
     private bool _testing;
+    private bool _stoppingAnnounced;
 
     public DictumDaemon(
         DictumConfig config,
@@ -74,6 +75,22 @@ public sealed class DictumDaemon : IAsyncDisposable
     public Func<CancellationToken, Task>? ReloadHandler { get; set; }
 
     public IDictationEngine Engine => _engine;
+
+    /// <summary>
+    /// Tells subscribers that the daemon stops, and waits until they have been sent it. Call before the IPC server is
+    /// disposed: a client that sees the socket close without this event takes it for a crash and restarts the daemon.
+    /// </summary>
+    public async Task AnnounceStoppingAsync(TimeSpan timeout)
+    {
+        if (_stoppingAnnounced)
+        {
+            return;
+        }
+
+        _stoppingAnnounced = true;
+        _events.Publish(IpcEvent.Stopping(_shutdown.Task.IsCompleted ? "shutdown" : "exit"));
+        await _events.WhenDeliveredAsync(timeout).ConfigureAwait(false);
+    }
 
     public IReadOnlyList<ConfigIssue> ConfigWarnings => _configWarnings;
 
@@ -238,7 +255,12 @@ public sealed class DictumDaemon : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        _events.Publish(IpcEvent.Stopping(_shutdown.Task.IsCompleted ? "shutdown" : "exit"));
+        if (!_stoppingAnnounced)
+        {
+            _stoppingAnnounced = true;
+            _events.Publish(IpcEvent.Stopping(_shutdown.Task.IsCompleted ? "shutdown" : "exit"));
+        }
+
         await _stopping.CancelAsync().ConfigureAwait(false);
         if (_hotkeys is not null)
         {

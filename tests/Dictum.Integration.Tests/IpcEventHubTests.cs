@@ -54,4 +54,19 @@ public class IpcEventHubTests
 
         Assert.Equal(0, hub.SubscriberCount);
     }
+
+    [Fact]
+    public async Task WhenDeliveredWaitsUntilTheWriterHasSentEverything()
+    {
+        var hub = new IpcEventHub();
+        using var subscriber = hub.Subscribe();
+        hub.Publish(IpcEvent.Stopping("shutdown"));
+
+        Assert.False(await hub.WhenDeliveredAsync(TimeSpan.FromMilliseconds(50)));
+        await subscriber.NextAsync(_ct);
+        Assert.False(await hub.WhenDeliveredAsync(TimeSpan.FromMilliseconds(50)));
+        subscriber.Written();
+
+        Assert.True(await hub.WhenDeliveredAsync(TimeSpan.FromMilliseconds(50)));
+    }
 }
