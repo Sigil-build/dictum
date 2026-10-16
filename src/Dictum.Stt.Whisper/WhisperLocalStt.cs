@@ -101,7 +101,7 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
             if (samples.Length < AudioClip.WhisperSampleRate / 2)
             {
                 log.Info("VAD found no speech");
-                return new Transcript(string.Empty, request.Language, watch.Elapsed, LoadedRuntime);
+                return new Transcript(string.Empty, request.Language, watch.Elapsed, LoadedRuntime, Path.GetFileName(config.Model));
             }
         }
 
@@ -141,7 +141,7 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
         }
 
         log.Debug($"Whisper '{id}' ({LoadedRuntime}) took {watch.ElapsedMilliseconds} ms for {clip.Duration.TotalSeconds:F1} s");
-        return new Transcript(text.ToString().Trim(), language is null or "auto" ? detected : language, watch.Elapsed, LoadedRuntime);
+        return new Transcript(text.ToString().Trim(), language is null or "auto" ? detected : language, watch.Elapsed, LoadedRuntime, Path.GetFileName(config.Model));
     }
 
     private static readonly Lazy<HashSet<string>> Supported = new(() => [.. WhisperFactory.GetSupportedLanguages()]);

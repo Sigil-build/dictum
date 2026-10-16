@@ -234,6 +234,19 @@ public class DictationPipelineTests : IDisposable
         Assert.Equal(["Привіт."], output.Written);
     }
 
+    [Fact]
+    public async Task HistoryKeepsTheBackendAndTheTranscribeTime()
+    {
+        var pipeline = new DictationPipeline(new FakeAudioSource(Clips.Seconds(1)), _history, NullLog.Instance);
+
+        var result = await pipeline.RunAsync(Clips.Seconds(1), Profile(new FakeStt("привіт")), null, _ct);
+
+        var entry = Assert.Single(_history.ReadLast(10));
+        Assert.Equal("fake", entry.Backend);
+        Assert.True(entry.TranscribeMs >= 0);
+        Assert.Equal(entry.Model, result.Model);
+    }
+
     private static DictationProfile Profile(ISpeechToText stt, params ITextProcessor[] processors) =>
         new("p", stt, new SttRequest("uk", null), processors);
 }

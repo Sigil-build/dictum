@@ -34,7 +34,8 @@ public sealed record DictationResult(
     TimeSpan AudioDuration,
     IReadOnlyList<StageTiming> Stages,
     string? Backend = null,
-    bool Skipped = false);
+    bool Skipped = false,
+    string? Model = null);
 
 /// <summary>Where the final text goes: stdout now, clipboard or simulated paste later.</summary>
 public interface ITextOutput

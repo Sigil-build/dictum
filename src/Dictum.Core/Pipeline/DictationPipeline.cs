@@ -168,10 +168,14 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
                 stages.Add(new StageTiming(stage, watch.Elapsed));
             }
 
-            var result = new DictationResult(profile.Id, profile.Stt.Id, rawText, text, language, clip.Duration, stages, transcript.Backend);
+            var result = new DictationResult(profile.Id, profile.Stt.Id, rawText, text, language, clip.Duration, stages, transcript.Backend, Model: transcript.Model);
             if (text.Length > 0)
             {
-                history?.Append(new HistoryEntry(DateTimeOffset.Now, profile.Id, profile.Stt.Id, rawText, text, language, clip.Duration.TotalSeconds));
+                history?.Append(new HistoryEntry(
+                    DateTimeOffset.Now, profile.Id, profile.Stt.Id, rawText, text, language, clip.Duration.TotalSeconds,
+                    Model: transcript.Model,
+                    Backend: transcript.Backend,
+                    TranscribeMs: (long?)stages.FirstOrDefault(s => s.Stage == "transcribe")?.Elapsed.TotalMilliseconds));
             }
 
             return result;

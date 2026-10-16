@@ -51,7 +51,7 @@ public sealed class OpenAiCompatibleStt(
         }
 
         log.Debug($"STT '{id}' answered in {watch.ElapsedMilliseconds} ms");
-        return new Transcript(parsed?.Text ?? string.Empty, parsed?.Language ?? request.Language, watch.Elapsed, config.Model);
+        return new Transcript(parsed?.Text ?? string.Empty, parsed?.Language ?? request.Language, watch.Elapsed, config.Model, config.Model);
     }
 
     public async Task<HealthStatus> CheckAsync(CancellationToken ct)
