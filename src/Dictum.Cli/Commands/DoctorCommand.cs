@@ -1,69 +1,50 @@
 using System.CommandLine;
 using System.Runtime.InteropServices;
 using System.Text.Json;
-using Dictum.Audio.PortAudio;
 using Dictum.Cli.Output;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core;
+using Dictum.Host;
+using Dictum.Host.Diagnostics;
 using Dictum.Host.Ipc;
-using Dictum.Setup;
 
 namespace Dictum.Cli.Commands;
 
 internal static class DoctorCommand
 {
-    private static readonly TimeSpan CheckTimeout = TimeSpan.FromSeconds(15);
-
     public static Command Create()
     {
         var json = new Option<bool>("--json") { Description = "Print JSON" };
         var command = new Command("doctor", "Check config, microphone and every provider, with hints for anything broken") { json };
         command.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, async (context, token) =>
         {
-            var checks = new List<CheckJson>();
-            void Add(string name, HealthStatus status) => checks.Add(new CheckJson(name, status.Level, status.Detail, status.Hint));
-
             DictumConfig? config = null;
+            ConfigException? error = null;
+            IReadOnlyList<ConfigIssue> warnings = [];
             try
             {
                 config = context.TryLoadConfig();
-                Add("config", config is null
-                    ? HealthStatus.Warning($"No config at {context.ConfigPath}", "Run 'dictum init'.")
-                    : HealthStatus.Ok($"{context.ConfigPath} ({config.Stt.Count} STT, {config.Processors.Count} processors, {config.Profiles.Count} profiles)"));
+                warnings = config is null ? [] : context.Store.LoadWithIssues().Warnings;
             }
             catch (ConfigException ex)
             {
-                Add("config", HealthStatus.Error(
-                    $"{ex.Message} {string.Join("; ", ex.Issues)}",
-                    "Fix the file, then run 'dictum config validate'."));
+                error = ex;
             }
 
-            Add("models", CheckModels(config, context.Paths));
-            CheckAudio(context, Add);
-
-            foreach (var check in await context.Platform.DiagnoseAsync(token).ConfigureAwait(false))
-            {
-                Add(check.Name, check.Status);
-            }
-
-            Add("daemon", await CheckDaemonAsync(context, token).ConfigureAwait(false));
-
-            if (config is not null)
-            {
-                var host = context.Host();
-                foreach (var id in config.Stt.Keys)
-                {
-                    Add($"stt:{id}", await CheckAsync(() => host.GetStt(id).CheckAsync(token), token).ConfigureAwait(false));
-                }
-
-                foreach (var id in config.Processors.Keys)
-                {
-                    if (host.GetProcessor(id) is IHealthCheck check)
-                    {
-                        Add($"processor:{id}", await CheckAsync(() => check.CheckAsync(token), token).ConfigureAwait(false));
-                    }
-                }            }
+            var results = await DoctorChecks.RunAsync(new DoctorInputs(
+                context.ConfigPath,
+                config,
+                error,
+                warnings,
+                context.Paths,
+                context.Platform,
+                HardwareProbe.Detect(context.Paths),
+                () => context.Host().Audio,
+                id => context.Host().GetStt(id),
+                id => context.Host().GetProcessor(id),
+                c => CheckDaemonAsync(context, c)), token).ConfigureAwait(false);
+            var checks = results.Select(c => new CheckJson(c.Name, c.Status.Level, c.Status.Detail, c.Status.Hint)).ToList();
 
             if (parse.GetValue(json))
             {
@@ -89,47 +70,6 @@ internal static class DoctorCommand
         return command;
     }
 
-    private static HealthStatus CheckModels(DictumConfig? config, AppPaths paths)
-    {
-        var needed = (config is null ? [] : config.Stt.Values.OfType<WhisperLocalSttConfig>())
-            .SelectMany(w => w.Vad ? new[] { w.Model, w.VadModel } : [w.Model])
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        var missing = needed.Where(m => !File.Exists(paths.ResolveModel(m))).ToList();
-        if (missing.Count == 0)
-        {
-            return HealthStatus.Ok($"{paths.ModelsDirectory} ({needed.Count} configured file(s) present)");
-        }
-
-        var pulls = missing.Select(m => Catalog.BuiltIn.ForFile(m)?.Id).OfType<string>().ToList();
-        return HealthStatus.Error(
-            $"Missing in {paths.ModelsDirectory}: {string.Join(", ", missing)}",
-            pulls.Count == missing.Count ? $"Run 'dictum models pull {string.Join(' ', pulls)}'." : "Run 'dictum init', or copy the files there.");
-    }
-
-    private static void CheckAudio(CliContext context, Action<string, HealthStatus> add)
-    {
-        if (Environment.GetEnvironmentVariable("DICTUM_AUDIO_FILE") is { Length: > 0 } file)
-        {
-            add("microphone", HealthStatus.Warning($"Replaced by DICTUM_AUDIO_FILE={file}", "Unset DICTUM_AUDIO_FILE to record from the microphone."));
-            return;
-        }
-
-        try
-        {
-            var devices = context.Host().Audio.ListDevices();
-            add("audio library", HealthStatus.Ok($"{PortAudioLibrary.Version} ({PortAudioLibrary.LoadedFrom})"));
-            var chosen = devices.FirstOrDefault(d => d.IsDefault) ?? devices.FirstOrDefault();
-            add("microphone", chosen is null
-                ? HealthStatus.Warning("No microphone found", "Connect one, or check that the OS allows microphone access.")
-                : HealthStatus.Ok($"{chosen.Name} ({chosen.HostApi}, {chosen.DefaultSampleRate:F0} Hz); {devices.Count} input device(s)"));
-        }
-        catch (AudioDeviceException ex)
-        {
-            add("audio library", HealthStatus.Error(ex.Message, ex.Hint));
-        }
-    }
-
     private static async Task<HealthStatus> CheckDaemonAsync(CliContext context, CancellationToken ct)
     {
         try
@@ -142,22 +82,6 @@ internal static class DoctorCommand
         catch (DaemonNotRunningException)
         {
             return HealthStatus.Warning("not running", "Start it with 'dictum daemon', or at login with 'dictum daemon --install-autostart'.");
-        }
-    }
-
-    private static async Task<HealthStatus> CheckAsync(Func<Task<HealthStatus>> check, CancellationToken ct)
-    {
-        try
-        {
-            var task = check();
-            var finished = await Task.WhenAny(task, Task.Delay(CheckTimeout, ct)).ConfigureAwait(false);
-            return finished == task
-                ? await task.ConfigureAwait(false)
-                : HealthStatus.Error($"No answer within {CheckTimeout.TotalSeconds:F0} s");
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
-        {
-            return HealthStatus.Error(ex.Message);
         }
     }
 

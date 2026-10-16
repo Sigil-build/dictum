@@ -3,6 +3,8 @@ using System.Runtime.InteropServices;
 using Dictum.Audio.PortAudio;
 using Dictum.Core.Diagnostics;
 using Dictum.Host.Daemon;
+using Dictum.Host.Diagnostics;
+using Dictum.Host;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
 
@@ -53,6 +55,20 @@ internal static class DaemonCommand
                 context.UseConfig(fresh);
                 await daemon.ApplyConfigAsync(fresh, c, freshWarnings).ConfigureAwait(false);
             };
+
+            // The daemon's own checks use its live engine: the Whisper model is already loaded, so the stt rows are cheap.
+            daemon.DoctorHandler = c => DoctorChecks.RunAsync(new DoctorInputs(
+                context.ConfigPath,
+                daemon.Config,
+                null,
+                daemon.ConfigWarnings,
+                context.Paths,
+                platform,
+                HardwareProbe.Detect(context.Paths),
+                () => daemon.Engine.Audio,
+                id => daemon.Engine.GetStt(id),
+                id => daemon.Engine.GetProcessor(id),
+                _ => Task.FromResult(HealthStatus.Ok($"running (pid {Environment.ProcessId}), answering this check"))), c);
 
             PrintSummary(context, daemon.Status());
 

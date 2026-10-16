@@ -509,6 +509,18 @@ public class DictumDaemonTests
         Assert.False((await daemon.HandleAsync(new IpcRequest("test-stt", Stt: "s", Seconds: 1), _ct)).Ok);
     }
 
+    [Fact]
+    public async Task DoctorAnswersWithTheHandlersChecksAndFailsWithoutOne()
+    {
+        await using var daemon = await StartAsync(Config());
+        Assert.False((await daemon.HandleAsync(new IpcRequest("doctor"), _ct)).Ok);
+
+        daemon.DoctorHandler = _ => Task.FromResult<IReadOnlyList<PlatformCheck>>([new PlatformCheck("daemon", HealthStatus.Ok("this process"))]);
+        var response = await daemon.HandleAsync(new IpcRequest("doctor"), _ct);
+
+        Assert.Equal("daemon", Assert.Single(response.Checks!).Name);
+    }
+
     private async Task<List<IpcEvent>> CollectAsync(IpcSubscriber subscriber, Func<List<IpcEvent>, bool> until)
     {
         var events = new List<IpcEvent>();

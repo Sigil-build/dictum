@@ -3,6 +3,7 @@ using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Pipeline;
+using Dictum.Core.Processing;
 using Dictum.Core.Stt;
 using Dictum.Host.Daemon;
 using Dictum.Platform;
@@ -96,6 +97,8 @@ internal sealed class FakeEngine : IDictationEngine
         new(profileId, _stt, SttRequest.ForSetting(Config.Profiles.First(p => p.Id == profileId).Language, null)!, []);
 
     public Task WarmUpAsync(CancellationToken ct) => Task.CompletedTask;
+
+    public ITextProcessor GetProcessor(string id) => throw new ConfigException($"Unknown processor '{id}'.");
 
     public ISpeechToText GetStt(string id) =>
         Config.Stt.ContainsKey(id) ? _stt : throw new ConfigException($"Unknown STT provider '{id}'.");

@@ -73,6 +73,13 @@ public sealed class DictumDaemon : IAsyncDisposable
     /// <summary>Re-reads the config for the <c>reload</c> command; set by the host that owns the config file.</summary>
     public Func<CancellationToken, Task>? ReloadHandler { get; set; }
 
+    public IDictationEngine Engine => _engine;
+
+    public IReadOnlyList<ConfigIssue> ConfigWarnings => _configWarnings;
+
+    /// <summary>Runs the doctor checks for the <c>doctor</c> command; set by the host, which knows the paths.</summary>
+    public Func<CancellationToken, Task<IReadOnlyList<PlatformCheck>>>? DoctorHandler { get; set; }
+
     public PipelineState State => _engine.Pipeline.State;
 
     /// <summary>Raised after every state change, for tests and status displays.</summary>
@@ -181,6 +188,13 @@ public sealed class DictumDaemon : IAsyncDisposable
                     break;
                 case "devices":
                     return new IpcResponse(true, Status: Status(), Devices: _engine.Audio.ListDevices());
+                case "doctor":
+                    if (DoctorHandler is null)
+                    {
+                        return IpcResponse.Failure("This daemon cannot run the checks.");
+                    }
+
+                    return new IpcResponse(true, Status: Status(), Checks: await DoctorHandler(ct).ConfigureAwait(false));
                 case "test-stt":
                     return new IpcResponse(true, Status: Status(), Test: await TestSttAsync(request, ct).ConfigureAwait(false));
                 case "monitor-start":
