@@ -60,9 +60,17 @@ public static class ConfigValidator
             {
                 Error(issues, $"{path}.language", $"'{profile.Language}' is not an ISO 639-1 code, a comma-separated list of codes, or 'auto'");
             }
-            else if (languages.Count > 1 && config.Stt.GetValueOrDefault(profile.Stt) is OpenAiCompatibleSttConfig)
+            else
             {
-                Warning(issues, $"{path}.language", $"'{profile.Stt}' takes a single language, so with a list the server detects any language");
+                if (languages.Count > 1 && config.Stt.GetValueOrDefault(profile.Stt) is OpenAiCompatibleSttConfig)
+                {
+                    Warning(issues, $"{path}.language", $"'{profile.Stt}' takes a single language, so with a list the server detects any language");
+                }
+
+                if (LanguageList.SimilarWarning(languages) is { } similar)
+                {
+                    Warning(issues, $"{path}.language", similar);
+                }
             }
 
             ValidateVocabulary(issues, path, profile);

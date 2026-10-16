@@ -36,4 +36,20 @@ public class LanguageListTests
     [InlineData("auto", "auto")]
     public void FormatsTheCanonicalSetting(string setting, string expected) =>
         Assert.Equal(expected, LanguageList.Format(LanguageList.Parse(setting)!));
+
+    [Theory]
+    [InlineData("uk, be", "uk/be")]
+    [InlineData("uk, en", "")]
+    [InlineData("uk, be, ru", "uk/be uk/ru be/ru")]
+    [InlineData("en, pl, cs", "pl/cs")]
+    [InlineData("uk", "")]
+    public void FindsLanguagesThatSoundAlike(string setting, string expected) =>
+        Assert.Equal(expected, string.Join(' ', LanguageList.SimilarPairs(LanguageList.Parse(setting)!).Select(p => $"{p.First}/{p.Second}")));
+
+    [Fact]
+    public void TheWarningNamesTheCodesThatSoundAlike()
+    {
+        Assert.Null(LanguageList.SimilarWarning(["uk", "en"]));
+        Assert.Contains("'uk' and 'be'", LanguageList.SimilarWarning(["uk", "be"]));
+    }
 }

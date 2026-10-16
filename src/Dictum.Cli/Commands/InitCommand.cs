@@ -63,6 +63,11 @@ internal static class InitCommand
                 throw new ConfigException($"'{languageAnswer}' is not an ISO 639-1 language code, a comma-separated list of codes, or 'auto'.");
             }
 
+            if (LanguageList.Parse(languageAnswer) is { } codes && LanguageList.SimilarWarning(codes) is { } similar)
+            {
+                context.Error.WriteLine($"warning: {similar}");
+            }
+
             // 2. Speech model
             var recommended = SetupPlanner.RecommendSpeechModel(hardware);
             var sttAnswer = parse.GetValue(stt)

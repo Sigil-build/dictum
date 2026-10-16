@@ -187,4 +187,16 @@ public class ConfigValidatorTests
 
         Assert.Empty(ConfigValidator.Validate(config));
     }
+
+    [Fact]
+    public void ALanguageListWithLanguagesThatSoundAlikeIsAWarning()
+    {
+        var config = DefaultConfig.Create();
+        config.Profiles[0] = config.Profiles[0] with { Language = "uk, be" };
+
+        var issue = Assert.Single(ConfigValidator.Validate(config));
+
+        Assert.Equal((ConfigIssueSeverity.Warning, "profiles[0].language"), (issue.Severity, issue.Path));
+        Assert.Contains("'uk' and 'be'", issue.Message);
+    }
 }
