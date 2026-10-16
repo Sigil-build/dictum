@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Desktop app logic and views. UI code runs in Avalonia's headless platform with Skia, through AvaloniaFixture. -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/Dictum.App/Dictum.App.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Headless" />
+    <PackageReference Include="Avalonia.Skia" />
+  </ItemGroup>
+
+</Project>

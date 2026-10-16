@@ -8,6 +8,8 @@
     <!-- Culture data is needed for Ukrainian. -->
     <InvariantGlobalization>false</InvariantGlobalization>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <!-- Keep other languages' package satellites out of the binary; ours are en (neutral) and uk. -->
+    <SatelliteResourceLanguages>en;uk</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,6 +22,18 @@
     <PackageReference Include="Avalonia.Themes.Fluent" />
     <PackageReference Include="Avalonia.Fonts.Inter" />
     <PackageReference Include="CommunityToolkit.Mvvm" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- A public strongly typed class, so compiled XAML can use {x:Static}; generated at build, no designer needed. -->
+    <EmbeddedResource Update="Resources\Strings.resx">
+      <Generator>MSBuild:Compile</Generator>
+      <StronglyTypedFileName>$(IntermediateOutputPath)Strings.Designer.cs</StronglyTypedFileName>
+      <StronglyTypedLanguage>CSharp</StronglyTypedLanguage>
+      <StronglyTypedNamespace>Dictum.App.Resources</StronglyTypedNamespace>
+      <StronglyTypedClassName>Strings</StronglyTypedClassName>
+      <PublicClass>true</PublicClass>
+    </EmbeddedResource>
   </ItemGroup>
 
 </Project>

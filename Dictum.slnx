@@ -15,6 +15,7 @@
     <Project Path="src/Dictum.Stt.Whisper/Dictum.Stt.Whisper.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Dictum.App.Tests/Dictum.App.Tests.csproj" />
     <Project Path="tests/Dictum.Core.Tests/Dictum.Core.Tests.csproj" />
     <Project Path="tests/Dictum.Integration.Tests/Dictum.Integration.Tests.csproj" />
   </Folder>
