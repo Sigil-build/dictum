@@ -47,4 +47,27 @@ public static class TrayGeometry
     /// animation loops without a jump.
     /// </summary>
     public static double DashOffset(int frame) => frame % ProcessingFrames * (DashOn + DashOff) / ProcessingFrames;
+
+    /// <summary>Length of the ring's centre line.</summary>
+    public static double RingLength => 2 * Math.PI * RingRadius;
+
+    /// <summary>
+    /// The processing ring's dashes as arc-length intervals, clockwise from three o'clock, laid out the way an SVG
+    /// circle with <c>stroke-dasharray="7 4.6"</c> and <see cref="DashOffset"/> lays them out: the pattern starts
+    /// <see cref="DashOffset"/> before the start point, and dashes are cut at both ends of the path.
+    /// </summary>
+    public static IReadOnlyList<(double From, double To)> Dashes(int frame)
+    {
+        var dashes = new List<(double From, double To)>();
+        for (var start = -DashOffset(frame); start < RingLength; start += DashOn + DashOff)
+        {
+            var (from, to) = (Math.Max(start, 0), Math.Min(start + DashOn, RingLength));
+            if (to > from)
+            {
+                dashes.Add((from, to));
+            }
+        }
+
+        return dashes;
+    }
 }
