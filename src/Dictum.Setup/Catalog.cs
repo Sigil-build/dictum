@@ -32,6 +32,7 @@ public sealed record CatalogLicence(string Name, string Url, string? Notice = nu
 /// <param name="File">File name in the models directory; the config refers to models by this name.</param>
 /// <param name="Url">Download URL pinned to a commit, so the file behind it never changes.</param>
 /// <param name="Languages">ISO 639-1 codes the model understands, or "*" for a multilingual model.</param>
+/// <param name="RelativeCost">Encoder work relative to Whisper tiny (1), for speed estimates; null for non-speech files.</param>
 /// <param name="Hidden">Not offered by <c>dictum init</c> or listed by default; still downloadable by id.</param>
 public sealed record CatalogEntry(
     string Id,
@@ -44,7 +45,8 @@ public sealed record CatalogEntry(
     CatalogLicence Licence,
     IReadOnlyList<string> Languages,
     CatalogTier? Tier = null,
-    bool Hidden = false)
+    bool Hidden = false,
+    double? RelativeCost = null)
 {
     public bool Understands(string? language) =>
         Languages.Contains("*") || (language is not null && Languages.Contains(language));

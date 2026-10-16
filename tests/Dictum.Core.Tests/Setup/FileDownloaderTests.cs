@@ -144,6 +144,17 @@ public class FileDownloaderTests : IDisposable
         Assert.False(File.Exists(Target));
     }
 
+    [Fact]
+    public async Task MatchesAsyncComparesTheFileWithTheCatalogHash()
+    {
+        File.WriteAllBytes(Target, Data);
+        Assert.True(await FileDownloader.MatchesAsync(Entry(), Target, _ct));
+
+        File.WriteAllBytes(Target, [.. Data[..^1], 0]);
+        Assert.False(await FileDownloader.MatchesAsync(Entry(), Target, _ct));
+        Assert.True(File.Exists(Target));
+    }
+
     private static FileDownloader Downloader(FakeHttpHandler http) =>
         new(http.Client(), [TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero]);
 

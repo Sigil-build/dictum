@@ -166,13 +166,19 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
     /// <summary>Transient, so the download is retried and resumes.</summary>
     private IOException Stalled() => new($"no data for {_stallTimeout.TotalSeconds:F0} s");
 
+    /// <summary>Whether the file at <paramref name="path"/> has the catalog's SHA-256; the file is never changed.</summary>
+    public static async Task<bool> MatchesAsync(CatalogEntry entry, string path, CancellationToken ct) =>
+        string.Equals(await HashAsync(path, ct).ConfigureAwait(false), entry.Sha256, StringComparison.OrdinalIgnoreCase);
+
+    private static async Task<string> HashAsync(string path, CancellationToken ct)
+    {
+        await using var stream = File.OpenRead(path);
+        return Convert.ToHexStringLower(await SHA256.HashDataAsync(stream, ct).ConfigureAwait(false));
+    }
+
     private static async Task VerifyAsync(CatalogEntry entry, string partial, CancellationToken ct)
     {
-        string actual;
-        await using (var stream = File.OpenRead(partial))
-        {
-            actual = Convert.ToHexStringLower(await SHA256.HashDataAsync(stream, ct).ConfigureAwait(false));
-        }
+        var actual = await HashAsync(partial, ct).ConfigureAwait(false);
 
         if (!string.Equals(actual, entry.Sha256, StringComparison.OrdinalIgnoreCase))
         {

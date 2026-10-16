@@ -9,6 +9,17 @@ public partial class CatalogTests
     private static readonly Catalog BuiltIn = Catalog.BuiltIn;
 
     [Fact]
+    public void EverySpeechModelHasARelativeCostThatGrowsWithTheModel()
+    {
+        var speech = BuiltIn.Entries.Where(e => e.Kind == CatalogKind.Whisper).ToList();
+
+        Assert.All(speech, e => Assert.True(e.RelativeCost > 0, $"{e.Id} has no relativeCost"));
+        Assert.True(BuiltIn.Get("whisper-small-q8").RelativeCost < BuiltIn.Get("whisper-medium-q8").RelativeCost);
+        Assert.True(BuiltIn.Get("whisper-medium-q8").RelativeCost < BuiltIn.Get("whisper-large-v3-turbo-q8").RelativeCost);
+        Assert.Null(BuiltIn.Get("vad-silero-6.2").RelativeCost);
+    }
+
+    [Fact]
     public void BuiltInCatalogHasSpeechModelsForEveryTierAndOneVadModel()
     {
         Assert.Contains(BuiltIn.Entries, e => e is { Kind: CatalogKind.Whisper, Tier: CatalogTier.Gpu, Hidden: false });
