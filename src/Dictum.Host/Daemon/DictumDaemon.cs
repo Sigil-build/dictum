@@ -37,6 +37,9 @@ public sealed class DictumDaemon : IAsyncDisposable
     private readonly TaskCompletionSource _shutdown = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private bool _paused;
     private string? _selectedProfile;
+    private readonly TimeSpan _monitorLifetime;
+    private bool _monitoring;
+    private DateTimeOffset _monitorUntil;
 
     public DictumDaemon(
         DictumConfig config,
@@ -45,7 +48,8 @@ public sealed class DictumDaemon : IAsyncDisposable
         ISoundPlayer sounds,
         ILog log,
         IpcEventHub? events = null,
-        IReadOnlyList<ConfigIssue>? configWarnings = null)
+        IReadOnlyList<ConfigIssue>? configWarnings = null,
+        TimeSpan? monitorLifetime = null)
     {
         _createEngine = createEngine;
         _platform = platform;
@@ -53,6 +57,7 @@ public sealed class DictumDaemon : IAsyncDisposable
         _log = log;
         _events = events ?? new IpcEventHub();
         _configWarnings = configWarnings ?? [];
+        _monitorLifetime = monitorLifetime ?? TimeSpan.FromSeconds(60);
         _engine = createEngine(config);
     }
 
@@ -95,6 +100,7 @@ public sealed class DictumDaemon : IAsyncDisposable
         IDictationEngine previous;
         try
         {
+            await StopMonitorCoreAsync().ConfigureAwait(false);
             previous = _engine;
             Unsubscribe(previous);
             _engine = _createEngine(config);
@@ -171,6 +177,21 @@ public sealed class DictumDaemon : IAsyncDisposable
                     break;
                 case "devices":
                     return new IpcResponse(true, Status: Status(), Devices: _engine.Audio.ListDevices());
+                case "monitor-start":
+                    await StartMonitorAsync(request.Device, ct).ConfigureAwait(false);
+                    break;
+                case "monitor-stop":
+                    await _gate.WaitAsync(ct).ConfigureAwait(false);
+                    try
+                    {
+                        await StopMonitorCoreAsync().ConfigureAwait(false);
+                    }
+                    finally
+                    {
+                        _gate.Release();
+                    }
+
+                    break;
                 default:
                     return IpcResponse.Failure($"Unknown command '{request.Command}'.");
             }
@@ -206,6 +227,7 @@ public sealed class DictumDaemon : IAsyncDisposable
         }
 
         await CancelAsync().ConfigureAwait(false);
+        await StopMonitorCoreAsync().ConfigureAwait(false);
         await _engine.DisposeAsync().ConfigureAwait(false);
     }
 
@@ -238,6 +260,8 @@ public sealed class DictumDaemon : IAsyncDisposable
             {
                 throw new InvalidOperationException($"Already busy ({State}).");
             }
+
+            await StopMonitorCoreAsync().ConfigureAwait(false);
 
             _activeProfile = profileId;
             _dictation?.Dispose();
@@ -344,6 +368,70 @@ public sealed class DictumDaemon : IAsyncDisposable
         }
     }
 
+    private async Task StartMonitorAsync(string? device, CancellationToken ct)
+    {
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            if (State != PipelineState.Idle)
+            {
+                throw new InvalidOperationException("A dictation is running; the level meter can start when it has finished.");
+            }
+
+            _monitorUntil = DateTimeOffset.UtcNow + _monitorLifetime;
+            if (_monitoring)
+            {
+                return;
+            }
+
+            await _engine.Audio.StartAsync(device ?? Config.General.AudioDevice, ct).ConfigureAwait(false);
+            _monitoring = true;
+        }
+        finally
+        {
+            _gate.Release();
+        }
+
+        _ = Observe(ExpireMonitorAsync());
+    }
+
+    /// <summary>Closes a monitor its client stopped renewing, e.g. after the desktop app crashed.</summary>
+    private async Task ExpireMonitorAsync()
+    {
+        var step = TimeSpan.FromMilliseconds(Math.Clamp(_monitorLifetime.TotalMilliseconds / 4, 20, 1000));
+        while (_monitoring)
+        {
+            await Task.Delay(step, _stopping.Token).ConfigureAwait(false);
+            if (_monitoring && DateTimeOffset.UtcNow >= _monitorUntil)
+            {
+                await _gate.WaitAsync(_stopping.Token).ConfigureAwait(false);
+                try
+                {
+                    if (DateTimeOffset.UtcNow >= _monitorUntil)
+                    {
+                        await StopMonitorCoreAsync().ConfigureAwait(false);
+                    }
+                }
+                finally
+                {
+                    _gate.Release();
+                }
+            }
+        }
+    }
+
+    /// <summary>Call with the gate held.</summary>
+    private async Task StopMonitorCoreAsync()
+    {
+        if (!_monitoring)
+        {
+            return;
+        }
+
+        _monitoring = false;
+        await _engine.Audio.StopAsync(CancellationToken.None).ConfigureAwait(false);
+    }
+
     private async Task RegisterHotkeysAsync(CancellationToken ct)
     {
         var bindings = new List<HotkeyBinding>();
@@ -400,7 +488,7 @@ public sealed class DictumDaemon : IAsyncDisposable
         };
         _frameHandler = frame =>
         {
-            if (State == PipelineState.Recording)
+            if (State == PipelineState.Recording || _monitoring)
             {
                 _events.Publish(IpcEvent.ForFrame(frame));
             }

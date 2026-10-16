@@ -410,6 +410,70 @@ public class DictumDaemonTests
         Assert.Contains("Microphone not found", response.Error);
     }
 
+    [Fact]
+    public async Task MonitorPublishesFramesWhileTheDaemonStaysIdle()
+    {
+        await using var daemon = await StartAsync(Config());
+        using var subscriber = _events.Subscribe();
+        var audio = _engines[^1].Audio;
+
+        Assert.True((await Send(daemon, "monitor-start")).Ok);
+        audio.Raise(new AudioFrame(0.25f, new float[24], TimeSpan.FromSeconds(1)));
+        await CollectAsync(subscriber, e => e.Any(x => x is { Event: "frame", Rms: 0.25f }));
+
+        Assert.Equal((1, PipelineState.Idle), (audio.Starts, daemon.State));
+        await Send(daemon, "monitor-stop");
+        Assert.Equal(1, audio.Stops);
+    }
+
+    [Fact]
+    public async Task MonitorExpiresWithoutRenewal()
+    {
+        await using var daemon = await StartAsync(Config(), monitorLifetime: TimeSpan.FromMilliseconds(200));
+
+        await Send(daemon, "monitor-start");
+
+        await WaitForAsync(() => _engines[^1].Audio.Stops == 1);
+    }
+
+    [Fact]
+    public async Task RenewingKeepsTheMonitorOpen()
+    {
+        await using var daemon = await StartAsync(Config(), monitorLifetime: TimeSpan.FromMilliseconds(400));
+
+        for (var i = 0; i < 6; i++)
+        {
+            await Send(daemon, "monitor-start");
+            await Task.Delay(100, _ct);
+        }
+
+        Assert.Equal((1, 0), (_engines[^1].Audio.Starts, _engines[^1].Audio.Stops));
+    }
+
+    [Fact]
+    public async Task MonitorIsRefusedDuringADictation()
+    {
+        await using var daemon = await StartAsync(Config());
+        await Send(daemon, "start", "uk");
+
+        Assert.False((await Send(daemon, "monitor-start")).Ok);
+    }
+
+    [Fact]
+    public async Task DictationStopsARunningMonitor()
+    {
+        await using var daemon = await StartAsync(Config());
+        await Send(daemon, "monitor-start");
+
+        await Send(daemon, "start", "uk");
+
+        var audio = _engines[^1].Audio;
+        Assert.Equal((2, 1, PipelineState.Recording), (audio.Starts, audio.Stops, daemon.State));
+    }
+
+    private Task<IpcResponse> Send(DictumDaemon daemon, string command, string? profile = null) =>
+        daemon.HandleAsync(new IpcRequest(command, profile), _ct);
+
     private async Task<List<IpcEvent>> CollectAsync(IpcSubscriber subscriber, Func<List<IpcEvent>, bool> until)
     {
         var events = new List<IpcEvent>();
@@ -423,7 +487,7 @@ public class DictumDaemonTests
         return events;
     }
 
-    private async Task<DictumDaemon> StartAsync(DictumConfig config, bool withHotkeys = true)
+    private async Task<DictumDaemon> StartAsync(DictumConfig config, bool withHotkeys = true, TimeSpan? monitorLifetime = null)
     {
         var platform = new PlatformServices(
             "test",
@@ -438,7 +502,7 @@ public class DictumDaemonTests
             var engine = new FakeEngine(c, _stt);
             _engines.Add(engine);
             return engine;
-        }, platform, _sounds, NullLog.Instance, _events);
+        }, platform, _sounds, NullLog.Instance, _events, monitorLifetime: monitorLifetime);
         await daemon.StartAsync(_ct);
         return daemon;
     }
