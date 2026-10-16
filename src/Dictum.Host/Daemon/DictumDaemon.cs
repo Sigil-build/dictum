@@ -1,9 +1,12 @@
+using System.Diagnostics;
+using Dictum.Audio;
 using Dictum.Audio.PortAudio;
-using Dictum.Core.Configuration;
 using Dictum.Core.Audio;
+using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Hotkeys;
 using Dictum.Core.Pipeline;
+using Dictum.Core.Stt;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
 using Dictum.Platform.Hotkeys;
@@ -40,6 +43,7 @@ public sealed class DictumDaemon : IAsyncDisposable
     private readonly TimeSpan _monitorLifetime;
     private bool _monitoring;
     private DateTimeOffset _monitorUntil;
+    private bool _testing;
 
     public DictumDaemon(
         DictumConfig config,
@@ -177,6 +181,8 @@ public sealed class DictumDaemon : IAsyncDisposable
                     break;
                 case "devices":
                     return new IpcResponse(true, Status: Status(), Devices: _engine.Audio.ListDevices());
+                case "test-stt":
+                    return new IpcResponse(true, Status: Status(), Test: await TestSttAsync(request, ct).ConfigureAwait(false));
                 case "monitor-start":
                     await StartMonitorAsync(request.Device, ct).ConfigureAwait(false);
                     break;
@@ -259,6 +265,11 @@ public sealed class DictumDaemon : IAsyncDisposable
             if (State != PipelineState.Idle)
             {
                 throw new InvalidOperationException($"Already busy ({State}).");
+            }
+
+            if (_testing)
+            {
+                throw new InvalidOperationException("A speech provider test is recording; try again in a few seconds.");
             }
 
             await StopMonitorCoreAsync().ConfigureAwait(false);
@@ -366,6 +377,59 @@ public sealed class DictumDaemon : IAsyncDisposable
             _stopInProgress = false;
             Finish(DictationOutcome.Cancelled, null, null);
         }
+    }
+
+    private async Task<SttTestResult> TestSttAsync(IpcRequest request, CancellationToken ct)
+    {
+        var id = request.Stt ?? throw new ConfigException("Name the speech provider to test.");
+        var engine = _engine;
+        var stt = engine.GetStt(id);
+        AudioClip clip;
+        if (request.Sample == true)
+        {
+            clip = LoadSample();
+        }
+        else
+        {
+            await _gate.WaitAsync(ct).ConfigureAwait(false);
+            try
+            {
+                if (State != PipelineState.Idle || _monitoring || _testing)
+                {
+                    throw new InvalidOperationException("Dictum is busy; test the provider when the dictation or level meter has finished.");
+                }
+
+                await engine.Audio.StartAsync(Config.General.AudioDevice, ct).ConfigureAwait(false);
+                _testing = true;
+            }
+            finally
+            {
+                _gate.Release();
+            }
+
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(Math.Clamp(request.Seconds ?? 5, 1, 30)), ct).ConfigureAwait(false);
+            }
+            finally
+            {
+                clip = await engine.Audio.StopAsync(CancellationToken.None).ConfigureAwait(false);
+                _testing = false;
+            }
+        }
+
+        var language = engine.Config.Profiles.FirstOrDefault(p => p.Stt == id)?.Language;
+        var watch = Stopwatch.StartNew();
+        var transcript = await stt.TranscribeAsync(clip, SttRequest.ForSetting(language, null) ?? new SttRequest(null, null), ct).ConfigureAwait(false);
+        return new SttTestResult(transcript.Text.Trim(), transcript.Language, watch.ElapsedMilliseconds, transcript.Backend, transcript.Model);
+    }
+
+    /// <summary>6.9 s of Ukrainian speech ("тестовий запис"), synthesised with Piper TTS from a CC0 dataset.</summary>
+    private static AudioClip LoadSample()
+    {
+        using var stream = typeof(DictumDaemon).Assembly.GetManifestResourceStream("Dictum.Host.Samples.uk.wav")
+            ?? throw new InvalidOperationException("The built-in speech sample is missing from this build.");
+        return Wav.ReadClip(stream);
     }
 
     private async Task StartMonitorAsync(string? device, CancellationToken ct)
@@ -488,7 +552,7 @@ public sealed class DictumDaemon : IAsyncDisposable
         };
         _frameHandler = frame =>
         {
-            if (State == PipelineState.Recording || _monitoring)
+            if (State == PipelineState.Recording || _monitoring || _testing)
             {
                 _events.Publish(IpcEvent.ForFrame(frame));
             }

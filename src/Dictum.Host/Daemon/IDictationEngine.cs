@@ -1,4 +1,5 @@
 using Dictum.Core.Audio;
+using Dictum.Core.Stt;
 using Dictum.Core.Configuration;
 using Dictum.Core.Pipeline;
 
@@ -13,6 +14,8 @@ public interface IDictationEngine : IAsyncDisposable
 
     /// <summary>The microphone the pipeline records from; frames for the overlay come from here.</summary>
     IAudioSource Audio { get; }
+
+    ISpeechToText GetStt(string id);
 
     DictationProfile ResolveProfile(string profileId);
 

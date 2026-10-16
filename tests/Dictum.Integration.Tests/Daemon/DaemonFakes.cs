@@ -97,6 +97,9 @@ internal sealed class FakeEngine : IDictationEngine
 
     public Task WarmUpAsync(CancellationToken ct) => Task.CompletedTask;
 
+    public ISpeechToText GetStt(string id) =>
+        Config.Stt.ContainsKey(id) ? _stt : throw new ConfigException($"Unknown STT provider '{id}'.");
+
     public ValueTask DisposeAsync()
     {
         Disposed = true;

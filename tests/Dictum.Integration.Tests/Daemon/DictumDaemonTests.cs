@@ -474,6 +474,41 @@ public class DictumDaemonTests
     private Task<IpcResponse> Send(DictumDaemon daemon, string command, string? profile = null) =>
         daemon.HandleAsync(new IpcRequest(command, profile), _ct);
 
+    [Fact]
+    public async Task TestSttTranscribesTheBuiltInSample()
+    {
+        await using var daemon = await StartAsync(Config());
+
+        var response = await daemon.HandleAsync(new IpcRequest("test-stt", Stt: "s", Sample: true), _ct);
+
+        Assert.True(response.Ok, response.Error);
+        Assert.Equal("привіт світ", response.Test!.Text);
+        Assert.Equal(0, _engines[^1].Audio.Starts);
+    }
+
+    [Fact]
+    public async Task TestSttRecordsFromTheMicrophone()
+    {
+        await using var daemon = await StartAsync(Config());
+
+        var response = await daemon.HandleAsync(new IpcRequest("test-stt", Stt: "s", Seconds: 1), _ct);
+
+        Assert.True(response.Ok, response.Error);
+        Assert.Equal((1, 1), (_engines[^1].Audio.Starts, _engines[^1].Audio.Stops));
+        Assert.True(response.Test!.LatencyMs >= 0);
+    }
+
+    [Fact]
+    public async Task TestSttIsRefusedWhileBusyAndForAnUnknownProvider()
+    {
+        await using var daemon = await StartAsync(Config());
+        Assert.False((await daemon.HandleAsync(new IpcRequest("test-stt", Stt: "nope", Sample: true), _ct)).Ok);
+
+        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+
+        Assert.False((await daemon.HandleAsync(new IpcRequest("test-stt", Stt: "s", Seconds: 1), _ct)).Ok);
+    }
+
     private async Task<List<IpcEvent>> CollectAsync(IpcSubscriber subscriber, Func<List<IpcEvent>, bool> until)
     {
         var events = new List<IpcEvent>();
