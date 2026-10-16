@@ -26,7 +26,7 @@ jobs:
 
       - name: Test (inside a D-Bus session for the tray tests)
         run: |
-          sudo apt-get update && sudo apt-get install -y dbus
+          sudo apt-get update && sudo apt-get install -y dbus libfontconfig1
           dbus-run-session -- dotnet test -c Release --no-build
 
       - name: Check catalog URLs
@@ -34,7 +34,7 @@ jobs:
           DICTUM_CHECK_CATALOG: 1
         run: dotnet test -c Release --no-build --project tests/Dictum.Integration.Tests/Dictum.Integration.Tests.csproj --filter-class Dictum.Integration.Tests.CatalogUrlTests
 
-  publish-cli:
+  publish:
     needs: build-test
     strategy:
       fail-fast: false
@@ -56,10 +56,23 @@ jobs:
 
       - name: Install native toolchain and PortAudio
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev libportaudio2
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev libportaudio2 xvfb libice6 libsm6 libfontconfig1
 
       - name: Publish (Native AOT)
         run: dotnet publish src/Dictum.Cli -c Release -r ${{ matrix.rid }} -o out
+
+      - name: Publish the desktop app (Native AOT)
+        run: dotnet publish src/Dictum.App -c Release -r ${{ matrix.rid }} -o out
+
+      - name: Self-test the desktop app
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            xvfb-run -a ./out/dictum-gui --self-test
+          else
+            ./out/dictum-gui --self-test
+          fi
 
       - name: Smoke test published binary
         shell: bash
@@ -96,7 +109,7 @@ jobs:
 
   # SharpHook's X11 backend needs glibc 2.38+, so the daemon runs on a newer image than the build.
   linux-daemon-smoke:
-    needs: publish-cli
+    needs: publish
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
