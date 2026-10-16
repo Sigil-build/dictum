@@ -1,5 +1,6 @@
 using Dictum.Audio.PortAudio;
 using Dictum.Core.Configuration;
+using Dictum.Core.Audio;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Hotkeys;
 using Dictum.Core.Pipeline;
@@ -29,18 +30,26 @@ public sealed class DictumDaemon : IAsyncDisposable
     private bool _stopInProgress;
     private IReadOnlyList<ProfileStatus> _profiles = [];
     private string? _warning;
+    private readonly IpcEventHub _events;
+    private IReadOnlyList<ConfigIssue> _configWarnings;
+    private Action<PipelineState>? _stateHandler;
+    private Action<AudioFrame>? _frameHandler;
 
     public DictumDaemon(
         DictumConfig config,
         Func<DictumConfig, IDictationEngine> createEngine,
         PlatformServices platform,
         ISoundPlayer sounds,
-        ILog log)
+        ILog log,
+        IpcEventHub? events = null,
+        IReadOnlyList<ConfigIssue>? configWarnings = null)
     {
         _createEngine = createEngine;
         _platform = platform;
         _sounds = sounds;
         _log = log;
+        _events = events ?? new IpcEventHub();
+        _configWarnings = configWarnings ?? [];
         _engine = createEngine(config);
     }
 
@@ -71,13 +80,14 @@ public sealed class DictumDaemon : IAsyncDisposable
     }
 
     /// <summary>Applies a reloaded config: new providers, re-registered hotkeys.</summary>
-    public async Task ApplyConfigAsync(DictumConfig config, CancellationToken ct)
+    public async Task ApplyConfigAsync(DictumConfig config, CancellationToken ct, IReadOnlyList<ConfigIssue>? warnings = null)
     {
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         IDictationEngine previous;
         try
         {
             previous = _engine;
+            Unsubscribe(previous);
             _engine = _createEngine(config);
             Subscribe(_engine);
         }
@@ -85,6 +95,8 @@ public sealed class DictumDaemon : IAsyncDisposable
         {
             _gate.Release();
         }
+
+        _configWarnings = warnings ?? [];
 
         await previous.DisposeAsync().ConfigureAwait(false);
         await RegisterHotkeysAsync(ct).ConfigureAwait(false);
@@ -99,6 +111,7 @@ public sealed class DictumDaemon : IAsyncDisposable
             switch (request.Command)
             {
                 case "status":
+                case "subscribe":
                     break;
                 case "start":
                     await StartDictationAsync(ProfileFor(request.Profile), ct).ConfigureAwait(false);
@@ -139,10 +152,12 @@ public sealed class DictumDaemon : IAsyncDisposable
         _hotkeys?.Capabilities.Backend ?? "none (use 'dictum toggle')",
         _platform.Injector.Capabilities.Backend,
         Environment.ProcessId,
-        _warning);
+        _warning,
+        ConfigWarnings: _configWarnings.Count == 0 ? null : [.. _configWarnings.Select(w => w.ToString())]);
 
     public async ValueTask DisposeAsync()
     {
+        _events.Publish(IpcEvent.Stopping("exit"));
         await _stopping.CancelAsync().ConfigureAwait(false);
         if (_hotkeys is not null)
         {
@@ -226,19 +241,28 @@ public sealed class DictumDaemon : IAsyncDisposable
         }
 
         Cue(SoundCue.Stop);
-        var output = InjectorOutput.For(_platform.Injector, engine.Config.Profiles.First(p => p.Id == profileId), engine.Config.General);
+        var config = engine.Config.Profiles.First(p => p.Id == profileId);
+        var output = InjectorOutput.For(_platform.Injector, config, engine.Config.General);
         try
         {
             var result = await engine.Pipeline.StopAsync(profile, output, token).ConfigureAwait(false);
             _log.Info($"Dictation done: {result.AudioDuration.TotalSeconds:F1} s audio, {_log.Redact(result.Text)}");
+            Finish(
+                result.Text.Length == 0 ? DictationOutcome.Empty
+                    : config.Output == OutputMode.Clipboard ? DictationOutcome.Copied
+                    : DictationOutcome.Pasted,
+                null,
+                result);
         }
         catch (OperationCanceledException)
         {
             _log.Info("Dictation cancelled");
+            Finish(DictationOutcome.Cancelled, null, null);
         }
         catch (Exception ex)
         {
             await ReportAsync(ex).ConfigureAwait(false);
+            Finish(DictationOutcome.Error, MessageOf(ex), null);
         }
         finally
         {
@@ -249,6 +273,23 @@ public sealed class DictumDaemon : IAsyncDisposable
 
     private async Task CancelAsync()
     {
+        // Claiming the dictation under the gate makes a stop that races the cancel return early, so one dictation never
+        // finishes twice.
+        bool wasRecording;
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            wasRecording = State == PipelineState.Recording && !_stopInProgress;
+            if (wasRecording)
+            {
+                _stopInProgress = true;
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+
         if (_dictation is { } dictation)
         {
             await dictation.CancelAsync().ConfigureAwait(false);
@@ -256,6 +297,11 @@ public sealed class DictumDaemon : IAsyncDisposable
 
         await _engine.Pipeline.CancelAsync().ConfigureAwait(false);
         _activeProfile = null;
+        if (wasRecording)
+        {
+            _stopInProgress = false;
+            Finish(DictationOutcome.Cancelled, null, null);
+        }
     }
 
     private async Task RegisterHotkeysAsync(CancellationToken ct)
@@ -301,10 +347,46 @@ public sealed class DictumDaemon : IAsyncDisposable
         {
             _log.Info($"Hotkey {binding.Hotkey} → profile '{binding.Id}'{(registered ? "" : " (not registered)")}");
         }
+
+        _events.Publish(IpcEvent.ForStatus(Status()));
     }
 
-    private void Subscribe(IDictationEngine engine) =>
-        engine.Pipeline.StateChanged += state => StateChanged?.Invoke(state);
+    private void Subscribe(IDictationEngine engine)
+    {
+        _stateHandler = state =>
+        {
+            StateChanged?.Invoke(state);
+            _events.Publish(IpcEvent.ForState(state, _activeProfile, ModeOf(_activeProfile)));
+        };
+        _frameHandler = frame =>
+        {
+            if (State == PipelineState.Recording)
+            {
+                _events.Publish(IpcEvent.ForFrame(frame));
+            }
+        };
+        engine.Pipeline.StateChanged += _stateHandler;
+        engine.Audio.FrameCaptured += _frameHandler;
+    }
+
+    private void Unsubscribe(IDictationEngine engine)
+    {
+        engine.Pipeline.StateChanged -= _stateHandler;
+        engine.Audio.FrameCaptured -= _frameHandler;
+    }
+
+    private string? ModeOf(string? profileId) => Config.Profiles.FirstOrDefault(p => p.Id == profileId)?.Mode.ToString();
+
+    private void Finish(string outcome, string? message, DictationResult? result) =>
+        _events.Publish(IpcEvent.Finished(
+            outcome,
+            message,
+            result?.Language,
+            (long)(result?.AudioDuration.TotalMilliseconds ?? 0),
+            (long?)result?.Stages.FirstOrDefault(s => s.Stage == "transcribe")?.Elapsed.TotalMilliseconds));
+
+    private static string MessageOf(Exception ex) =>
+        ex is DictationException { InnerException: { } inner } ? inner.Message : ex.Message;
 
     private string ProfileFor(string? requested) =>
         requested ?? _activeProfile ?? Config.Profiles.FirstOrDefault()?.Id
@@ -355,7 +437,7 @@ public sealed class DictumDaemon : IAsyncDisposable
 
     private async Task ReportAsync(Exception ex)
     {
-        var message = ex is DictationException { InnerException: { } inner } ? inner.Message : ex.Message;
+        var message = MessageOf(ex);
         _log.Error($"Dictation failed: {message}", ex);
         Cue(SoundCue.Error);
         await _platform.Notifier.NotifyAsync("Dictum: dictation failed", message, NotificationKind.Error, CancellationToken.None).ConfigureAwait(false);

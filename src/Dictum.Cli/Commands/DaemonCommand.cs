@@ -27,21 +27,22 @@ internal static class DaemonCommand
                 return await ConfigureAutostartAsync(context, parse.GetValue(install), token).ConfigureAwait(false);
             }
 
-            var config = context.LoadConfig();
+            var (config, warnings) = context.Store.LoadWithIssues();
             context.UseConfig(config);
             var platform = context.Platform;
             var log = context.Log;
 
-            await using var daemon = new DictumDaemon(config, context.CreateHost, platform, new SoundPlayer(log), log);
-            await using var server = new IpcServer(context.SocketPath, log);
+            var events = new IpcEventHub();
+            await using var daemon = new DictumDaemon(config, context.CreateHost, platform, new SoundPlayer(log), log, events, warnings);
+            await using var server = new IpcServer(context.SocketPath, log, events);
             await server.StartAsync(daemon.HandleAsync, token).ConfigureAwait(false);
             await daemon.StartAsync(token).ConfigureAwait(false);
             using var watcher = new ConfigWatcher(
                 context.Store,
-                async changed =>
+                async (changed, changedWarnings) =>
                 {
                     context.UseConfig(changed);
-                    await daemon.ApplyConfigAsync(changed, token).ConfigureAwait(false);
+                    await daemon.ApplyConfigAsync(changed, token, changedWarnings).ConfigureAwait(false);
                 },
                 invalid => platform.Notifier.NotifyAsync("Dictum: config not applied", invalid.Message, NotificationKind.Error, token),
                 log);

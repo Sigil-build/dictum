@@ -15,15 +15,35 @@ internal sealed class FakeAudio : IAudioSource
 {
     public event Action<AudioFrame>? FrameCaptured;
 
-    public IReadOnlyList<AudioDevice> ListDevices() => [];
+    public int Starts { get; private set; }
+
+    public int Stops { get; private set; }
+
+    public Exception? FailWith { get; set; }
+
+    public IReadOnlyList<AudioDevice> Devices { get; set; } = [];
+
+    public IReadOnlyList<AudioDevice> ListDevices() => Devices;
 
     public Task StartAsync(string? deviceId, CancellationToken ct)
     {
+        if (FailWith is not null)
+        {
+            throw FailWith;
+        }
+
+        Starts++;
         FrameCaptured?.Invoke(default);
         return Task.CompletedTask;
     }
 
-    public Task<AudioClip> StopAsync(CancellationToken ct) => Task.FromResult(new AudioClip(new float[AudioClip.WhisperSampleRate]));
+    public Task<AudioClip> StopAsync(CancellationToken ct)
+    {
+        Stops++;
+        return Task.FromResult(new AudioClip(new float[AudioClip.WhisperSampleRate]));
+    }
+
+    public void Raise(AudioFrame frame) => FrameCaptured?.Invoke(frame);
 
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }
@@ -36,6 +56,8 @@ internal sealed class EchoStt(string text) : ISpeechToText
 
     public TaskCompletionSource? Gate { get; set; }
 
+    public string Text { get; set; } = text;
+
     public async Task<Transcript> TranscribeAsync(AudioClip clip, SttRequest request, CancellationToken ct)
     {
         if (Gate is not null)
@@ -43,22 +65,35 @@ internal sealed class EchoStt(string text) : ISpeechToText
             await Gate.Task.WaitAsync(ct);
         }
 
-        return new Transcript(text, request.Language, TimeSpan.Zero);
+        return new Transcript(Text, request.Language, TimeSpan.Zero);
     }
 
     public Task<HealthStatus> CheckAsync(CancellationToken ct) => Task.FromResult(HealthStatus.Ok("echo"));
 }
 
-internal sealed class FakeEngine(DictumConfig config, EchoStt stt) : IDictationEngine
+internal sealed class FakeEngine : IDictationEngine
 {
-    public DictumConfig Config { get; } = config;
+    private readonly EchoStt _stt;
 
-    public DictationPipeline Pipeline { get; } = new(new FakeAudio(), null, NullLog.Instance);
+    public FakeEngine(DictumConfig config, EchoStt stt)
+    {
+        Config = config;
+        _stt = stt;
+        Pipeline = new DictationPipeline(Audio, null, NullLog.Instance);
+    }
+
+    public DictumConfig Config { get; }
+
+    public FakeAudio Audio { get; } = new();
+
+    IAudioSource IDictationEngine.Audio => Audio;
+
+    public DictationPipeline Pipeline { get; }
 
     public bool Disposed { get; private set; }
 
     public DictationProfile ResolveProfile(string profileId) =>
-        new(profileId, stt, new SttRequest(Config.Profiles.First(p => p.Id == profileId).Language, null), []);
+        new(profileId, _stt, SttRequest.ForSetting(Config.Profiles.First(p => p.Id == profileId).Language, null)!, []);
 
     public Task WarmUpAsync(CancellationToken ct) => Task.CompletedTask;
 

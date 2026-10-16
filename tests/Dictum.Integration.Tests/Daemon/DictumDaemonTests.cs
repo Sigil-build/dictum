@@ -1,4 +1,5 @@
 using Dictum.Audio.PortAudio;
+using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Pipeline;
@@ -18,6 +19,7 @@ public class DictumDaemonTests
     private readonly FakeNotifier _notifier = new();
     private readonly EchoStt _stt = new("привіт світ");
     private readonly List<FakeEngine> _engines = [];
+    private readonly IpcEventHub _events = new();
 
     [Fact]
     public async Task PushToTalkRecordsWhileHeldAndPastesOnRelease()
@@ -177,6 +179,158 @@ public class DictumDaemonTests
         Assert.True((await daemon.HandleAsync(new IpcRequest("status"), _ct)).Ok);
     }
 
+    [Fact]
+    public async Task ADictationPublishesItsStatesAndOneFinishedEvent()
+    {
+        await using var daemon = await StartAsync(Config());
+        using var subscriber = _events.Subscribe();
+
+        _hotkeys.Raise("uk", HotkeyPhase.Pressed);
+        await WaitForAsync(() => daemon.State == PipelineState.Recording);
+        _hotkeys.Raise("uk", HotkeyPhase.Released);
+        var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == "finished"));
+
+        var recording = events.First(e => e is { Event: "state", State: "Recording" });
+        Assert.Equal(("uk", "PushToTalk"), (recording.Profile, recording.Mode));
+        Assert.Contains(events, e => e is { Event: "state", State: "Transcribing" });
+        var finished = Assert.Single(events, e => e.Event == "finished");
+        Assert.Equal((DictationOutcome.Pasted, "uk"), (finished.Outcome, finished.Language));
+    }
+
+    [Fact]
+    public async Task ClipboardOutputFinishesAsCopiedAndEmptyTextAsEmpty()
+    {
+        var config = Config();
+        config.Profiles[0] = config.Profiles[0] with { Output = OutputMode.Clipboard };
+        await using var daemon = await StartAsync(config);
+        using var subscriber = _events.Subscribe();
+
+        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+        await daemon.HandleAsync(new IpcRequest("stop"), _ct);
+        var first = await CollectAsync(subscriber, e => e.Any(x => x.Event == "finished"));
+        _stt.Text = "";
+        await WaitForAsync(() => daemon.State == PipelineState.Idle);
+        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+        await daemon.HandleAsync(new IpcRequest("stop"), _ct);
+        var second = await CollectAsync(subscriber, e => e.Any(x => x.Event == "finished"));
+
+        Assert.Equal(DictationOutcome.Copied, first.Single(e => e.Event == "finished").Outcome);
+        Assert.Equal(DictationOutcome.Empty, second.Single(e => e.Event == "finished").Outcome);
+    }
+
+    [Fact]
+    public async Task AFailedPasteFinishesAsAnErrorWithTheMessage()
+    {
+        _injector.FailWith = new InvalidOperationException("no paste here");
+        await using var daemon = await StartAsync(Config());
+        using var subscriber = _events.Subscribe();
+
+        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+        await daemon.HandleAsync(new IpcRequest("stop"), _ct);
+        var finished = (await CollectAsync(subscriber, e => e.Any(x => x.Event == "finished"))).Single(e => e.Event == "finished");
+
+        Assert.Equal(DictationOutcome.Error, finished.Outcome);
+        Assert.Contains("no paste here", finished.Message);
+    }
+
+    [Fact]
+    public async Task CancelWhileRecordingFinishesOnce()
+    {
+        await using var daemon = await StartAsync(Config());
+        using var subscriber = _events.Subscribe();
+
+        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+        var stop = daemon.HandleAsync(new IpcRequest("stop"), _ct);
+        await daemon.HandleAsync(new IpcRequest("cancel"), _ct);
+        await stop;
+        var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == "finished"));
+        await Task.Delay(200, _ct);
+        events.AddRange(await DrainAsync(subscriber));
+
+        Assert.Single(events, e => e.Event == "finished");
+        Assert.Empty(_notifier.Shown);
+    }
+
+    [Fact]
+    public async Task FramesArePublishedOnlyWhileRecording()
+    {
+        await using var daemon = await StartAsync(Config());
+        using var subscriber = _events.Subscribe();
+        var audio = _engines[^1].Audio;
+
+        audio.Raise(new AudioFrame(0.2f, new float[24], TimeSpan.FromSeconds(1)));
+        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+        audio.Raise(new AudioFrame(0.3f, new float[24], TimeSpan.FromSeconds(2)));
+        var events = await CollectAsync(subscriber, e => e.Any(x => x is { Event: "frame", Rms: 0.3f }));
+
+        Assert.DoesNotContain(events, e => e is { Event: "frame", Rms: 0.2f });
+    }
+
+    [Fact]
+    public async Task ReloadMovesFrameEventsToTheNewEngine()
+    {
+        await using var daemon = await StartAsync(Config());
+        await daemon.ApplyConfigAsync(Config(), _ct);
+        using var subscriber = _events.Subscribe();
+        var (old, current) = (_engines[0].Audio, _engines[1].Audio);
+
+        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+        old.Raise(new AudioFrame(0.4f, new float[24], TimeSpan.FromSeconds(1)));
+        current.Raise(new AudioFrame(0.5f, new float[24], TimeSpan.FromSeconds(1)));
+        var events = await CollectAsync(subscriber, e => e.Any(x => x is { Event: "frame", Rms: 0.5f }));
+
+        Assert.DoesNotContain(events, e => e is { Event: "frame", Rms: 0.4f });
+    }
+
+    [Fact]
+    public async Task ConfigWarningsReachTheStatusAndAStatusEvent()
+    {
+        await using var daemon = await StartAsync(Config());
+        using var subscriber = _events.Subscribe();
+
+        await daemon.ApplyConfigAsync(Config(), _ct, [new ConfigIssue(ConfigIssueSeverity.Warning, "profiles[0].language", "sounds alike")]);
+        var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == "status"));
+
+        Assert.Equal(["profiles[0].language: sounds alike"], daemon.Status().ConfigWarnings!);
+        Assert.Equal(daemon.Status().ConfigWarnings, events.Last(e => e.Event == "status").Status!.ConfigWarnings);
+    }
+
+    [Fact]
+    public async Task SubscribeIsAnsweredWithTheProtocolVersion()
+    {
+        await using var daemon = await StartAsync(Config());
+
+        var response = await daemon.HandleAsync(new IpcRequest("subscribe"), _ct);
+
+        Assert.Equal((true, IpcProtocol.Version), (response.Ok, response.Status!.Protocol));
+    }
+
+    private static async Task<List<IpcEvent>> DrainAsync(IpcSubscriber subscriber)
+    {
+        using var quick = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+        try
+        {
+            return [.. await subscriber.NextAsync(quick.Token)];
+        }
+        catch (OperationCanceledException)
+        {
+            return [];
+        }
+    }
+
+    private async Task<List<IpcEvent>> CollectAsync(IpcSubscriber subscriber, Func<List<IpcEvent>, bool> until)
+    {
+        var events = new List<IpcEvent>();
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(_ct);
+        timeout.CancelAfter(TimeSpan.FromSeconds(5));
+        while (!until(events))
+        {
+            events.AddRange(await subscriber.NextAsync(timeout.Token));
+        }
+
+        return events;
+    }
+
     private async Task<DictumDaemon> StartAsync(DictumConfig config, bool withHotkeys = true)
     {
         var platform = new PlatformServices(
@@ -192,7 +346,7 @@ public class DictumDaemonTests
             var engine = new FakeEngine(c, _stt);
             _engines.Add(engine);
             return engine;
-        }, platform, _sounds, NullLog.Instance);
+        }, platform, _sounds, NullLog.Instance, _events);
         await daemon.StartAsync(_ct);
         return daemon;
     }

@@ -12,14 +12,15 @@ public sealed class ConfigWatcher : IDisposable
     private static readonly TimeSpan Debounce = TimeSpan.FromMilliseconds(300);
 
     private readonly ConfigStore _store;
-    private readonly Func<DictumConfig, Task> _onChanged;
+    private readonly Func<DictumConfig, IReadOnlyList<ConfigIssue>, Task> _onChanged;
     private readonly Func<ConfigException, Task> _onInvalid;
     private readonly ILog _log;
     private readonly FileSystemWatcher _watcher;
     private readonly Lock _gate = new();
     private CancellationTokenSource? _pending;
 
-    public ConfigWatcher(ConfigStore store, Func<DictumConfig, Task> onChanged, Func<ConfigException, Task> onInvalid, ILog log)
+    /// <param name="onChanged">Gets the new config and its warnings.</param>
+    public ConfigWatcher(ConfigStore store, Func<DictumConfig, IReadOnlyList<ConfigIssue>, Task> onChanged, Func<ConfigException, Task> onInvalid, ILog log)
     {
         _store = store;
         _onChanged = onChanged;
@@ -74,7 +75,7 @@ public sealed class ConfigWatcher : IDisposable
                 _log.Warn($"config: {warning}");
             }
 
-            await _onChanged(config).ConfigureAwait(false);
+            await _onChanged(config, warnings).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
