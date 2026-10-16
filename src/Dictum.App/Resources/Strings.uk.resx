@@ -110,4 +110,16 @@
   <data name="ProblemCannotStart" xml:space="preserve">
     <value>Не вдалося запустити {0}: {1}</value>
   </data>
+  <data name="ProblemKeepsStopping" xml:space="preserve">
+    <value>Демон постійно зупиняється; подробиці в {0}.</value>
+  </data>
+  <data name="ProblemExitedWhileStarting" xml:space="preserve">
+    <value>Демон завершився з кодом {0} під час запуску; подробиці в {1}.</value>
+  </data>
+  <data name="ProblemStartTimeout" xml:space="preserve">
+    <value>Демон не відповів за {0} с; подробиці в {1}.</value>
+  </data>
+  <data name="ProblemVersionMismatch" xml:space="preserve">
+    <value>Запущений демон — з іншої версії Dictum.</value>
+  </data>
 </root>

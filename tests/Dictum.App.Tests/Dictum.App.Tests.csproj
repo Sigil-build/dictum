@@ -10,4 +10,13 @@
     <PackageReference Include="Avalonia.Skia" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- RealDaemonTests start the built dictum; nothing is referenced from it. -->
+    <ProjectReference Include="../../src/Dictum.Cli/Dictum.Cli.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="../../fixtures/*.wav" LinkBase="fixtures" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

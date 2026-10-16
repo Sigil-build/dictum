@@ -110,4 +110,16 @@
   <data name="ProblemCannotStart" xml:space="preserve">
     <value>Could not start {0}: {1}</value>
   </data>
+  <data name="ProblemKeepsStopping" xml:space="preserve">
+    <value>The daemon keeps stopping; details are in {0}.</value>
+  </data>
+  <data name="ProblemExitedWhileStarting" xml:space="preserve">
+    <value>The daemon exited with code {0} while starting; details are in {1}.</value>
+  </data>
+  <data name="ProblemStartTimeout" xml:space="preserve">
+    <value>The daemon did not answer within {0} s; details are in {1}.</value>
+  </data>
+  <data name="ProblemVersionMismatch" xml:space="preserve">
+    <value>The daemon that is running comes from another version of Dictum.</value>
+  </data>
 </root>
