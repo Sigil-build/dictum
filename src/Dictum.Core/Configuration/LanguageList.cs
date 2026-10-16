@@ -7,18 +7,24 @@ namespace Dictum.Core.Configuration;
 public static class LanguageList
 {
     /// <returns>
-    /// No codes for <c>auto</c> (or nothing), one for a fixed language, several to pick from; null when the setting is
-    /// not valid (an unknown form, a repeated code, or <c>auto</c> inside a list).
+    /// No codes for <c>auto</c> (or no setting), one for a fixed language, several to pick from; null when the setting is
+    /// not valid. A single code and <c>auto</c> are written exactly; only list entries may have spaces around them, and a
+    /// list has no empty entries, no repeats and no <c>auto</c>.
     /// </returns>
     public static IReadOnlyList<string>? Parse(string? setting)
     {
-        if (string.IsNullOrWhiteSpace(setting) || setting.Trim() == "auto")
+        if (setting is null or "auto")
         {
             return [];
         }
 
-        var codes = setting.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-        return codes.Length > 0 && codes.All(IsCode) && codes.Distinct(StringComparer.Ordinal).Count() == codes.Length ? codes : null;
+        if (!setting.Contains(','))
+        {
+            return IsCode(setting) ? [setting] : null;
+        }
+
+        var codes = setting.Split(',', StringSplitOptions.TrimEntries);
+        return codes.All(IsCode) && codes.Distinct(StringComparer.Ordinal).Count() == codes.Length ? codes : null;
     }
 
     /// <summary>The setting as Dictum writes it: <c>auto</c>, <c>uk</c> or <c>uk, en</c>.</summary>

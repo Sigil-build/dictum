@@ -6,7 +6,6 @@ public class LanguageListTests
 {
     [Theory]
     [InlineData(null, "")]
-    [InlineData("", "")]
     [InlineData("auto", "")]
     [InlineData("uk", "uk")]
     [InlineData("haw", "haw")]
@@ -22,6 +21,13 @@ public class LanguageListTests
     [InlineData("uk, auto")]
     [InlineData("uk; en")]
     [InlineData(",")]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData(" auto ")]
+    [InlineData(" uk ")]
+    [InlineData("uk,")]
+    [InlineData(",uk")]
+    [InlineData("uk,,en")]
     public void RejectsWhatIsNotASetting(string setting) => Assert.Null(LanguageList.Parse(setting));
 
     [Theory]

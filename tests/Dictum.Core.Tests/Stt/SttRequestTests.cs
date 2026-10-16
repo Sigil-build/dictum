@@ -8,7 +8,6 @@ public class SttRequestTests
     [InlineData(null, null)]
     [InlineData("auto", "auto")]
     [InlineData("uk", "uk")]
-    [InlineData(" uk ", "uk")]
     public void ASingleSettingIsTheLanguage(string? setting, string? language)
     {
         var request = SttRequest.ForSetting(setting, "hint")!;
@@ -27,6 +26,9 @@ public class SttRequestTests
         Assert.Equal(["uk", "en"], request.Candidates!);
     }
 
-    [Fact]
-    public void AnInvalidSettingGivesNoRequest() => Assert.Null(SttRequest.ForSetting("Ukrainian", null));
+    [Theory]
+    [InlineData("Ukrainian")]
+    [InlineData("")]
+    [InlineData("uk,")]
+    public void AnInvalidSettingGivesNoRequest(string setting) => Assert.Null(SttRequest.ForSetting(setting, null));
 }

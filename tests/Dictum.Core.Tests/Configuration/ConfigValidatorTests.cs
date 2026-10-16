@@ -160,6 +160,9 @@ public class ConfigValidatorTests
     [InlineData("UK", false)]
     [InlineData("ukrainian", false)]
     [InlineData("uk, auto", false)]
+    [InlineData("", false)]
+    [InlineData(" uk ", false)]
+    [InlineData("uk,", false)]
     public void LanguageCodes(string? language, bool valid) =>
         Assert.Equal(valid, ConfigValidator.IsValidLanguage(language));
 
