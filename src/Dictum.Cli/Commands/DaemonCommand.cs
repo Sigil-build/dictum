@@ -47,6 +47,13 @@ internal static class DaemonCommand
                 invalid => platform.Notifier.NotifyAsync("Dictum: config not applied", invalid.Message, NotificationKind.Error, token),
                 log);
 
+            daemon.ReloadHandler = async c =>
+            {
+                var (fresh, freshWarnings) = context.Store.LoadWithIssues();
+                context.UseConfig(fresh);
+                await daemon.ApplyConfigAsync(fresh, c, freshWarnings).ConfigureAwait(false);
+            };
+
             PrintSummary(context, daemon.Status());
 
             var terminated = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -55,7 +62,7 @@ internal static class DaemonCommand
                 signal.Cancel = true;
                 terminated.TrySetResult();
             });
-            await Task.WhenAny(Task.Delay(Timeout.Infinite, token), terminated.Task).ConfigureAwait(false);
+            await Task.WhenAny(Task.Delay(Timeout.Infinite, token), terminated.Task, daemon.ShutdownRequested).ConfigureAwait(false);
 
             log.Info("Daemon stopping");
             return ExitCodes.Success;

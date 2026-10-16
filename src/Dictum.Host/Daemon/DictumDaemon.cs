@@ -34,6 +34,9 @@ public sealed class DictumDaemon : IAsyncDisposable
     private IReadOnlyList<ConfigIssue> _configWarnings;
     private Action<PipelineState>? _stateHandler;
     private Action<AudioFrame>? _frameHandler;
+    private readonly TaskCompletionSource _shutdown = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private bool _paused;
+    private string? _selectedProfile;
 
     public DictumDaemon(
         DictumConfig config,
@@ -54,6 +57,12 @@ public sealed class DictumDaemon : IAsyncDisposable
     }
 
     public DictumConfig Config => _engine.Config;
+
+    /// <summary>Completes when a client sent <c>shutdown</c>; the host then disposes the daemon and exits.</summary>
+    public Task ShutdownRequested => _shutdown.Task;
+
+    /// <summary>Re-reads the config for the <c>reload</c> command; set by the host that owns the config file.</summary>
+    public Func<CancellationToken, Task>? ReloadHandler { get; set; }
 
     public PipelineState State => _engine.Pipeline.State;
 
@@ -97,6 +106,10 @@ public sealed class DictumDaemon : IAsyncDisposable
         }
 
         _configWarnings = warnings ?? [];
+        if (_selectedProfile is { } selected && config.Profiles.All(p => p.Id != selected))
+        {
+            _selectedProfile = null;
+        }
 
         await previous.DisposeAsync().ConfigureAwait(false);
         await RegisterHotkeysAsync(ct).ConfigureAwait(false);
@@ -133,13 +146,38 @@ public sealed class DictumDaemon : IAsyncDisposable
                 case "cancel":
                     await CancelAsync().ConfigureAwait(false);
                     break;
+                case "reload":
+                    if (ReloadHandler is null)
+                    {
+                        return IpcResponse.Failure("This daemon cannot reload its config.");
+                    }
+
+                    await ReloadHandler(ct).ConfigureAwait(false);
+                    break;
+                case "shutdown":
+                    await CancelAsync().ConfigureAwait(false);
+                    _shutdown.TrySetResult();
+                    break;
+                case "pause-hotkeys":
+                case "resume-hotkeys":
+                    _paused = request.Command == "pause-hotkeys";
+                    await RegisterHotkeysAsync(ct).ConfigureAwait(false);
+                    break;
+                case "use-profile":
+                    _selectedProfile = request.Profile is { } id && Config.Profiles.Any(p => p.Id == id)
+                        ? id
+                        : throw new ConfigException($"Unknown profile '{request.Profile}'.");
+                    _events.Publish(IpcEvent.ForStatus(Status()));
+                    break;
+                case "devices":
+                    return new IpcResponse(true, Status: Status(), Devices: _engine.Audio.ListDevices());
                 default:
                     return IpcResponse.Failure($"Unknown command '{request.Command}'.");
             }
 
             return IpcResponse.Success(Status());
         }
-        catch (Exception ex) when (ex is ConfigException or InvalidOperationException)
+        catch (Exception ex) when (ex is ConfigException or InvalidOperationException or AudioDeviceException)
         {
             return IpcResponse.Failure(ex.Message);
         }
@@ -153,11 +191,13 @@ public sealed class DictumDaemon : IAsyncDisposable
         _platform.Injector.Capabilities.Backend,
         Environment.ProcessId,
         _warning,
+        Paused: _paused,
+        SelectedProfile: _selectedProfile,
         ConfigWarnings: _configWarnings.Count == 0 ? null : [.. _configWarnings.Select(w => w.ToString())]);
 
     public async ValueTask DisposeAsync()
     {
-        _events.Publish(IpcEvent.Stopping("exit"));
+        _events.Publish(IpcEvent.Stopping(_shutdown.Task.IsCompleted ? "shutdown" : "exit"));
         await _stopping.CancelAsync().ConfigureAwait(false);
         if (_hotkeys is not null)
         {
@@ -307,7 +347,7 @@ public sealed class DictumDaemon : IAsyncDisposable
     private async Task RegisterHotkeysAsync(CancellationToken ct)
     {
         var bindings = new List<HotkeyBinding>();
-        foreach (var profile in Config.Profiles)
+        foreach (var profile in _paused ? [] : Config.Profiles)
         {
             if (profile.Hotkey is { } text && Hotkey.TryParse(text, out var hotkey, out _))
             {
@@ -389,7 +429,7 @@ public sealed class DictumDaemon : IAsyncDisposable
         ex is DictationException { InnerException: { } inner } ? inner.Message : ex.Message;
 
     private string ProfileFor(string? requested) =>
-        requested ?? _activeProfile ?? Config.Profiles.FirstOrDefault()?.Id
+        requested ?? _selectedProfile ?? Config.Profiles.FirstOrDefault()?.Id
             ?? throw new ConfigException("No profiles in the config.");
 
     private async Task WarmUpAsync(IDictationEngine engine)

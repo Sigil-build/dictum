@@ -14,6 +14,8 @@ internal static class ControlCommands
         yield return Control("start", "Start dictation");
         yield return Control("stop", "Stop dictation and paste the text");
         yield return Control("cancel", "Stop dictation and discard it");
+        yield return Control("reload", "Re-read the config file now");
+        yield return Control("shutdown", "Stop the running daemon");
         yield return Status();
     }
 
@@ -40,9 +42,25 @@ internal static class ControlCommands
     private static Command Status()
     {
         var json = new Option<bool>("--json") { Description = "Print JSON" };
-        var command = new Command("status", "Show whether the daemon runs, its state, hotkeys and backends") { json };
+        var watch = new Option<bool>("--watch") { Description = "Keep printing state changes, results and status as JSON lines until Ctrl+C" };
+        var frames = new Option<bool>("--frames") { Description = "With --watch, also print audio frames (50 per second)" };
+        var command = new Command("status", "Show whether the daemon runs, its state, hotkeys and backends") { json, watch, frames };
         command.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, async (context, token) =>
         {
+            if (parse.GetValue(watch))
+            {
+                await using var subscription = await new IpcClient(context.SocketPath).SubscribeAsync(token).ConfigureAwait(false);
+                await foreach (var message in subscription.ReadEventsAsync(token).ConfigureAwait(false))
+                {
+                    if (message.Event != "frame" || parse.GetValue(frames))
+                    {
+                        context.Out.WriteLine(JsonSerializer.Serialize(message, CliJsonContext.Readable.IpcEvent));
+                    }
+                }
+
+                return ExitCodes.Success;
+            }
+
             var response = await new IpcClient(context.SocketPath).SendAsync(new IpcRequest("status"), token).ConfigureAwait(false);
             var status = response.Status!;
             if (parse.GetValue(json))

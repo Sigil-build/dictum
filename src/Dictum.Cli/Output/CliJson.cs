@@ -65,6 +65,7 @@ internal sealed record FrameDumpJson(int FramesPerSecond, int Bands, IReadOnlyLi
 [JsonSerializable(typeof(FrameDumpJson))]
 [JsonSerializable(typeof(List<HistoryEntry>))]
 [JsonSerializable(typeof(DaemonStatus))]
+[JsonSerializable(typeof(IpcEvent))]
 internal sealed partial class CliJsonContext : JsonSerializerContext
 {
     /// <summary>Keeps non-ASCII text (e.g. Cyrillic) readable instead of \u-escaped.</summary>

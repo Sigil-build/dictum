@@ -318,6 +318,98 @@ public class DictumDaemonTests
         }
     }
 
+    [Fact]
+    public async Task ShutdownCancelsTheDictationAndCompletesShutdownRequested()
+    {
+        await using var daemon = await StartAsync(Config());
+        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+
+        Assert.True((await daemon.HandleAsync(new IpcRequest("shutdown"), _ct)).Ok);
+
+        await daemon.ShutdownRequested.WaitAsync(TimeSpan.FromSeconds(5), _ct);
+        Assert.Equal(PipelineState.Idle, daemon.State);
+    }
+
+    [Fact]
+    public async Task PauseUnregistersTheHotkeysAndResumeRestoresThem()
+    {
+        await using var daemon = await StartAsync(Config());
+        using var subscriber = _events.Subscribe();
+
+        var paused = await daemon.HandleAsync(new IpcRequest("pause-hotkeys"), _ct);
+        Assert.Empty(_hotkeys.Bindings);
+        Assert.True(paused.Status!.Paused);
+        Assert.Contains(await CollectAsync(subscriber, e => e.Any(x => x.Event == "status")), e => e.Status!.Paused);
+
+        await daemon.HandleAsync(new IpcRequest("resume-hotkeys"), _ct);
+        Assert.Equal(2, _hotkeys.Bindings.Count);
+        Assert.False(daemon.Status().Paused);
+    }
+
+    [Fact]
+    public async Task ReloadWhilePausedKeepsHotkeysOff()
+    {
+        await using var daemon = await StartAsync(Config());
+        await daemon.HandleAsync(new IpcRequest("pause-hotkeys"), _ct);
+
+        await daemon.ApplyConfigAsync(Config(), _ct);
+
+        Assert.Empty(_hotkeys.Bindings);
+        Assert.True(daemon.Status().Paused);
+    }
+
+    [Fact]
+    public async Task UseProfileMakesItTheDefault()
+    {
+        await using var daemon = await StartAsync(Config(), withHotkeys: false);
+
+        await daemon.HandleAsync(new IpcRequest("use-profile", "en"), _ct);
+        var started = await daemon.HandleAsync(new IpcRequest("toggle"), _ct);
+
+        Assert.Equal(("en", "en"), (started.Status!.ActiveProfile, started.Status.SelectedProfile));
+        Assert.False((await daemon.HandleAsync(new IpcRequest("use-profile", "nope"), _ct)).Ok);
+    }
+
+    [Fact]
+    public async Task ReloadRunsTheHandlerAndFailsWithoutOne()
+    {
+        await using var daemon = await StartAsync(Config());
+        Assert.False((await daemon.HandleAsync(new IpcRequest("reload"), _ct)).Ok);
+
+        var reloaded = false;
+        daemon.ReloadHandler = _ =>
+        {
+            reloaded = true;
+            return Task.CompletedTask;
+        };
+
+        Assert.True((await daemon.HandleAsync(new IpcRequest("reload"), _ct)).Ok);
+        Assert.True(reloaded);
+    }
+
+    [Fact]
+    public async Task DevicesListsTheMicrophones()
+    {
+        await using var daemon = await StartAsync(Config());
+        _engines[^1].Audio.Devices = [new AudioDevice("3", "Arctis Nova 5", "WASAPI", 1, 48_000, IsDefault: true)];
+
+        var response = await daemon.HandleAsync(new IpcRequest("devices"), _ct);
+
+        Assert.Equal("Arctis Nova 5", Assert.Single(response.Devices!).Name);
+    }
+
+    [Fact]
+    public async Task AMicrophoneFailureOnStartIsAFailureAnswer()
+    {
+        await using var daemon = await StartAsync(Config());
+        _engines[^1].Audio.FailWith = new AudioDeviceException("Microphone not found.", "Run 'dictum devices'.");
+
+        var response = await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+
+        Assert.False(response.Ok);
+        Assert.Contains("Microphone not found", response.Error);
+    }
+
     private async Task<List<IpcEvent>> CollectAsync(IpcSubscriber subscriber, Func<List<IpcEvent>, bool> until)
     {
         var events = new List<IpcEvent>();
