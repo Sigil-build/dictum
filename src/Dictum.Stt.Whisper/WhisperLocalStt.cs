@@ -108,6 +108,11 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
         var builder = Factory().CreateBuilder()
             .WithThreads(config.Threads > 0 ? config.Threads : Math.Clamp(Environment.ProcessorCount, 1, 8));
         var candidates = !IsEnglishOnly(config.Model) && request is { Language: null, Candidates.Count: > 1 } ? request.Candidates : null;
+        if (candidates is not null && UnknownCandidate(candidates, Supported.Value) is { } unknown)
+        {
+            // Whisper skips a code it does not know, so "ua, en" would silently turn Ukrainian speech into English.
+            throw new ProviderUnavailableException(unknown);
+        }
         var language = IsEnglishOnly(config.Model) ? "en" : request.Language ?? candidates?[0];
         builder = language is null or "auto" ? builder.WithLanguageDetection() : builder.WithLanguage(language);
         if (!string.IsNullOrWhiteSpace(request.Prompt))
@@ -137,6 +142,26 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
 
         log.Debug($"Whisper '{id}' ({LoadedRuntime}) took {watch.ElapsedMilliseconds} ms for {clip.Duration.TotalSeconds:F1} s");
         return new Transcript(text.ToString().Trim(), language is null or "auto" ? detected : language, watch.Elapsed, LoadedRuntime);
+    }
+
+    private static readonly Lazy<HashSet<string>> Supported = new(() => [.. WhisperFactory.GetSupportedLanguages()]);
+
+    /// <summary>Country codes people type for a language, with the language code Whisper expects.</summary>
+    private static readonly Dictionary<string, string> CommonSlips = new(StringComparer.Ordinal)
+    {
+        ["ua"] = "uk", ["by"] = "be", ["cz"] = "cs", ["dk"] = "da", ["se"] = "sv", ["gr"] = "el",
+        ["jp"] = "ja", ["kr"] = "ko", ["cn"] = "zh", ["ee"] = "et", ["rs"] = "sr", ["ir"] = "fa",
+    };
+
+    /// <summary>A message naming the first candidate Whisper does not know, or null when it knows them all.</summary>
+    public static string? UnknownCandidate(IReadOnlyList<string> candidates, IReadOnlyCollection<string> supported)
+    {
+        var unknown = candidates.FirstOrDefault(c => !supported.Contains(c));
+        return unknown is null
+            ? null
+            : CommonSlips.TryGetValue(unknown, out var code) && supported.Contains(code)
+                ? $"'{unknown}' in the profile's language list is a country code; the language code Whisper knows is '{code}'."
+                : $"'{unknown}' in the profile's language list is not a language Whisper knows.";
     }
 
     /// <summary>The most likely of <paramref name="candidates"/>; the first one when the model names none of them.</summary>
