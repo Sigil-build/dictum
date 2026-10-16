@@ -130,6 +130,30 @@ public class DownloadQueueTests : IDisposable
         Assert.False(File.Exists(Paths.ResolveModel("a.bin") + ".partial"));
     }
 
+    [Fact(Timeout = 20_000)]
+    public async Task ChangesFromManyThreadsNeverFailTheQueue()
+    {
+        var http = new FakeHttpHandler().Hang();
+        await using var queue = Queue(http);
+        queue.Enqueue([TestCatalog().Get("a")]);
+
+        Parallel.For(0, 400, i =>
+        {
+            if (i % 2 == 0)
+            {
+                queue.Pause();
+            }
+            else
+            {
+                queue.Resume();
+            }
+        });
+        queue.Pause();
+        await queue.WhenIdleAsync(TestContext.Current.CancellationToken);
+
+        Assert.True(File.Exists(Paths.DownloadsFile));
+    }
+
     private static HttpResponseMessage Ok(byte[] data) => new(HttpStatusCode.OK) { Content = new ByteArrayContent(data) };
 
     /// <summary>Delivers its bytes, then waits for data that never comes, until the download is cancelled.</summary>

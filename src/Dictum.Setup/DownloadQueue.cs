@@ -23,6 +23,10 @@ public sealed record QueuedDownload(CatalogEntry Entry, DownloadState State, lon
 public sealed class DownloadQueue(FileDownloader downloader, AppPaths paths, Catalog catalog, Func<long> freeDiskBytes) : IAsyncDisposable
 {
     private readonly Lock _gate = new();
+
+    // Save runs on the caller's thread (Pause, Resume, ...) and on the worker; one writer at a time, and the snapshot is
+    // taken inside, so the file always ends with the newest state.
+    private readonly Lock _saveGate = new();
     private readonly List<QueuedDownload> _items = [];
     private readonly HashSet<string> _cancelled = new(StringComparer.Ordinal);
     private CancellationTokenSource? _current;
@@ -303,18 +307,21 @@ public sealed class DownloadQueue(FileDownloader downloader, AppPaths paths, Cat
 
     private void Save()
     {
-        SavedDownloads saved;
-        lock (_gate)
+        lock (_saveGate)
         {
-            saved = new SavedDownloads(_paused, [.. _items
-                .Where(i => i.State is DownloadState.Queued or DownloadState.Downloading or DownloadState.Paused)
-                .Select(i => i.Entry.Id)]);
-        }
+            SavedDownloads saved;
+            lock (_gate)
+            {
+                saved = new SavedDownloads(_paused, [.. _items
+                    .Where(i => i.State is DownloadState.Queued or DownloadState.Downloading or DownloadState.Paused)
+                    .Select(i => i.Entry.Id)]);
+            }
 
-        Directory.CreateDirectory(paths.DataDirectory);
-        var temp = paths.DownloadsFile + ".tmp";
-        File.WriteAllText(temp, JsonSerializer.Serialize(saved, DownloadQueueJsonContext.Default.SavedDownloads));
-        File.Move(temp, paths.DownloadsFile, overwrite: true);
+            Directory.CreateDirectory(paths.DataDirectory);
+            var temp = paths.DownloadsFile + ".tmp";
+            File.WriteAllText(temp, JsonSerializer.Serialize(saved, DownloadQueueJsonContext.Default.SavedDownloads));
+            File.Move(temp, paths.DownloadsFile, overwrite: true);
+        }
     }
 
     private long PartialBytes(CatalogEntry entry)
