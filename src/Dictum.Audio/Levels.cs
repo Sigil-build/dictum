@@ -24,6 +24,19 @@ public static class Levels
     }
 
     public static float ToDb(float rms) => rms <= 1e-5f ? SilenceDb : 20f * MathF.Log10(rms);
+
+    /// <summary>The level of the loudest <paramref name="frameMs"/> stretch, in dBFS.</summary>
+    public static float LoudestFrameDb(ReadOnlySpan<float> samples, int sampleRate, int frameMs = 20)
+    {
+        var frame = Math.Max(1, sampleRate * frameMs / 1000);
+        var loudest = SilenceDb;
+        for (var start = 0; start < samples.Length; start += frame)
+        {
+            loudest = Math.Max(loudest, ToDb(Rms(samples.Slice(start, Math.Min(frame, samples.Length - start)))));
+        }
+
+        return loudest;
+    }
 }
 
 /// <summary>Removes leading and trailing silence, keeping some padding around speech.</summary>
@@ -105,7 +118,12 @@ public sealed class SilenceDetector(TimeSpan silence, float speechAboveFloorDb =
 /// </summary>
 public static class GainNormalizer
 {
-    public static AudioClip Normalize(AudioClip clip, float targetPeakDb = -3f, float maxGainDb = 30f)
+    /// <param name="minLoudestFrameDb">
+    /// A clip whose loudest 20 ms is quieter than this is an idle microphone and is left alone: boosted, a click in
+    /// it would survive silence trimming and come back from Whisper as a word. Speech on a quiet headset still
+    /// reaches about -37 dBFS.
+    /// </param>
+    public static AudioClip Normalize(AudioClip clip, float targetPeakDb = -3f, float maxGainDb = 30f, float minLoudestFrameDb = -55f)
     {
         var samples = clip.Samples.Span;
         var peak = 0f;
@@ -114,7 +132,7 @@ public static class GainNormalizer
             peak = Math.Max(peak, Math.Abs(s));
         }
 
-        if (peak <= 0)
+        if (peak <= 0 || Levels.LoudestFrameDb(samples, clip.SampleRate) < minLoudestFrameDb)
         {
             return clip;
         }

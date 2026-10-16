@@ -57,11 +57,24 @@ public class DspTests
     [Fact]
     public void GainIsCappedAndNeverReduces()
     {
-        var almostSilent = new AudioClip(Signals.Sine(300, 16_000, 1.0, amplitude: 0.0005f));
+        var veryQuiet = new AudioClip(Signals.Sine(300, 16_000, 1.0, amplitude: 0.003f));
         var loud = new AudioClip(Signals.Sine(300, 16_000, 1.0, amplitude: 0.9f));
 
-        Assert.Equal(-66f + 30f, Levels.ToDb(GainNormalizer.Normalize(almostSilent).Samples.Span.ToArray().Max()), 0.5f);
+        Assert.Equal(-50.5f + 30f, Levels.ToDb(GainNormalizer.Normalize(veryQuiet).Samples.Span.ToArray().Max()), 0.5f);
         Assert.Same(loud, GainNormalizer.Normalize(loud));
+    }
+
+    [Fact]
+    public void NearSilenceIsNotBoosted()
+    {
+        // An idle microphone: digital silence with one click at -66 dBFS. Boosted, the click survives trimming as a
+        // half-second clip that Whisper hears as a word ("Дякую!").
+        var samples = Signals.Silence(16_000, 6.0);
+        samples[48_000] = 0.0005f;
+        var clip = new AudioClip(samples);
+
+        Assert.Same(clip, GainNormalizer.Normalize(clip));
+        Assert.Equal(TimeSpan.Zero, SilenceTrimmer.Trim(GainNormalizer.Normalize(clip)).Duration);
     }
 
     [Fact]
