@@ -269,6 +269,11 @@ public sealed class IpcServer : IAsyncDisposable
                 {
                     response = IpcResponse.Failure("Malformed request.");
                 }
+                catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+                {
+                    _log.Error($"IPC handler failed: {ex.Message}", ex);
+                    response = IpcResponse.Failure(ex.Message);
+                }
 
                 // Subscribing before the reply is written means nothing published after the client sees it is lost.
                 var subscriber = request?.Command == "subscribe" && response.Ok ? _events?.Subscribe() : null;

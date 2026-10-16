@@ -61,7 +61,8 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
         AudioClip clip;
         try
         {
-            clip = await audio.StopAsync(ct).ConfigureAwait(false);
+            // Never with the dictation's token: a stop that is skipped because of a cancel leaves the microphone held.
+            clip = await audio.StopAsync(CancellationToken.None).ConfigureAwait(false);
         }
         catch
         {

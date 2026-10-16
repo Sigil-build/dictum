@@ -179,5 +179,18 @@ public class IpcTests : IDisposable
         Assert.Equal(("stopping", "shutdown"), (events.Single().Event, events.Single().Reason));
     }
 
+    [Fact(Timeout = 10_000)]
+    public async Task AHandlerExceptionBecomesAFailureAnswer()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var server = new IpcServer(SocketPath, NullLog.Instance);
+        await server.StartAsync((_, _) => throw new InvalidDataException("broken handler"), ct);
+
+        var response = await new IpcClient(SocketPath).SendAsync(new IpcRequest("status"), ct);
+
+        Assert.False(response.Ok);
+        Assert.Contains("broken handler", response.Error);
+    }
+
     private static DaemonStatus Status(string state) => new(state, null, [], "test", "test", Environment.ProcessId);
 }

@@ -22,11 +22,15 @@ internal sealed class FakeAudio : IAudioSource
 
     public Exception? FailWith { get; set; }
 
+    public Exception? FailOnStop { get; set; }
+
+    public bool? LastKeepSamples { get; private set; }
+
     public IReadOnlyList<AudioDevice> Devices { get; set; } = [];
 
     public IReadOnlyList<AudioDevice> ListDevices() => Devices;
 
-    public Task StartAsync(string? deviceId, CancellationToken ct)
+    public Task StartAsync(string? deviceId, CancellationToken ct, bool keepSamples = true)
     {
         if (FailWith is not null)
         {
@@ -34,12 +38,18 @@ internal sealed class FakeAudio : IAudioSource
         }
 
         Starts++;
+        LastKeepSamples = keepSamples;
         FrameCaptured?.Invoke(default);
         return Task.CompletedTask;
     }
 
     public Task<AudioClip> StopAsync(CancellationToken ct)
     {
+        if (FailOnStop is not null)
+        {
+            throw FailOnStop;
+        }
+
         Stops++;
         return Task.FromResult(new AudioClip(new float[AudioClip.WhisperSampleRate]));
     }
@@ -59,11 +69,18 @@ internal sealed class EchoStt(string text) : ISpeechToText
 
     public string Text { get; set; } = text;
 
+    public Exception? FailWith { get; set; }
+
     public async Task<Transcript> TranscribeAsync(AudioClip clip, SttRequest request, CancellationToken ct)
     {
         if (Gate is not null)
         {
             await Gate.Task.WaitAsync(ct);
+        }
+
+        if (FailWith is not null)
+        {
+            throw FailWith;
         }
 
         return new Transcript(Text, request.Language, TimeSpan.Zero);

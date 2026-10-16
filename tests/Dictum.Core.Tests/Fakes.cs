@@ -14,16 +14,21 @@ internal sealed class FakeAudioSource(AudioClip clip) : IAudioSource
 
     public IReadOnlyList<AudioDevice> ListDevices() => [];
 
-    public Task StartAsync(string? deviceId, CancellationToken ct)
+    public Task StartAsync(string? deviceId, CancellationToken ct, bool keepSamples = true)
     {
         Started = true;
         FrameCaptured?.Invoke(new AudioFrame(0.5f, ReadOnlyMemory<float>.Empty, TimeSpan.Zero));
         return Task.CompletedTask;
     }
 
+    public bool Stopped { get; private set; }
+
+    /// <summary>Like PortAudioSource, a stop with a cancelled token never runs, and the microphone stays held.</summary>
     public Task<AudioClip> StopAsync(CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         Started = false;
+        Stopped = true;
         return Task.FromResult(clip);
     }
 

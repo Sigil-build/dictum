@@ -20,7 +20,11 @@ public interface IAudioSource : IAsyncDisposable
     IReadOnlyList<AudioDevice> ListDevices();
 
     /// <summary>Starts capturing from the device (null = system default).</summary>
-    Task StartAsync(string? deviceId, CancellationToken ct);
+    /// <param name="keepSamples">
+    /// False for a level meter: frames are raised as usual, but nothing is kept, and <see cref="StopAsync"/> returns an
+    /// empty clip at once.
+    /// </param>
+    Task StartAsync(string? deviceId, CancellationToken ct, bool keepSamples = true);
 
     /// <summary>Stops capturing and returns everything recorded, resampled to 16 kHz mono.</summary>
     Task<AudioClip> StopAsync(CancellationToken ct);

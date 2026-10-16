@@ -23,6 +23,9 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
 
     public event Action<AudioFrame>? FrameCaptured;
 
+    /// <summary>False while a level meter runs: frames only, nothing buffered.</summary>
+    private volatile bool _keepSamples = true;
+
     /// <summary>Input devices of the preferred host API (WASAPI, ALSA or Core Audio), default first.</summary>
     public unsafe IReadOnlyList<AudioDevice> ListDevices()
     {
@@ -52,7 +55,7 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
     }
 
     /// <param name="deviceId">Null for the default device, a PortAudio index, or (part of) a device name.</param>
-    public unsafe Task StartAsync(string? deviceId, CancellationToken ct)
+    public unsafe Task StartAsync(string? deviceId, CancellationToken ct, bool keepSamples = true)
     {
         lock (_gate)
         {
@@ -91,7 +94,8 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
             }
 
             log.Info($"Recording from '{device.Name}' ({device.HostApi}, {_sampleRate} Hz, {channels} ch)");
-            _channels = [.. Enumerable.Range(0, channels).Select(_ => new List<float>(_sampleRate * 30))];
+            _keepSamples = keepSamples;
+            _channels = [.. Enumerable.Range(0, channels).Select(_ => new List<float>(keepSamples ? _sampleRate * 30 : 0))];
             _captureError = null;
             _stopping = false;
             var handle = stream;
@@ -131,6 +135,12 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
                     if (_captureError is { } error)
                     {
                         throw new AudioDeviceException($"Recording failed: {error.Message}");
+                    }
+
+                    if (!_keepSamples)
+                    {
+                        _channels = [];
+                        return AudioClip.Empty;
                     }
 
                     var best = LoudestChannel(_channels);
@@ -193,7 +203,10 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
                         channel[f] = buffer[(f * channels) + c];
                     }
 
-                    _channels[c].AddRange(channel);
+                    if (_keepSamples)
+                    {
+                        _channels[c].AddRange(channel);
+                    }
                     var rms = Levels.Rms(channel);
                     if (rms > loudest)
                     {

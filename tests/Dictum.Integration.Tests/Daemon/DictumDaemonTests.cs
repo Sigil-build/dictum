@@ -1,4 +1,5 @@
 using Dictum.Audio.PortAudio;
+using Dictum.Core;
 using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
@@ -533,6 +534,122 @@ public class DictumDaemonTests
         var events = await DrainAsync(subscriber);
 
         Assert.Equal("shutdown", Assert.Single(events, e => e.Event == "stopping").Reason);
+    }
+
+    [Fact]
+    public async Task AMicrophoneFailureDuringAProviderTestDoesNotBlockDictation()
+    {
+        await using var daemon = await StartAsync(Config());
+        _engines[^1].Audio.FailOnStop = new AudioDeviceException("Recording failed: device lost");
+
+        var test = await daemon.HandleAsync(new IpcRequest("test-stt", Stt: "s", Seconds: 1), _ct);
+        _engines[^1].Audio.FailOnStop = null;
+        var start = await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+
+        Assert.False(test.Ok);
+        Assert.True(start.Ok, start.Error);
+    }
+
+    [Fact]
+    public async Task AProviderFailureDuringATestIsAFailureAnswer()
+    {
+        await using var daemon = await StartAsync(Config());
+        _stt.FailWith = new ProviderUnavailableException("The server at http://localhost:9 is not answering.");
+
+        var response = await daemon.HandleAsync(new IpcRequest("test-stt", Stt: "s", Sample: true), _ct);
+
+        Assert.False(response.Ok);
+        Assert.Contains("not answering", response.Error);
+    }
+
+    [Fact]
+    public async Task AnUnknownProfileIsRefusedAndLaterDictationsStillWork()
+    {
+        await using var daemon = await StartAsync(Config());
+
+        var unknown = await daemon.HandleAsync(new IpcRequest("start", "nope"), _ct);
+        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+        await daemon.HandleAsync(new IpcRequest("stop"), _ct);
+        await WaitForAsync(() => _injector.Injected.Count == 1);
+
+        Assert.False(unknown.Ok);
+    }
+
+    [Fact]
+    public async Task AFailedStartFinishesAsAnError()
+    {
+        await using var daemon = await StartAsync(Config());
+        using var subscriber = _events.Subscribe();
+        _engines[^1].Audio.FailWith = new AudioDeviceException("Microphone not found.");
+
+        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+        var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == "finished"));
+
+        var finished = Assert.Single(events, e => e.Event == "finished");
+        Assert.Equal(DictationOutcome.Error, finished.Outcome);
+        Assert.Contains("Microphone not found", finished.Message);
+    }
+
+    [Fact]
+    public async Task ACancelDuringTranscriptionFinishesOnceAsCancelled()
+    {
+        _stt.Gate = new TaskCompletionSource();
+        await using var daemon = await StartAsync(Config());
+        using var subscriber = _events.Subscribe();
+
+        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+        await daemon.HandleAsync(new IpcRequest("stop"), _ct);
+        await WaitForAsync(() => daemon.State == PipelineState.Transcribing);
+        await daemon.HandleAsync(new IpcRequest("cancel"), _ct);
+        var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == "finished"));
+        await Task.Delay(200, _ct);
+        events.AddRange(await DrainAsync(subscriber));
+
+        Assert.Equal(DictationOutcome.Cancelled, Assert.Single(events, e => e.Event == "finished").Outcome);
+        Assert.Empty(_injector.Injected);
+    }
+
+    [Fact]
+    public async Task ACancelWhileRecordingFinishesAsCancelled()
+    {
+        await using var daemon = await StartAsync(Config());
+        using var subscriber = _events.Subscribe();
+
+        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+        await daemon.HandleAsync(new IpcRequest("cancel"), _ct);
+        var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == "finished"));
+
+        Assert.Equal(DictationOutcome.Cancelled, Assert.Single(events, e => e.Event == "finished").Outcome);
+    }
+
+    [Fact]
+    public async Task AReloadDuringADictationWaitsForItToFinish()
+    {
+        await using var daemon = await StartAsync(Config());
+        using var subscriber = _events.Subscribe();
+        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+
+        await daemon.ApplyConfigAsync(Config(), _ct);
+        Assert.Single(_engines);
+        await daemon.HandleAsync(new IpcRequest("stop"), _ct);
+        var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == "finished"));
+        await WaitForAsync(() => _engines.Count == 2);
+
+        Assert.Equal(DictationOutcome.Pasted, events.Single(e => e.Event == "finished").Outcome);
+        Assert.True(_engines[0].Disposed);
+    }
+
+    [Fact]
+    public async Task TheMonitorKeepsNoSamplesButADictationDoes()
+    {
+        await using var daemon = await StartAsync(Config());
+        var audio = _engines[^1].Audio;
+
+        await daemon.HandleAsync(new IpcRequest("monitor-start"), _ct);
+        var monitorKept = audio.LastKeepSamples;
+        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+
+        Assert.Equal((false, true), (monitorKept, audio.LastKeepSamples));
     }
 
     private async Task<List<IpcEvent>> CollectAsync(IpcSubscriber subscriber, Func<List<IpcEvent>, bool> until)

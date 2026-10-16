@@ -13,7 +13,7 @@ public sealed class FileAudioSource(string path) : IAudioSource
     public IReadOnlyList<AudioDevice> ListDevices() =>
         [new AudioDevice("file", Path.GetFileName(path), "file", 1, AudioClip.WhisperSampleRate, IsDefault: true)];
 
-    public Task StartAsync(string? deviceId, CancellationToken ct)
+    public Task StartAsync(string? deviceId, CancellationToken ct, bool keepSamples = true)
     {
         FrameCaptured?.Invoke(new AudioFrame(0, ReadOnlyMemory<float>.Empty, TimeSpan.Zero));
         return Task.CompletedTask;

@@ -247,6 +247,26 @@ public class DictationPipelineTests : IDisposable
         Assert.Equal(entry.Model, result.Model);
     }
 
+    [Fact]
+    public async Task AStopWithACancelledTokenStillReleasesTheMicrophone()
+    {
+        var audio = new FakeAudioSource(Clips.Seconds(1));
+        var pipeline = new DictationPipeline(audio, _history, NullLog.Instance);
+        await pipeline.StartRecordingAsync(null, _ct);
+
+        try
+        {
+            await pipeline.StopAsync(Profile(new FakeStt("привіт")), null, new CancellationToken(canceled: true));
+        }
+        catch (OperationCanceledException)
+        {
+            // A provider that honours the token cancels here; this fake does not. Either way the microphone is released.
+        }
+
+        Assert.True(audio.Stopped);
+        Assert.Equal(PipelineState.Idle, pipeline.State);
+    }
+
     private static DictationProfile Profile(ISpeechToText stt, params ITextProcessor[] processors) =>
         new("p", stt, new SttRequest("uk", null), processors);
 }

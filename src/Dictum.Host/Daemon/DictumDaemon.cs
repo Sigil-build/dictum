@@ -45,6 +45,7 @@ public sealed class DictumDaemon : IAsyncDisposable
     private DateTimeOffset _monitorUntil;
     private bool _testing;
     private bool _stoppingAnnounced;
+    private (DictumConfig Config, IReadOnlyList<ConfigIssue>? Warnings)? _pendingConfig;
 
     public DictumDaemon(
         DictumConfig config,
@@ -128,6 +129,15 @@ public sealed class DictumDaemon : IAsyncDisposable
         IDictationEngine previous;
         try
         {
+            if (State != PipelineState.Idle || _stopInProgress || _testing)
+            {
+                // Swapping the engine now would drop the dictation; the newest config is applied once it has finished.
+                _pendingConfig = (config, warnings);
+                _log.Info("Config reload waits for the dictation to finish");
+                return;
+            }
+
+            _pendingConfig = null;
             await StopMonitorCoreAsync().ConfigureAwait(false);
             previous = _engine;
             Unsubscribe(previous);
@@ -239,6 +249,12 @@ public sealed class DictumDaemon : IAsyncDisposable
         {
             return IpcResponse.Failure(ex.Message);
         }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            // A provider that is down or a server that times out must not look like a dead daemon to the client.
+            _log.Error($"IPC '{request.Command}' failed: {ex.Message}", ex);
+            return IpcResponse.Failure(MessageOf(ex));
+        }
     }
 
     public DaemonStatus Status() => new(
@@ -313,7 +329,17 @@ public sealed class DictumDaemon : IAsyncDisposable
             _activeProfile = profileId;
             _dictation?.Dispose();
             _dictation = new CancellationTokenSource();
-            await _engine.Pipeline.StartRecordingAsync(Config.General.AudioDevice, ct).ConfigureAwait(false);
+            try
+            {
+                await _engine.Pipeline.StartRecordingAsync(Config.General.AudioDevice, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // The pipeline published Recording and then Idle; subscribers also need this dictation to end.
+                Finish(DictationOutcome.Error, MessageOf(ex), null);
+                throw;
+            }
+
             Cue(SoundCue.Start);
         }
         catch
@@ -340,11 +366,10 @@ public sealed class DictumDaemon : IAsyncDisposable
                 return;
             }
 
-            _stopInProgress = true;
-
             engine = _engine;
             profile = engine.ResolveProfile(profileId);
             token = _dictation?.Token ?? CancellationToken.None;
+            _stopInProgress = true;
         }
         finally
         {
@@ -380,6 +405,8 @@ public sealed class DictumDaemon : IAsyncDisposable
             _activeProfile = null;
             _stopInProgress = false;
         }
+
+        await ApplyPendingConfigAsync().ConfigureAwait(false);
     }
 
     private async Task CancelAsync()
@@ -413,51 +440,90 @@ public sealed class DictumDaemon : IAsyncDisposable
             _stopInProgress = false;
             Finish(DictationOutcome.Cancelled, null, null);
         }
+
+        await ApplyPendingConfigAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>Applies a config that arrived during a dictation or a provider test, now that it has ended.</summary>
+    private async Task ApplyPendingConfigAsync()
+    {
+        if (_pendingConfig is not { } pending || _stopping.IsCancellationRequested)
+        {
+            return;
+        }
+
+        try
+        {
+            await ApplyConfigAsync(pending.Config, _stopping.Token, pending.Warnings).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _log.Warn($"Config reload failed: {ex.Message}");
+        }
+        catch (OperationCanceledException)
+        {
+            // Shutting down.
+        }
     }
 
     private async Task<SttTestResult> TestSttAsync(IpcRequest request, CancellationToken ct)
     {
         var id = request.Stt ?? throw new ConfigException("Name the speech provider to test.");
-        var engine = _engine;
-        var stt = engine.GetStt(id);
-        AudioClip clip;
-        if (request.Sample == true)
+        var sample = request.Sample == true;
+        IDictationEngine engine;
+        ISpeechToText stt;
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
         {
-            clip = LoadSample();
-        }
-        else
-        {
-            await _gate.WaitAsync(ct).ConfigureAwait(false);
-            try
+            if (_testing || (!sample && (State != PipelineState.Idle || _monitoring)))
             {
-                if (State != PipelineState.Idle || _monitoring || _testing)
-                {
-                    throw new InvalidOperationException("Dictum is busy; test the provider when the dictation or level meter has finished.");
-                }
+                throw new InvalidOperationException("Dictum is busy; test the provider when the dictation or level meter has finished.");
+            }
 
+            engine = _engine;
+            stt = engine.GetStt(id);
+            if (!sample)
+            {
                 await engine.Audio.StartAsync(Config.General.AudioDevice, ct).ConfigureAwait(false);
-                _testing = true;
-            }
-            finally
-            {
-                _gate.Release();
             }
 
-            try
-            {
-                await Task.Delay(TimeSpan.FromSeconds(Math.Clamp(request.Seconds ?? 5, 1, 30)), ct).ConfigureAwait(false);
-            }
-            finally
-            {
-                clip = await engine.Audio.StopAsync(CancellationToken.None).ConfigureAwait(false);
-                _testing = false;
-            }
+            // Holds off hotkey dictations and config reloads until the test is over, so its engine stays alive.
+            _testing = true;
+        }
+        finally
+        {
+            _gate.Release();
         }
 
-        var language = engine.Config.Profiles.FirstOrDefault(p => p.Stt == id)?.Language;
-        var watch = Stopwatch.StartNew();
-        var transcript = await stt.TranscribeAsync(clip, SttRequest.ForSetting(language, null) ?? new SttRequest(null, null), ct).ConfigureAwait(false);
-        return new SttTestResult(transcript.Text.Trim(), transcript.Language, watch.ElapsedMilliseconds, transcript.Backend, transcript.Model);
+        try
+        {
+            AudioClip clip;
+            if (sample)
+            {
+                clip = LoadSample();
+            }
+            else
+            {
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(Math.Clamp(request.Seconds ?? 5, 1, 30)), ct).ConfigureAwait(false);
+                }
+                finally
+                {
+                    clip = await engine.Audio.StopAsync(CancellationToken.None).ConfigureAwait(false);
+                }
+            }
+
+            var language = engine.Config.Profiles.FirstOrDefault(p => p.Stt == id)?.Language;
+            var watch = Stopwatch.StartNew();
+            var transcript = await stt.TranscribeAsync(clip, SttRequest.ForSetting(language, null) ?? new SttRequest(null, null), ct).ConfigureAwait(false);
+            return new SttTestResult(transcript.Text.Trim(), transcript.Language, watch.ElapsedMilliseconds, transcript.Backend, transcript.Model);
+        }
+        finally
+        {
+            _testing = false;
+            await ApplyPendingConfigAsync().ConfigureAwait(false);
+        }
     }
 
     /// <summary>6.9 s of Ukrainian speech ("тестовий запис"), synthesised with Piper TTS from a CC0 dataset.</summary>
@@ -484,7 +550,7 @@ public sealed class DictumDaemon : IAsyncDisposable
                 return;
             }
 
-            await _engine.Audio.StartAsync(device ?? Config.General.AudioDevice, ct).ConfigureAwait(false);
+            await _engine.Audio.StartAsync(device ?? Config.General.AudioDevice, ct, keepSamples: false).ConfigureAwait(false);
             _monitoring = true;
         }
         finally
@@ -617,8 +683,9 @@ public sealed class DictumDaemon : IAsyncDisposable
         ex is DictationException { InnerException: { } inner } ? inner.Message : ex.Message;
 
     private string ProfileFor(string? requested) =>
-        requested ?? _selectedProfile ?? Config.Profiles.FirstOrDefault()?.Id
-            ?? throw new ConfigException("No profiles in the config.");
+        requested is null
+            ? _selectedProfile ?? Config.Profiles.FirstOrDefault()?.Id ?? throw new ConfigException("No profiles in the config.")
+            : Config.Profiles.Any(p => p.Id == requested) ? requested : throw new ConfigException($"Unknown profile '{requested}'.");
 
     private async Task WarmUpAsync(IDictationEngine engine)
     {
