@@ -1,4 +1,5 @@
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 
 namespace Dictum.Integration.Tests;
@@ -86,6 +87,74 @@ public class IpcTests : IDisposable
         Assert.Equal(shortened, IpcEndpoint.Shorten(deep));
         Assert.NotEqual(shortened, IpcEndpoint.Shorten(deep + "2"));
         Assert.Equal(SocketPath, IpcEndpoint.Shorten(SocketPath));
+    }
+
+    [Fact(Timeout = 10_000)]
+    public async Task SubscribeStreamsPublishedEventsInOrder()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var hub = new IpcEventHub();
+        await using var server = new IpcServer(SocketPath, NullLog.Instance, hub);
+        await server.StartAsync((_, _) => Task.FromResult(IpcResponse.Success(Status("Idle"))), ct);
+
+        await using var subscription = await new IpcClient(SocketPath).SubscribeAsync(ct);
+        Assert.True(subscription.Response.Ok);
+        Assert.Equal(IpcProtocol.Version, subscription.Response.Status!.Protocol);
+
+        hub.Publish(IpcEvent.ForState(PipelineState.Recording, "uk", "PushToTalk"));
+        hub.Publish(IpcEvent.Finished(DictationOutcome.Pasted, null, "uk", 4900, 6100));
+
+        var events = new List<IpcEvent>();
+        await foreach (var e in subscription.ReadEventsAsync(ct))
+        {
+            events.Add(e);
+            if (events.Count == 2)
+            {
+                break;
+            }
+        }
+
+        Assert.Equal(("state", "Recording"), (events[0].Event, events[0].State));
+        Assert.Equal(("finished", "pasted", 6100L), (events[1].Event, events[1].Outcome, events[1].TranscribeMs));
+    }
+
+    [Fact(Timeout = 10_000)]
+    public async Task HangingUpRemovesTheSubscriber()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var hub = new IpcEventHub();
+        await using var server = new IpcServer(SocketPath, NullLog.Instance, hub);
+        await server.StartAsync((_, _) => Task.FromResult(IpcResponse.Success(Status("Idle"))), ct);
+
+        var subscription = await new IpcClient(SocketPath).SubscribeAsync(ct);
+        Assert.Equal(1, hub.SubscriberCount);
+        await subscription.DisposeAsync();
+
+        while (hub.SubscriberCount > 0)
+        {
+            await Task.Delay(10, ct);
+        }
+    }
+
+    [Fact(Timeout = 20_000)]
+    public async Task OverflowingSubscriberIsDropped()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var hub = new IpcEventHub();
+        await using var server = new IpcServer(SocketPath, NullLog.Instance, hub, writeTimeout: TimeSpan.FromMilliseconds(200));
+        await server.StartAsync((_, _) => Task.FromResult(IpcResponse.Success(Status("Idle"))), ct);
+
+        await using var neverReads = await new IpcClient(SocketPath).SubscribeAsync(ct);
+        var big = IpcEvent.ForStatus(Status(new string('x', 2000)));
+        while (hub.SubscriberCount > 0)
+        {
+            for (var i = 0; i < 100; i++)
+            {
+                hub.Publish(big);
+            }
+
+            await Task.Delay(20, ct);
+        }
     }
 
     private static DaemonStatus Status(string state) => new(state, null, [], "test", "test", Environment.ProcessId);

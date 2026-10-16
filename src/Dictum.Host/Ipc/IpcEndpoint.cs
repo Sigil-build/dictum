@@ -1,4 +1,5 @@
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using Dictum.Core;
@@ -55,30 +56,89 @@ public sealed class IpcClient(string socketPath)
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
 
-    public async Task<IpcResponse> SendAsync(IpcRequest request, CancellationToken ct)
+    /// <param name="timeout">How long to wait for the answer; 10 s unless the command takes longer (e.g. <c>test-stt</c>).</param>
+    public async Task<IpcResponse> SendAsync(IpcRequest request, CancellationToken ct, TimeSpan? timeout = null)
     {
-        using var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
+        using var socket = await ConnectAsync(ct).ConfigureAwait(false);
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        deadline.CancelAfter(timeout ?? Timeout);
+        await using var stream = new NetworkStream(socket, ownsSocket: false);
+        var line = JsonSerializer.Serialize(request, IpcJsonContext.Default.IpcRequest) + "\n";
+        await stream.WriteAsync(Encoding.UTF8.GetBytes(line), deadline.Token).ConfigureAwait(false);
+
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        var reply = await reader.ReadLineAsync(deadline.Token).ConfigureAwait(false)
+            ?? throw new DaemonNotRunningException("The daemon closed the connection without answering.");
+        return JsonSerializer.Deserialize(reply, IpcJsonContext.Default.IpcResponse)
+            ?? throw new InvalidOperationException("The daemon sent an empty answer.");
+    }
+
+    /// <summary>Opens the event stream; disposing the subscription closes it.</summary>
+    public async Task<IpcSubscription> SubscribeAsync(CancellationToken ct)
+    {
+        var socket = await ConnectAsync(ct).ConfigureAwait(false);
+        var stream = new NetworkStream(socket, ownsSocket: true);
+        try
+        {
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            deadline.CancelAfter(Timeout);
+            var line = JsonSerializer.Serialize(new IpcRequest("subscribe"), IpcJsonContext.Default.IpcRequest) + "\n";
+            await stream.WriteAsync(Encoding.UTF8.GetBytes(line), deadline.Token).ConfigureAwait(false);
+            var reader = new StreamReader(stream, Encoding.UTF8);
+            var reply = await reader.ReadLineAsync(deadline.Token).ConfigureAwait(false)
+                ?? throw new DaemonNotRunningException("The daemon closed the connection without answering.");
+            var response = JsonSerializer.Deserialize(reply, IpcJsonContext.Default.IpcResponse)
+                ?? throw new InvalidOperationException("The daemon sent an empty answer.");
+            return new IpcSubscription(response, stream, reader);
+        }
+        catch
+        {
+            await stream.DisposeAsync().ConfigureAwait(false);
+            throw;
+        }
+    }
+
+    private async Task<Socket> ConnectAsync(CancellationToken ct)
+    {
+        var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
         try
         {
             await socket.ConnectAsync(new UnixDomainSocketEndPoint(socketPath), ct).ConfigureAwait(false);
+            return socket;
         }
         catch (SocketException ex) when (ex.SocketErrorCode is SocketError.ConnectionRefused or SocketError.AddressNotAvailable
                                              or SocketError.AccessDenied || !File.Exists(socketPath))
         {
+            socket.Dispose();
             throw new DaemonNotRunningException("The Dictum daemon is not running. Start it with 'dictum daemon'.");
         }
+        catch
+        {
+            socket.Dispose();
+            throw;
+        }
+    }
+}
 
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeout.CancelAfter(Timeout);
-        await using var stream = new NetworkStream(socket, ownsSocket: false);
-        var line = JsonSerializer.Serialize(request, IpcJsonContext.Default.IpcRequest) + "\n";
-        await stream.WriteAsync(Encoding.UTF8.GetBytes(line), timeout.Token).ConfigureAwait(false);
+public sealed class IpcSubscription(IpcResponse response, NetworkStream stream, StreamReader reader) : IAsyncDisposable
+{
+    public IpcResponse Response { get; } = response;
 
-        using var reader = new StreamReader(stream, Encoding.UTF8);
-        var reply = await reader.ReadLineAsync(timeout.Token).ConfigureAwait(false)
-            ?? throw new DaemonNotRunningException("The daemon closed the connection without answering.");
-        return JsonSerializer.Deserialize(reply, IpcJsonContext.Default.IpcResponse)
-            ?? throw new InvalidOperationException("The daemon sent an empty answer.");
+    public async IAsyncEnumerable<IpcEvent> ReadEventsAsync([EnumeratorCancellation] CancellationToken ct)
+    {
+        while (await reader.ReadLineAsync(ct).ConfigureAwait(false) is { } line)
+        {
+            if (line.Length > 0 && JsonSerializer.Deserialize(line, IpcJsonContext.Default.IpcEvent) is { } message)
+            {
+                yield return message;
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        reader.Dispose();
+        await stream.DisposeAsync().ConfigureAwait(false);
     }
 }
 
@@ -90,15 +150,21 @@ public sealed class IpcServer : IAsyncDisposable
 {
     private readonly string _socketPath;
     private readonly ILog _log;
+    private readonly IpcEventHub? _events;
+    private readonly TimeSpan _writeTimeout;
     private readonly CancellationTokenSource _stop = new();
     private FileStream? _lock;
     private Socket? _listener;
     private Task? _acceptLoop;
 
-    public IpcServer(string socketPath, ILog log)
+    /// <param name="events">Where <c>subscribe</c> connections get their events; without it they get one reply, like any command.</param>
+    /// <param name="writeTimeout">A subscriber that does not take its events within this time is disconnected.</param>
+    public IpcServer(string socketPath, ILog log, IpcEventHub? events = null, TimeSpan? writeTimeout = null)
     {
         _socketPath = socketPath;
         _log = log;
+        _events = events;
+        _writeTimeout = writeTimeout ?? TimeSpan.FromSeconds(5);
     }
 
     public string SocketPath => _socketPath;
@@ -191,9 +257,10 @@ public sealed class IpcServer : IAsyncDisposable
                 using var reader = new StreamReader(stream, Encoding.UTF8);
                 var line = await reader.ReadLineAsync(ct).ConfigureAwait(false);
                 IpcResponse response;
+                IpcRequest? request = null;
                 try
                 {
-                    var request = line is null ? null : JsonSerializer.Deserialize(line, IpcJsonContext.Default.IpcRequest);
+                    request = line is null ? null : JsonSerializer.Deserialize(line, IpcJsonContext.Default.IpcRequest);
                     response = request is null
                         ? IpcResponse.Failure("Empty request.")
                         : await handler(request, ct).ConfigureAwait(false);
@@ -203,13 +270,88 @@ public sealed class IpcServer : IAsyncDisposable
                     response = IpcResponse.Failure("Malformed request.");
                 }
 
-                var reply = JsonSerializer.Serialize(response, IpcJsonContext.Default.IpcResponse) + "\n";
-                await stream.WriteAsync(Encoding.UTF8.GetBytes(reply), ct).ConfigureAwait(false);
+                // Subscribing before the reply is written means nothing published after the client sees it is lost.
+                var subscriber = request?.Command == "subscribe" && response.Ok ? _events?.Subscribe() : null;
+                try
+                {
+                    var reply = JsonSerializer.Serialize(response, IpcJsonContext.Default.IpcResponse) + "\n";
+                    await stream.WriteAsync(Encoding.UTF8.GetBytes(reply), ct).ConfigureAwait(false);
+                    if (subscriber is not null)
+                    {
+                        await StreamAsync(subscriber, stream, reader, ct).ConfigureAwait(false);
+                    }
+                }
+                finally
+                {
+                    subscriber?.Dispose();
+                }
             }
             catch (Exception ex) when (ex is IOException or SocketException or OperationCanceledException)
             {
                 _log.Debug($"IPC client dropped: {ex.Message}");
             }
+        }
+    }
+
+    private async Task StreamAsync(IpcSubscriber subscriber, NetworkStream stream, StreamReader reader, CancellationToken ct)
+    {
+        using var closed = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        _ = WatchForHangUpAsync(reader, closed);
+        try
+        {
+            while (true)
+            {
+                var batch = await subscriber.NextAsync(closed.Token).ConfigureAwait(false);
+                if (subscriber.Overflowed)
+                {
+                    _log.Warn("An IPC subscriber stopped reading; disconnecting it");
+                    return;
+                }
+
+                var text = new StringBuilder();
+                foreach (var message in batch)
+                {
+                    text.Append(JsonSerializer.Serialize(message, IpcJsonContext.Default.IpcEvent)).Append('\n');
+                }
+
+                using var write = CancellationTokenSource.CreateLinkedTokenSource(closed.Token);
+                write.CancelAfter(_writeTimeout);
+                try
+                {
+                    await stream.WriteAsync(Encoding.UTF8.GetBytes(text.ToString()), write.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (!closed.IsCancellationRequested)
+                {
+                    _log.Warn($"An IPC subscriber took over {_writeTimeout.TotalSeconds:F1} s to read; disconnecting it");
+                    return;
+                }
+            }
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            // The client hung up.
+        }
+    }
+
+    /// <summary>A subscriber sends nothing after its request, so a read that ends means it hung up.</summary>
+    private static async Task WatchForHangUpAsync(StreamReader reader, CancellationTokenSource closed)
+    {
+        try
+        {
+            while (await reader.ReadLineAsync(closed.Token).ConfigureAwait(false) is not null)
+            {
+            }
+        }
+        catch (Exception ex) when (ex is IOException or OperationCanceledException or ObjectDisposedException)
+        {
+        }
+
+        try
+        {
+            await closed.CancelAsync().ConfigureAwait(false);
+        }
+        catch (ObjectDisposedException)
+        {
         }
     }
 }
