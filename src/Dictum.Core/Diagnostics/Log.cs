@@ -63,18 +63,22 @@ public sealed class DictumLog : ILog, IDisposable
     private readonly string? _filePath;
     private StreamWriter? _file;
 
-    public DictumLog(LogLevel consoleLevel, bool includeText, TextWriter? console, string? logsDirectory)
+    /// <param name="fileName">The daemon and CLI write <c>dictum.log</c>; the desktop app writes its own file.</param>
+    public DictumLog(LogLevel consoleLevel, bool includeText, TextWriter? console, string? logsDirectory, string fileName = "dictum.log")
     {
         _consoleLevel = consoleLevel;
         IncludeText = includeText;
         _console = console;
         if (logsDirectory is not null)
         {
-            _filePath = Path.Combine(logsDirectory, "dictum.log");
+            _filePath = Path.Combine(logsDirectory, fileName);
         }
     }
 
     public bool IncludeText { get; }
+
+    /// <summary>The log file, for messages that point the user at it; null without a logs directory.</summary>
+    public string? FilePath => _filePath;
 
     public void Write(LogLevel level, string message, Exception? exception = null)
     {

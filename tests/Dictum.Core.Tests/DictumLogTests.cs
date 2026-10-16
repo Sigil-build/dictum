@@ -59,4 +59,18 @@ public class DictumLogTests
 
         Assert.Equal(expected, log.Redact("secret words"));
     }
+
+    [Fact]
+    public void AnotherFileNameKeepsTwoProcessesApart()
+    {
+        using var dir = new TempDirectory();
+        using (var log = new DictumLog(LogLevel.Error, includeText: false, console: null, dir.Path, "dictum-gui.log"))
+        {
+            log.Info("from the desktop app");
+            Assert.Equal(dir.File("dictum-gui.log"), log.FilePath);
+        }
+
+        Assert.False(File.Exists(dir.File("dictum.log")));
+        Assert.Contains("from the desktop app", File.ReadAllText(dir.File("dictum-gui.log")));
+    }
 }

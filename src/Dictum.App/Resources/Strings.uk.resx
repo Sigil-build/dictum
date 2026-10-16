@@ -104,4 +104,10 @@
   <data name="MenuRestartDaemon" xml:space="preserve">
     <value>Перезапустити демон</value>
   </data>
+  <data name="ProblemExecutableMissing" xml:space="preserve">
+    <value>{0} не знайдено; dictum-gui потребує dictum у тій самій теці.</value>
+  </data>
+  <data name="ProblemCannotStart" xml:space="preserve">
+    <value>Не вдалося запустити {0}: {1}</value>
+  </data>
 </root>

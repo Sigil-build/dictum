@@ -104,4 +104,10 @@
   <data name="MenuRestartDaemon" xml:space="preserve">
     <value>Restart daemon</value>
   </data>
+  <data name="ProblemExecutableMissing" xml:space="preserve">
+    <value>{0} was not found; dictum-gui needs dictum in the same folder.</value>
+  </data>
+  <data name="ProblemCannotStart" xml:space="preserve">
+    <value>Could not start {0}: {1}</value>
+  </data>
 </root>
