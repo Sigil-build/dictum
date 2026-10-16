@@ -1,11 +1,16 @@
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Dictum.App.Shell;
 
 namespace Dictum.App;
 
 public partial class App : Application
 {
+    /// <summary>Set by Program before Avalonia starts; null in tests and in the self-test, where nothing is started.</summary>
+    public static DesktopShell? Shell { get; set; }
+
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
@@ -19,9 +24,11 @@ public partial class App : Application
 
     public override void OnFrameworkInitializationCompleted()
     {
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        if (Shell is { } shell && ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = new MainWindow();
+            // The tray menu is a window: the default mode would quit when it closes (research §2).
+            desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            shell.Start(this, code => desktop.Shutdown(code));
         }
 
         base.OnFrameworkInitializationCompleted();

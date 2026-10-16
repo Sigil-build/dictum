@@ -125,4 +125,43 @@
   <data name="MenuProfileWithLanguages" xml:space="preserve">
     <value>{0} ({1})</value>
   </data>
+  <data name="StatusWindowTitle" xml:space="preserve">
+    <value>Dictum</value>
+  </data>
+  <data name="StatusConnected" xml:space="preserve">
+    <value>З'єднано з демоном (pid {0})</value>
+  </data>
+  <data name="StatusStarting" xml:space="preserve">
+    <value>Запуск демона…</value>
+  </data>
+  <data name="StatusRestarting" xml:space="preserve">
+    <value>Демон зупинився; запускаю знову…</value>
+  </data>
+  <data name="StatusFailed" xml:space="preserve">
+    <value>Демон не працює</value>
+  </data>
+  <data name="StatusVersionMismatch" xml:space="preserve">
+    <value>Запущений демон — з іншої версії Dictum</value>
+  </data>
+  <data name="StatusNotConfigured" xml:space="preserve">
+    <value>Dictum ще не налаштовано. Виконайте «dictum init» у терміналі; вікно налаштування з'явиться в одній із наступних версій.</value>
+  </data>
+  <data name="StatusStopped" xml:space="preserve">
+    <value>Зупинено</value>
+  </data>
+  <data name="StatusComingLater" xml:space="preserve">
+    <value>Налаштування та історія з'являться в одній із наступних версій. Поки що змінюйте файл конфігурації нижче або користуйтеся командою dictum.</value>
+  </data>
+  <data name="StatusConfigFile" xml:space="preserve">
+    <value>Конфігурація: {0}</value>
+  </data>
+  <data name="StatusLogFile" xml:space="preserve">
+    <value>Журнал: {0}</value>
+  </data>
+  <data name="StatusRestartButton" xml:space="preserve">
+    <value>Перезапустити демон</value>
+  </data>
+  <data name="StatusNoTray" xml:space="preserve">
+    <value>На цьому робочому столі немає трею для значка Dictum. У GNOME встановіть розширення «AppIndicator and KStatusNotifierItem Support».</value>
+  </data>
 </root>

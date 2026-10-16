@@ -26,5 +26,15 @@ public sealed class AvaloniaFixture : IAsyncDisposable
     /// <summary>Runs <paramref name="test"/> on the session's UI thread.</summary>
     public Task Ui(Action test) => Session.Dispatch(test, TestContext.Current.CancellationToken);
 
+    /// <summary>Runs an async test on the UI thread; awaits inside it return to that thread.</summary>
+    public Task UiAsync(Func<Task> test) =>
+        Session.Dispatch(
+            async () =>
+            {
+                await test();
+                return true;
+            },
+            TestContext.Current.CancellationToken);
+
     public ValueTask DisposeAsync() => Session.DisposeAsync();
 }

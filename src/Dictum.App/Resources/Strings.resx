@@ -125,4 +125,43 @@
   <data name="MenuProfileWithLanguages" xml:space="preserve">
     <value>{0} ({1})</value>
   </data>
+  <data name="StatusWindowTitle" xml:space="preserve">
+    <value>Dictum</value>
+  </data>
+  <data name="StatusConnected" xml:space="preserve">
+    <value>Connected to the daemon (pid {0})</value>
+  </data>
+  <data name="StatusStarting" xml:space="preserve">
+    <value>Starting the daemon…</value>
+  </data>
+  <data name="StatusRestarting" xml:space="preserve">
+    <value>The daemon stopped; starting it again…</value>
+  </data>
+  <data name="StatusFailed" xml:space="preserve">
+    <value>The daemon is not running</value>
+  </data>
+  <data name="StatusVersionMismatch" xml:space="preserve">
+    <value>The daemon that is running comes from another version of Dictum</value>
+  </data>
+  <data name="StatusNotConfigured" xml:space="preserve">
+    <value>Dictum is not set up yet. Run "dictum init" in a terminal; a setup window comes in a later version.</value>
+  </data>
+  <data name="StatusStopped" xml:space="preserve">
+    <value>Stopped</value>
+  </data>
+  <data name="StatusComingLater" xml:space="preserve">
+    <value>Settings and history arrive in a later version. Until then, edit the config file below or use the dictum command.</value>
+  </data>
+  <data name="StatusConfigFile" xml:space="preserve">
+    <value>Config: {0}</value>
+  </data>
+  <data name="StatusLogFile" xml:space="preserve">
+    <value>Log: {0}</value>
+  </data>
+  <data name="StatusRestartButton" xml:space="preserve">
+    <value>Restart daemon</value>
+  </data>
+  <data name="StatusNoTray" xml:space="preserve">
+    <value>This desktop has no tray for Dictum's icon. On GNOME, install the "AppIndicator and KStatusNotifierItem Support" extension.</value>
+  </data>
 </root>

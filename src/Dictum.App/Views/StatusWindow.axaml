@@ -1,0 +1,12 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Dictum.App.ViewModels"
+        xmlns:res="using:Dictum.App.Resources"
+        x:Class="Dictum.App.Views.StatusWindow"
+        x:DataType="vm:StatusViewModel"
+        Title="{x:Static res:Strings.StatusWindowTitle}"
+        Width="640" Height="460"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource color.bg.base}">
+  <ContentControl Content="{Binding}" />
+</Window>

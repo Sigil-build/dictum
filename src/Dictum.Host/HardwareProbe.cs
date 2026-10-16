@@ -17,6 +17,9 @@ public static class HardwareProbe
             gpu?.Type == VulkanDeviceType.IntegratedGpu);
     }
 
+    /// <summary>Free space where models are stored; unknown counts as plenty. The desktop app's download queue checks it.</summary>
+    public static long FreeDiskBytes(AppPaths paths) => FreeBytes(paths.DataDirectory);
+
     /// <summary>Free space on the volume that holds <paramref name="directory"/>; unknown counts as plenty.</summary>
     private static long FreeBytes(string directory)
     {

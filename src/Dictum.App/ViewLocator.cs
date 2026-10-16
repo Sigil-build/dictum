@@ -1,0 +1,19 @@
+using Avalonia.Controls;
+using Avalonia.Controls.Templates;
+using Dictum.App.ViewModels;
+using Dictum.App.Views;
+
+namespace Dictum.App;
+
+/// <summary>View for a view model, as a switch: no reflection, so Native AOT keeps every view.</summary>
+public sealed class ViewLocator : IDataTemplate
+{
+    public Control? Build(object? param) => param switch
+    {
+        StatusViewModel model => new StatusView { DataContext = model },
+        null => null,
+        _ => new TextBlock { Text = $"No view for {param.GetType().Name}" },
+    };
+
+    public bool Match(object? data) => data is ViewModelBase;
+}
