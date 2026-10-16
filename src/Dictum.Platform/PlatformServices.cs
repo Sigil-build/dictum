@@ -24,16 +24,46 @@ public sealed class NullNotifier : INotifier
     public Task NotifyAsync(string summary, string body, NotificationKind kind, CancellationToken ct) => Task.CompletedTask;
 }
 
-/// <summary>Starts the daemon when the user logs in.</summary>
+/// <summary>What starts at login.</summary>
+public enum LoginApp
+{
+    /// <summary><c>dictum daemon</c> alone, for machines without the desktop app.</summary>
+    Daemon,
+
+    /// <summary><c>dictum-gui</c>, which starts the daemon itself.</summary>
+    DesktopApp,
+}
+
+/// <param name="Executable">Full path of <c>dictum</c> for <see cref="LoginApp.Daemon"/>, of <c>dictum-gui</c> otherwise.</param>
+public sealed record LoginItem(LoginApp App, string Executable)
+{
+    public const string DesktopAppName = "dictum-gui";
+
+    public static string DesktopAppFile => OperatingSystem.IsWindows() ? DesktopAppName + ".exe" : DesktopAppName;
+
+    public IReadOnlyList<string> Arguments => App == LoginApp.Daemon ? ["daemon"] : [];
+
+    /// <summary>The desktop app when it sits next to <paramref name="dictum"/>; the daemon alone otherwise.</summary>
+    public static LoginItem NextTo(string dictum)
+    {
+        var app = Path.Combine(Path.GetDirectoryName(dictum) ?? ".", DesktopAppFile);
+        return File.Exists(app) ? new LoginItem(LoginApp.DesktopApp, app) : new LoginItem(LoginApp.Daemon, dictum);
+    }
+}
+
+/// <summary>Starts Dictum when the user logs in. Only one kind of entry exists at a time.</summary>
 public interface IAutostart
 {
-    /// <summary>Where the entry lives, e.g. the unit file or registry key.</summary>
-    string Location { get; }
+    /// <summary>Where the entry for <paramref name="app"/> lives, e.g. the unit file or the registry value.</summary>
+    string Location(LoginApp app);
 
-    bool IsInstalled { get; }
+    /// <summary>What starts at login now, or null.</summary>
+    LoginApp? Installed { get; }
 
-    Task InstallAsync(string executable, CancellationToken ct);
+    /// <summary>Writes the entry for <paramref name="item"/> and removes an entry of the other kind.</summary>
+    Task InstallAsync(LoginItem item, CancellationToken ct);
 
+    /// <summary>Removes every Dictum login entry.</summary>
     Task UninstallAsync(CancellationToken ct);
 }
 

@@ -1,21 +1,27 @@
 namespace Dictum.Platform.Linux;
 
 /// <summary>
-/// A systemd user unit bound to the graphical session, plus the .desktop file portals use to identify
-/// the app. Plasma 6 and GNOME export WAYLAND_DISPLAY/DISPLAY to systemd, so the unit sees the session.
+/// The daemon alone at login: a systemd user unit bound to the graphical session. Plasma 6 and GNOME export
+/// WAYLAND_DISPLAY/DISPLAY to systemd, so the unit sees the session. Used by <see cref="LinuxAutostart"/>. The
+/// portal's .desktop file is the daemon's own business (<see cref="DesktopEntry"/>, written before it registers).
 /// </summary>
-public sealed class SystemdAutostart : IAutostart
+/// <param name="configHome">XDG_CONFIG_HOME; tests pass a temp folder.</param>
+/// <param name="systemctl">Runs <c>systemctl --user</c> with the given arguments; tests record them.</param>
+public sealed class SystemdAutostart(string configHome, Func<IReadOnlyList<string>, CancellationToken, Task> systemctl)
 {
     public const string UnitName = "dictum.service";
 
-    private static string ConfigHome =>
+    public SystemdAutostart()
+        : this(DefaultConfigHome, Systemctl)
+    {
+    }
+
+    public static string DefaultConfigHome =>
         Environment.GetEnvironmentVariable("XDG_CONFIG_HOME") is { Length: > 0 } home
             ? home
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config");
 
-    public static string UnitPath => Path.Combine(ConfigHome, "systemd", "user", UnitName);
-
-    public string Location => UnitPath;
+    public string UnitPath => Path.Combine(configHome, "systemd", "user", UnitName);
 
     public bool IsInstalled => File.Exists(UnitPath);
 
@@ -23,18 +29,17 @@ public sealed class SystemdAutostart : IAutostart
     {
         Directory.CreateDirectory(Path.GetDirectoryName(UnitPath)!);
         await File.WriteAllTextAsync(UnitPath, UnitFile(executable), ct).ConfigureAwait(false);
-        await DesktopEntry.WriteAsync(executable, ct).ConfigureAwait(false);
-        await Systemctl(["daemon-reload"], ct).ConfigureAwait(false);
-        await Systemctl(["enable", UnitName], ct).ConfigureAwait(false);
+        await systemctl(["daemon-reload"], ct).ConfigureAwait(false);
+        await systemctl(["enable", UnitName], ct).ConfigureAwait(false);
     }
 
     public async Task UninstallAsync(CancellationToken ct)
     {
         if (File.Exists(UnitPath))
         {
-            await Systemctl(["disable", UnitName], ct).ConfigureAwait(false);
+            await systemctl(["disable", UnitName], ct).ConfigureAwait(false);
             File.Delete(UnitPath);
-            await Systemctl(["daemon-reload"], ct).ConfigureAwait(false);
+            await systemctl(["daemon-reload"], ct).ConfigureAwait(false);
         }
     }
 

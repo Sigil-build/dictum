@@ -26,4 +26,10 @@ public static class PlatformFactory
             OperatingSystem.IsMacOS() ? "macOS" : "this OS",
             "Global hotkeys and paste are not supported on this OS yet; use 'dictum record --out clipboard'.");
     }
+
+    /// <summary>Login start for this OS, without building the rest of the platform: the desktop app needs only this.</summary>
+    public static IAutostart? CreateAutostart() =>
+        OperatingSystem.IsWindows() ? new RunKeyAutostart()
+        : OperatingSystem.IsLinux() ? new LinuxAutostart()
+        : null;
 }

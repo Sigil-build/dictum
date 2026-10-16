@@ -9,45 +9,46 @@ public class AutostartExtensionsTests
     [Fact]
     public async Task TurningOnRewritesAnEntryAnOlderCopyInstalled()
     {
-        var autostart = new FakeAutostart { Executable = @"D:\Tools\dictum-old\dictum.exe" };
+        var autostart = new FakeAutostart { Item = new LoginItem(LoginApp.Daemon, @"D:\Tools\dictum-old\dictum.exe") };
 
-        Assert.True(await autostart.ApplyAsync(enable: true, @"D:\Tools\dictum-new\dictum.exe", _ct));
+        Assert.True(await autostart.ApplyAsync(enable: true, new LoginItem(LoginApp.DesktopApp, @"D:\Tools\dictum-new\dictum-gui.exe"), _ct));
 
-        Assert.Equal(@"D:\Tools\dictum-new\dictum.exe", autostart.Executable);
+        Assert.Equal(new LoginItem(LoginApp.DesktopApp, @"D:\Tools\dictum-new\dictum-gui.exe"), autostart.Item);
     }
 
     [Fact]
     public async Task TurningOffRemovesOnlyAnEntryThatExists()
     {
-        var installed = new FakeAutostart { Executable = "dictum" };
+        var installed = new FakeAutostart { Item = new LoginItem(LoginApp.Daemon, "dictum") };
         var absent = new FakeAutostart();
+        var any = new LoginItem(LoginApp.Daemon, "dictum");
 
-        Assert.True(await installed.ApplyAsync(enable: false, "dictum", _ct));
-        Assert.False(await absent.ApplyAsync(enable: false, "dictum", _ct));
+        Assert.True(await installed.ApplyAsync(enable: false, any, _ct));
+        Assert.False(await absent.ApplyAsync(enable: false, any, _ct));
 
-        Assert.False(installed.IsInstalled);
+        Assert.Null(installed.Installed);
         Assert.Equal(0, absent.Uninstalls);
     }
 
     private sealed class FakeAutostart : IAutostart
     {
-        public string? Executable { get; set; }
+        public LoginItem? Item { get; set; }
 
         public int Uninstalls { get; private set; }
 
-        public string Location => "fake";
+        public LoginApp? Installed => Item?.App;
 
-        public bool IsInstalled => Executable is not null;
+        public string Location(LoginApp app) => "fake";
 
-        public Task InstallAsync(string executable, CancellationToken ct)
+        public Task InstallAsync(LoginItem item, CancellationToken ct)
         {
-            Executable = executable;
+            Item = item;
             return Task.CompletedTask;
         }
 
         public Task UninstallAsync(CancellationToken ct)
         {
-            Executable = null;
+            Item = null;
             Uninstalls++;
             return Task.CompletedTask;
         }

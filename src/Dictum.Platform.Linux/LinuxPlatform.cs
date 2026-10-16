@@ -15,7 +15,7 @@ public static class LinuxPlatform
         var session = SessionInfo.Detect();
         var portal = new Portal(log);
         var notifier = new DBusNotifier(portal, log);
-        var autostart = new SystemdAutostart();
+        var autostart = new LinuxAutostart();
 
         return session.Type switch
         {

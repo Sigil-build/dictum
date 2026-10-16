@@ -3,19 +3,19 @@ namespace Dictum.Platform;
 public static class AutostartExtensions
 {
     /// <summary>
-    /// Turns login start on or off. Turning it on always rewrites the entry, so it records <paramref name="executable"/>
-    /// even when a copy of Dictum in another folder installed it.
+    /// Turns login start on or off. Turning it on always rewrites the entry, so it records <paramref name="item"/>
+    /// even when a copy of Dictum in another folder, or the other kind of entry, was installed.
     /// </summary>
-    /// <returns>True when the entry was written or removed.</returns>
-    public static async Task<bool> ApplyAsync(this IAutostart autostart, bool enable, string executable, CancellationToken ct)
+    /// <returns>True when an entry was written or removed.</returns>
+    public static async Task<bool> ApplyAsync(this IAutostart autostart, bool enable, LoginItem item, CancellationToken ct)
     {
         if (enable)
         {
-            await autostart.InstallAsync(executable, ct).ConfigureAwait(false);
+            await autostart.InstallAsync(item, ct).ConfigureAwait(false);
             return true;
         }
 
-        if (!autostart.IsInstalled)
+        if (autostart.Installed is null)
         {
             return false;
         }

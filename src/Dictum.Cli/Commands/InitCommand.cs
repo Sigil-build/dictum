@@ -290,7 +290,7 @@ internal static class InitCommand
             context.Error.WriteLine(warning);
         }
 
-        return prompt.Confirm("Start Dictum when you log in?", autostart.IsInstalled);
+        return prompt.Confirm("Start Dictum when you log in?", autostart.Installed is not null);
     }
 
     private static async Task ApplyAutostartAsync(CliContext context, bool? enable, CancellationToken ct)
@@ -301,9 +301,10 @@ internal static class InitCommand
         }
 
         var executable = Environment.ProcessPath ?? throw new InvalidOperationException("Cannot determine the dictum executable path.");
-        if (await autostart.ApplyAsync(on, executable, ct).ConfigureAwait(false))
+        var item = LoginItem.NextTo(executable);
+        if (await autostart.ApplyAsync(on, item, ct).ConfigureAwait(false))
         {
-            context.Error.WriteLine(on ? $"Dictum will start at login ({autostart.Location})." : "Dictum will no longer start at login.");
+            context.Error.WriteLine(on ? $"Dictum will start at login ({autostart.Location(item.App)})." : "Dictum will no longer start at login.");
         }
     }
 
@@ -343,7 +344,7 @@ internal static class InitCommand
 
         context.Error.WriteLine(running
             ? "Done. The running daemon picks up the new config by itself; 'dictum doctor' shows the details."
-            : autostart == true || context.Platform.Autostart?.IsInstalled == true
+            : autostart == true || context.Platform.Autostart?.Installed is not null
                 ? "Done. Dictum starts at your next login; to start it now, run 'dictum daemon'."
                 : "Done. Start dictation with 'dictum daemon'.");
     }
