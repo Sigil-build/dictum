@@ -164,4 +164,10 @@
   <data name="StatusNoTray" xml:space="preserve">
     <value>На цьому робочому столі немає трею для значка Dictum. У GNOME встановіть розширення «AppIndicator and KStatusNotifierItem Support».</value>
   </data>
+  <data name="ProblemStoppedOnPurpose" xml:space="preserve">
+    <value>Демон зупинили.</value>
+  </data>
+  <data name="ProblemUnexpected" xml:space="preserve">
+    <value>Під час запуску чи нагляду за демоном щось пішло не так; подробиці в {0}.</value>
+  </data>
 </root>

@@ -123,15 +123,23 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         };
 
         _tray.OnConfig(TryLoadConfig());
-        _watcher = new ConfigWatcher(
-            _store,
-            (config, _) =>
-            {
-                Dispatcher.UIThread.Post(() => _tray.OnConfig(config));
-                return Task.CompletedTask;
-            },
-            _ => Task.CompletedTask,
-            _log);
+        try
+        {
+            _watcher = new ConfigWatcher(
+                _store,
+                (config, _) =>
+                {
+                    Dispatcher.UIThread.Post(() => _tray.OnConfig(config));
+                    return Task.CompletedTask;
+                },
+                _ => Task.CompletedTask,
+                _log);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            // Linux can run out of inotify instances; the tray then misses config edits until the next start.
+            _log.Warn($"Not watching the config for changes: {ex.Message}");
+        }
 
         _tick = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _tick.Tick += (_, _) => _tray.Tick();
@@ -263,7 +271,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         {
             queue.Restore();
         }
-        catch (IOException ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             _log.Warn($"Could not restore the download queue: {ex.Message}");
         }

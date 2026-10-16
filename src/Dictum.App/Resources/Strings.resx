@@ -164,4 +164,10 @@
   <data name="StatusNoTray" xml:space="preserve">
     <value>This desktop has no tray for Dictum's icon. On GNOME, install the "AppIndicator and KStatusNotifierItem Support" extension.</value>
   </data>
+  <data name="ProblemStoppedOnPurpose" xml:space="preserve">
+    <value>The daemon was stopped.</value>
+  </data>
+  <data name="ProblemUnexpected" xml:space="preserve">
+    <value>Something went wrong while starting or watching the daemon; details are in {0}.</value>
+  </data>
 </root>

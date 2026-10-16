@@ -16,6 +16,7 @@ public sealed class WindowsTrayPresenter : ITrayPresenter
 {
     private readonly TrayIcon _icon = new() { ToolTipText = "Dictum" };
     private readonly DispatcherTimer _animation = new() { Interval = TimeSpan.FromMilliseconds(200) };
+    private readonly Application _app;
     private readonly Func<bool> _highContrast;
     private TrayView? _view;
     private IReadOnlyList<TrayMenuItem>? _menu;
@@ -25,6 +26,7 @@ public sealed class WindowsTrayPresenter : ITrayPresenter
 
     public WindowsTrayPresenter(Application app, Func<bool> highContrast)
     {
+        _app = app;
         _highContrast = highContrast;
         ReadTaskbar();
         _icon.Clicked += (_, _) => Activated?.Invoke();
@@ -87,7 +89,8 @@ public sealed class WindowsTrayPresenter : ITrayPresenter
 
     private void ReadTaskbar()
     {
-        _mono = Color.Parse(TaskbarInfo.UsesLightTheme() ? TrayGeometry.MonoOnLight : TrayGeometry.MonoOnDark);
+        var light = TrayPanel.IsLight(_app.PlatformSettings?.GetColorValues(), TaskbarInfo.UsesLightTheme);
+        _mono = Color.Parse(light ? TrayGeometry.MonoOnLight : TrayGeometry.MonoOnDark);
         _size = TaskbarInfo.SmallIconSize();
     }
 

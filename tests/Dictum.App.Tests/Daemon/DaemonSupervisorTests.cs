@@ -274,6 +274,60 @@ public sealed class DaemonSupervisorTests : IAsyncDisposable
         Assert.True(_log.Has("handler bug"));
     }
 
+    [Fact]
+    public async Task ADaemonStoppedOnPurposeIsNotStartedAgain()
+    {
+        var supervisor = Start();
+        await WaitForAsync(DaemonLinkState.Connected);
+
+        // What 'dictum shutdown' does: the daemon announces that it is stopping, then exits.
+        await supervisor.SendAsync(new IpcRequest("shutdown"), _ct);
+
+        await WaitForAsync(DaemonLinkState.Failed);
+        await Task.Delay(300, _ct);
+        Assert.Equal(1, _launcher.Launches);
+        Assert.Equal("The daemon was stopped.", supervisor.Link.Problem);
+
+        supervisor.Restart();
+
+        await Eventually.WaitForAsync(() => _launcher.Launches == 2 && supervisor.Link.State == DaemonLinkState.Connected, "the start the user asked for");
+    }
+
+    [Fact]
+    public async Task AnUnexpectedFailureLeavesRestartWorking()
+    {
+        var old = FakeDaemon.Start(SocketPath, new FakeDaemonOptions(ProcessId: 77, Subscribes: false, StopsOnShutdown: false));
+        _launcher.Adopt(old);
+        _launcher.EndFails = new InvalidOperationException("ending failed");
+        var supervisor = Start();
+        await WaitForAsync(DaemonLinkState.VersionMismatch);
+
+        supervisor.Restart();
+        await WaitForAsync(DaemonLinkState.Failed);
+        Assert.Contains("dictum-gui.log", supervisor.Link.Problem);
+        Assert.True(_log.Has("ending failed"));
+
+        _launcher.EndFails = null;
+        supervisor.Restart();
+        await WaitForAsync(DaemonLinkState.VersionMismatch);
+        supervisor.Restart();
+
+        await Eventually.WaitForAsync(() => _launcher.Launches == 1 && supervisor.Link.State == DaemonLinkState.Connected, "our daemon");
+    }
+
+    [Fact]
+    public async Task QuitWhileTheDaemonIsStartingEndsIt()
+    {
+        _launcher.Outcome = _ => LaunchOutcome.NeverListens;
+        var supervisor = Start(Options() with { QuitTimeout = TimeSpan.FromMilliseconds(300) });
+        await Eventually.WaitForAsync(() => _launcher.Launches == 1, "the launch");
+
+        await supervisor.QuitAsync();
+
+        Assert.Equal([1001], _launcher.Ended);
+        Assert.Equal(DaemonLinkState.Stopped, supervisor.Link.State);
+    }
+
     private static SupervisorOptions Options() => new()
     {
         RetryDelay = TimeSpan.FromMilliseconds(20),

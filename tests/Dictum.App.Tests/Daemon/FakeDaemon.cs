@@ -112,6 +112,9 @@ internal sealed class FakeLauncher(string socketPath) : IDaemonLauncher, IAsyncD
 
     public ConcurrentQueue<int> Ended { get; } = new();
 
+    /// <summary>Thrown by <see cref="EndAsync"/>: an ending that fails in a way the supervisor did not foresee.</summary>
+    public Exception? EndFails { get; set; }
+
     /// <summary>A daemon the test started itself, so that <see cref="EndAsync"/> can end it.</summary>
     public void Adopt(FakeDaemon daemon) => _daemons[daemon.ProcessId] = daemon;
 
@@ -140,6 +143,11 @@ internal sealed class FakeLauncher(string socketPath) : IDaemonLauncher, IAsyncD
 
     public async Task EndAsync(int processId, TimeSpan grace, CancellationToken ct)
     {
+        if (EndFails is not null)
+        {
+            throw EndFails;
+        }
+
         Ended.Enqueue(processId);
         if (_daemons.TryGetValue(processId, out var daemon))
         {

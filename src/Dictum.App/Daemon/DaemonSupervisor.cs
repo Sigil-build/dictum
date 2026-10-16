@@ -48,6 +48,7 @@ public sealed class DaemonSupervisor : IAsyncDisposable
     private string? _lastProblem;
     private bool _freeStart = true;
     private volatile bool _quitting;
+    private volatile bool _announcedStop;
 
     /// <param name="logFile">The GUI log, named in problem texts so the user knows where to look.</param>
     public DaemonSupervisor(
@@ -95,7 +96,8 @@ public sealed class DaemonSupervisor : IAsyncDisposable
     public async Task QuitAsync()
     {
         _quitting = true;
-        if (_link.State == DaemonLinkState.Connected)
+        var connected = _link.State == DaemonLinkState.Connected;
+        if (connected)
         {
             using var timeout = new CancellationTokenSource(_options.QuitTimeout);
             try
@@ -110,6 +112,19 @@ public sealed class DaemonSupervisor : IAsyncDisposable
         }
 
         await StopLoopAsync().ConfigureAwait(false);
+        if (!connected && _process is { } process && !process.Exited.IsCompleted)
+        {
+            // A daemon we started that has not answered yet holds nothing worth saving, and Quit stops both (spec 3).
+            try
+            {
+                await _launcher.EndAsync(process.Id, TimeSpan.Zero, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _log.Warn($"Could not end the daemon that was starting: {ex.Message}");
+            }
+        }
+
         SetLink(new DaemonLink(DaemonLinkState.Stopped));
     }
 
@@ -135,21 +150,29 @@ public sealed class DaemonSupervisor : IAsyncDisposable
 
     private async Task RunAsync(CancellationToken ct)
     {
-        try
+        while (!ct.IsCancellationRequested)
         {
-            while (!ct.IsCancellationRequested)
+            try
             {
                 await RunOnceAsync(ct).ConfigureAwait(false);
             }
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-        }
-        catch (Exception ex)
-        {
-            // A bug here must not leave the tray silent.
-            _log.Error($"Daemon supervision stopped: {ex.Message}", ex);
-            SetLink(new DaemonLink(DaemonLinkState.Failed, Problem: ex.Message));
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return;
+            }
+            catch (Exception ex)
+            {
+                // A bug or an unforeseen failure must not end supervision: "Restart daemon" needs a loop that waits for it.
+                _log.Error($"Daemon supervision failed: {ex.Message}", ex);
+                try
+                {
+                    await FailAsync(Format(Strings.ProblemUnexpected, _logFile), ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    return;
+                }
+            }
         }
     }
 
@@ -179,6 +202,11 @@ public sealed class DaemonSupervisor : IAsyncDisposable
             var started = await StartDaemonAsync(ct).ConfigureAwait(false);
             if (started.Subscription is null)
             {
+                if (started.Problem is null)
+                {
+                    return;
+                }
+
                 _lastProblem = started.Problem;
                 _log.Warn(started.Problem!);
                 if (started.Fatal)
@@ -207,12 +235,22 @@ public sealed class DaemonSupervisor : IAsyncDisposable
 
             _lastProblem = null;
             _stopping = Signal();
+            _announcedStop = false;
             SetLink(new DaemonLink(DaemonLinkState.Connected, status));
             await PumpAsync(subscription, ct).ConfigureAwait(false);
         }
 
         if (_quitting || ct.IsCancellationRequested)
         {
+            return;
+        }
+
+        if (_announcedStop)
+        {
+            // It said it was stopping: someone stopped it on purpose ('dictum shutdown', Ctrl+C, systemctl stop). Spec 3
+            // restarts only a daemon that exits unexpectedly, so the tray offers "Restart daemon" instead.
+            _log.Info("The daemon was stopped; not starting it again");
+            await FailAsync(Strings.ProblemStoppedOnPurpose, ct).ConfigureAwait(false);
             return;
         }
 
@@ -227,6 +265,11 @@ public sealed class DaemonSupervisor : IAsyncDisposable
         if (_link.State != DaemonLinkState.Restarting)
         {
             SetLink(new DaemonLink(DaemonLinkState.Starting));
+        }
+
+        if (_quitting)
+        {
+            return new StartResult(null, null);
         }
 
         IDaemonProcess process;
@@ -343,8 +386,11 @@ public sealed class DaemonSupervisor : IAsyncDisposable
         {
             return (await SendAsync(new IpcRequest("status"), ct).ConfigureAwait(false)).Status?.ProcessId;
         }
-        catch (Exception ex) when (ex is DaemonNotRunningException or IOException or SocketException or JsonException)
+        catch (Exception ex) when (ex is DaemonNotRunningException or IOException or SocketException or JsonException or InvalidOperationException
+                                       || ex is OperationCanceledException && !ct.IsCancellationRequested)
         {
+            // An old daemon that is slow or odd to answer: it is replaced by asking it to stop, without its pid.
+            _log.Debug($"No pid from the other daemon: {ex.Message}");
             return null;
         }
     }
@@ -384,6 +430,7 @@ public sealed class DaemonSupervisor : IAsyncDisposable
                 }
                 else if (message.Event == "stopping")
                 {
+                    _announcedStop = true;
                     _stopping.TrySetResult();
                 }
 

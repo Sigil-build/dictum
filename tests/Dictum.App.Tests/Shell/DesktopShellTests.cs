@@ -61,6 +61,25 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         await launcher.DisposeAsync();
     });
 
+    [Fact]
+    public Task AConfigWatchThatCannotStartDoesNotStopTheApp() => fx.UiAsync(async () =>
+    {
+        // A config path whose folder is a file: watching it fails as it does when Linux runs out of inotify instances.
+        Directory.CreateDirectory(_dir);
+        var blocker = Path.Combine(_dir, "not-a-folder");
+        File.WriteAllText(blocker, "");
+        var paths = new AppPaths(blocker, Path.Combine(_dir, "data"));
+        var log = new DictumLog(LogLevel.Error, includeText: false, console: null, logsDirectory: null);
+        var store = new ConfigStore(Path.Combine(blocker, "config.json"), log);
+        await using var launcher = new FakeLauncher(Path.Combine(_dir, "d.sock"));
+        var presenter = new TrayControllerTests.FakePresenter();
+        await using var shell = new DesktopShell(paths, log, store, Path.Combine(_dir, "d.sock"), launcher, (_, _) => Task.FromResult<ITrayPresenter?>(presenter));
+
+        shell.Start(Application.Current!, _ => { });
+
+        await WaitAsync(() => presenter.Shown.LastOrDefault()?.Tooltip == "Dictum · Not set up yet");
+    });
+
     private (DesktopShell Shell, FakeLauncher Launcher, TrayControllerTests.FakePresenter Presenter) Create(bool tray = true)
     {
         var paths = new AppPaths(Path.Combine(_dir, "config"), Path.Combine(_dir, "data"));

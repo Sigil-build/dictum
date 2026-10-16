@@ -116,8 +116,16 @@ public sealed class DaemonProcessLauncher(
             }
 
             log.Warn($"The daemon (pid {processId}) did not stop; ending it");
-            process.Kill();
-            await process.WaitForExitAsync(ct).ConfigureAwait(false);
+            try
+            {
+                process.Kill();
+                await process.WaitForExitAsync(ct).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is Win32Exception or InvalidOperationException or NotSupportedException)
+            {
+                // Access denied (it runs elevated), or it went away meanwhile.
+                log.Warn($"Could not end pid {processId}: {ex.Message}");
+            }
         }
     }
 
