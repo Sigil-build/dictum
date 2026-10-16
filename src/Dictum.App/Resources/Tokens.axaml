@@ -1,0 +1,126 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="color.bg.base" Color="#F3F3F6" />
+      <SolidColorBrush x:Key="color.bg.layer" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="color.bg.layerAlt" Color="#F7F7FA" />
+      <SolidColorBrush x:Key="color.bg.control" Color="#F7F7FA" />
+      <SolidColorBrush x:Key="color.bg.controlHover" Color="#ECECF1" />
+      <SolidColorBrush x:Key="color.bg.navSelected" Color="#E6E7EC" />
+      <SolidColorBrush x:Key="color.bg.flyout" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="color.border" Color="#DCDDE3" />
+      <SolidColorBrush x:Key="color.border.strong" Color="#C9CBD3" />
+      <SolidColorBrush x:Key="color.text.primary" Color="#1B1B1F" />
+      <SolidColorBrush x:Key="color.text.secondary" Color="#5A5F6B" />
+      <SolidColorBrush x:Key="color.text.onAccent" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="color.accent" Color="#2F6FE4" />
+      <SolidColorBrush x:Key="color.accent.hover" Color="#245FCC" />
+      <SolidColorBrush x:Key="color.accent.subtleBg" Color="#E8EFFC" />
+      <SolidColorBrush x:Key="color.accent.subtleText" Color="#1E4FB0" />
+      <SolidColorBrush x:Key="color.mica.tint" Color="#F3F3F6" />
+      <x:Double x:Key="color.mica.tintOpacity">0.8</x:Double>
+      <SolidColorBrush x:Key="color.status.ok.bg" Color="#DFF5E8" />
+      <SolidColorBrush x:Key="color.status.ok.fg" Color="#1B7A46" />
+      <SolidColorBrush x:Key="color.status.warn.bg" Color="#FFF4DE" />
+      <SolidColorBrush x:Key="color.status.warn.fg" Color="#8A5A00" />
+      <SolidColorBrush x:Key="color.status.error.bg" Color="#FDE3E1" />
+      <SolidColorBrush x:Key="color.status.error.fg" Color="#B3261E" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="color.bg.base" Color="#1C1C1F" />
+      <SolidColorBrush x:Key="color.bg.layer" Color="#27272B" />
+      <SolidColorBrush x:Key="color.bg.layerAlt" Color="#222226" />
+      <SolidColorBrush x:Key="color.bg.control" Color="#313136" />
+      <SolidColorBrush x:Key="color.bg.controlHover" Color="#37373D" />
+      <SolidColorBrush x:Key="color.bg.navSelected" Color="#2B2B30" />
+      <SolidColorBrush x:Key="color.bg.flyout" Color="#2B2B30" />
+      <SolidColorBrush x:Key="color.border" Color="#3A3A40" />
+      <SolidColorBrush x:Key="color.text.primary" Color="#F3F3F5" />
+      <SolidColorBrush x:Key="color.text.secondary" Color="#A6A7AE" />
+      <SolidColorBrush x:Key="color.text.onAccent" Color="#0B1B36" />
+      <SolidColorBrush x:Key="color.accent" Color="#4C8DFF" />
+      <SolidColorBrush x:Key="color.accent.hover" Color="#6AA1FF" />
+      <SolidColorBrush x:Key="color.accent.subtleBg" Color="#1F3B6B" />
+      <SolidColorBrush x:Key="color.accent.subtleText" Color="#BFD3FF" />
+      <SolidColorBrush x:Key="color.mica.tint" Color="#1C1C1F" />
+      <x:Double x:Key="color.mica.tintOpacity">0.8</x:Double>
+      <SolidColorBrush x:Key="color.status.ok.bg" Color="#1D3A2C" />
+      <SolidColorBrush x:Key="color.status.ok.fg" Color="#8FE3B6" />
+      <SolidColorBrush x:Key="color.status.warn.bg" Color="#3D3320" />
+      <SolidColorBrush x:Key="color.status.warn.fg" Color="#F2C98A" />
+      <SolidColorBrush x:Key="color.status.error.bg" Color="#3D2222" />
+      <SolidColorBrush x:Key="color.status.error.fg" Color="#FF8A80" />
+      <!-- tokens.json has no dark color.border.strong; the plain border stands in. -->
+      <SolidColorBrush x:Key="color.border.strong" Color="#3A3A40" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+
+  <!-- Theme-independent colours: states, meter, tray. -->
+  <SolidColorBrush x:Key="color.state.recording" Color="#FF5A4E" />
+  <SolidColorBrush x:Key="color.state.processing" Color="#7A6BFF" />
+  <SolidColorBrush x:Key="color.state.success" Color="#3DD68C" />
+  <SolidColorBrush x:Key="color.state.error" Color="#FF5A4E" />
+  <SolidColorBrush x:Key="color.state.paused" Color="#F2B84C" />
+  <SolidColorBrush x:Key="color.state.warning" Color="#F2B84C" />
+  <SolidColorBrush x:Key="color.state.cancelled" Color="#9AA0AE" />
+  <SolidColorBrush x:Key="color.meter.good" Color="#3DD68C" />
+  <SolidColorBrush x:Key="color.meter.hot" Color="#F2B84C" />
+  <SolidColorBrush x:Key="color.meter.clip" Color="#FF5A4E" />
+  <SolidColorBrush x:Key="color.tray.mono.light" Color="#1B1B1F" />
+  <SolidColorBrush x:Key="color.tray.mono.dark" Color="#F3F3F5" />
+  <SolidColorBrush x:Key="color.tray.recording" Color="#FF5A4E" />
+  <SolidColorBrush x:Key="color.tray.error" Color="#FF5A4E" />
+  <SolidColorBrush x:Key="color.tray.brand" Color="#7A6BFF" />
+
+  <!-- Type, spacing, radii, elevation, sizes. Motion and overlay tokens come with the PR that uses them. -->
+  <FontFamily x:Key="font.family.windows">Segoe UI Variable Text, Segoe UI</FontFamily>
+  <FontFamily x:Key="font.family.linux">Noto Sans, DejaVu Sans, sans-serif</FontFamily>
+  <FontFamily x:Key="font.family.mono">Cascadia Mono, JetBrains Mono, Noto Sans Mono, monospace</FontFamily>
+  <x:Double x:Key="type.caption.size">12</x:Double>
+  <x:Double x:Key="type.caption.lineHeight">16</x:Double>
+  <FontWeight x:Key="type.caption.weight">Normal</FontWeight>
+  <x:Double x:Key="type.body.size">14</x:Double>
+  <x:Double x:Key="type.body.lineHeight">20</x:Double>
+  <FontWeight x:Key="type.body.weight">Normal</FontWeight>
+  <x:Double x:Key="type.bodyStrong.size">14</x:Double>
+  <x:Double x:Key="type.bodyStrong.lineHeight">20</x:Double>
+  <FontWeight x:Key="type.bodyStrong.weight">SemiBold</FontWeight>
+  <x:Double x:Key="type.subtitle.size">20</x:Double>
+  <x:Double x:Key="type.subtitle.lineHeight">28</x:Double>
+  <FontWeight x:Key="type.subtitle.weight">SemiBold</FontWeight>
+  <x:Double x:Key="type.title.size">28</x:Double>
+  <x:Double x:Key="type.title.lineHeight">36</x:Double>
+  <FontWeight x:Key="type.title.weight">SemiBold</FontWeight>
+  <x:Double x:Key="type.display.size">40</x:Double>
+  <x:Double x:Key="type.display.lineHeight">52</x:Double>
+  <FontWeight x:Key="type.display.weight">SemiBold</FontWeight>
+  <x:Double x:Key="space.1">4</x:Double>
+  <x:Double x:Key="space.2">8</x:Double>
+  <x:Double x:Key="space.3">12</x:Double>
+  <x:Double x:Key="space.4">16</x:Double>
+  <x:Double x:Key="space.5">20</x:Double>
+  <x:Double x:Key="space.6">24</x:Double>
+  <x:Double x:Key="space.8">32</x:Double>
+  <x:Double x:Key="space.10">40</x:Double>
+  <CornerRadius x:Key="radius.control">4</CornerRadius>
+  <CornerRadius x:Key="radius.card">8</CornerRadius>
+  <CornerRadius x:Key="radius.window">12</CornerRadius>
+  <CornerRadius x:Key="radius.chip">14</CornerRadius>
+  <CornerRadius x:Key="radius.pill">999</CornerRadius>
+  <BoxShadows x:Key="elevation.1.shadow">0 2 8 0 #33000000</BoxShadows>
+  <BoxShadows x:Key="elevation.2.shadow">0 8 24 0 #73000000</BoxShadows>
+  <BoxShadows x:Key="elevation.flyout.shadow">0 8 24 0 #73000000</BoxShadows>
+  <x:Double x:Key="window.settings.width">960</x:Double>
+  <x:Double x:Key="window.settings.height">640</x:Double>
+  <x:Double x:Key="window.settings.minWidth">800</x:Double>
+  <x:Double x:Key="window.settings.minHeight">560</x:Double>
+  <x:Double x:Key="window.settings.navWidth">200</x:Double>
+  <x:Double x:Key="window.settings.titleBarHeight">40</x:Double>
+  <x:Double x:Key="window.wizard.width">640</x:Double>
+  <x:Double x:Key="window.wizard.height">600</x:Double>
+  <x:Double x:Key="control.height">32</x:Double>
+  <x:Double x:Key="control.height.large">36</x:Double>
+  <x:Double x:Key="control.minTarget">44</x:Double>
+  <x:Double x:Key="settingsRow.minHeight">64</x:Double>
+  <x:Double x:Key="settingsRow.padding">16</x:Double>
+</ResourceDictionary>
