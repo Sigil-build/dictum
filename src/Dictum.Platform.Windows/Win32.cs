@@ -17,6 +17,12 @@ internal static unsafe partial class Win32
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool OpenClipboard(nint newOwner);
 
+    [LibraryImport("user32")]
+    public static partial int GetSystemMetricsForDpi(int index, uint dpi);
+
+    [LibraryImport("user32")]
+    public static partial uint GetDpiForSystem();
+
     [LibraryImport("user32", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool CloseClipboard();

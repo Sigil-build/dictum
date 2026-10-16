@@ -98,4 +98,24 @@ public class WindowsPlatformTests
     [InlineData("\"C:\\Tools\\Dictum\\dictum.exe\" daemon", LoginApp.Daemon)]
     [InlineData("\"C:\\Tools\\Dictum\\dictum-gui.exe\"", LoginApp.DesktopApp)]
     public void RunKeyValuesAreReadBack(string command, LoginApp app) => Assert.Equal(app, RunKeyAutostart.Parse(command));
+
+    [Fact]
+    public void TheTrayIconSizeFollowsTheDisplayScale()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Windows only");
+            return;
+        }
+
+        Assert.InRange(TaskbarInfo.SmallIconSize(), 16, 64);
+    }
+
+    [Theory]
+    [SupportedOSPlatform("windows")]
+    [InlineData(1, true)]
+    [InlineData(0, false)]
+    [InlineData(null, false)]
+    [InlineData("1", false)]
+    public void TheTaskbarThemeIsReadFromItsRegistryValue(object? value, bool light) => Assert.Equal(light, TaskbarInfo.IsLight(value));
 }

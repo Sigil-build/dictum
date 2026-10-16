@@ -122,4 +122,7 @@
   <data name="ProblemVersionMismatch" xml:space="preserve">
     <value>Запущений демон — з іншої версії Dictum.</value>
   </data>
+  <data name="MenuProfileWithLanguages" xml:space="preserve">
+    <value>{0} ({1})</value>
+  </data>
 </root>
