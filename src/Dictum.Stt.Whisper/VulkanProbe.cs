@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
@@ -12,7 +13,7 @@ public enum VulkanDeviceType
     Cpu = 4,
 }
 
-public sealed record VulkanDevice(string Name, VulkanDeviceType Type)
+public sealed record VulkanDevice(string Name, VulkanDeviceType Type, long MemoryBytes = 0)
 {
     /// <summary>Real graphics hardware; software rasterisers (llvmpipe, WARP via Dozen) report Cpu.</summary>
     public bool IsHardware => Type is VulkanDeviceType.DiscreteGpu or VulkanDeviceType.IntegratedGpu;
@@ -68,12 +69,14 @@ public static unsafe partial class VulkanProbe
 
                 // VkPhysicalDeviceProperties is ~824 bytes; only deviceType (offset 16) and deviceName (offset 20) are read.
                 var properties = stackalloc byte[1024];
+                var memory = stackalloc byte[520];
                 for (var i = 0; i < count; i++)
                 {
                     vkGetPhysicalDeviceProperties(handles[i], properties);
                     var type = (VulkanDeviceType)(*(uint*)(properties + 16));
                     var name = Marshal.PtrToStringUTF8((nint)(properties + 20)) ?? "unknown";
-                    devices.Add(new VulkanDevice(name, type));
+                    vkGetPhysicalDeviceMemoryProperties(handles[i], memory);
+                    devices.Add(new VulkanDevice(name, type, LargestDeviceLocalHeap(new ReadOnlySpan<byte>(memory, 520))));
                 }
 
                 return [.. devices.Distinct()];
@@ -87,6 +90,24 @@ public static unsafe partial class VulkanProbe
         {
             return [];
         }
+    }
+
+    /// <summary>The size of the largest DEVICE_LOCAL heap in a <c>VkPhysicalDeviceMemoryProperties</c>; 0 when there is none.</summary>
+    public static long LargestDeviceLocalHeap(ReadOnlySpan<byte> memoryProperties)
+    {
+        const int HeapCountOffset = 260, HeapsOffset = 264, HeapStride = 16, DeviceLocalBit = 1;
+        var count = Math.Min(BinaryPrimitives.ReadUInt32LittleEndian(memoryProperties[HeapCountOffset..]), 16u);
+        long largest = 0;
+        for (var i = 0; i < count; i++)
+        {
+            var heap = memoryProperties[(HeapsOffset + (i * HeapStride))..];
+            if ((BinaryPrimitives.ReadUInt32LittleEndian(heap[8..]) & DeviceLocalBit) != 0)
+            {
+                largest = Math.Max(largest, (long)BinaryPrimitives.ReadUInt64LittleEndian(heap));
+            }
+        }
+
+        return largest;
     }
 
     private static nint Resolve(string name, Assembly assembly, DllImportSearchPath? searchPath)
@@ -111,6 +132,9 @@ public static unsafe partial class VulkanProbe
 
     [LibraryImport(Library)]
     private static partial void vkGetPhysicalDeviceProperties(nint device, byte* properties);
+
+    [LibraryImport(Library)]
+    private static partial void vkGetPhysicalDeviceMemoryProperties(nint device, byte* properties);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct InstanceCreateInfo

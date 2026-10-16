@@ -7,9 +7,15 @@ namespace Dictum.Host;
 /// <summary>What <c>dictum init</c> needs to know about this machine.</summary>
 public static class HardwareProbe
 {
-    public static HardwareInfo Detect(AppPaths paths) => new(
-        VulkanProbe.Devices.FirstOrDefault(d => d.IsHardware)?.Name,
-        FreeBytes(paths.DataDirectory));
+    public static HardwareInfo Detect(AppPaths paths)
+    {
+        var gpu = VulkanProbe.Devices.FirstOrDefault(d => d.IsHardware);
+        return new HardwareInfo(
+            gpu?.Name,
+            FreeBytes(paths.DataDirectory),
+            gpu is { MemoryBytes: > 0 } ? gpu.MemoryBytes : null,
+            gpu?.Type == VulkanDeviceType.IntegratedGpu);
+    }
 
     /// <summary>Free space on the volume that holds <paramref name="directory"/>; unknown counts as plenty.</summary>
     private static long FreeBytes(string directory)

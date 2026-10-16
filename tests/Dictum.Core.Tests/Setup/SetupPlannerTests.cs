@@ -261,6 +261,26 @@ public class SetupPlannerTests
     /// <summary>Profiles hold lists, which records compare by reference; compare what would be written instead.</summary>
     private static string Serialized(ProfileConfig profile) => ConfigStore.Serialize(new DictumConfig { Profiles = [profile] });
 
+    [Theory]
+    [InlineData(1L << 30, SetupPlanner.CpuModel)]
+    [InlineData(8L << 30, SetupPlanner.GpuModel)]
+    public void AGpuWithLittleMemoryGetsTheCpuModel(long memory, string expected) =>
+        Assert.Equal(expected, SetupPlanner.RecommendSpeechModel(new HardwareInfo("GPU", long.MaxValue, memory)));
+
+    [Fact]
+    public void UnknownGpuMemoryKeepsTheGpuModel() =>
+        Assert.Equal(SetupPlanner.GpuModel, SetupPlanner.RecommendSpeechModel(new HardwareInfo("GPU", long.MaxValue)));
+
+    [Fact]
+    public void GpuTextNamesSharedMemoryOrVram()
+    {
+        Assert.Equal("Intel(R) Iris(R) Xe Graphics, 15.8 GB shared memory",
+            HardwareText.Gpu(new HardwareInfo("Intel(R) Iris(R) Xe Graphics", 0, 16_965_201_920, GpuIsIntegrated: true)));
+        Assert.Equal("RTX 3060, 12.0 GB VRAM", HardwareText.Gpu(new HardwareInfo("RTX 3060", 0, 12L << 30)));
+        Assert.Equal("RTX 3060", HardwareText.Gpu(new HardwareInfo("RTX 3060", 0)));
+        Assert.Null(HardwareText.Gpu(new HardwareInfo(null, 0)));
+    }
+
     private static SetupAnswers Answers(
         string language = "uk",
         string? speechModel = "whisper-large-v3-turbo-q8",

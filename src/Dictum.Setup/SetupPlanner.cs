@@ -1,3 +1,4 @@
+using System.Globalization;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Vocabulary;
@@ -5,7 +6,8 @@ using Dictum.Core.Vocabulary;
 namespace Dictum.Setup;
 
 /// <param name="GpuName">The hardware GPU Whisper can use, or null when only the CPU (or a software renderer) is there.</param>
-public sealed record HardwareInfo(string? GpuName, long FreeDiskBytes);
+/// <param name="GpuMemoryBytes">The GPU's largest device-local heap; shared system memory for an integrated GPU; null when unknown.</param>
+public sealed record HardwareInfo(string? GpuName, long FreeDiskBytes, long? GpuMemoryBytes = null, bool GpuIsIntegrated = false);
 
 public enum CleanupChoice
 {
@@ -65,7 +67,11 @@ public static class SetupPlanner
     /// <summary>Used when <see cref="SttId"/> already names a provider that is not a local Whisper.</summary>
     private const string FallbackSttId = "whisper-local";
 
-    public static string RecommendSpeechModel(HardwareInfo hardware) => hardware.GpuName is null ? CpuModel : GpuModel;
+    /// <summary>Turbo-q8 with its buffers needs about 1.5 GB of GPU memory; below this the CPU model is the safer pick.</summary>
+    public const long MinGpuMemoryBytes = 2L * 1024 * 1024 * 1024;
+
+    public static string RecommendSpeechModel(HardwareInfo hardware) =>
+        hardware.GpuName is null || hardware.GpuMemoryBytes < MinGpuMemoryBytes ? CpuModel : GpuModel;
 
     /// <summary>
     /// The provider init manages: the local Whisper provider the first profile uses, otherwise <see cref="SttId"/>
@@ -208,4 +214,16 @@ public static class SetupPlanner
         CatalogEntry[] wanted = speech is null ? [vad] : [speech, vad];
         return new SetupPlan(config, [.. wanted.Where(e => !isInstalled(e))]);
     }
+}
+
+public static class HardwareText
+{
+    /// <summary>"Intel(R) Iris(R) Xe Graphics, 15.8 GB shared memory", "RTX 3060, 12.0 GB VRAM", or null without a GPU.</summary>
+    public static string? Gpu(HardwareInfo hardware) =>
+        hardware.GpuName is not { } name ? null
+        : hardware.GpuMemoryBytes is { } bytes and > 0 ? $"{name}, {Memory(bytes)} {(hardware.GpuIsIntegrated ? "shared memory" : "VRAM")}"
+        : name;
+
+    /// <summary>Binary gigabytes with one decimal, as Windows Task Manager labels them ("15.8 GB").</summary>
+    public static string Memory(long bytes) => string.Create(CultureInfo.InvariantCulture, $"{bytes / 1073741824.0:F1} GB");
 }

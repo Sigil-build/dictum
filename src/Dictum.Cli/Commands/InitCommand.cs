@@ -53,7 +53,7 @@ internal static class InitCommand
             var defaults = SetupPlanner.Defaults(current, hardware, catalog, m => File.Exists(context.Paths.ResolveModel(m)));
             context.Error.WriteLine(hardware.GpuName is null
                 ? "No GPU that Whisper can use was found; recommending a model that is fast on a CPU."
-                : $"GPU: {hardware.GpuName}.");
+                : $"GPU: {HardwareText.Gpu(hardware)}.");
 
             // 1. Language
             var languageAnswer = parse.GetValue(language)
