@@ -44,4 +44,64 @@
   <data name="MenuQuit" xml:space="preserve">
     <value>Вийти з Dictum</value>
   </data>
+  <data name="TrayTooltipIdle" xml:space="preserve">
+    <value>Dictum · {0} · {1}</value>
+  </data>
+  <data name="TrayTooltipIdleNoHotkey" xml:space="preserve">
+    <value>Dictum · {0}</value>
+  </data>
+  <data name="TrayTooltipRecording" xml:space="preserve">
+    <value>Dictum · Запис</value>
+  </data>
+  <data name="TrayTooltipTranscribing" xml:space="preserve">
+    <value>Dictum · Розпізнавання…</value>
+  </data>
+  <data name="TrayTooltipPaused" xml:space="preserve">
+    <value>Dictum · Гарячі клавіші призупинено</value>
+  </data>
+  <data name="TrayTooltipError" xml:space="preserve">
+    <value>Dictum · {0}</value>
+  </data>
+  <data name="TrayErrorUnknown" xml:space="preserve">
+    <value>Диктування не вдалося</value>
+  </data>
+  <data name="TrayTooltipStarting" xml:space="preserve">
+    <value>Dictum · Запуск…</value>
+  </data>
+  <data name="TrayTooltipRestarting" xml:space="preserve">
+    <value>Dictum · Демон не працює — перезапуск…</value>
+  </data>
+  <data name="TrayTooltipDaemonDown" xml:space="preserve">
+    <value>Dictum · Демон не працює — клацніть, щоб перезапустити</value>
+  </data>
+  <data name="TrayTooltipVersionMismatch" xml:space="preserve">
+    <value>Dictum · Демон з іншої версії — клацніть, щоб перезапустити</value>
+  </data>
+  <data name="TrayTooltipNotConfigured" xml:space="preserve">
+    <value>Dictum · Ще не налаштовано</value>
+  </data>
+  <data name="TrayTooltipStopped" xml:space="preserve">
+    <value>Dictum · Зупинено</value>
+  </data>
+  <data name="TrayTooltipDownloading" xml:space="preserve">
+    <value>{0} · завантаження моделей, {1:P0}</value>
+  </data>
+  <data name="MenuProfileHeader" xml:space="preserve">
+    <value>Профіль</value>
+  </data>
+  <data name="MenuPauseHotkeys" xml:space="preserve">
+    <value>Призупинити всі гарячі клавіші</value>
+  </data>
+  <data name="MenuResumeHotkeys" xml:space="preserve">
+    <value>Відновити гарячі клавіші</value>
+  </data>
+  <data name="MenuHistory" xml:space="preserve">
+    <value>Історія</value>
+  </data>
+  <data name="MenuSettings" xml:space="preserve">
+    <value>Налаштування</value>
+  </data>
+  <data name="MenuRestartDaemon" xml:space="preserve">
+    <value>Перезапустити демон</value>
+  </data>
 </root>

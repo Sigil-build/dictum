@@ -44,4 +44,64 @@
   <data name="MenuQuit" xml:space="preserve">
     <value>Quit Dictum</value>
   </data>
+  <data name="TrayTooltipIdle" xml:space="preserve">
+    <value>Dictum · {0} · {1}</value>
+  </data>
+  <data name="TrayTooltipIdleNoHotkey" xml:space="preserve">
+    <value>Dictum · {0}</value>
+  </data>
+  <data name="TrayTooltipRecording" xml:space="preserve">
+    <value>Dictum · Recording</value>
+  </data>
+  <data name="TrayTooltipTranscribing" xml:space="preserve">
+    <value>Dictum · Transcribing…</value>
+  </data>
+  <data name="TrayTooltipPaused" xml:space="preserve">
+    <value>Dictum · Hotkeys paused</value>
+  </data>
+  <data name="TrayTooltipError" xml:space="preserve">
+    <value>Dictum · {0}</value>
+  </data>
+  <data name="TrayErrorUnknown" xml:space="preserve">
+    <value>Dictation failed</value>
+  </data>
+  <data name="TrayTooltipStarting" xml:space="preserve">
+    <value>Dictum · Starting…</value>
+  </data>
+  <data name="TrayTooltipRestarting" xml:space="preserve">
+    <value>Dictum · Daemon not running — restarting…</value>
+  </data>
+  <data name="TrayTooltipDaemonDown" xml:space="preserve">
+    <value>Dictum · Daemon not running — click to restart</value>
+  </data>
+  <data name="TrayTooltipVersionMismatch" xml:space="preserve">
+    <value>Dictum · The daemon is from another version — click to restart it</value>
+  </data>
+  <data name="TrayTooltipNotConfigured" xml:space="preserve">
+    <value>Dictum · Not set up yet</value>
+  </data>
+  <data name="TrayTooltipStopped" xml:space="preserve">
+    <value>Dictum · Stopped</value>
+  </data>
+  <data name="TrayTooltipDownloading" xml:space="preserve">
+    <value>{0} · downloading models, {1:P0}</value>
+  </data>
+  <data name="MenuProfileHeader" xml:space="preserve">
+    <value>Profile</value>
+  </data>
+  <data name="MenuPauseHotkeys" xml:space="preserve">
+    <value>Pause all hotkeys</value>
+  </data>
+  <data name="MenuResumeHotkeys" xml:space="preserve">
+    <value>Resume hotkeys</value>
+  </data>
+  <data name="MenuHistory" xml:space="preserve">
+    <value>History</value>
+  </data>
+  <data name="MenuSettings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="MenuRestartDaemon" xml:space="preserve">
+    <value>Restart daemon</value>
+  </data>
 </root>
