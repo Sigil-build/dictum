@@ -1,3 +1,4 @@
+using System.Text;
 using Dictum.App.Settings;
 
 namespace Dictum.App.Tests.Settings;
@@ -40,5 +41,34 @@ public sealed class ReplaceRulesCsvTests
 
         Assert.Equal(["ok"], rules.Select(r => r.From));
         Assert.Equal(["Line 2: nothing to find.", "Line 3: a quote is not closed."], problems);
+    }
+
+    private static readonly Encoding Cp1251 = CodePagesEncodingProvider.Instance.GetEncoding(1251)!;
+
+    // Final review I4: Excel's plain "CSV (comma delimited)" on a Ukrainian Windows is Windows-1251.
+    [Fact]
+    public void AFileInTheAnsiCodePageReadsAsCyrillic()
+    {
+        var bytes = Cp1251.GetBytes("мейн,main\nпуш,push\n");
+
+        Assert.Equal("мейн,main\nпуш,push\n", ReplaceRulesCsv.Decode(bytes, Cp1251));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void AUtf8FileStaysUtf8(bool bom)
+    {
+        byte[] bytes = [.. bom ? Encoding.UTF8.Preamble.ToArray() : [], .. Encoding.UTF8.GetBytes("мейн,main")];
+
+        Assert.Equal("мейн,main", ReplaceRulesCsv.Decode(bytes, Cp1251));
+    }
+
+    [Fact]
+    public void AUtf16FileWithABomReads()
+    {
+        byte[] bytes = [.. Encoding.Unicode.Preamble.ToArray(), .. Encoding.Unicode.GetBytes("мейн,main")];
+
+        Assert.Equal("мейн,main", ReplaceRulesCsv.Decode(bytes, Cp1251));
     }
 }

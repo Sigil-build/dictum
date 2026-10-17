@@ -13,11 +13,49 @@ namespace Dictum.App.Settings;
 /// <item>Cells are separated by commas or semicolons, whichever the first line uses more; Excel writes semicolons in
 /// Ukrainian locales. Quotes work as in RFC 4180, within one line.</item>
 /// <item>Bad lines are named and skipped.</item>
+/// <item>The file is UTF-8 or UTF-16 with a byte order mark, UTF-8 without one, or else the ANSI code page that Excel's
+/// plain "CSV (comma delimited)" uses (final review I4).</item>
 /// </list>
 /// </summary>
 public static class ReplaceRulesCsv
 {
     private static readonly string[] Yes = ["true", "yes", "1", "x", "так", "+"];
+    private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
+    /// <summary>The file's text, with <see cref="AnsiEncoding"/> as the last resort.</summary>
+    public static string Decode(byte[] bytes) => Decode(bytes, AnsiEncoding());
+
+    /// <summary>The file's text: a byte order mark decides; then UTF-8 if the bytes are valid UTF-8; then <paramref name="ansi"/>.</summary>
+    public static string Decode(byte[] bytes, Encoding ansi)
+    {
+        ReadOnlySpan<byte> data = bytes;
+        foreach (var encoding in (ReadOnlySpan<Encoding>)[Encoding.UTF8, Encoding.Unicode, Encoding.BigEndianUnicode])
+        {
+            if (data.StartsWith(encoding.Preamble))
+            {
+                return encoding.GetString(data[encoding.Preamble.Length..]);
+            }
+        }
+
+        try
+        {
+            return StrictUtf8.GetString(data);
+        }
+        catch (DecoderFallbackException)
+        {
+            return ansi.GetString(data);
+        }
+    }
+
+    /// <summary>
+    /// Windows' active code page (1251 on a Ukrainian system); elsewhere, which has no such setting, the current
+    /// culture's (1251 for uk, 1252 for en).
+    /// </summary>
+    public static Encoding AnsiEncoding()
+    {
+        var codePage = OperatingSystem.IsWindows() ? 0 : CultureInfo.CurrentCulture.TextInfo.ANSICodePage;
+        return CodePagesEncodingProvider.Instance.GetEncoding(codePage) ?? Encoding.Latin1;
+    }
 
     public static (IReadOnlyList<ReplaceRule> Rules, IReadOnlyList<string> Problems) Parse(string csv)
     {

@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Dictum.App.Resources;
+using Dictum.App.Settings;
 using Dictum.App.ViewModels.Settings;
 
 namespace Dictum.App.Views.Settings;
@@ -44,8 +45,9 @@ public partial class ProcessorsView : UserControl
             }
 
             await using var stream = await files[0].OpenReadAsync();
-            using var reader = new StreamReader(stream);
-            page.Rules.ImportCsv(await reader.ReadToEndAsync());
+            using var bytes = new MemoryStream();
+            await stream.CopyToAsync(bytes);
+            page.Rules.ImportCsv(ReplaceRulesCsv.Decode(bytes.ToArray()));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException)
         {
