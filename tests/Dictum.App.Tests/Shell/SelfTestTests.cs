@@ -14,5 +14,6 @@ public class SelfTestTests
         Assert.True(code == 0, output.ToString());
         Assert.Contains("ok   strings", output.ToString());
         Assert.Contains("ok   svg icons: 11 files", output.ToString());
+        Assert.Contains("ok   overlay model", output.ToString());
     }
 }

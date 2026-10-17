@@ -22,6 +22,9 @@ public partial class App : Application
         }
     }
 
+    /// <summary>Set by Program for <c>--overlay-demo</c>: it runs once Avalonia has started and calls back with the exit code.</summary>
+    public static Action<Action<int>>? Demo { get; set; }
+
     public override void OnFrameworkInitializationCompleted()
     {
         if (Shell is { } shell && ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
@@ -29,6 +32,11 @@ public partial class App : Application
             // The tray menu is a window: the default mode would quit when it closes (research §2).
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             shell.Start(this, code => desktop.Shutdown(code));
+        }
+        else if (Demo is { } demo && ApplicationLifetime is IClassicDesktopStyleApplicationLifetime lifetime)
+        {
+            lifetime.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            demo(code => lifetime.Shutdown(code));
         }
 
         base.OnFrameworkInitializationCompleted();

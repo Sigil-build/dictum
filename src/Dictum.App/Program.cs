@@ -30,6 +30,11 @@ internal static class Program
             DisplayScale.Apply();
         }
 
+        if (args.Contains("--overlay-demo"))
+        {
+            return RunOverlayDemo(args);
+        }
+
         var paths = AppPaths.FromEnvironment();
         using var log = new DictumLog(LogLevel.Warning, includeText: false, console: null, paths.LogsDirectory, "dictum-gui.log");
         var configPath = Environment.GetEnvironmentVariable("DICTUM_CONFIG") is { Length: > 0 } custom ? custom : paths.ConfigFile;
@@ -69,6 +74,54 @@ internal static class Program
             shell.DisposeAsync().AsTask().GetAwaiter().GetResult();
             instance.DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
+    }
+
+    /// <summary><c>--overlay-demo</c>: no daemon, no tray, no single-instance lock. Messages stay English, like --self-test.</summary>
+    private static int RunOverlayDemo(string[] args)
+    {
+        if (OverlayDemo.Parse(args, Console.Error) is not { } options)
+        {
+            return 2;
+        }
+
+        FrameRecording recording;
+        try
+        {
+            recording = FrameRecording.Load(options.Path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException)
+        {
+            Console.Error.WriteLine($"Cannot play {options.Path}: {ex.Message}");
+            return 2;
+        }
+
+        var paths = AppPaths.FromEnvironment();
+        using var log = new DictumLog(LogLevel.Warning, includeText: false, console: null, paths.LogsDirectory, "dictum-gui.log");
+        var store = new ConfigStore(Environment.GetEnvironmentVariable("DICTUM_CONFIG") is { Length: > 0 } custom ? custom : paths.ConfigFile, log);
+        UiCulture.Apply(UiCulture.FromConfig(store));
+        DictumConfig? user = null;
+        try
+        {
+            user = store.Exists ? store.Load() : null;
+        }
+        catch (Exception ex) when (ex is ConfigException or IOException)
+        {
+            // An unreadable config: the demo shows the default look.
+        }
+
+        using var desktop = OverlayDesktop.ForThisDesktop(log);
+        App.Demo = exit =>
+        {
+            var controller = new OverlayController(
+                () => new OverlayWindow(desktop.Prepare),
+                desktop,
+                () => Application.Current?.PlatformSettings?.GetColorValues().ContrastPreference == Avalonia.Platform.ColorContrastPreference.High,
+                TimeProvider.System,
+                log);
+            controller.OnConfig(OverlayDemo.Config(user));
+            new OverlayDemo(controller, recording, options.State, TimeProvider.System).Start(exit);
+        };
+        return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args, ShutdownMode.OnExplicitShutdown);
     }
 
     // Also used by the XAML previewer.

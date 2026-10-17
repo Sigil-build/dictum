@@ -5,8 +5,10 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
+using Dictum.App.Overlay;
 using Dictum.App.Resources;
 using Dictum.App.Tray;
+using Dictum.Core.Configuration;
 
 namespace Dictum.App.Shell;
 
@@ -45,6 +47,22 @@ public static class SelfTest
             Directory.Delete(icons, recursive: true);
         }
 
+        // The overlay's maths: half a second at −40 dBFS, then silence.
+        var meter = new LevelMeter();
+        meter.Reset(TimeSpan.Zero);
+        var speaking = 0.0;
+        for (var frame = 1; frame <= 120; frame++)
+        {
+            meter.Update(frame <= 30 ? 0.01f : 0f, [], TimeSpan.FromSeconds(frame / 60.0));
+            if (frame == 30)
+            {
+                speaking = meter.Level;
+            }
+        }
+
+        Check("overlay model", Math.Abs(speaking - 0.588) < 0.01 && meter.Quiet,
+            string.Create(CultureInfo.InvariantCulture, $"level {speaking:0.00} at -40 dBFS, then silence"));
+
         if (avalonia)
         {
             Program.BuildAvaloniaApp().SetupWithoutStarting();
@@ -71,6 +89,28 @@ public static class SelfTest
 
             Check("tray icons", empty.Count == 0, empty.Count == 0 ? $"{drawn} bitmaps" : $"empty: {string.Join(", ", empty)}");
 
+            var canvas = new OverlayCanvas();
+            var blank = new List<string>();
+            var scenes = 0;
+            foreach (var reduced in new[] { false, true })
+            {
+                foreach (var phase in Enum.GetValues<OverlayPhase>().Where(p => p != OverlayPhase.Hidden))
+                {
+                    canvas.Scene = new OverlayScene(phase, 0.15, 1, 1, 0.6, false, [0.5, 0.4, 0.3, 0.2, 0.1], "UK/EN", "Microphone not found", reduced, OverlayPalette.Aurora);
+                    canvas.Measure(Size.Infinity);
+                    canvas.Arrange(new Rect(canvas.DesiredSize));
+                    using var bitmap = new RenderTargetBitmap(new PixelSize(480, 96));
+                    bitmap.Render(canvas);
+                    scenes++;
+                    if (!HasInk(bitmap, 32))
+                    {
+                        blank.Add(reduced ? $"{phase} (reduced)" : phase.ToString());
+                    }
+                }
+            }
+
+            Check("overlay", blank.Count == 0, blank.Count == 0 ? $"{scenes} scenes" : $"blank: {string.Join(", ", blank)}");
+
             UiCulture.Apply("uk");
             Check("ui culture", Strings.MenuQuit == ukrainian, $"\"{Strings.MenuQuit}\" with {CultureInfo.CurrentUICulture.Name}");
         }
@@ -78,7 +118,7 @@ public static class SelfTest
         return failures == 0 ? 0 : 1;
     }
 
-    private static bool HasInk(Bitmap bitmap)
+    private static bool HasInk(Bitmap bitmap, byte minimum = 255)
     {
         var (width, height) = (bitmap.PixelSize.Width, bitmap.PixelSize.Height);
         var pixels = new byte[width * height * 4];
@@ -94,7 +134,7 @@ public static class SelfTest
 
         for (var i = 3; i < pixels.Length; i += 4)
         {
-            if (pixels[i] == 255)
+            if (pixels[i] >= minimum)
             {
                 return true;
             }

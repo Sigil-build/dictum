@@ -56,7 +56,7 @@ jobs:
 
       - name: Install native toolchain and PortAudio
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev libportaudio2 xvfb libice6 libsm6 libfontconfig1
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev libportaudio2 xvfb libice6 libsm6 libfontconfig1 libxext6
 
       - name: Publish (Native AOT)
         run: dotnet publish src/Dictum.Cli -c Release -r ${{ matrix.rid }} -o out
@@ -73,6 +73,10 @@ jobs:
           else
             ./out/dictum-gui --self-test
           fi
+
+      - name: Overlay demo (X11 through xvfb, Native AOT)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a ./out/dictum-gui --overlay-demo fixtures/frames-silence.json --state done
 
       - name: Smoke test published binary
         shell: bash
