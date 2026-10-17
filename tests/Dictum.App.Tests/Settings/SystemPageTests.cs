@@ -131,4 +131,18 @@ public sealed class SystemPageTests
 
     [Fact]
     public void TheDaemonCardIsTheStatusModel() => Assert.Same(_service, Page().Service);
+
+
+    // Final review I3: an answer that cannot be read is a problem row, not a crash or an endless "checking".
+    [Fact]
+    public async Task AnAnswerThatCannotBeReadIsAProblemNotACrash()
+    {
+        _channel.Throws = new System.Text.Json.JsonException("'<' is an invalid start of a value.");
+        var page = Page();
+
+        await page.CheckAgainCommand.ExecuteAsync(null);
+
+        Assert.Equal((HealthLevel.Error, "'<' is an invalid start of a value."), (page.Rows[0].Level, page.Rows[0].Status));
+        Assert.False(page.Checking);
+    }
 }

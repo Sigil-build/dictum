@@ -310,4 +310,17 @@ public sealed class GeneralPageTests : IDisposable
         var saved = Store.Load().General;
         Assert.Equal((100, false), (saved.HistorySize, saved.Sounds));
     }
+
+
+    // Final review I3: a command that throws would crash dictum-gui.
+    [Fact]
+    public async Task APreviewThatFailsDoesNotThrow()
+    {
+        _sounds.Fails = new InvalidOperationException("No output device.");
+        var (page, _, _) = Open();
+
+        await page.PreviewCommand.ExecuteAsync(null);
+
+        Assert.Empty(_sounds.Played);
+    }
 }

@@ -18,6 +18,9 @@ internal sealed class FakeChannel : IDaemonChannel
 
     public TimeSpan? LastTimeout { get; private set; }
 
+    /// <summary>Thrown by every send: a broken answer or connection.</summary>
+    public Exception? Throws { get; set; }
+
     public IEnumerable<string> Commands => Sent.Select(r => r.Command);
 
     public Func<IpcRequest, IpcResponse> Answer { get; set; } = request => request.Command switch
@@ -33,6 +36,11 @@ internal sealed class FakeChannel : IDaemonChannel
     {
         Sent.Add(request);
         LastTimeout = timeout;
+        if (Throws is not null)
+        {
+            return Task.FromException<IpcResponse>(Throws);
+        }
+
         return Link.State == DaemonLinkState.Connected
             ? Task.FromResult(Answer(request))
             : Task.FromException<IpcResponse>(new DaemonNotRunningException("The daemon is not running."));
@@ -77,8 +85,15 @@ internal sealed class FakeSounds : ISoundPlayer
 {
     public List<SoundCue> Played { get; } = [];
 
+    public Exception? Fails { get; set; }
+
     public Task PlayAsync(SoundCue cue, CancellationToken ct)
     {
+        if (Fails is not null)
+        {
+            return Task.FromException(Fails);
+        }
+
         Played.Add(cue);
         return Task.CompletedTask;
     }

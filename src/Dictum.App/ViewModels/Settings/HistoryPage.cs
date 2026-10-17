@@ -68,9 +68,21 @@ public sealed partial class HistoryPage : SettingsPage
     [RelayCommand]
     private async Task CopyAsync(HistoryItem? item)
     {
-        if (item is not null)
+        if (item is null)
+        {
+            return;
+        }
+
+        try
         {
             await _clipboard.SetTextAsync(item.Entry.Text);
+            Error = null;
+        }
+        catch (Exception ex)
+        {
+            // A busy clipboard throws; a command that throws would take dictum-gui down (final review I3).
+            Error = string.Format(CultureInfo.CurrentCulture, Strings.SettingsHistoryCopyFailed, ex.Message);
+            _log.Warn($"History text not copied: {ex.Message}");
         }
     }
 

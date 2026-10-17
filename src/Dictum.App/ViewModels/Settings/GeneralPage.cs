@@ -228,8 +228,16 @@ public sealed partial class GeneralPage : SettingsPage
     [RelayCommand]
     private async Task PreviewAsync()
     {
-        await _services.Sounds.PlayAsync(SoundCue.Start, CancellationToken.None);
-        await _services.Sounds.PlayAsync(SoundCue.Stop, CancellationToken.None);
+        try
+        {
+            await _services.Sounds.PlayAsync(SoundCue.Start, CancellationToken.None);
+            await _services.Sounds.PlayAsync(SoundCue.Stop, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            // A command that throws would take dictum-gui down (final review I3); a silent preview is the whole cost.
+            _services.Log.Warn($"Sound preview failed: {ex.Message}");
+        }
     }
 
     private void Load()

@@ -503,4 +503,7 @@
   <data name="SettingsHistoryReadFailed" xml:space="preserve">
     <value>The history file could not be read: {0}</value>
   </data>
+  <data name="SettingsHistoryCopyFailed" xml:space="preserve">
+    <value>The text could not be copied: {0}</value>
+  </data>
 </root>

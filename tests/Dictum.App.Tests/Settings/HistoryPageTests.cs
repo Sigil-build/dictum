@@ -131,6 +131,19 @@ public sealed class HistoryPageTests : IDisposable
         Assert.Equal(["Hello there."], _clipboard.Texts);
     }
 
+    // Final review I3: a busy clipboard throws; the page says so instead of crashing dictum-gui.
+    [Fact]
+    public async Task ACopyThatFailsIsShownNotThrown()
+    {
+        ThreeDictations();
+        var page = Open();
+        _clipboard.Fails = new InvalidOperationException("The clipboard is in use by another application.");
+
+        await page.CopyCommand.ExecuteAsync(page.Items[0]);
+
+        Assert.Equal("The text could not be copied: The clipboard is in use by another application.", page.Error);
+    }
+
     [Fact]
     public void DeleteRemovesTheEntryFromTheFile()
     {
@@ -170,8 +183,15 @@ public sealed class HistoryPageTests : IDisposable
     {
         public List<string> Texts { get; } = [];
 
+        public Exception? Fails { get; set; }
+
         public Task SetTextAsync(string text)
         {
+            if (Fails is not null)
+            {
+                return Task.FromException(Fails);
+            }
+
             Texts.Add(text);
             return Task.CompletedTask;
         }

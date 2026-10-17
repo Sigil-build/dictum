@@ -503,4 +503,7 @@
   <data name="SettingsHistoryReadFailed" xml:space="preserve">
     <value>Не вдалося прочитати файл історії: {0}</value>
   </data>
+  <data name="SettingsHistoryCopyFailed" xml:space="preserve">
+    <value>Не вдалося скопіювати текст: {0}</value>
+  </data>
 </root>
