@@ -14,7 +14,9 @@ public interface ITrayCommands
 
     void ResumeHotkeys();
 
-    void ShowStatus();
+    void ShowSettings();
+
+    void ShowHistory();
 
     void RestartDaemon();
 
@@ -99,8 +101,11 @@ public sealed class TrayController(TrayState state, ITrayCommands commands, Time
             case TrayCommand.ResumeHotkeys:
                 commands.ResumeHotkeys();
                 break;
-            case TrayCommand.History or TrayCommand.Settings:
-                commands.ShowStatus();
+            case TrayCommand.History:
+                commands.ShowHistory();
+                break;
+            case TrayCommand.Settings:
+                commands.ShowSettings();
                 break;
             case TrayCommand.RestartDaemon:
                 commands.RestartDaemon();

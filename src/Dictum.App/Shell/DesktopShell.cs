@@ -1,24 +1,30 @@
+using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using Dictum.App.Daemon;
 using Dictum.App.Overlay;
+using Dictum.App.Settings;
 using Dictum.App.Tray;
 using Dictum.App.ViewModels;
-using Dictum.App.Views;
+using Dictum.App.ViewModels.Settings;
+using Dictum.App.Views.Settings;
+using Dictum.Audio.PortAudio;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Host;
 using Dictum.Host.Daemon;
 using Dictum.Host.Ipc;
+using Dictum.Platform;
+using Dictum.Platform.Linux;
 using Dictum.Setup;
 
 namespace Dictum.App.Shell;
 
 /// <summary>
-/// The composition root of dictum-gui: the daemon supervisor, the tray, the config watch, the download queue and the
-/// status window, wired by hand. <see cref="Start"/> runs on the UI thread; supervisor and tray events are posted to it.
+/// The composition root of dictum-gui: the daemon supervisor, the tray, the overlay, the config watch, the download
+/// queue and the Settings window, wired by hand. <see cref="Start"/> runs on the UI thread; supervisor and tray events are posted to it.
 /// </summary>
 public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
 {
@@ -30,6 +36,10 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     private readonly Func<Application, Func<bool>, Task<ITrayPresenter?>> _createTray;
     private readonly TrayController _tray;
     private readonly IOverlayDesktop _overlayDesktop;
+    private readonly IAutostart? _autostart;
+    private readonly SoundPlayer _sounds;
+    private SettingsViewModel? _settings;
+    private SettingsWindow? _settingsWindow;
     private ITrayPresenter? _presenter;
     private ConfigWatcher? _watcher;
     private HttpClient? _http;
@@ -42,6 +52,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
 
     /// <param name="createTray">The OS tray; <see cref="CreateTrayAsync"/> in the app, a fake in tests.</param>
     /// <param name="overlayDesktop">The overlay's OS side; <see cref="OverlayDesktop.None"/> when left out (tests).</param>
+    /// <param name="autostart">The OS login item for Settings → General; none when left out, so tests never reach the real one.</param>
     public DesktopShell(
         AppPaths paths,
         DictumLog log,
@@ -49,7 +60,8 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         string daemonSocket,
         IDaemonLauncher launcher,
         Func<Application, Func<bool>, Task<ITrayPresenter?>> createTray,
-        IOverlayDesktop? overlayDesktop = null)
+        IOverlayDesktop? overlayDesktop = null,
+        IAutostart? autostart = null)
     {
         _paths = paths;
         _log = log;
@@ -61,6 +73,9 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         _tray = new TrayController(new TrayState(TimeProvider.System), this, TimeProvider.System);
         _overlayDesktop = overlayDesktop ?? OverlayDesktop.None;
         Overlay = new OverlayController(() => new OverlayWindow(_overlayDesktop.Prepare), _overlayDesktop, () => _highContrast, TimeProvider.System, log);
+        _autostart = autostart;
+        _sounds = new SoundPlayer(log);
+        Frames = new FrameHub(TimeProvider.System);
     }
 
     public DaemonSupervisor Supervisor { get; }
@@ -68,6 +83,9 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     public OverlayController Overlay { get; }
 
     public StatusViewModel Status { get; }
+
+    /// <summary>The daemon's newest frame, for the Settings meter; the overlay keeps its own.</summary>
+    public FrameHub Frames { get; }
 
     /// <summary>The tray for this OS: Avalonia's on Windows, our StatusNotifierItem on Linux, none elsewhere.</summary>
     public static async Task<ITrayPresenter?> CreateTrayAsync(Application app, Func<bool> highContrast, AppPaths paths, ILog log)
@@ -95,7 +113,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
 
         if (_started)
         {
-            Dispatcher.UIThread.Post(ShowStatus);
+            Dispatcher.UIThread.Post(() => ShowSettings(SettingsPageKey.General));
         }
         else
         {
@@ -122,6 +140,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             Status.OnLink(link);
             _tray.OnLink(link);
             Overlay.OnLink(link);
+            _settings?.OnLink(link);
         });
         Supervisor.EventReceived += message =>
         {
@@ -129,6 +148,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             if (message.Event == "frame")
             {
                 Overlay.OnFrame(message);
+                Frames.Publish(message);
                 return;
             }
 
@@ -152,10 +172,15 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
                     {
                         _tray.OnConfig(changed);
                         Overlay.OnConfig(changed);
+                        _settings?.Session.OnFileChanged(changed);
                     });
                     return Task.CompletedTask;
                 },
-                _ => Task.CompletedTask,
+                invalid =>
+                {
+                    Dispatcher.UIThread.Post(() => _settings?.Session.OnFileInvalid(invalid));
+                    return Task.CompletedTask;
+                },
                 _log);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
@@ -174,7 +199,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         _started = true;
         if (_showWhenStarted)
         {
-            ShowStatus();
+            ShowSettings(SettingsPageKey.General);
         }
     }
 
@@ -186,21 +211,44 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
 
     public void RestartDaemon() => Supervisor.Restart();
 
-    public void ShowStatus()
+    public void ShowSettings() => ShowSettings(SettingsPageKey.General);
+
+    public void ShowHistory() => ShowSettings(SettingsPageKey.History);
+
+    /// <summary>Opens the Settings window at <paramref name="page"/>, or brings the open one forward there.</summary>
+    public void ShowSettings(SettingsPageKey page)
     {
         if (!Dispatcher.UIThread.CheckAccess())
         {
-            Dispatcher.UIThread.Post(ShowStatus);
+            Dispatcher.UIThread.Post(() => ShowSettings(page));
             return;
         }
 
-        if (StatusWindow.Open.FirstOrDefault() is { } open)
+        if (_settings is not null && _settingsWindow is not null)
         {
-            open.Activate();
+            _settings.Open(page);
+            _settingsWindow.Activate();
             return;
         }
 
-        new StatusWindow { DataContext = Status }.Show();
+        var session = new SettingsSession(_store, UiTimers.Instance, _log);
+        session.Load();
+        var general = new GeneralPage(session, new GeneralServices(
+            Supervisor, Frames, UiTimers.Instance, _autostart, Environment.ProcessPath, _sounds, TimeProvider.System, _log));
+        var system = new SystemPage(new SystemServices(
+            Supervisor, Status, () => OverlayRow(session), TrayRow, UiTimers.Instance, TimeProvider.System, DesktopName()));
+        var history = new HistoryPage(session, _paths.HistoryFile, new WindowClipboard(() => _settingsWindow), _log);
+        var settings = new SettingsViewModel(session, [(SettingsPageKey.General, general), (SettingsPageKey.System, system), (SettingsPageKey.History, history)]);
+        var window = new SettingsWindow { DataContext = settings };
+        window.Closed += (_, _) =>
+        {
+            _settings = null;
+            _settingsWindow = null;
+        };
+        _settings = settings;
+        _settingsWindow = window;
+        settings.Open(page);
+        window.Show();
     }
 
     public void Quit() => Dispatcher.UIThread.Post(async () =>
@@ -238,6 +286,19 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
 
     private static bool IsHighContrast(Application app) =>
         app.PlatformSettings?.GetColorValues().ContrastPreference == ColorContrastPreference.High;
+
+    private static SystemRow OverlayRow(SettingsSession session) =>
+        OverlayAvailability.Row(OverlayAvailability.ThisDesktop(Environment.GetEnvironmentVariable), session.Config.General.Overlay.Enabled);
+
+    private SystemRow TrayRow()
+    {
+        var desktop = TrayVisibility.ThisDesktop();
+        var available = _presenter?.IsAvailable == true;
+        var hidden = available ? TrayVisibility.Hidden(desktop, Environment.ProcessPath, _log) : null;
+        return TrayVisibility.Row(desktop, available, hidden, OperatingSystem.IsWindows() ? TrayVisibility.OpenTaskbarSettings : null);
+    }
+
+    private static string DesktopName() => OperatingSystem.IsLinux() ? SessionInfo.Detect().ToString() : RuntimeInformation.OSDescription;
 
     private async Task StartTrayAsync(Application app)
     {
@@ -281,7 +342,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     private void NoTray()
     {
         Status.NoTray = true;
-        ShowStatus();
+        ShowSettings(SettingsPageKey.System);
     }
 
     /// <summary>Downloads a previous run left unfinished continue in the background (spec 9); the tooltip shows the total.</summary>

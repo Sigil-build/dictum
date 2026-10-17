@@ -7,6 +7,7 @@ using Dictum.App.Shell;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Host;
 using Dictum.Host.Ipc;
 using Dictum.Platform.Linux.X11;
 
@@ -45,7 +46,7 @@ internal static class Program
         var appSocket = SingleInstance.SocketPathFor(daemonSocket);
         var shell = new DesktopShell(paths, log, store, daemonSocket, DaemonProcessLauncher.NextToApp(log),
             (app, highContrast) => DesktopShell.CreateTrayAsync(app, highContrast, paths, log),
-            OverlayDesktop.ForThisDesktop(log));
+            OverlayDesktop.ForThisDesktop(log), PlatformFactory.CreateAutostart());
 
         // No synchronisation context exists yet, so blocking here cannot deadlock.
         var instance = SingleInstance.AcquireAsync(appSocket, shell.OnCommand, log, CancellationToken.None).GetAwaiter().GetResult();

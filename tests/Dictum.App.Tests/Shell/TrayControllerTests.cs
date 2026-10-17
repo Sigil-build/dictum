@@ -35,7 +35,7 @@ public class TrayControllerTests
 
     [Theory]
     [InlineData(DaemonLinkState.Failed, "restart")]
-    [InlineData(DaemonLinkState.Connected, "status")]
+    [InlineData(DaemonLinkState.Connected, "settings")]
     public void APlainClickRunsTheViewsActivateCommand(DaemonLinkState state, string call)
     {
         var controller = Attached();
@@ -58,7 +58,7 @@ public class TrayControllerTests
             _presenter.Click(menu.First(i => i.Command == command));
         }
 
-        Assert.Equal(["pause", "status", "status", "quit"], _commands.Calls);
+        Assert.Equal(["pause", "history", "settings", "quit"], _commands.Calls);
     }
 
     [Fact]
@@ -142,7 +142,9 @@ public class TrayControllerTests
 
         public void ResumeHotkeys() => Calls.Add("resume");
 
-        public void ShowStatus() => Calls.Add("status");
+        public void ShowSettings() => Calls.Add("settings");
+
+        public void ShowHistory() => Calls.Add("history");
 
         public void RestartDaemon() => Calls.Add("restart");
 

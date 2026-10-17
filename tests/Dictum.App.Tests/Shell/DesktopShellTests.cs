@@ -2,10 +2,12 @@ using Avalonia;
 using Avalonia.Threading;
 using Dictum.App.Daemon;
 using Dictum.App.Overlay;
+using Dictum.App.Settings;
 using Dictum.App.Shell;
 using Dictum.App.Tests.Daemon;
 using Dictum.App.Tray;
-using Dictum.App.Views;
+using Dictum.App.ViewModels.Settings;
+using Dictum.App.Views.Settings;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
@@ -46,19 +48,68 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
     });
 
     [Fact]
-    public Task WithoutATrayTheStatusWindowOpens() => fx.UiAsync(async () =>
+    public Task WithoutATraySettingsOpensOnSystem() => fx.UiAsync(async () =>
     {
         var (shell, launcher, _) = Create(tray: false);
 
         shell.Start(Application.Current!, _ => { });
-        await WaitAsync(() => shell.Status.NoTray);
+        await WaitAsync(() => shell.Status.NoTray && SettingsWindow.Open.Count == 1);
 
-        Assert.Contains(StatusWindow.Open, w => w.IsVisible);
-        foreach (var window in StatusWindow.Open.ToList())
-        {
-            window.Close();
-        }
+        var model = (SettingsViewModel)SettingsWindow.Open[0].DataContext!;
+        Assert.IsType<SystemPage>(model.Current);
+        CloseSettings();
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
 
+    [Fact]
+    public Task TraySettingsAndHistoryOpenOneWindowAtTheirPage() => fx.UiAsync(async () =>
+    {
+        var (shell, launcher, presenter) = Create();
+        shell.Start(Application.Current!, _ => { });
+        await WaitAsync(() => presenter.Shown.Count > 0);
+
+        presenter.Click(presenter.Shown[^1].Menu.First(i => i.Command == TrayCommand.History));
+        await WaitAsync(() => SettingsWindow.Open.Count == 1);
+        var model = (SettingsViewModel)SettingsWindow.Open[0].DataContext!;
+        Assert.IsType<HistoryPage>(model.Current);
+
+        presenter.Click(presenter.Shown[^1].Menu.First(i => i.Command == TrayCommand.Settings));
+        await WaitAsync(() => model.Current is GeneralPage);
+        Assert.Single(SettingsWindow.Open);
+
+        CloseSettings();
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
+    [Fact]
+    public Task AnOutsideEditReachesTheOpenSettings() => fx.UiAsync(async () =>
+    {
+        var (shell, launcher, _) = Create();
+        shell.Start(Application.Current!, _ => { });
+        shell.ShowSettings(SettingsPageKey.General);
+        var model = (SettingsViewModel)SettingsWindow.Open[0].DataContext!;
+
+        new ConfigStore(Path.Combine(_dir, "config", "config.json"), NullLog.Instance)
+            .Save(new DictumConfig { General = new GeneralSettings { HistorySize = 77 } });
+
+        await WaitAsync(() => model.Session.Config.General.HistorySize == 77);
+        CloseSettings();
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
+    [Fact]
+    public Task FramesReachTheMeter() => fx.UiAsync(async () =>
+    {
+        var (shell, launcher, _) = Create();
+        shell.Start(Application.Current!, _ => { });
+        await WaitAsync(() => shell.Supervisor.Link.State == DaemonLinkState.Connected);
+
+        launcher.Current!.Events.Publish(new IpcEvent("frame", Rms: 0.1f));
+
+        await WaitAsync(() => shell.Frames.Rms(TimeSpan.FromSeconds(10)) > 0);
         await shell.DisposeAsync();
         await launcher.DisposeAsync();
     });
@@ -110,6 +161,14 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         var presenter = new TrayControllerTests.FakePresenter();
         var shell = new DesktopShell(paths, log, store, socket, launcher, (_, _) => Task.FromResult<ITrayPresenter?>(tray ? presenter : null));
         return (shell, launcher, presenter);
+    }
+
+    private static void CloseSettings()
+    {
+        foreach (var window in SettingsWindow.Open.ToList())
+        {
+            window.Close();
+        }
     }
 
     // Awaiting on the headless UI thread lets posted work run between checks.

@@ -5,10 +5,17 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Styling;
+using Dictum.App.Daemon;
 using Dictum.App.Overlay;
 using Dictum.App.Resources;
+using Dictum.App.Settings;
 using Dictum.App.Tray;
+using Dictum.App.ViewModels;
+using Dictum.App.ViewModels.Settings;
+using Dictum.Audio.PortAudio;
 using Dictum.Core.Configuration;
+using Dictum.Core.Diagnostics;
+using Dictum.Host.Ipc;
 
 namespace Dictum.App.Shell;
 
@@ -111,11 +118,62 @@ public static class SelfTest
 
             Check("overlay", blank.Count == 0, blank.Count == 0 ? $"{scenes} scenes" : $"blank: {string.Join(", ", blank)}");
 
+            Check("settings views", SettingsViews(out var views), views);
+
             UiCulture.Apply("uk");
             Check("ui culture", Strings.MenuQuit == ukrainian, $"\"{Strings.MenuQuit}\" with {CultureInfo.CurrentUICulture.Name}");
         }
 
         return failures == 0 ? 0 : 1;
+    }
+
+    /// <summary>Builds each Settings page's view from compiled XAML; a trimmed type or binding throws here.</summary>
+    private static bool SettingsViews(out string detail)
+    {
+        var folder = Path.Combine(Path.GetTempPath(), $"dictum-self-test-settings-{Environment.ProcessId}");
+        try
+        {
+            var store = new ConfigStore(Path.Combine(folder, "config.json"), NullLog.Instance);
+            store.Save(new DictumConfig());
+            var session = new SettingsSession(store, UiTimers.Instance, NullLog.Instance);
+            session.Load();
+            var offline = new Offline();
+            var general = new GeneralPage(session, new GeneralServices(offline, new FrameHub(TimeProvider.System), UiTimers.Instance,
+                null, null, new SoundPlayer(NullLog.Instance), TimeProvider.System, NullLog.Instance));
+            SettingsPage[] pages =
+            [
+                general,
+                general.Overlay,
+                new SystemPage(new SystemServices(offline, new StatusViewModel("config.json", "dictum-gui.log", () => { }),
+                    () => OverlayAvailability.Row(OverlayHost.Windows, true), () => TrayVisibility.Row(TrayDesktop.Other, true, null, null),
+                    UiTimers.Instance, TimeProvider.System, "self-test")),
+                new HistoryPage(session, Path.Combine(folder, "history.jsonl"), new WindowClipboard(() => null), NullLog.Instance),
+            ];
+            var locator = new ViewLocator();
+            var built = pages.Select(page => locator.Build(page)).Where(view => view is UserControl).ToList();
+            detail = $"{built.Count} of {pages.Length} views";
+            return built.Count == pages.Length;
+        }
+        catch (Exception ex)
+        {
+            detail = ex.Message;
+            return false;
+        }
+        finally
+        {
+            if (Directory.Exists(folder))
+            {
+                Directory.Delete(folder, recursive: true);
+            }
+        }
+    }
+
+    private sealed class Offline : IDaemonChannel
+    {
+        public DaemonLink Link { get; } = new(DaemonLinkState.Stopped);
+
+        public Task<IpcResponse> SendAsync(IpcRequest request, CancellationToken ct, TimeSpan? timeout = null) =>
+            Task.FromException<IpcResponse>(new DaemonNotRunningException("self-test"));
     }
 
     private static bool HasInk(Bitmap bitmap, byte minimum = 255)

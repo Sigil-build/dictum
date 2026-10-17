@@ -14,7 +14,7 @@ public class StatusViewTests(AvaloniaFixture fx)
     {
         var model = new StatusViewModel("config.json", "dictum-gui.log", () => { });
         model.OnLink(new DaemonLink(DaemonLinkState.Failed, Problem: "The daemon keeps stopping; details are in dictum-gui.log."));
-        var window = new StatusWindow { DataContext = model };
+        var window = new Window { Content = model };
 
         window.Show();
         var texts = window.GetVisualDescendants().OfType<TextBlock>().Select(t => t.Text).ToList();

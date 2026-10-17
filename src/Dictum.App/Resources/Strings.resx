@@ -125,9 +125,6 @@
   <data name="MenuProfileWithLanguages" xml:space="preserve">
     <value>{0} ({1})</value>
   </data>
-  <data name="StatusWindowTitle" xml:space="preserve">
-    <value>Dictum</value>
-  </data>
   <data name="StatusConnected" xml:space="preserve">
     <value>Connected to the daemon (pid {0})</value>
   </data>
