@@ -191,7 +191,7 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         shell.ShowSettings(SettingsPageKey.Profiles);
         var model = (SettingsViewModel)SettingsWindow.Open[0].DataContext!;
 
-        Assert.Equal(["General", "Profiles", "Speech providers", "System", "History"], model.Pages.Select(p => p.Title));
+        Assert.Equal(["General", "Profiles", "Speech providers", "Processors", "System", "History"], model.Pages.Select(p => p.Title));
         Assert.IsType<ProfilesPage>(model.Current);
         CloseSettings();
         await shell.DisposeAsync();

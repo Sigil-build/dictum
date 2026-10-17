@@ -150,6 +150,8 @@ public static class SelfTest
                 new ProfilesPage(session, offline, NullLog.Instance),
                 new SpeechProvidersPage(session, new SpeechServices(offline, new FrameHub(TimeProvider.System), UiTimers.Instance,
                     new UnavailableSecretStore(), _ => [], _ => false, _ => Task.CompletedTask, TimeProvider.System, NullLog.Instance)),
+                new ProcessorsPage(session, new ProcessorsServices(runner, new UnavailableSecretStore(), new PromptFiles(Path.Combine(folder, "prompts")),
+                    UiTimers.Instance, NullLog.Instance)),
                 new SystemPage(new SystemServices(offline, new StatusViewModel("config.json", "dictum-gui.log", () => { }),
                     () => OverlayAvailability.Row(OverlayHost.Windows, true), () => TrayVisibility.Row(TrayDesktop.Other, true, null, null),
                     UiTimers.Instance, TimeProvider.System, "self-test")),

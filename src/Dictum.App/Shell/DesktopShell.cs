@@ -245,12 +245,14 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         var system = new SystemPage(new SystemServices(
             Supervisor, Status, () => OverlayRow(session), TrayRow, UiTimers.Instance, TimeProvider.System, DesktopName()));
         var runner = _runner ??= new ProcessorRunner(_paths, _secrets ??= PlatformFactory.CreateSecretStore(_log), _log);
+        var processors = new ProcessorsPage(session, new ProcessorsServices(runner, _secrets, new PromptFiles(_paths.PromptsDirectory), UiTimers.Instance, _log));
         var history = new HistoryPage(session, _paths.HistoryFile, new WindowClipboard(() => _settingsWindow), runner, _log);
         var settings = new SettingsViewModel(session,
         [
             (SettingsPageKey.General, general),
             (SettingsPageKey.Profiles, profiles),
             (SettingsPageKey.SpeechProviders, providers),
+            (SettingsPageKey.Processors, processors),
             (SettingsPageKey.System, system),
             (SettingsPageKey.History, history),
         ]);
