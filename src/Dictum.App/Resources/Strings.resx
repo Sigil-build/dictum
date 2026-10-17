@@ -1118,4 +1118,25 @@
   <data name="SettingsModelsMeasureFailed" xml:space="preserve">
     <value>Could not measure: {0}</value>
   </data>
+  <data name="SettingsModelsVerify" xml:space="preserve">
+    <value>Verify</value>
+  </data>
+  <data name="SettingsModelsMeasure" xml:space="preserve">
+    <value>Measure speed</value>
+  </data>
+  <data name="SettingsModelsPause" xml:space="preserve">
+    <value>Pause</value>
+  </data>
+  <data name="SettingsModelsResume" xml:space="preserve">
+    <value>Resume</value>
+  </data>
+  <data name="SettingsModelsCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="SettingsModelsUseIn" xml:space="preserve">
+    <value>Use in profile…</value>
+  </data>
+  <data name="SettingsModelsResumable" xml:space="preserve">
+    <value>Resumable. SHA-256 is checked after the download.</value>
+  </data>
 </root>

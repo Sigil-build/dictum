@@ -218,4 +218,60 @@
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Cursor" Value="SizeNorthSouth" />
   </Style>
+  <!-- Models (design §3.5): cards with an accent border while downloading, pill badges, the download and disk bars. -->
+  <Style Selector="Border.modelCard">
+    <Setter Property="Padding" Value="16,14" />
+    <Setter Property="CornerRadius" Value="{DynamicResource radius.control}" />
+    <Setter Property="Background" Value="{DynamicResource color.bg.layer}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource color.border}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Border.modelCard.active">
+    <Setter Property="BorderBrush" Value="{DynamicResource color.accent}" />
+  </Style>
+  <Style Selector="Border.badge">
+    <Setter Property="Padding" Value="8,2" />
+    <Setter Property="Margin" Value="0,0,6,0" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+    <Setter Property="Background" Value="{DynamicResource color.bg.control}" />
+  </Style>
+  <Style Selector="Border.badge > TextBlock">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{DynamicResource color.text.primary}" />
+  </Style>
+  <Style Selector="Border.badge.info">
+    <Setter Property="Background" Value="{DynamicResource color.accent.subtleBg}" />
+  </Style>
+  <Style Selector="Border.badge.info > TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource color.accent.subtleText}" />
+  </Style>
+  <Style Selector="Border.badge.ok">
+    <Setter Property="Background" Value="{DynamicResource color.status.ok.bg}" />
+  </Style>
+  <Style Selector="Border.badge.ok > TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource color.status.ok.fg}" />
+  </Style>
+  <Style Selector="Border.badge.warn">
+    <Setter Property="Background" Value="{DynamicResource color.status.warn.bg}" />
+  </Style>
+  <Style Selector="Border.badge.warn > TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource color.status.warn.fg}" />
+  </Style>
+  <Style Selector="ProgressBar.download">
+    <Setter Property="Height" Value="6" />
+    <Setter Property="MinHeight" Value="6" />
+    <Setter Property="CornerRadius" Value="3" />
+    <Setter Property="Foreground" Value="{DynamicResource color.accent}" />
+    <Setter Property="Background" Value="{DynamicResource color.border}" />
+  </Style>
+  <Style Selector="ProgressBar.disk">
+    <Setter Property="Width" Value="220" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="Height" Value="4" />
+    <Setter Property="MinHeight" Value="4" />
+    <Setter Property="CornerRadius" Value="2" />
+    <Setter Property="Foreground" Value="{DynamicResource color.accent}" />
+    <Setter Property="Background" Value="{DynamicResource color.border}" />
+  </Style>
 </Styles>

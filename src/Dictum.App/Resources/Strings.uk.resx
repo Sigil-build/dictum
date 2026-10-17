@@ -1118,4 +1118,25 @@
   <data name="SettingsModelsMeasureFailed" xml:space="preserve">
     <value>Не вдалося виміряти: {0}</value>
   </data>
+  <data name="SettingsModelsVerify" xml:space="preserve">
+    <value>Перевірити</value>
+  </data>
+  <data name="SettingsModelsMeasure" xml:space="preserve">
+    <value>Виміряти швидкість</value>
+  </data>
+  <data name="SettingsModelsPause" xml:space="preserve">
+    <value>Призупинити</value>
+  </data>
+  <data name="SettingsModelsResume" xml:space="preserve">
+    <value>Продовжити</value>
+  </data>
+  <data name="SettingsModelsCancel" xml:space="preserve">
+    <value>Скасувати</value>
+  </data>
+  <data name="SettingsModelsUseIn" xml:space="preserve">
+    <value>Використати в профілі…</value>
+  </data>
+  <data name="SettingsModelsResumable" xml:space="preserve">
+    <value>Завантаження можна продовжити. Після нього перевіряється SHA-256.</value>
+  </data>
 </root>

@@ -1,0 +1,89 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Dictum.App.ViewModels.Settings"
+             xmlns:res="using:Dictum.App.Resources"
+             x:Class="Dictum.App.Views.Settings.ModelsView"
+             x:DataType="vm:ModelsPage">
+  <ScrollViewer>
+    <StackPanel Margin="16,4,32,24" Spacing="8">
+      <Grid ColumnDefinitions="*,16,Auto">
+        <TextBlock Classes="title" Text="{Binding Title}" VerticalAlignment="Bottom" />
+        <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Bottom">
+          <TextBlock Text="{Binding DiskText}" Classes="hint" HorizontalAlignment="Right" />
+          <ProgressBar Classes="disk" Minimum="0" Maximum="100" Value="{Binding DiskShare}" HorizontalAlignment="Right"
+                       AutomationProperties.Name="{Binding DiskText}" />
+        </StackPanel>
+      </Grid>
+      <TextBlock Text="{Binding HardwareText}" Classes="hint" Margin="0,0,0,12" />
+
+      <ItemsControl ItemsSource="{Binding Cards}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ModelCard">
+            <Border Classes="modelCard" Classes.active="{Binding IsActive}" Margin="0,0,0,8">
+              <Grid ColumnDefinitions="*,16,220">
+                <StackPanel Spacing="6">
+                  <WrapPanel>
+                    <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource color.text.primary}"
+                               VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <Border Classes="badge info" IsVisible="{Binding Recommendation, Converter={x:Static ObjectConverters.IsNotNull}}">
+                      <TextBlock Text="{Binding Recommendation}" />
+                    </Border>
+                    <Border Classes="badge" Classes.ok="{Binding IsInstalled}" Classes.warn="{Binding IsFailed}">
+                      <TextBlock Text="{Binding StateText}" />
+                    </Border>
+                    <Border Classes="badge" Classes.warn="{Binding IsTooSlow}"
+                            IsVisible="{Binding SpeedBadge, Converter={x:Static ObjectConverters.IsNotNull}}">
+                      <TextBlock Text="{Binding SpeedBadge}" />
+                    </Border>
+                  </WrapPanel>
+                  <TextBlock Text="{Binding Meta}" Classes="hint" />
+                  <TextBlock Text="{Binding Note}" Classes="hint" />
+                  <TextBlock Text="{Binding SpeedText}" Classes="hint" IsVisible="{Binding SpeedText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                  <TextBlock Text="{Binding UsedByText}" Classes="hint" />
+                  <StackPanel Spacing="4" IsVisible="{Binding ProgressText, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <Grid ColumnDefinitions="*,12,Auto">
+                      <ProgressBar Classes="download" Minimum="0" Maximum="100" Value="{Binding Progress}" VerticalAlignment="Center"
+                                   AutomationProperties.Name="{Binding Name}" />
+                      <TextBlock Grid.Column="2" Text="{Binding ProgressText}" Classes="hint" VerticalAlignment="Center" />
+                    </Grid>
+                    <TextBlock Text="{x:Static res:Strings.SettingsModelsResumable}" Classes="hint" />
+                  </StackPanel>
+                  <TextBlock Text="{Binding DeleteNote}" Classes="hint" IsVisible="{Binding DeleteNote, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                  <TextBlock Text="{Binding CheckText}" Classes="hint" IsVisible="{Binding CheckText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                  <TextBlock Text="{Binding DownloadError}" Classes="error" IsVisible="{Binding DownloadError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                  <TextBlock Text="{Binding Error}" Classes="error" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Spacing="6" VerticalAlignment="Center">
+                  <ComboBox Classes="picker" HorizontalAlignment="Stretch" ItemsSource="{Binding UseInChoices}" SelectedItem="{Binding UseIn}"
+                            PlaceholderText="{x:Static res:Strings.SettingsModelsUseIn}" IsVisible="{Binding HasUseIn}"
+                            AutomationProperties.Name="{x:Static res:Strings.SettingsModelsUseIn}" />
+                  <Button Content="{x:Static res:Strings.SettingsModelsVerify}" Command="{Binding VerifyCommand}"
+                          IsVisible="{Binding IsInstalled}" IsEnabled="{Binding CanVerify}"
+                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                  <Button Content="{x:Static res:Strings.SettingsModelsMeasure}" Command="{Binding MeasureCommand}"
+                          IsVisible="{Binding ShowMeasure}" IsEnabled="{Binding CanMeasure}"
+                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                  <Button Classes="destructive" Content="{Binding DeleteText}" Command="{Binding DeleteCommand}"
+                          IsVisible="{Binding IsInstalled}" IsEnabled="{Binding CanDelete}"
+                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                  <Button Content="{x:Static res:Strings.SettingsModelsPause}" Command="{Binding PauseCommand}" IsVisible="{Binding IsActive}"
+                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                  <Button Content="{x:Static res:Strings.SettingsModelsResume}" Command="{Binding ResumeCommand}" IsVisible="{Binding IsPaused}"
+                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                  <Button Classes="primary" Content="{Binding DownloadText}" Command="{Binding DownloadCommand}" IsVisible="{Binding ShowDownload}"
+                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                  <Button Content="{Binding DownloadText}" Command="{Binding DownloadCommand}" IsVisible="{Binding ShowDownloadAnyway}"
+                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                  <Button Content="{x:Static res:Strings.SettingsModelsCancel}" Command="{Binding CancelCommand}" IsVisible="{Binding CanCancel}"
+                          HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" />
+                  <ProgressBar IsIndeterminate="True" Height="2" IsVisible="{Binding Busy}" />
+                </StackPanel>
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
