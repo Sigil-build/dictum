@@ -854,4 +854,13 @@
   <data name="SettingsLlmLatency" xml:space="preserve">
     <value>{0} мс</value>
   </data>
+  <data name="SettingsRulesFindEmpty" xml:space="preserve">
+    <value>Введіть, що шукати, або приберіть правило.</value>
+  </data>
+  <data name="SettingsRulesImported" xml:space="preserve">
+    <value>Імпортовано правил: {0}.</value>
+  </data>
+  <data name="SettingsRulesImportProblems" xml:space="preserve">
+    <value>Імпортовано правил: {0}. Пропущено: {1}</value>
+  </data>
 </root>

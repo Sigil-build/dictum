@@ -854,4 +854,13 @@
   <data name="SettingsLlmLatency" xml:space="preserve">
     <value>{0} ms</value>
   </data>
+  <data name="SettingsRulesFindEmpty" xml:space="preserve">
+    <value>Type what to find, or remove the rule.</value>
+  </data>
+  <data name="SettingsRulesImported" xml:space="preserve">
+    <value>Rules imported: {0}.</value>
+  </data>
+  <data name="SettingsRulesImportProblems" xml:space="preserve">
+    <value>Rules imported: {0}. Skipped: {1}</value>
+  </data>
 </root>
