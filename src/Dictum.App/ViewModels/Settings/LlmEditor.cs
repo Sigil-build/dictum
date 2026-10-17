@@ -14,8 +14,8 @@ namespace Dictum.App.ViewModels.Settings;
 /// <item>Connection: URL, model, key.</item>
 /// <item>The settings the design leaves out (gate 3): temperature, timeout, on error, wording, max tokens.</item>
 /// <item>The prompt: written to <c>prompts/&lt;name&gt;.md</c> 500 ms after the last keystroke.</item>
-/// <item>The live preview: runs the session's copy of this processor on the sample 600 ms after the last change. It
-/// writes a pending prompt first, and a newer run always wins.</item>
+/// <item>The live preview: runs the session's copy of this processor on the sample 600 ms after the last change, only
+/// while the page is on screen. It writes a pending prompt first, and a newer run always wins.</item>
 /// </list>
 /// </summary>
 public sealed partial class LlmEditor : ObservableObject
@@ -35,6 +35,7 @@ public sealed partial class LlmEditor : ObservableObject
     private string? _id;
     private string? _loadedPrompt;
     private bool _loading;
+    private bool _shown;
     private bool _temperatureEmpty;
     private bool _timeoutEmpty;
     private Task? _committing;
@@ -257,11 +258,40 @@ public sealed partial class LlmEditor : ObservableObject
         SavePrompt();
     }
 
+    /// <summary>The page is on screen: the selected processor's preview may run.</summary>
+    public void OnShown()
+    {
+        _shown = true;
+        SchedulePreview();
+    }
+
+    /// <summary>The page was left: nothing more is sent to the LLM until it shows again (final review I1).</summary>
+    public void OnHidden()
+    {
+        _shown = false;
+        Flush();
+        CancelPreview();
+    }
+
+    /// <summary>
+    /// A rules processor, or none, is selected: writes a pending prompt, stops the preview and forgets the processor,
+    /// so selecting it again loads it afresh and previews it.
+    /// </summary>
+    public void Release()
+    {
+        Flush();
+        CancelPreview();
+        _id = null;
+    }
+
+    /// <summary>Stops a scheduled or running preview; a run still in flight is dropped when it answers.</summary>
     public void CancelPreview()
     {
         _previewTimer?.Dispose();
         _previewTimer = null;
         _preview?.Cancel();
+        _previewRun++;
+        Previewing = false;
     }
 
     partial void OnUrlChanged(string value) => EditLlm(l => l with { BaseUrl = value.Trim() });
@@ -500,7 +530,7 @@ public sealed partial class LlmEditor : ObservableObject
 
     private void SchedulePreview()
     {
-        if (_loading || _id is null)
+        if (_loading || _id is null || !_shown)
         {
             return;
         }

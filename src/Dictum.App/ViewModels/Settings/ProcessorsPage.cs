@@ -69,11 +69,9 @@ public sealed partial class ProcessorsPage : SettingsPage
     [NotifyCanExecuteChangedFor(nameof(RemoveCommand))]
     public partial bool CanRemove { get; private set; }
 
-    public override void OnHidden()
-    {
-        Llm.Flush();
-        Llm.CancelPreview();
-    }
+    public override void OnShown() => Llm.OnShown();
+
+    public override void OnHidden() => Llm.OnHidden();
 
     partial void OnSelectedChanged(ProcessorItem? value)
     {
@@ -156,6 +154,11 @@ public sealed partial class ProcessorsPage : SettingsPage
             var processor = _id is null ? null : config.Processors[_id];
             IsLlm = processor is LlmProcessorConfig;
             IsRules = processor is ReplaceProcessorConfig;
+            if (!IsLlm)
+            {
+                Llm.Release();
+            }
+
             if (_id is not { } id)
             {
                 return;

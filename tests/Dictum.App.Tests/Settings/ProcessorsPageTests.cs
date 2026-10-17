@@ -33,12 +33,19 @@ public sealed class ProcessorsPageTests : IDisposable
         }
     }
 
-    private (ProcessorsPage Page, SettingsSession Session) Open()
+    /// <summary>The page as the user meets it: on screen. <paramref name="shown"/> false is a window opened on another page.</summary>
+    private (ProcessorsPage Page, SettingsSession Session) Open(bool shown = true)
     {
         Store.Save(ProfilesPageTests.Sample());
         var session = new SettingsSession(Store, _timers, NullLog.Instance);
         session.Load();
-        return (new ProcessorsPage(session, new ProcessorsServices(_runner, _secrets, _prompts, _timers, NullLog.Instance)), session);
+        var page = new ProcessorsPage(session, new ProcessorsServices(_runner, _secrets, _prompts, _timers, NullLog.Instance));
+        if (shown)
+        {
+            page.OnShown();
+        }
+
+        return (page, session);
     }
 
     private static LlmProcessorConfig Llm(SettingsSession session, string id = "cleanup") => (LlmProcessorConfig)session.Config.Processors[id];
@@ -271,5 +278,55 @@ public sealed class ProcessorsPageTests : IDisposable
 
         Assert.Equal("Fix {{text}}", _prompts.Read("cleanup"));
         Assert.Equal(0, _timers.Pending);
+    }
+
+    // Final review I1.
+    [Fact]
+    public void OpeningSettingsOnAnotherPageSendsNothingToTheLlm()
+    {
+        var (page, _) = Open(shown: false);
+
+        _timers.Fire();
+        Assert.Empty(_runner.Runs);
+
+        page.OnShown();
+        _timers.Fire();
+        Assert.Equal("cleanup", _runner.Runs.Single().Steps.Single().Id);
+    }
+
+    // Final review I1.
+    [Fact]
+    public void ChoosingARulesProcessorStopsTheLlmPreview()
+    {
+        var (page, _) = Open();
+        _timers.Fire();
+        _runner.Runs.Clear();
+        page.Llm.SampleText = "інший текст";
+
+        page.Selected = page.Processors.Single(p => p.Id == "terms");
+        _timers.Fire();
+        Assert.Empty(_runner.Runs);
+
+        page.Selected = page.Processors.Single(p => p.Id == "cleanup");
+        _timers.Fire();
+        Assert.Single(_runner.Runs);
+    }
+
+    // Final review I1 and M7: a preview still running when the page is left is dropped, not shown later.
+    [Fact]
+    public async Task LeavingThePageDropsARunningPreview()
+    {
+        var (page, _) = Open();
+        var held = new TaskCompletionSource<RunResult>();
+        _runner.Held.Enqueue(held);
+        var running = page.Llm.PreviewNowCommand.ExecuteAsync(null);
+        Assert.True(page.Llm.Previewing);
+
+        page.OnHidden();
+        held.SetResult(new RunResult("late", 900, null));
+        await running;
+
+        Assert.Null(page.Llm.PreviewText);
+        Assert.False(page.Llm.Previewing);
     }
 }
