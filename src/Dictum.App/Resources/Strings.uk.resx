@@ -149,9 +149,6 @@
   <data name="StatusStopped" xml:space="preserve">
     <value>Зупинено</value>
   </data>
-  <data name="StatusComingLater" xml:space="preserve">
-    <value>Налаштування та історія з'являться в одній із наступних версій. Поки що змінюйте файл конфігурації нижче або користуйтеся командою dictum.</value>
-  </data>
   <data name="StatusConfigFile" xml:space="preserve">
     <value>Конфігурація: {0}</value>
   </data>
@@ -391,5 +388,89 @@
   </data>
   <data name="SettingsOverlayRowUnsupported" xml:space="preserve">
     <value>На цій системі поки недоступний</value>
+  </data>
+  <data name="SettingsSystem" xml:space="preserve">
+    <value>Система</value>
+  </data>
+  <data name="SettingsSystemCheckAgain" xml:space="preserve">
+    <value>Перевірити ще раз</value>
+  </data>
+  <data name="SettingsSystemChecking" xml:space="preserve">
+    <value>{0} · перевірка…</value>
+  </data>
+  <data name="SettingsSystemChecked" xml:space="preserve">
+    <value>{0} · перевірено {1} с тому</value>
+  </data>
+  <data name="SettingsSystemSummary" xml:space="preserve">
+    <value>Проблем: {0}. Попереджень: {1}.</value>
+  </data>
+  <data name="SettingsSystemAllGood" xml:space="preserve">
+    <value>Усе працює.</value>
+  </data>
+  <data name="SettingsSystemNoDaemon" xml:space="preserve">
+    <value>Не працює</value>
+  </data>
+  <data name="SettingsSystemNoDaemonDetail" xml:space="preserve">
+    <value>Перевірки виконує демон; вони запустяться знову, щойно він повернеться.</value>
+  </data>
+  <data name="SettingsSystemFooter" xml:space="preserve">
+    <value>Перевірки запускаються щоразу, коли відкривається ця сторінка. Ті самі перевірки виконує «dictum doctor».</value>
+  </data>
+  <data name="SettingsCheckConfig" xml:space="preserve">
+    <value>Файл конфігурації</value>
+  </data>
+  <data name="SettingsCheckConfigWarnings" xml:space="preserve">
+    <value>Попередження конфігурації</value>
+  </data>
+  <data name="SettingsCheckModels" xml:space="preserve">
+    <value>Файли моделей</value>
+  </data>
+  <data name="SettingsCheckGpu" xml:space="preserve">
+    <value>Відеокарта</value>
+  </data>
+  <data name="SettingsCheckAudioLibrary" xml:space="preserve">
+    <value>Аудіобібліотека</value>
+  </data>
+  <data name="SettingsCheckPlatform" xml:space="preserve">
+    <value>Платформа</value>
+  </data>
+  <data name="SettingsCheckSession" xml:space="preserve">
+    <value>Сеанс робочого столу</value>
+  </data>
+  <data name="SettingsCheckHotkeys" xml:space="preserve">
+    <value>Глобальна гаряча клавіша</value>
+  </data>
+  <data name="SettingsCheckPaste" xml:space="preserve">
+    <value>Вставлення</value>
+  </data>
+  <data name="SettingsCheckPastePortal" xml:space="preserve">
+    <value>Вставлення (портал)</value>
+  </data>
+  <data name="SettingsCheckPasteYdotool" xml:space="preserve">
+    <value>Вставлення (ydotool)</value>
+  </data>
+  <data name="SettingsCheckPasteOrder" xml:space="preserve">
+    <value>Порядок вставлення</value>
+  </data>
+  <data name="SettingsCheckClipboard" xml:space="preserve">
+    <value>Буфер обміну</value>
+  </data>
+  <data name="SettingsCheckActiveWindow" xml:space="preserve">
+    <value>Активне вікно</value>
+  </data>
+  <data name="SettingsCheckSecrets" xml:space="preserve">
+    <value>Сховище секретів</value>
+  </data>
+  <data name="SettingsCheckElevation" xml:space="preserve">
+    <value>Права адміністратора</value>
+  </data>
+  <data name="SettingsCheckDaemon" xml:space="preserve">
+    <value>Демон</value>
+  </data>
+  <data name="SettingsCheckStt" xml:space="preserve">
+    <value>Розпізнавання мовлення {0}</value>
+  </data>
+  <data name="SettingsCheckProcessor" xml:space="preserve">
+    <value>Обробник {0}</value>
   </data>
 </root>
