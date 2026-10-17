@@ -10,6 +10,8 @@ namespace Dictum.App.ViewModels.Settings;
 public enum SettingsPageKey
 {
     General,
+    Profiles,
+    SpeechProviders,
     System,
     History,
 }

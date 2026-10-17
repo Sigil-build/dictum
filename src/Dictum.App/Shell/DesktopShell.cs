@@ -40,6 +40,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     private readonly SoundPlayer _sounds;
     private SettingsViewModel? _settings;
     private SettingsWindow? _settingsWindow;
+    private ISecretStore? _secrets;
     private ITrayPresenter? _presenter;
     private ConfigWatcher? _watcher;
     private HttpClient? _http;
@@ -235,10 +236,22 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         session.Load();
         var general = new GeneralPage(session, new GeneralServices(
             Supervisor, Frames, UiTimers.Instance, _autostart, Environment.ProcessPath, _sounds, TimeProvider.System, _log));
+        var profiles = new ProfilesPage(session, Supervisor, _log);
+        var providers = new SpeechProvidersPage(session, new SpeechServices(
+            Supervisor, Frames, UiTimers.Instance, _secrets ??= PlatformFactory.CreateSecretStore(_log),
+            current => WhisperModels.Choices(_paths, Catalog.BuiltIn, current), model => WhisperModels.IsPresent(_paths, model),
+            wait => Task.Delay(wait), TimeProvider.System, _log));
         var system = new SystemPage(new SystemServices(
             Supervisor, Status, () => OverlayRow(session), TrayRow, UiTimers.Instance, TimeProvider.System, DesktopName()));
         var history = new HistoryPage(session, _paths.HistoryFile, new WindowClipboard(() => _settingsWindow), _log);
-        var settings = new SettingsViewModel(session, [(SettingsPageKey.General, general), (SettingsPageKey.System, system), (SettingsPageKey.History, history)]);
+        var settings = new SettingsViewModel(session,
+        [
+            (SettingsPageKey.General, general),
+            (SettingsPageKey.Profiles, profiles),
+            (SettingsPageKey.SpeechProviders, providers),
+            (SettingsPageKey.System, system),
+            (SettingsPageKey.History, history),
+        ]);
         var window = new SettingsWindow { DataContext = settings };
         window.Closed += (_, _) =>
         {

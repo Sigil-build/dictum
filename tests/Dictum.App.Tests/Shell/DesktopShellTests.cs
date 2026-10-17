@@ -181,4 +181,20 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
             await Task.Delay(20);
         }
     }
+
+    [Fact]
+    public Task TheRailListsThePagesInTheDesignsOrder() => fx.UiAsync(async () =>
+    {
+        var (shell, launcher, _) = Create();
+        shell.Start(Application.Current!, _ => { });
+
+        shell.ShowSettings(SettingsPageKey.Profiles);
+        var model = (SettingsViewModel)SettingsWindow.Open[0].DataContext!;
+
+        Assert.Equal(["General", "Profiles", "Speech providers", "System", "History"], model.Pages.Select(p => p.Title));
+        Assert.IsType<ProfilesPage>(model.Current);
+        CloseSettings();
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
 }
