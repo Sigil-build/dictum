@@ -20,6 +20,8 @@ public static class ApiKeys
 
     public static string SecretName(string providerId) => $"dictum-stt-{providerId}";
 
+    public static string ProcessorSecretName(string processorId) => $"dictum-processor-{processorId}";
+
     public static async Task<KeyResult> StoreAsync(ISecretStore secrets, string secretName, string typed, CancellationToken ct)
     {
         var key = typed.Trim();
