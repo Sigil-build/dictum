@@ -767,4 +767,40 @@
   <data name="SettingsProvidersAddRemote" xml:space="preserve">
     <value>+ Сервер</value>
   </data>
+  <data name="SettingsPasting" xml:space="preserve">
+    <value>Вставлення</value>
+  </data>
+  <data name="SettingsPastingHint" xml:space="preserve">
+    <value>Як текст потрапляє в інші програми: затримка відновлення буфера, термінали та спосіб для Wayland.</value>
+  </data>
+  <data name="SettingsPastingOpen" xml:space="preserve">
+    <value>Налаштування вставлення ›</value>
+  </data>
+  <data name="SettingsPasteDelay" xml:space="preserve">
+    <value>Затримка відновлення буфера, мс</value>
+  </data>
+  <data name="SettingsPasteDelayHint" xml:space="preserve">
+    <value>Скільки чекати після вставлення, перш ніж повернути попередній вміст буфера. Збільште, якщо програма вставляє старий текст.</value>
+  </data>
+  <data name="SettingsTerminalApps" xml:space="preserve">
+    <value>Термінали</value>
+  </data>
+  <data name="SettingsTerminalAppsHint" xml:space="preserve">
+    <value>Назви процесів або класів вікон, які вставляють через Ctrl+Shift+V. Діє там, де Dictum бачить активну програму.</value>
+  </data>
+  <data name="SettingsTerminalAppsPlaceholder" xml:space="preserve">
+    <value>Додайте програму — Enter або вставте список</value>
+  </data>
+  <data name="SettingsInjector" xml:space="preserve">
+    <value>Спосіб вставлення у Wayland</value>
+  </data>
+  <data name="SettingsInjectorHint" xml:space="preserve">
+    <value>«Автоматично» спершу пробує портал робочого столу, потім ydotool або wtype.</value>
+  </data>
+  <data name="SettingsInjectorAuto" xml:space="preserve">
+    <value>Автоматично</value>
+  </data>
+  <data name="SettingsInjectorPortal" xml:space="preserve">
+    <value>Портал робочого столу</value>
+  </data>
 </root>

@@ -767,4 +767,40 @@
   <data name="SettingsProvidersAddRemote" xml:space="preserve">
     <value>+ Remote server</value>
   </data>
+  <data name="SettingsPasting" xml:space="preserve">
+    <value>Pasting</value>
+  </data>
+  <data name="SettingsPastingHint" xml:space="preserve">
+    <value>How the text reaches other apps: the clipboard restore delay, terminal apps and the Wayland backend.</value>
+  </data>
+  <data name="SettingsPastingOpen" xml:space="preserve">
+    <value>Pasting settings ›</value>
+  </data>
+  <data name="SettingsPasteDelay" xml:space="preserve">
+    <value>Clipboard restore delay, ms</value>
+  </data>
+  <data name="SettingsPasteDelayHint" xml:space="preserve">
+    <value>How long to wait after pasting before the previous clipboard comes back. Raise it if an app pastes the old text.</value>
+  </data>
+  <data name="SettingsTerminalApps" xml:space="preserve">
+    <value>Terminal apps</value>
+  </data>
+  <data name="SettingsTerminalAppsHint" xml:space="preserve">
+    <value>Process or window class names that paste with Ctrl+Shift+V. Used where Dictum can see the focused app.</value>
+  </data>
+  <data name="SettingsTerminalAppsPlaceholder" xml:space="preserve">
+    <value>Add an app — Enter or paste many</value>
+  </data>
+  <data name="SettingsInjector" xml:space="preserve">
+    <value>Paste backend on Wayland</value>
+  </data>
+  <data name="SettingsInjectorHint" xml:space="preserve">
+    <value>Automatic tries the desktop portal first, then ydotool or wtype.</value>
+  </data>
+  <data name="SettingsInjectorAuto" xml:space="preserve">
+    <value>Automatic</value>
+  </data>
+  <data name="SettingsInjectorPortal" xml:space="preserve">
+    <value>Desktop portal</value>
+  </data>
 </root>

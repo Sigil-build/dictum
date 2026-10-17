@@ -1,0 +1,58 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Dictum.App.ViewModels.Settings"
+             xmlns:controls="using:Dictum.App.Controls"
+             xmlns:res="using:Dictum.App.Resources"
+             x:Class="Dictum.App.Views.Settings.PastingView"
+             x:DataType="vm:PastingPage">
+  <ScrollViewer>
+    <StackPanel Margin="16,4,32,24" Spacing="4">
+      <Button Classes="link" Content="{Binding BackLabel}" Command="{Binding BackCommand}" />
+      <TextBlock Classes="title" Text="{Binding Title}" Margin="0,4,0,16" />
+      <StackPanel Spacing="4" IsEnabled="{Binding CanEdit}">
+        <controls:SettingsRow Label="{x:Static res:Strings.SettingsPasteDelay}"
+                              Description="{x:Static res:Strings.SettingsPasteDelayHint}"
+                              Error="{Binding PasteDelayError}">
+          <NumericUpDown Value="{Binding PasteDelay}" Minimum="0" Maximum="5000" Increment="50" FormatString="0" Width="120"
+                         AutomationProperties.Name="{x:Static res:Strings.SettingsPasteDelay}" />
+        </controls:SettingsRow>
+
+        <controls:SettingsRow Label="{x:Static res:Strings.SettingsTerminalApps}"
+                              Description="{x:Static res:Strings.SettingsTerminalAppsHint}">
+          <controls:SettingsRow.Footer>
+            <StackPanel Spacing="8">
+              <ItemsControl ItemsSource="{Binding TerminalApps}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <WrapPanel />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:WordChip">
+                    <Border Classes="chip">
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="{Binding Text}" />
+                        <Button Classes="chipRemove" Command="{Binding Remove}"
+                                AutomationProperties.Name="{x:Static res:Strings.SettingsRemove}" />
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBox Text="{Binding AppInput}" AcceptsReturn="True" TextWrapping="NoWrap"
+                       PlaceholderText="{x:Static res:Strings.SettingsTerminalAppsPlaceholder}"
+                       AutomationProperties.Name="{x:Static res:Strings.SettingsTerminalApps}" />
+            </StackPanel>
+          </controls:SettingsRow.Footer>
+        </controls:SettingsRow>
+
+        <controls:SettingsRow Label="{x:Static res:Strings.SettingsInjector}"
+                              Description="{x:Static res:Strings.SettingsInjectorHint}"
+                              IsVisible="{Binding ShowsInjector}">
+          <ComboBox Width="200" ItemsSource="{Binding Injectors}" SelectedItem="{Binding Injector}"
+                    AutomationProperties.Name="{x:Static res:Strings.SettingsInjector}" />
+        </controls:SettingsRow>
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

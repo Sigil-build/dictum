@@ -14,6 +14,7 @@ public sealed class ViewLocator : IDataTemplate
     {
         GeneralPage model => new GeneralView { DataContext = model },
         OverlayPage model => new OverlayView { DataContext = model },
+        PastingPage model => new PastingView { DataContext = model },
         ProfilesPage model => new ProfilesView { DataContext = model },
         SpeechProvidersPage model => new SpeechProvidersView { DataContext = model },
         SystemPage model => new SystemView { DataContext = model },

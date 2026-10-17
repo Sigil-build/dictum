@@ -69,6 +69,12 @@
                               Description="{x:Static res:Strings.SettingsOverlayHint}">
           <Button Content="{x:Static res:Strings.SettingsOverlayOpen}" Command="{Binding OpenOverlayCommand}" />
         </controls:SettingsRow>
+
+        <controls:SettingsRow Icon="{DynamicResource icon.paste}"
+                              Label="{x:Static res:Strings.SettingsPasting}"
+                              Description="{x:Static res:Strings.SettingsPastingHint}">
+          <Button Content="{x:Static res:Strings.SettingsPastingOpen}" Command="{Binding OpenPastingCommand}" />
+        </controls:SettingsRow>
       </StackPanel>
     </StackPanel>
   </ScrollViewer>

@@ -74,6 +74,7 @@ public sealed partial class GeneralPage : SettingsPage
         Load();
         ReadLoginItem();
         Overlay = new OverlayPage(session, Strings.SettingsGeneral);
+        Pasting = new PastingPage(session, Strings.SettingsGeneral, OperatingSystem.IsLinux());
     }
 
     public override string Title => Strings.SettingsGeneral;
@@ -82,6 +83,9 @@ public sealed partial class GeneralPage : SettingsPage
 
     /// <summary>The Listening overlay sub-page.</summary>
     public OverlayPage Overlay { get; }
+
+    /// <summary>The Pasting sub-page.</summary>
+    public PastingPage Pasting { get; }
 
     [ObservableProperty]
     public partial bool CanEdit { get; private set; }
@@ -226,6 +230,9 @@ public sealed partial class GeneralPage : SettingsPage
 
     [RelayCommand]
     private void OpenOverlay() => Navigate(Overlay);
+
+    [RelayCommand]
+    private void OpenPasting() => Navigate(Pasting);
 
     [RelayCommand]
     private async Task PreviewAsync()
