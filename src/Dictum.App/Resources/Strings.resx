@@ -188,4 +188,10 @@
   <data name="OverlayFailed" xml:space="preserve">
     <value>Dictation failed</value>
   </data>
+  <data name="SettingsNoConfig" xml:space="preserve">
+    <value>Dictum is not set up yet. Run 'dictum init' in a terminal, then open Settings again.</value>
+  </data>
+  <data name="SettingsSaveFailed" xml:space="preserve">
+    <value>Changes could not be saved: {0}</value>
+  </data>
 </root>

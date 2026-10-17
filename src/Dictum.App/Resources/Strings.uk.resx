@@ -188,4 +188,10 @@
   <data name="OverlayFailed" xml:space="preserve">
     <value>Диктування не вдалося</value>
   </data>
+  <data name="SettingsNoConfig" xml:space="preserve">
+    <value>Dictum ще не налаштовано. Запустіть 'dictum init' у терміналі й знову відкрийте налаштування.</value>
+  </data>
+  <data name="SettingsSaveFailed" xml:space="preserve">
+    <value>Зміни не збережено: {0}</value>
+  </data>
 </root>
