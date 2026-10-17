@@ -219,4 +219,79 @@ public sealed class SettingsSessionTests : IDisposable
         Assert.DoesNotContain("my-term", before.General.TerminalApps);
         Assert.Contains("my-term", session.Config.General.TerminalApps);
     }
+
+
+    // Final review C1: an edit back to what is on disk leaves nothing to save.
+    [Fact]
+    public void AnEditBackToTheValueOnDiskSavesNothing()
+    {
+        var session = Open(HistoryOf(100));
+        var saves = 0;
+        session.Saved += () => saves++;
+
+        session.Edit(SetHistory(10));
+        session.Edit(SetHistory(100));
+
+        Assert.Equal(0, _timers.Pending);
+        session.Flush();
+        Assert.Equal(0, saves);
+    }
+
+    // Final review C1: a good save changes nothing the pages show, so it must not reload them.
+    [Fact]
+    public void AGoodSaveDoesNotReloadThePages()
+    {
+        var session = Open(HistoryOf(100));
+        session.Edit(SetHistory(300));
+        var changes = 0;
+        session.Changed += () => changes++;
+
+        _timers.Fire();
+
+        Assert.Equal(0, changes);
+        Assert.Equal(300, OnDisk());
+    }
+
+    [Fact]
+    public void OnDiskIsTheLastFileKnownToBeThere()
+    {
+        var session = Open(HistoryOf(100));
+
+        session.Edit(SetHistory(300));
+        Assert.Equal(100, session.OnDisk.General.HistorySize);
+
+        _timers.Fire();
+        Assert.Equal(300, session.OnDisk.General.HistorySize);
+    }
+
+    // Final review I2a.
+    [Fact]
+    public void AnOutsideRevertToOurLastSaveIsApplied()
+    {
+        var session = Open(HistoryOf(100));
+        session.Edit(SetHistory(300));
+        _timers.Fire();
+        Store.Save(HistoryOf(700));
+        session.OnFileChanged(Store.Load());
+
+        Store.Save(HistoryOf(300));
+        session.OnFileChanged(Store.Load());
+
+        Assert.Equal(300, session.Config.General.HistorySize);
+    }
+
+    // Final review I2b.
+    [Fact]
+    public void AFileFixedBackToOurLastSaveCanBeEditedAgain()
+    {
+        var session = Open(HistoryOf(100));
+        session.Edit(SetHistory(300));
+        _timers.Fire();
+        session.OnFileInvalid(new ConfigException("Config is invalid: broken"));
+
+        session.OnFileChanged(Store.Load());
+
+        Assert.True(session.CanEdit);
+        Assert.Null(session.Problem);
+    }
 }

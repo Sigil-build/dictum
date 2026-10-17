@@ -9,9 +9,12 @@ namespace Dictum.App.Settings;
 /// The config the Settings pages edit (spec 7, "Saving").
 /// <list type="bullet">
 /// <item>Each edit makes a new record from a deep copy and is checked with <see cref="ConfigValidator"/>.</item>
-/// <item>The copy is saved 500 ms after the last edit; a copy with errors is shown, never saved.</item>
-/// <item>The config watcher reports every save, our own included: our own text is recognised and ignored, while
-/// anything else replaces the copy and drops edits not yet saved.</item>
+/// <item>The copy is saved 500 ms after the last edit; a copy with errors is shown, never saved, and a copy equal to
+/// the file on disk has nothing to save.</item>
+/// <item>The session knows what is on disk: what it loaded, what it saved, and what the config watcher last reported.
+/// The watcher reports every save, our own included. A report equal to the known file is ignored; anything else
+/// replaces the copy and drops edits not yet saved.</item>
+/// <item>A good save changes nothing the pages show, so it raises <see cref="Saved"/>, not <see cref="Changed"/>.</item>
 /// </list>
 /// Use it on the UI thread.
 /// </summary>
@@ -21,9 +24,12 @@ public sealed class SettingsSession(ConfigStore store, ITimers timers, ILog log)
 
     private IDisposable? _pending;
     private DictumConfig? _toSave;
-    private string? _lastWritten;
+    private string? _known;
 
     public DictumConfig Config { get; private set; } = new();
+
+    /// <summary>The config last known to be in the file: loaded, saved, or reported by the watcher.</summary>
+    public DictumConfig OnDisk { get; private set; } = new();
 
     public IReadOnlyList<ConfigIssue> Issues { get; private set; } = [];
 
@@ -47,17 +53,20 @@ public sealed class SettingsSession(ConfigStore store, ITimers timers, ILog log)
         try
         {
             var (config, warnings) = store.LoadWithIssues();
-            Config = config;
+            Know(config);
+            Config = Copy(config);
             Issues = warnings;
             Problem = null;
         }
         catch (ConfigException ex)
         {
+            _known = null;
             Problem = store.Exists ? ex.Message : Strings.SettingsNoConfig;
             Issues = ex.Issues;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            _known = null;
             Problem = ex.Message;
             Issues = [];
         }
@@ -77,7 +86,7 @@ public sealed class SettingsSession(ConfigStore store, ITimers timers, ILog log)
         Config = next;
         Issues = ConfigValidator.Validate(next);
         Drop();
-        if (!Issues.Any(i => i.Severity == ConfigIssueSeverity.Error))
+        if (!Issues.Any(i => i.Severity == ConfigIssueSeverity.Error) && ConfigStore.Serialize(next) != _known)
         {
             _toSave = next;
             _pending = timers.Once(SaveDelay, Save);
@@ -105,13 +114,14 @@ public sealed class SettingsSession(ConfigStore store, ITimers timers, ILog log)
     /// <summary>The config watcher read a valid file.</summary>
     public void OnFileChanged(DictumConfig changed)
     {
-        if (ConfigStore.Serialize(changed) == _lastWritten)
+        if (CanEdit && ConfigStore.Serialize(changed) == _known)
         {
             return;
         }
 
         Drop();
-        Config = changed;
+        Know(changed);
+        Config = Copy(changed);
         Issues = ConfigValidator.Validate(changed);
         Problem = null;
         Changed?.Invoke();
@@ -121,6 +131,7 @@ public sealed class SettingsSession(ConfigStore store, ITimers timers, ILog log)
     public void OnFileInvalid(ConfigException error)
     {
         Drop();
+        _known = null;
         Problem = error.Message;
         Issues = error.Issues;
         Changed?.Invoke();
@@ -135,10 +146,11 @@ public sealed class SettingsSession(ConfigStore store, ITimers timers, ILog log)
         }
 
         _toSave = null;
+        var hadError = SaveError is not null;
         try
         {
             store.Save(config);
-            _lastWritten = ConfigStore.Serialize(config);
+            Know(config);
             SaveError = null;
             Saved?.Invoke();
         }
@@ -148,7 +160,16 @@ public sealed class SettingsSession(ConfigStore store, ITimers timers, ILog log)
             log.Warn($"Settings not saved: {ex.Message}");
         }
 
-        Changed?.Invoke();
+        if (hadError || SaveError is not null)
+        {
+            Changed?.Invoke();
+        }
+    }
+
+    private void Know(DictumConfig config)
+    {
+        _known = ConfigStore.Serialize(config);
+        OnDisk = Copy(config);
     }
 
     private void Drop()

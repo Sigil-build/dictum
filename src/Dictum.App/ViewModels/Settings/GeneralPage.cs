@@ -52,6 +52,9 @@ public sealed partial class GeneralPage : SettingsPage
     private bool _monitoring;
     private bool _loading;
 
+    /// <summary>The History field is empty: the session holds the file's value and the field keeps its error.</summary>
+    private bool _historyEmpty;
+
     public GeneralPage(SettingsSession session, GeneralServices services)
     {
         _session = session;
@@ -197,10 +200,16 @@ public sealed partial class GeneralPage : SettingsPage
 
         if (value is not { } size)
         {
+            // Backspacing "100" passed through 10 and 1 (final review C1): the copy goes back to the file's value,
+            // so nothing the user only passed through is saved, and other rows still save.
+            _historyEmpty = true;
+            var saved = _session.OnDisk.General.HistorySize;
+            _session.Edit(c => c with { General = c.General with { HistorySize = saved } });
             HistoryError = Strings.SettingsNumberRequired;
             return;
         }
 
+        _historyEmpty = false;
         _session.Edit(c => c with { General = c.General with { HistorySize = (int)decimal.Truncate(size) } });
         HistoryError = _session.IssueAt("general.historySize");
     }
@@ -231,8 +240,11 @@ public sealed partial class GeneralPage : SettingsPage
             var general = _session.Config.General;
             CanEdit = _session.CanEdit;
             Sounds = general.Sounds;
-            HistorySize = general.HistorySize;
-            HistoryError = _session.IssueAt("general.historySize");
+            if (!_historyEmpty)
+            {
+                HistorySize = general.HistorySize;
+                HistoryError = _session.IssueAt("general.historySize");
+            }
             UiLanguage = UiLanguages.FirstOrDefault(l => l.Value == general.UiLanguage) ?? UiLanguages[0];
             var microphones = MicrophoneList(_devices, general.AudioDevice);
             if (!microphones.SequenceEqual(Microphones))

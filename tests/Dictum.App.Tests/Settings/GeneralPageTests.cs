@@ -276,4 +276,38 @@ public sealed class GeneralPageTests : IDisposable
         Assert.False(page.Sounds);
         Assert.Equal(0, _timers.Pending);
     }
+
+
+    // Final review C1: backspacing "100" passes through 10 and 1; the empty field must leave the file alone.
+    [Fact]
+    public void BackspacingToAnEmptyFieldSavesNothing()
+    {
+        var (page, session, _) = Open(new GeneralSettings { HistorySize = 100 });
+
+        page.HistorySize = 10;
+        page.HistorySize = 1;
+        page.HistorySize = null;
+        session.Flush();
+
+        Assert.Equal(0, _timers.Pending);
+        Assert.Equal(100, Store.Load().General.HistorySize);
+        Assert.Null(page.HistorySize);
+        Assert.Equal(Strings.SettingsNumberRequired, page.HistoryError);
+    }
+
+    // Final review C1: another row's save must not refill the field under the cursor.
+    [Fact]
+    public void AnEmptyFieldStaysEmptyWhileAnotherRowSaves()
+    {
+        var (page, _, _) = Open(new GeneralSettings { HistorySize = 100 });
+        page.HistorySize = null;
+
+        page.Sounds = false;
+        _timers.Fire();
+
+        Assert.Null(page.HistorySize);
+        Assert.Equal(Strings.SettingsNumberRequired, page.HistoryError);
+        var saved = Store.Load().General;
+        Assert.Equal((100, false), (saved.HistorySize, saved.Sounds));
+    }
 }
