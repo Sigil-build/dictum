@@ -215,6 +215,7 @@ public sealed class ProcessorsPageTests : IDisposable
     [Theory]
     [InlineData("a/b", "SettingsLlmPromptNameInvalid")]
     [InlineData("email", "SettingsLlmPromptNameTaken")]
+    [InlineData("Cleanup", "SettingsLlmPromptNameTaken")] // Final review M1: the same file on Windows.
     public void ABadPromptNameIsRefused(string name, string error)
     {
         var (page, session) = Open();

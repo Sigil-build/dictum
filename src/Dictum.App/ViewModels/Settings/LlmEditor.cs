@@ -434,7 +434,8 @@ public sealed partial class LlmEditor : ObservableObject
             return;
         }
 
-        if (_services.Prompts.Names().Contains(name))
+        // Windows file names ignore case: "Cleanup" would replace the built-in cleanup (final review M1).
+        if (_services.Prompts.Names().Contains(name, StringComparer.OrdinalIgnoreCase))
         {
             NewPromptError = Strings.SettingsLlmPromptNameTaken;
             return;
