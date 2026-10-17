@@ -18,6 +18,9 @@ internal sealed class FakeChannel : IDaemonChannel
 
     public TimeSpan? LastTimeout { get; private set; }
 
+    /// <summary>Answers the test gives later, by command; each is used once.</summary>
+    public Dictionary<string, TaskCompletionSource<IpcResponse>> Held { get; } = [];
+
     /// <summary>Thrown by every send: a broken answer or connection.</summary>
     public Exception? Throws { get; set; }
 
@@ -39,6 +42,11 @@ internal sealed class FakeChannel : IDaemonChannel
         if (Throws is not null)
         {
             return Task.FromException<IpcResponse>(Throws);
+        }
+
+        if (Held.Remove(request.Command, out var held))
+        {
+            return held.Task;
         }
 
         return Link.State == DaemonLinkState.Connected

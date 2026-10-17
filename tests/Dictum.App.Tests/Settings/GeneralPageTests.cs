@@ -323,4 +323,68 @@ public sealed class GeneralPageTests : IDisposable
 
         Assert.Empty(_sounds.Played);
     }
+
+
+    // Final review M5: a switch while a start is still out must stop that monitor before starting the new one.
+    [Fact]
+    public void SwitchingWhileAStartIsOutStopsItFirst()
+    {
+        var start = new TaskCompletionSource<IpcResponse>();
+        _channel.Held["monitor-start"] = start;
+        var (page, _, _) = Open();
+        page.OnShown();
+
+        page.Microphone = page.Microphones.Single(m => m.Value == "Webcam C920");
+        Assert.Equal(["devices", "monitor-start"], _channel.Commands);
+
+        start.SetResult(new IpcResponse(true));
+
+        Assert.Equal(["devices", "monitor-start", "monitor-stop", "monitor-start"], _channel.Commands);
+        Assert.Equal("Webcam C920", _channel.Sent[^1].Device);
+    }
+
+    // Final review M5: each request opens its own connection, so the start waits for the stop's answer.
+    [Fact]
+    public void TheNewStartWaitsForTheStop()
+    {
+        var (page, _, _) = Open();
+        page.OnShown();
+        var stop = new TaskCompletionSource<IpcResponse>();
+        _channel.Held["monitor-stop"] = stop;
+        _channel.Sent.Clear();
+
+        page.Microphone = page.Microphones.Single(m => m.Value == "Webcam C920");
+        Assert.Equal(["monitor-stop"], _channel.Commands);
+
+        stop.SetResult(new IpcResponse(true));
+        Assert.Equal(["monitor-stop", "monitor-start"], _channel.Commands);
+    }
+
+    // Final review M5: hidden while a start is out, the monitor it opened is closed once the answer comes.
+    [Fact]
+    public void HidingWhileAStartIsOutClosesTheMonitorItOpened()
+    {
+        var start = new TaskCompletionSource<IpcResponse>();
+        _channel.Held["monitor-start"] = start;
+        var (page, _, _) = Open();
+        page.OnShown();
+
+        page.OnHidden();
+        start.SetResult(new IpcResponse(true));
+
+        Assert.Equal("monitor-stop", _channel.Commands.Last());
+    }
+
+    // Final review M6: without a device list nothing is known to be missing.
+    [Fact]
+    public void WhileTheDaemonIsDownTheConfiguredMicrophoneIsNotCalledMissing()
+    {
+        _channel.Link = new DaemonLink(DaemonLinkState.Restarting);
+        var (page, _, _) = Open(new GeneralSettings { AudioDevice = "Old USB mic" });
+
+        page.OnShown();
+
+        Assert.Equal("Old USB mic", page.Microphones[^1].Label);
+        Assert.Equal("Old USB mic", page.Microphone?.Value);
+    }
 }

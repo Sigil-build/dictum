@@ -46,6 +46,8 @@ public sealed partial class GeneralPage : SettingsPage
     private readonly InputMeter _meter = new();
     private readonly DateTimeOffset _epoch;
     private IReadOnlyList<AudioDevice> _devices = [];
+    private bool _devicesKnown;
+    private Task _monitor = Task.CompletedTask;
     private IDisposable? _tick;
     private IDisposable? _renew;
     private bool _shown;
@@ -124,7 +126,7 @@ public sealed partial class GeneralPage : SettingsPage
         _shown = true;
         ReadLoginItem();
         _tick = _services.Timers.Every(MeterTick, Tick);
-        _renew = _services.Timers.Every(MonitorRenewal, () => _ = StartMonitorAsync());
+        _renew = _services.Timers.Every(MonitorRenewal, () => Queue(StartMonitorAsync));
         _ = RefreshAsync();
     }
 
@@ -137,7 +139,7 @@ public sealed partial class GeneralPage : SettingsPage
         _renew = null;
         _meter.Reset();
         MeterLevel = 0;
-        StopMonitor();
+        Queue(StopMonitorAsync);
     }
 
     public override void OnLink(DaemonLink link)
@@ -178,8 +180,8 @@ public sealed partial class GeneralPage : SettingsPage
         _session.Edit(c => c with { General = c.General with { AudioDevice = value.Value } });
         if (_shown)
         {
-            StopMonitor();
-            _ = StartMonitorAsync();
+            Queue(StopMonitorAsync);
+            Queue(StartMonitorAsync);
         }
     }
 
@@ -254,7 +256,7 @@ public sealed partial class GeneralPage : SettingsPage
                 HistoryError = _session.IssueAt("general.historySize");
             }
             UiLanguage = UiLanguages.FirstOrDefault(l => l.Value == general.UiLanguage) ?? UiLanguages[0];
-            var microphones = MicrophoneList(_devices, general.AudioDevice);
+            var microphones = MicrophoneList(_devices, _devicesKnown, general.AudioDevice);
             if (!microphones.SequenceEqual(Microphones))
             {
                 Microphones = microphones;
@@ -269,7 +271,8 @@ public sealed partial class GeneralPage : SettingsPage
     }
 
     /// <summary>The system default first (named after the default device when the daemon reported one), then each device.</summary>
-    private static List<Option<string?>> MicrophoneList(IReadOnlyList<AudioDevice> devices, string? configured)
+    /// <param name="known">The daemon reported its devices; only then can a configured one be called missing.</param>
+    private static List<Option<string?>> MicrophoneList(IReadOnlyList<AudioDevice> devices, bool known, string? configured)
     {
         var standard = devices.FirstOrDefault(d => d.IsDefault) is { } device
             ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsMicrophoneDefault, device.Name)
@@ -278,7 +281,8 @@ public sealed partial class GeneralPage : SettingsPage
         list.AddRange(devices.Select(d => d.Name).Distinct().Select(name => new Option<string?>(name, name)));
         if (configured is not null && !devices.Any(d => d.Name == configured))
         {
-            list.Add(new Option<string?>(configured, string.Format(CultureInfo.CurrentCulture, Strings.SettingsMicrophoneMissing, configured)));
+            list.Add(new Option<string?>(configured,
+                known ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsMicrophoneMissing, configured) : configured));
         }
 
         return list;
@@ -311,10 +315,23 @@ public sealed partial class GeneralPage : SettingsPage
         if (await _services.Channel.TrySendAsync(new IpcRequest("devices"), CancellationToken.None) is { Ok: true, Devices: { } devices })
         {
             _devices = devices;
+            _devicesKnown = true;
             Load();
         }
 
-        await StartMonitorAsync();
+        Queue(StartMonitorAsync);
+    }
+
+    /// <summary>
+    /// Monitor requests go one after another. Each one opens its own connection, so a stop sent before a start could
+    /// reach the daemon after it, and a switch during a start in flight would send no stop at all (final review M5).
+    /// </summary>
+    private void Queue(Func<Task> step) => _monitor = After(_monitor, step);
+
+    private static async Task After(Task previous, Func<Task> step)
+    {
+        await previous;
+        await step();
     }
 
     private async Task StartMonitorAsync()
@@ -326,29 +343,24 @@ public sealed partial class GeneralPage : SettingsPage
 
         var request = new IpcRequest("monitor-start", Device: _session.Config.General.AudioDevice);
         var answer = await _services.Channel.TrySendAsync(request, CancellationToken.None);
-        if (!_shown)
-        {
-            // Hidden while the request was out: a monitor it started must not stay open.
-            if (answer?.Ok == true)
-            {
-                _monitoring = true;
-                StopMonitor();
-            }
 
+        // Hidden while the request was out: the stop queued behind it closes what it opened.
+        _monitoring = answer?.Ok == true;
+        if (_shown)
+        {
+            MeterNote = answer is null ? Strings.SettingsMeterNoDaemon : answer.Ok ? null : answer.Error;
+        }
+    }
+
+    private async Task StopMonitorAsync()
+    {
+        if (!_monitoring)
+        {
             return;
         }
 
-        _monitoring = answer?.Ok == true;
-        MeterNote = answer is null ? Strings.SettingsMeterNoDaemon : answer.Ok ? null : answer.Error;
-    }
-
-    private void StopMonitor()
-    {
-        if (_monitoring)
-        {
-            _monitoring = false;
-            _ = _services.Channel.TrySendAsync(new IpcRequest("monitor-stop"), CancellationToken.None);
-        }
+        _monitoring = false;
+        await _services.Channel.TrySendAsync(new IpcRequest("monitor-stop"), CancellationToken.None);
     }
 
     private void Tick()
