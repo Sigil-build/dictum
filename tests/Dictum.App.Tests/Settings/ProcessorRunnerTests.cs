@@ -38,7 +38,7 @@ public sealed class ProcessorRunnerTests : IDisposable
             ("b", new ReplaceProcessorConfig { Rules = [new ReplaceRule { From = "kubernetes", To = "Kubernetes" }] }),
         ];
 
-        var result = await _runner.RunAsync(steps, "  деплой у кубер​ ", Context, _ct);
+        var result = await _runner.RunAsync(steps, "  деплой у кубер\u200b ", Context, _ct);
 
         Assert.Equal(("деплой у Kubernetes", (string?)null), (result.Text, result.Error));
     }
