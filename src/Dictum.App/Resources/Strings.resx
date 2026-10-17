@@ -722,4 +722,49 @@
   <data name="SettingsProvidersNoDaemon" xml:space="preserve">
     <value>The test needs the daemon, which is not running right now.</value>
   </data>
+  <data name="SettingsProvidersModel" xml:space="preserve">
+    <value>Model</value>
+  </data>
+  <data name="SettingsProvidersRuntime" xml:space="preserve">
+    <value>Runtime</value>
+  </data>
+  <data name="SettingsProvidersRuntimeHint" xml:space="preserve">
+    <value>A runtime change applies after the daemon restarts.</value>
+  </data>
+  <data name="SettingsProvidersThreads" xml:space="preserve">
+    <value>Threads (0 = automatic)</value>
+  </data>
+  <data name="SettingsProvidersVad" xml:space="preserve">
+    <value>Voice activity detection</value>
+  </data>
+  <data name="SettingsProvidersVadHint" xml:space="preserve">
+    <value>Skips silence before Whisper, so pauses do not turn into made-up words.</value>
+  </data>
+  <data name="SettingsProvidersUrl" xml:space="preserve">
+    <value>URL</value>
+  </data>
+  <data name="SettingsProvidersApiKey" xml:space="preserve">
+    <value>API key (optional)</value>
+  </data>
+  <data name="SettingsProvidersApiKeyPlaceholder" xml:space="preserve">
+    <value>Leave empty for local servers</value>
+  </data>
+  <data name="SettingsProvidersRemoveKey" xml:space="preserve">
+    <value>Remove key</value>
+  </data>
+  <data name="SettingsProvidersTimeout" xml:space="preserve">
+    <value>Timeout, seconds</value>
+  </data>
+  <data name="SettingsProvidersTestSample" xml:space="preserve">
+    <value>Test with a sample</value>
+  </data>
+  <data name="SettingsProvidersRemove" xml:space="preserve">
+    <value>Remove provider</value>
+  </data>
+  <data name="SettingsProvidersAddLocal" xml:space="preserve">
+    <value>+ Local Whisper</value>
+  </data>
+  <data name="SettingsProvidersAddRemote" xml:space="preserve">
+    <value>+ Remote server</value>
+  </data>
 </root>

@@ -722,4 +722,49 @@
   <data name="SettingsProvidersNoDaemon" xml:space="preserve">
     <value>Для перевірки потрібен демон, а він зараз не працює.</value>
   </data>
+  <data name="SettingsProvidersModel" xml:space="preserve">
+    <value>Модель</value>
+  </data>
+  <data name="SettingsProvidersRuntime" xml:space="preserve">
+    <value>Обчислення</value>
+  </data>
+  <data name="SettingsProvidersRuntimeHint" xml:space="preserve">
+    <value>Зміна обчислення діє після перезапуску демона.</value>
+  </data>
+  <data name="SettingsProvidersThreads" xml:space="preserve">
+    <value>Потоки (0 — автоматично)</value>
+  </data>
+  <data name="SettingsProvidersVad" xml:space="preserve">
+    <value>Визначення мовлення</value>
+  </data>
+  <data name="SettingsProvidersVadHint" xml:space="preserve">
+    <value>Пропускає тишу перед Whisper, щоб паузи не ставали вигаданими словами.</value>
+  </data>
+  <data name="SettingsProvidersUrl" xml:space="preserve">
+    <value>URL</value>
+  </data>
+  <data name="SettingsProvidersApiKey" xml:space="preserve">
+    <value>Ключ API (необов'язково)</value>
+  </data>
+  <data name="SettingsProvidersApiKeyPlaceholder" xml:space="preserve">
+    <value>Залиште порожнім для локальних серверів</value>
+  </data>
+  <data name="SettingsProvidersRemoveKey" xml:space="preserve">
+    <value>Прибрати ключ</value>
+  </data>
+  <data name="SettingsProvidersTimeout" xml:space="preserve">
+    <value>Час очікування, секунд</value>
+  </data>
+  <data name="SettingsProvidersTestSample" xml:space="preserve">
+    <value>Перевірити на зразку</value>
+  </data>
+  <data name="SettingsProvidersRemove" xml:space="preserve">
+    <value>Прибрати провайдера</value>
+  </data>
+  <data name="SettingsProvidersAddLocal" xml:space="preserve">
+    <value>+ Локальний Whisper</value>
+  </data>
+  <data name="SettingsProvidersAddRemote" xml:space="preserve">
+    <value>+ Сервер</value>
+  </data>
 </root>

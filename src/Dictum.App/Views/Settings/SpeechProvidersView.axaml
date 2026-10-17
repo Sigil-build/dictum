@@ -1,0 +1,110 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Dictum.App.ViewModels.Settings"
+             xmlns:controls="using:Dictum.App.Controls"
+             xmlns:res="using:Dictum.App.Resources"
+             x:Class="Dictum.App.Views.Settings.SpeechProvidersView"
+             x:DataType="vm:SpeechProvidersPage">
+  <ScrollViewer>
+    <StackPanel Margin="16,4,32,24" Spacing="8">
+      <TextBlock Classes="title" Text="{Binding Title}" Margin="0,0,0,12" />
+      <ItemsControl ItemsSource="{Binding Cards}">
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="vm:ProviderCard">
+            <Border Classes="editorRow" Padding="16,14" Margin="0,0,0,8">
+              <StackPanel Spacing="12" IsEnabled="{Binding CanEdit}">
+                <Grid ColumnDefinitions="*,Auto">
+                  <StackPanel>
+                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="{DynamicResource color.text.primary}" />
+                    <TextBlock Text="{Binding UsedBy}" Classes="hint" />
+                  </StackPanel>
+                  <Button Grid.Column="1" Classes="destructive" Content="{x:Static res:Strings.SettingsProvidersRemove}"
+                          Command="{Binding RemoveCommand}" VerticalAlignment="Top" />
+                </Grid>
+
+                <Grid ColumnDefinitions="*,12,*" RowDefinitions="Auto,12,Auto" IsVisible="{Binding IsLocal}">
+                  <StackPanel Spacing="4">
+                    <TextBlock Text="{x:Static res:Strings.SettingsProvidersModel}" Classes="hint" />
+                    <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding Models}" SelectedItem="{Binding Model}"
+                              AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersModel}" />
+                    <TextBlock Text="{Binding ModelError}" Classes="error" IsVisible="{Binding ModelError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Spacing="4">
+                    <TextBlock Text="{x:Static res:Strings.SettingsProvidersRuntime}" Classes="hint" />
+                    <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding Runtimes}" SelectedItem="{Binding Runtime}"
+                              AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersRuntime}" />
+                    <TextBlock Text="{x:Static res:Strings.SettingsProvidersRuntimeHint}" Classes="hint" />
+                  </StackPanel>
+                  <StackPanel Grid.Row="2" Spacing="4">
+                    <TextBlock Text="{x:Static res:Strings.SettingsProvidersThreads}" Classes="hint" />
+                    <NumericUpDown Value="{Binding Threads}" Minimum="0" Maximum="64" Increment="1" FormatString="0" Width="120"
+                                   HorizontalAlignment="Left" AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersThreads}" />
+                    <TextBlock Text="{Binding ThreadsError}" Classes="error" IsVisible="{Binding ThreadsError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                  </StackPanel>
+                  <StackPanel Grid.Row="2" Grid.Column="2" Spacing="4">
+                    <ToggleSwitch IsChecked="{Binding Vad}" OnContent="{x:Static res:Strings.SettingsProvidersVad}"
+                                  OffContent="{x:Static res:Strings.SettingsProvidersVad}"
+                                  AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersVad}" />
+                    <TextBlock Text="{x:Static res:Strings.SettingsProvidersVadHint}" Classes="hint" />
+                    <TextBlock Text="{Binding VadNote}" Classes="warning" IsVisible="{Binding VadNote, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                  </StackPanel>
+                </Grid>
+
+                <Grid ColumnDefinitions="*,12,*" RowDefinitions="Auto,12,Auto" IsVisible="{Binding IsRemote}">
+                  <StackPanel Spacing="4">
+                    <TextBlock Text="{x:Static res:Strings.SettingsProvidersUrl}" Classes="hint" />
+                    <TextBox Text="{Binding Url}" AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersUrl}" />
+                    <TextBlock Text="{Binding UrlError}" Classes="error" IsVisible="{Binding UrlError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Spacing="4">
+                    <TextBlock Text="{x:Static res:Strings.SettingsProvidersModel}" Classes="hint" />
+                    <TextBox Text="{Binding ModelName}" AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersModel}" />
+                    <TextBlock Text="{Binding ModelNameError}" Classes="error" IsVisible="{Binding ModelNameError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                  </StackPanel>
+                  <StackPanel Grid.Row="2" Spacing="4">
+                    <TextBlock Text="{x:Static res:Strings.SettingsProvidersApiKey}" Classes="hint" />
+                    <TextBox Classes="apiKey" Text="{Binding KeyText}" PasswordChar="•"
+                             PlaceholderText="{x:Static res:Strings.SettingsProvidersApiKeyPlaceholder}"
+                             AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersApiKey}">
+                      <TextBox.KeyBindings>
+                        <KeyBinding Gesture="Enter" Command="{Binding CommitKeyCommand}" />
+                      </TextBox.KeyBindings>
+                    </TextBox>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                      <TextBlock Text="{Binding KeyState}" Classes="hint" VerticalAlignment="Center" />
+                      <Button Classes="link" Content="{x:Static res:Strings.SettingsProvidersRemoveKey}" Command="{Binding RemoveKeyCommand}" />
+                    </StackPanel>
+                    <TextBlock Text="{Binding KeyError}" Classes="error" IsVisible="{Binding KeyError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                  </StackPanel>
+                  <StackPanel Grid.Row="2" Grid.Column="2" Spacing="4">
+                    <TextBlock Text="{x:Static res:Strings.SettingsProvidersTimeout}" Classes="hint" />
+                    <NumericUpDown Value="{Binding TimeoutSeconds}" Minimum="1" Maximum="600" Increment="5" FormatString="0" Width="120"
+                                   HorizontalAlignment="Left" AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersTimeout}" />
+                    <TextBlock Text="{Binding TimeoutError}" Classes="error" IsVisible="{Binding TimeoutError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                  </StackPanel>
+                </Grid>
+
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Button Content="{x:Static res:Strings.SettingsProvidersTest}" Command="{Binding TestCommand}" />
+                  <Button Content="{x:Static res:Strings.SettingsProvidersTestSample}" Command="{Binding TestSampleCommand}" />
+                </StackPanel>
+                <controls:LevelMeterBar Level="{Binding MeterLevel}" IsVisible="{Binding Testing}" />
+                <Grid ColumnDefinitions="28,*" IsVisible="{Binding Result, Converter={x:Static ObjectConverters.IsNotNull}}">
+                  <controls:StatusBadge Level="{Binding Result.Level}" VerticalAlignment="Top" />
+                  <StackPanel Grid.Column="1" Margin="10,2,0,0">
+                    <TextBlock Text="{Binding Result.Status}" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
+                    <SelectableTextBlock Text="{Binding Result.Detail}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
+                  </StackPanel>
+                </Grid>
+              </StackPanel>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <StackPanel Orientation="Horizontal" Spacing="8" IsEnabled="{Binding CanEdit}">
+        <Button Content="{x:Static res:Strings.SettingsProvidersAddLocal}" Command="{Binding AddLocalCommand}" />
+        <Button Content="{x:Static res:Strings.SettingsProvidersAddRemote}" Command="{Binding AddRemoteCommand}" />
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>
