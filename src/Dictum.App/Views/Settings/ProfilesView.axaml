@@ -1,0 +1,218 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Dictum.App.ViewModels.Settings"
+             xmlns:controls="using:Dictum.App.Controls"
+             xmlns:res="using:Dictum.App.Resources"
+             x:Class="Dictum.App.Views.Settings.ProfilesView"
+             x:DataType="vm:ProfilesPage">
+  <Grid ColumnDefinitions="180,16,*" Margin="16,4,24,16">
+    <DockPanel>
+      <TextBlock DockPanel.Dock="Top" Classes="title" Text="{Binding Title}" Margin="0,0,0,8" />
+      <Button DockPanel.Dock="Bottom" Content="{x:Static res:Strings.SettingsProfilesNew}" HorizontalAlignment="Stretch"
+              Margin="0,4,0,0" Command="{Binding NewProfileCommand}" IsEnabled="{Binding CanEdit}" />
+      <ListBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding Selected}" Background="Transparent"
+               AutomationProperties.Name="{x:Static res:Strings.SettingsProfiles}">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:ProfileItem">
+            <StackPanel Spacing="2" Margin="0,4">
+              <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{DynamicResource color.text.primary}" />
+              <TextBlock Text="{Binding Caption}" Classes="hint" />
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </DockPanel>
+
+    <ScrollViewer Grid.Column="2" IsVisible="{Binding HasProfile}">
+      <StackPanel Spacing="10" IsEnabled="{Binding CanEdit}" Margin="0,48,0,0">
+        <Border Classes="editorRow">
+          <Grid ColumnDefinitions="140,16,*">
+            <TextBlock Text="{x:Static res:Strings.SettingsProfilesName}" VerticalAlignment="Center" />
+            <TextBox Grid.Column="2" Text="{Binding Name}" PlaceholderText="{Binding NamePlaceholder}"
+                     AutomationProperties.Name="{x:Static res:Strings.SettingsProfilesName}" />
+          </Grid>
+        </Border>
+
+        <Border Classes="editorRow">
+          <Grid ColumnDefinitions="140,16,*">
+            <StackPanel>
+              <TextBlock Text="{x:Static res:Strings.SettingsProfilesHotkey}" />
+              <TextBlock Text="{x:Static res:Strings.SettingsProfilesHotkeyHint}" Classes="hint" />
+            </StackPanel>
+            <StackPanel Grid.Column="2" Spacing="6">
+              <Grid ColumnDefinitions="Auto,*,Auto">
+                <controls:HotkeyRecorder Hotkey="{Binding Hotkey}" IsRecording="{Binding IsRecording}" />
+                <ListBox Grid.Column="2" Classes="segmented" ItemsSource="{Binding Modes}" SelectedItem="{Binding Mode}"
+                         AutomationProperties.Name="{x:Static res:Strings.SettingsProfilesMode}" />
+              </Grid>
+              <TextBlock Text="{Binding HotkeyError}" Classes="error" IsVisible="{Binding HotkeyError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <TextBlock Text="{Binding HotkeyWarning}" Classes="warning" IsVisible="{Binding HotkeyWarning, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <Border Classes="editorRow">
+          <Grid ColumnDefinitions="140,16,*">
+            <StackPanel>
+              <TextBlock Text="{x:Static res:Strings.SettingsProfilesLanguages}" />
+              <TextBlock Text="{x:Static res:Strings.SettingsProfilesLanguagesHint}" Classes="hint" />
+            </StackPanel>
+            <StackPanel Grid.Column="2" Spacing="8">
+              <ListBox Classes="segmented" ItemsSource="{Binding LanguageModes}" SelectedItem="{Binding LanguagesMode}"
+                       AutomationProperties.Name="{x:Static res:Strings.SettingsProfilesLanguageMode}" />
+              <ComboBox Width="260" ItemsSource="{Binding AllLanguages}" SelectedItem="{Binding SingleLanguage}"
+                        IsTextSearchEnabled="True" IsVisible="{Binding ShowsOneLanguage}"
+                        AutomationProperties.Name="{x:Static res:Strings.SettingsProfilesLanguages}" />
+              <StackPanel Spacing="6" IsVisible="{Binding ShowsSeveralLanguages}">
+                <ItemsControl ItemsSource="{Binding Languages}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                      <WrapPanel />
+                    </ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:LanguageChip">
+                      <Border Classes="chip" Classes.warned="{Binding Warned}">
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                          <TextBlock Text="{Binding Name}" />
+                          <Button Classes="chipRemove" Command="{Binding Remove}"
+                                  AutomationProperties.Name="{x:Static res:Strings.SettingsRemove}" />
+                        </StackPanel>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <ComboBox Width="260" ItemsSource="{Binding AllLanguages}" SelectedItem="{Binding LanguageToAdd}"
+                          IsTextSearchEnabled="True" PlaceholderText="{x:Static res:Strings.SettingsProfilesLanguageAdd}"
+                          AutomationProperties.Name="{x:Static res:Strings.SettingsProfilesLanguageAdd}" />
+              </StackPanel>
+              <TextBlock Text="{x:Static res:Strings.SettingsProfilesLanguageAutoHint}" Classes="hint" IsVisible="{Binding ShowsAuto}" />
+              <TextBlock Text="{Binding LanguageNote}" Classes="warning" IsVisible="{Binding LanguageNote, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
+          </Grid>
+        </Border>
+        <Border Classes="banner" Margin="0,-4,0,0" IsVisible="{Binding SimilarWarning, Converter={x:Static ObjectConverters.IsNotNull}}">
+          <TextBlock Text="{Binding SimilarWarning}" Margin="156,0,0,0" />
+        </Border>
+
+        <Border Classes="editorRow">
+          <Grid ColumnDefinitions="140,16,*">
+            <StackPanel>
+              <TextBlock Text="{x:Static res:Strings.SettingsProfilesWords}" />
+              <TextBlock Text="{x:Static res:Strings.SettingsProfilesWordsHint}" Classes="hint" />
+            </StackPanel>
+            <StackPanel Grid.Column="2" Spacing="8">
+              <ItemsControl ItemsSource="{Binding Words}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <WrapPanel />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:WordChip">
+                    <Border Classes="chip">
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="{Binding Text}" />
+                        <Button Classes="chipRemove" Command="{Binding Remove}"
+                                AutomationProperties.Name="{x:Static res:Strings.SettingsRemove}" />
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Grid ColumnDefinitions="*,12,Auto">
+                <TextBox Text="{Binding WordInput}" AcceptsReturn="True" TextWrapping="NoWrap"
+                         PlaceholderText="{x:Static res:Strings.SettingsProfilesWordsPlaceholder}"
+                         AutomationProperties.Name="{x:Static res:Strings.SettingsProfilesWords}" />
+                <TextBlock Grid.Column="2" Text="{Binding WordCount}" Classes="hint" VerticalAlignment="Center" />
+              </Grid>
+              <TextBlock Text="{Binding WordsNote}" Classes="warning" IsVisible="{Binding WordsNote, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <Border Classes="editorRow">
+          <Grid ColumnDefinitions="140,16,*">
+            <StackPanel>
+              <TextBlock Text="{x:Static res:Strings.SettingsProfilesSpeechHint}" />
+              <TextBlock Text="{x:Static res:Strings.SettingsProfilesSpeechHintHint}" Classes="hint" />
+            </StackPanel>
+            <TextBox Grid.Column="2" Text="{Binding SpeechHint}" TextWrapping="Wrap" MinHeight="56"
+                     AutomationProperties.Name="{x:Static res:Strings.SettingsProfilesSpeechHint}" />
+          </Grid>
+        </Border>
+
+        <Border Classes="editorRow">
+          <Grid ColumnDefinitions="140,16,*">
+            <StackPanel>
+              <TextBlock Text="{x:Static res:Strings.SettingsProfilesChain}" />
+              <TextBlock Text="{x:Static res:Strings.SettingsProfilesChainHint}" Classes="hint" />
+            </StackPanel>
+            <StackPanel Grid.Column="2" Spacing="6">
+              <ItemsControl x:Name="ChainList" ItemsSource="{Binding Chain}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:ChainStep">
+                    <Border Classes="chainRow">
+                      <Grid ColumnDefinitions="Auto,10,20,*,Auto,8,Auto">
+                        <Border Classes="handle" Width="16" Height="34" VerticalAlignment="Center">
+                          <Path Data="M3.5,3 A1.4,1.4 0 1 1 3.5,3.01 M8.5,3 A1.4,1.4 0 1 1 8.5,3.01 M3.5,8 A1.4,1.4 0 1 1 3.5,8.01 M8.5,8 A1.4,1.4 0 1 1 8.5,8.01 M3.5,13 A1.4,1.4 0 1 1 3.5,13.01 M8.5,13 A1.4,1.4 0 1 1 8.5,13.01"
+                                Stroke="{DynamicResource color.text.secondary}" StrokeThickness="2.8" StrokeLineCap="Round"
+                                Width="12" Height="16" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                        </Border>
+                        <TextBlock Grid.Column="2" Text="{Binding Position}" Classes="hint" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="3" Text="{Binding Id}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="4" Text="{Binding Kind}" Classes="hint" VerticalAlignment="Center" />
+                        <Button Grid.Column="6" Classes="chipRemove" Command="{Binding Remove}" VerticalAlignment="Center"
+                                AutomationProperties.Name="{x:Static res:Strings.SettingsRemove}" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Text="{x:Static res:Strings.SettingsProfilesChainEmpty}" Classes="hint" IsVisible="{Binding ChainEmpty}" />
+              <ComboBox Width="260" ItemsSource="{Binding StepsToAdd}" SelectedItem="{Binding StepToAdd}" IsVisible="{Binding CanAddStep}"
+                        PlaceholderText="{x:Static res:Strings.SettingsProfilesChainAdd}"
+                        AutomationProperties.Name="{x:Static res:Strings.SettingsProfilesChainAdd}" />
+              <TextBlock Text="{Binding ChainNote}" Classes="error" IsVisible="{Binding ChainNote, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <Border Classes="editorRow">
+          <Grid ColumnDefinitions="140,16,*">
+            <TextBlock Text="{x:Static res:Strings.SettingsProfilesOutput}" />
+            <StackPanel Grid.Column="2" Spacing="8">
+              <StackPanel Orientation="Horizontal" Spacing="20">
+                <RadioButton GroupName="output" Content="{x:Static res:Strings.SettingsProfilesOutputPaste}" IsChecked="{Binding OutputPaste}" />
+                <RadioButton GroupName="output" Content="{x:Static res:Strings.SettingsProfilesOutputType}" IsChecked="{Binding OutputType}" />
+                <RadioButton GroupName="output" Content="{x:Static res:Strings.SettingsProfilesOutputClipboard}" IsChecked="{Binding OutputClipboard}" />
+              </StackPanel>
+              <StackPanel Spacing="4" IsVisible="{Binding OutputPaste}">
+                <StackPanel Orientation="Horizontal" Spacing="12">
+                  <TextBlock Text="{x:Static res:Strings.SettingsProfilesShortcut}" VerticalAlignment="Center" />
+                  <ComboBox Width="180" ItemsSource="{Binding PasteShortcuts}" SelectedItem="{Binding Shortcut}"
+                            AutomationProperties.Name="{x:Static res:Strings.SettingsProfilesShortcut}" />
+                </StackPanel>
+                <TextBlock Text="{x:Static res:Strings.SettingsProfilesShortcutHint}" Classes="hint" />
+              </StackPanel>
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <Border Classes="editorRow">
+          <Grid ColumnDefinitions="140,16,*">
+            <TextBlock Text="{x:Static res:Strings.SettingsProfilesProvider}" VerticalAlignment="Center" />
+            <StackPanel Grid.Column="2" Spacing="4">
+              <ComboBox Width="320" ItemsSource="{Binding Providers}" SelectedItem="{Binding Provider}"
+                        AutomationProperties.Name="{x:Static res:Strings.SettingsProfilesProvider}" />
+              <TextBlock Text="{Binding ProviderError}" Classes="error" IsVisible="{Binding ProviderError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
+          </Grid>
+        </Border>
+
+        <Button Classes="destructive" HorizontalAlignment="Left" Content="{x:Static res:Strings.SettingsProfilesDelete}"
+                Command="{Binding DeleteProfileCommand}" IsEnabled="{Binding CanDelete}" />
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

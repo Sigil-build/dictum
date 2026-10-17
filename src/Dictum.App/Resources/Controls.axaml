@@ -143,4 +143,78 @@
   <Style Selector="TextBlock.keycapPlus">
     <Setter Property="Foreground" Value="{DynamicResource color.text.secondary}" />
   </Style>
+  <!-- Profiles editor rows (design §3.2): bordered, 140 px label column. -->
+  <Style Selector="Border.editorRow">
+    <Setter Property="Padding" Value="16,10" />
+    <Setter Property="CornerRadius" Value="{DynamicResource radius.control}" />
+    <Setter Property="Background" Value="{DynamicResource color.bg.layer}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource color.border}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="TextBlock.hint">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="Foreground" Value="{DynamicResource color.text.secondary}" />
+  </Style>
+  <Style Selector="TextBlock.error">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="Foreground" Value="{DynamicResource color.status.error.fg}" />
+  </Style>
+  <Style Selector="TextBlock.warning">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="Foreground" Value="{DynamicResource color.status.warn.fg}" />
+  </Style>
+
+  <!-- Chips (design §4.8): pills, a focusable × to remove; warned chips in the warning colours. -->
+  <Style Selector="Border.chip">
+    <Setter Property="Padding" Value="10,2,4,2" />
+    <Setter Property="Margin" Value="0,0,6,6" />
+    <Setter Property="CornerRadius" Value="{DynamicResource radius.chip}" />
+    <Setter Property="Background" Value="{DynamicResource color.accent.subtleBg}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource color.accent}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Border.chip > StackPanel > TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource color.accent.subtleText}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.chip.warned">
+    <Setter Property="Background" Value="{DynamicResource color.status.warn.bg}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource color.status.warn.fg}" />
+  </Style>
+  <Style Selector="Border.chip.warned > StackPanel > TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource color.status.warn.fg}" />
+  </Style>
+  <Style Selector="Button.chipRemove">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="4,0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Content" Value="×" />
+  </Style>
+
+  <!-- Chain rows (design §3.2): 36 px, a dot handle; the dragged row gets the accent. -->
+  <Style Selector="Border.chainRow">
+    <Setter Property="Height" Value="36" />
+    <Setter Property="Margin" Value="0,0,0,4" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="Focusable" Value="True" />
+    <Setter Property="CornerRadius" Value="{DynamicResource radius.control}" />
+    <Setter Property="Background" Value="{DynamicResource color.bg.control}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource color.border}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Border.chainRow:focus-visible">
+    <Setter Property="BorderBrush" Value="{DynamicResource color.accent}" />
+  </Style>
+  <Style Selector="Border.chainRow.dragged">
+    <Setter Property="Background" Value="{DynamicResource color.accent.subtleBg}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource color.accent}" />
+  </Style>
+  <Style Selector="Border.handle">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Cursor" Value="SizeNorthSouth" />
+  </Style>
 </Styles>

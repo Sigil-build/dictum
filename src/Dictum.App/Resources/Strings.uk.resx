@@ -578,4 +578,88 @@
   <data name="SettingsProviderRemote" xml:space="preserve">
     <value>Сервер · {0}</value>
   </data>
+  <data name="SettingsProfilesNew" xml:space="preserve">
+    <value>+ Новий профіль</value>
+  </data>
+  <data name="SettingsProfilesName" xml:space="preserve">
+    <value>Назва</value>
+  </data>
+  <data name="SettingsProfilesHotkey" xml:space="preserve">
+    <value>Гаряча клавіша</value>
+  </data>
+  <data name="SettingsProfilesHotkeyHint" xml:space="preserve">
+    <value>Клацніть і натисніть клавіші</value>
+  </data>
+  <data name="SettingsProfilesMode" xml:space="preserve">
+    <value>Режим</value>
+  </data>
+  <data name="SettingsProfilesLanguages" xml:space="preserve">
+    <value>Мови</value>
+  </data>
+  <data name="SettingsProfilesLanguagesHint" xml:space="preserve">
+    <value>Вибір для кожного диктування</value>
+  </data>
+  <data name="SettingsProfilesLanguageMode" xml:space="preserve">
+    <value>Режим мови</value>
+  </data>
+  <data name="SettingsProfilesLanguageAdd" xml:space="preserve">
+    <value>Додати мову</value>
+  </data>
+  <data name="SettingsProfilesLanguageAutoHint" xml:space="preserve">
+    <value>Whisper сам визначає мову кожного диктування.</value>
+  </data>
+  <data name="SettingsProfilesWords" xml:space="preserve">
+    <value>Ваші слова</value>
+  </data>
+  <data name="SettingsProfilesWordsHint" xml:space="preserve">
+    <value>Імена й терміни, які розпізнавач пише неправильно. Вставте список: по одному в рядку або через кому.</value>
+  </data>
+  <data name="SettingsProfilesWordsPlaceholder" xml:space="preserve">
+    <value>Додайте слова — Enter або вставте список</value>
+  </data>
+  <data name="SettingsProfilesSpeechHint" xml:space="preserve">
+    <value>Підказка для розпізнавання</value>
+  </data>
+  <data name="SettingsProfilesSpeechHintHint" xml:space="preserve">
+    <value>Додатковий текст, який розпізнавач бачить перед вашими словами. Зазвичай його лишають порожнім.</value>
+  </data>
+  <data name="SettingsProfilesChain" xml:space="preserve">
+    <value>Ланцюжок обробки</value>
+  </data>
+  <data name="SettingsProfilesChainHint" xml:space="preserve">
+    <value>Перетягніть, щоб змінити порядок, або натисніть Alt+↑ / Alt+↓</value>
+  </data>
+  <data name="SettingsProfilesChainAdd" xml:space="preserve">
+    <value>Додати крок</value>
+  </data>
+  <data name="SettingsProfilesChainEmpty" xml:space="preserve">
+    <value>Без обробки: текст іде таким, як розпізнано.</value>
+  </data>
+  <data name="SettingsProfilesOutput" xml:space="preserve">
+    <value>Вивід</value>
+  </data>
+  <data name="SettingsProfilesOutputPaste" xml:space="preserve">
+    <value>Вставити в активну програму</value>
+  </data>
+  <data name="SettingsProfilesOutputType" xml:space="preserve">
+    <value>Набрати посимвольно</value>
+  </data>
+  <data name="SettingsProfilesOutputClipboard" xml:space="preserve">
+    <value>Лише скопіювати в буфер обміну</value>
+  </data>
+  <data name="SettingsProfilesShortcut" xml:space="preserve">
+    <value>Комбінація вставлення</value>
+  </data>
+  <data name="SettingsProfilesShortcutHint" xml:space="preserve">
+    <value>Термінали вставляють через Ctrl+Shift+V. «Автоматично» обирає її для відомих терміналів.</value>
+  </data>
+  <data name="SettingsProfilesProvider" xml:space="preserve">
+    <value>Розпізнавання мовлення</value>
+  </data>
+  <data name="SettingsProfilesDelete" xml:space="preserve">
+    <value>Видалити профіль</value>
+  </data>
+  <data name="SettingsRemove" xml:space="preserve">
+    <value>Прибрати</value>
+  </data>
 </root>

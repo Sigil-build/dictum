@@ -578,4 +578,88 @@
   <data name="SettingsProviderRemote" xml:space="preserve">
     <value>Remote · {0}</value>
   </data>
+  <data name="SettingsProfilesNew" xml:space="preserve">
+    <value>+ New profile</value>
+  </data>
+  <data name="SettingsProfilesName" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="SettingsProfilesHotkey" xml:space="preserve">
+    <value>Hotkey</value>
+  </data>
+  <data name="SettingsProfilesHotkeyHint" xml:space="preserve">
+    <value>Click, then press keys</value>
+  </data>
+  <data name="SettingsProfilesMode" xml:space="preserve">
+    <value>Mode</value>
+  </data>
+  <data name="SettingsProfilesLanguages" xml:space="preserve">
+    <value>Languages</value>
+  </data>
+  <data name="SettingsProfilesLanguagesHint" xml:space="preserve">
+    <value>Picked per dictation</value>
+  </data>
+  <data name="SettingsProfilesLanguageMode" xml:space="preserve">
+    <value>Language mode</value>
+  </data>
+  <data name="SettingsProfilesLanguageAdd" xml:space="preserve">
+    <value>Add a language</value>
+  </data>
+  <data name="SettingsProfilesLanguageAutoHint" xml:space="preserve">
+    <value>Whisper detects the language of each dictation.</value>
+  </data>
+  <data name="SettingsProfilesWords" xml:space="preserve">
+    <value>Your words</value>
+  </data>
+  <data name="SettingsProfilesWordsHint" xml:space="preserve">
+    <value>Names and terms the recogniser gets wrong. Paste a list, one per line or comma-separated.</value>
+  </data>
+  <data name="SettingsProfilesWordsPlaceholder" xml:space="preserve">
+    <value>Add words — Enter or paste many</value>
+  </data>
+  <data name="SettingsProfilesSpeechHint" xml:space="preserve">
+    <value>Speech hint</value>
+  </data>
+  <data name="SettingsProfilesSpeechHintHint" xml:space="preserve">
+    <value>Extra text the recogniser sees before your words. Most people leave it empty.</value>
+  </data>
+  <data name="SettingsProfilesChain" xml:space="preserve">
+    <value>Processing chain</value>
+  </data>
+  <data name="SettingsProfilesChainHint" xml:space="preserve">
+    <value>Drag to reorder, or use Alt+↑ / Alt+↓</value>
+  </data>
+  <data name="SettingsProfilesChainAdd" xml:space="preserve">
+    <value>Add a step</value>
+  </data>
+  <data name="SettingsProfilesChainEmpty" xml:space="preserve">
+    <value>No processing: the text is used as recognised.</value>
+  </data>
+  <data name="SettingsProfilesOutput" xml:space="preserve">
+    <value>Output</value>
+  </data>
+  <data name="SettingsProfilesOutputPaste" xml:space="preserve">
+    <value>Paste into the focused app</value>
+  </data>
+  <data name="SettingsProfilesOutputType" xml:space="preserve">
+    <value>Type it, key by key</value>
+  </data>
+  <data name="SettingsProfilesOutputClipboard" xml:space="preserve">
+    <value>Copy to clipboard only</value>
+  </data>
+  <data name="SettingsProfilesShortcut" xml:space="preserve">
+    <value>Paste shortcut</value>
+  </data>
+  <data name="SettingsProfilesShortcutHint" xml:space="preserve">
+    <value>Terminals paste with Ctrl+Shift+V. Automatic picks it for known terminal apps.</value>
+  </data>
+  <data name="SettingsProfilesProvider" xml:space="preserve">
+    <value>Speech provider</value>
+  </data>
+  <data name="SettingsProfilesDelete" xml:space="preserve">
+    <value>Delete profile</value>
+  </data>
+  <data name="SettingsRemove" xml:space="preserve">
+    <value>Remove</value>
+  </data>
 </root>
