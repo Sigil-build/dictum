@@ -82,7 +82,7 @@
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <ComboBox Width="260" ItemsSource="{Binding AllLanguages}" SelectedItem="{Binding LanguageToAdd}"
+                <ComboBox x:Name="LanguagePicker" Classes="picker" Width="260" ItemsSource="{Binding AllLanguages}" SelectedItem="{Binding LanguageToAdd}"
                           IsTextSearchEnabled="True" PlaceholderText="{x:Static res:Strings.SettingsProfilesLanguageAdd}"
                           AutomationProperties.Name="{x:Static res:Strings.SettingsProfilesLanguageAdd}" />
               </StackPanel>
@@ -121,7 +121,7 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
               <Grid ColumnDefinitions="*,12,Auto">
-                <TextBox Text="{Binding WordInput}" AcceptsReturn="True" TextWrapping="NoWrap"
+                <TextBox x:Name="WordBox" AcceptsReturn="True" TextWrapping="NoWrap"
                          PlaceholderText="{x:Static res:Strings.SettingsProfilesWordsPlaceholder}"
                          AutomationProperties.Name="{x:Static res:Strings.SettingsProfilesWords}" />
                 <TextBlock Grid.Column="2" Text="{Binding WordCount}" Classes="hint" VerticalAlignment="Center" />
@@ -170,7 +170,7 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
               <TextBlock Text="{x:Static res:Strings.SettingsProfilesChainEmpty}" Classes="hint" IsVisible="{Binding ChainEmpty}" />
-              <ComboBox Width="260" ItemsSource="{Binding StepsToAdd}" SelectedItem="{Binding StepToAdd}" IsVisible="{Binding CanAddStep}"
+              <ComboBox x:Name="StepPicker" Classes="picker" Width="260" ItemsSource="{Binding StepsToAdd}" SelectedItem="{Binding StepToAdd}" IsVisible="{Binding CanAddStep}"
                         PlaceholderText="{x:Static res:Strings.SettingsProfilesChainAdd}"
                         AutomationProperties.Name="{x:Static res:Strings.SettingsProfilesChainAdd}" />
               <TextBlock Text="{Binding ChainNote}" Classes="error" IsVisible="{Binding ChainNote, Converter={x:Static ObjectConverters.IsNotNull}}" />

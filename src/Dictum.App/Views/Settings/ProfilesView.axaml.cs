@@ -1,5 +1,7 @@
 using Avalonia;
+using System.ComponentModel;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -19,6 +21,7 @@ public partial class ProfilesView : UserControl
     private int? _dragFrom;
     private double _dragStart;
     private Border? _dragged;
+    private ProfilesPage? _page;
 
     public ProfilesView()
     {
@@ -27,6 +30,53 @@ public partial class ProfilesView : UserControl
         ChainList.AddHandler(PointerMovedEvent, OnMoved, RoutingStrategies.Tunnel);
         ChainList.AddHandler(PointerReleasedEvent, OnReleased, RoutingStrategies.Tunnel);
         ChainList.AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
+
+        // The view owns the words box and the pickers (final review C1): the page takes the text and gives back the
+        // part still being typed; a picker clears itself once its pick has been taken.
+        WordBox.TextChanged += (_, _) => Typed(WordBox, text => Page?.AddWords(text));
+        AddHandler(SelectingItemsControl.SelectionChangedEvent, OnPicked, RoutingStrategies.Bubble);
+        DataContextChanged += (_, _) =>
+        {
+            if (_page is not null)
+            {
+                _page.PropertyChanged -= OnPageChanged;
+            }
+
+            _page = Page;
+            if (_page is not null)
+            {
+                _page.PropertyChanged += OnPageChanged;
+            }
+        };
+    }
+
+    /// <summary>Puts the part still being typed back into <paramref name="box"/> after complete entries were taken.</summary>
+    internal static void Typed(TextBox box, Func<string, string?> take)
+    {
+        if (box.Text is not { Length: > 0 } text || take(text) is not { } rest || rest == text)
+        {
+            return;
+        }
+
+        box.Text = rest;
+        box.CaretIndex = rest.Length;
+    }
+
+    private void OnPageChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        // A half-typed word belongs to the profile it was typed for.
+        if (e.PropertyName == nameof(ProfilesPage.Selected))
+        {
+            WordBox.Text = "";
+        }
+    }
+
+    private static void OnPicked(object? sender, SelectionChangedEventArgs e)
+    {
+        if (e.Source is ComboBox { SelectedItem: not null } picker && picker.Classes.Contains("picker"))
+        {
+            Dispatcher.UIThread.Post(() => picker.SelectedItem = null);
+        }
     }
 
     private ProfilesPage? Page => DataContext as ProfilesPage;

@@ -69,10 +69,9 @@ public sealed class PastingPageTests : IDisposable
     {
         var (page, session) = Open();
 
-        page.AppInput = "my-term, kitty\nwezterm";
+        Assert.Equal("wezterm", page.AddApps("my-term, kitty\nwezterm"));
         Assert.Contains("my-term", session.Config.General.TerminalApps);
         Assert.Single(session.Config.General.TerminalApps, a => a == "kitty");
-        Assert.Equal("wezterm", page.AppInput);
 
         page.TerminalApps.Single(a => a.Text == "my-term").Remove.Execute(null);
         Assert.DoesNotContain("my-term", session.Config.General.TerminalApps);

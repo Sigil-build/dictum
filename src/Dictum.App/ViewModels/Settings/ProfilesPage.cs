@@ -140,9 +140,6 @@ public sealed partial class ProfilesPage : SettingsPage
     public partial IReadOnlyList<WordChip> Words { get; private set; } = [];
 
     [ObservableProperty]
-    public partial string WordInput { get; set; } = "";
-
-    [ObservableProperty]
     public partial string WordCount { get; private set; } = "";
 
     [ObservableProperty]
@@ -194,6 +191,22 @@ public sealed partial class ProfilesPage : SettingsPage
 
     public override void OnHidden() => IsRecording = false;
 
+    /// <summary>
+    /// Text from the words box: complete words are added, and the part still being typed comes back for the box. The
+    /// view owns the box, since a reset made inside the box's own binding write never reaches it (final review C1).
+    /// </summary>
+    public string AddWords(string text)
+    {
+        var (words, typing) = WordList.Split(text);
+        if (words.Count == 0)
+        {
+            return text;
+        }
+
+        EditProfile(p => p with { Vocabulary = WordList.Add(p.Vocabulary, words) });
+        return typing;
+    }
+
     public override void OnLink(DaemonLink link)
     {
         if (link.State != DaemonLinkState.Connected)
@@ -230,7 +243,6 @@ public sealed partial class ProfilesPage : SettingsPage
         IsRecording = false;
         _id = value.Id;
         _shownMode = null;
-        WordInput = "";
         Reload();
     }
 
@@ -285,25 +297,6 @@ public sealed partial class ProfilesPage : SettingsPage
         {
             EditLanguage(s => s.With(value.Value));
         }
-    }
-
-    partial void OnWordInputChanged(string value)
-    {
-        if (_loading)
-        {
-            return;
-        }
-
-        var (words, rest) = WordList.Split(value);
-        if (words.Count == 0)
-        {
-            return;
-        }
-
-        EditProfile(p => p with { Vocabulary = WordList.Add(p.Vocabulary, words) });
-        _loading = true;
-        WordInput = rest;
-        _loading = false;
     }
 
     partial void OnSpeechHintChanged(string value) => EditProfile(p => p with { SttPrompt = value.Length == 0 ? null : value });

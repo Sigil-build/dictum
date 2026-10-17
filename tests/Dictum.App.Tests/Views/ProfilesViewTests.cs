@@ -91,4 +91,67 @@ public sealed class ProfilesViewTests(AvaloniaFixture fx) : IDisposable
         Assert.Equal("cleanup", (focused?.DataContext as ChainStep)?.Id);
         window.Close();
     });
+
+
+    private static TextBox WordBox(Window window) => window.GetVisualDescendants().OfType<TextBox>().Single(t => t.Name == "WordBox");
+
+    private static void Type(Window window, TextBox box, string text)
+    {
+        box.Focus();
+        window.KeyTextInput(text);
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    // Final review C1: the real box must clear, and a removed chip must not come back.
+    [Fact]
+    public Task TypingACommaAddsTheWordAndClearsTheBox() => fx.Ui(() =>
+    {
+        var (window, session) = Show();
+        var box = WordBox(window);
+
+        Type(window, box, "KDE,");
+        Assert.Contains("KDE", session.Config.Profiles[0].Vocabulary);
+        Assert.Equal("", box.Text);
+
+        var page = (ProfilesPage)((ProfilesView)window.Content!).DataContext!;
+        page.Words.Single(w => w.Text == "KDE").Remove.Execute(null);
+        Type(window, box, "W");
+
+        Assert.DoesNotContain("KDE", session.Config.Profiles[0].Vocabulary);
+        Assert.Equal("W", box.Text);
+        window.Close();
+    });
+
+    // Final review C1: a half-typed word must not move to the next profile.
+    [Fact]
+    public Task SwitchingProfilesClearsTheWordBox() => fx.Ui(() =>
+    {
+        var (window, session) = Show();
+        var box = WordBox(window);
+        Type(window, box, "Kub");
+
+        window.GetVisualDescendants().OfType<ListBox>().First(l => l.ItemCount == 2).SelectedIndex = 1;
+        Dispatcher.UIThread.RunJobs();
+        Assert.Equal("", box.Text);
+
+        Type(window, box, "x,");
+        Assert.Equal(["x"], session.Config.Profiles[1].Vocabulary);
+        Assert.Equal(["Nexus5", "Avalonia"], session.Config.Profiles[0].Vocabulary);
+        window.Close();
+    });
+
+    // Final review C1: a picker that stays on its last pick cannot pick the same language again.
+    [Fact]
+    public Task PickingALanguageClearsThePicker() => fx.Ui(() =>
+    {
+        var (window, session) = Show();
+        var picker = window.GetVisualDescendants().OfType<ComboBox>().Single(c => c.Name == "LanguagePicker");
+
+        picker.SelectedItem = picker.Items.OfType<Option<string>>().Single(o => o.Value == "pl");
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal("uk, en, pl", session.Config.Profiles[0].Language);
+        Assert.Null(picker.SelectedItem);
+        window.Close();
+    });
 }

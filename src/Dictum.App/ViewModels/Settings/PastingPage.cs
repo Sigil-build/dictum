@@ -58,10 +58,20 @@ public sealed partial class PastingPage : SettingsPage
     public partial IReadOnlyList<WordChip> TerminalApps { get; private set; } = [];
 
     [ObservableProperty]
-    public partial string AppInput { get; set; } = "";
-
-    [ObservableProperty]
     public partial Option<InjectorBackend>? Injector { get; set; }
+
+    /// <summary>Text from the apps box: complete names are added; the part still being typed comes back (see ProfilesPage.AddWords).</summary>
+    public string AddApps(string text)
+    {
+        var (apps, typing) = WordList.Split(text);
+        if (apps.Count == 0)
+        {
+            return text;
+        }
+
+        Edit(g => g with { TerminalApps = WordList.Add(g.TerminalApps, apps) });
+        return typing;
+    }
 
     partial void OnPasteDelayChanged(decimal? value)
     {
@@ -81,25 +91,6 @@ public sealed partial class PastingPage : SettingsPage
 
         _delayEmpty = false;
         Edit(g => g with { PasteDelayMs = (int)decimal.Truncate(delay) });
-    }
-
-    partial void OnAppInputChanged(string value)
-    {
-        if (_loading)
-        {
-            return;
-        }
-
-        var (apps, rest) = WordList.Split(value);
-        if (apps.Count == 0)
-        {
-            return;
-        }
-
-        Edit(g => g with { TerminalApps = WordList.Add(g.TerminalApps, apps) });
-        _loading = true;
-        AppInput = rest;
-        _loading = false;
     }
 
     partial void OnInjectorChanged(Option<InjectorBackend>? value)

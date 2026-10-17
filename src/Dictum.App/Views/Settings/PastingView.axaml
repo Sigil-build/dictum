@@ -39,7 +39,7 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <TextBox Text="{Binding AppInput}" AcceptsReturn="True" TextWrapping="NoWrap"
+              <TextBox x:Name="AppBox" AcceptsReturn="True" TextWrapping="NoWrap"
                        PlaceholderText="{x:Static res:Strings.SettingsTerminalAppsPlaceholder}"
                        AutomationProperties.Name="{x:Static res:Strings.SettingsTerminalApps}" />
             </StackPanel>

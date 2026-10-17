@@ -263,13 +263,11 @@ public sealed class ProfilesPageTests : IDisposable
     {
         var (page, session) = Open();
 
-        page.WordInput = "KDE,";
+        Assert.Equal("", page.AddWords("KDE,"));
         Assert.Equal(["Nexus5", "Avalonia", "KDE"], Saved(session, "work").Vocabulary);
-        Assert.Equal("", page.WordInput);
 
-        page.WordInput = "Wayland\nydotool; nexus5, pull re";
+        Assert.Equal("pull re", page.AddWords("Wayland\nydotool; nexus5, pull re"));
         Assert.Equal(["Nexus5", "Avalonia", "KDE", "Wayland", "ydotool"], Saved(session, "work").Vocabulary);
-        Assert.Equal("pull re", page.WordInput);
         Assert.Equal("Words: 5", page.WordCount);
     }
 
