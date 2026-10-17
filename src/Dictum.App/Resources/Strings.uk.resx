@@ -1028,4 +1028,94 @@
   <data name="ModelNoteTiny" xml:space="preserve">
     <value>лише англійська, для тестів</value>
   </data>
+  <data name="SettingsModels" xml:space="preserve">
+    <value>Моделі</value>
+  </data>
+  <data name="SettingsModelsProbing" xml:space="preserve">
+    <value>Шукаю GPU…</value>
+  </data>
+  <data name="SettingsModelsRecommendedGpu" xml:space="preserve">
+    <value>Рекомендовано для вашого GPU</value>
+  </data>
+  <data name="SettingsModelsRecommendedCpu" xml:space="preserve">
+    <value>Рекомендовано для вашого комп'ютера</value>
+  </data>
+  <data name="SettingsModelsInstalled" xml:space="preserve">
+    <value>Встановлено</value>
+  </data>
+  <data name="SettingsModelsDownloading" xml:space="preserve">
+    <value>Завантажується</value>
+  </data>
+  <data name="SettingsModelsQueued" xml:space="preserve">
+    <value>У черзі</value>
+  </data>
+  <data name="SettingsModelsPaused" xml:space="preserve">
+    <value>Призупинено</value>
+  </data>
+  <data name="SettingsModelsFailed" xml:space="preserve">
+    <value>Не вдалося</value>
+  </data>
+  <data name="SettingsModelsNotInstalled" xml:space="preserve">
+    <value>Не встановлено</value>
+  </data>
+  <data name="SettingsModelsFast" xml:space="preserve">
+    <value>Швидка</value>
+  </data>
+  <data name="SettingsModelsUsable" xml:space="preserve">
+    <value>Придатна</value>
+  </data>
+  <data name="SettingsModelsTooSlow" xml:space="preserve">
+    <value>Надто повільна тут</value>
+  </data>
+  <data name="SettingsModelsDownload" xml:space="preserve">
+    <value>Завантажити · {0}</value>
+  </data>
+  <data name="SettingsModelsDownloadAnyway" xml:space="preserve">
+    <value>Все одно завантажити · {0}</value>
+  </data>
+  <data name="SettingsModelsRetry" xml:space="preserve">
+    <value>Спробувати ще · {0}</value>
+  </data>
+  <data name="SettingsModelsDelete" xml:space="preserve">
+    <value>Видалити · звільнить {0}</value>
+  </data>
+  <data name="SettingsModelsUnused" xml:space="preserve">
+    <value>Жоден профіль не використовує</value>
+  </data>
+  <data name="SettingsModelsDeleteRefused" xml:space="preserve">
+    <value>Модель використовують: {0}. Спершу виберіть там іншу.</value>
+  </data>
+  <data name="SettingsModelsProgress" xml:space="preserve">
+    <value>{0} з {1}</value>
+  </data>
+  <data name="SettingsModelsProgressRate" xml:space="preserve">
+    <value>{0} з {1} · {2} · {3}</value>
+  </data>
+  <data name="SettingsModelsUseInShared" xml:space="preserve">
+    <value>{0} (також {1})</value>
+  </data>
+  <data name="SettingsModelsQueueFailed" xml:space="preserve">
+    <value>Не вдалося оновити список завантажень: {0}</value>
+  </data>
+  <data name="SettingsModelsDeleteFailed" xml:space="preserve">
+    <value>Не вдалося видалити файл: {0}</value>
+  </data>
+  <data name="SettingsModelsVerifying" xml:space="preserve">
+    <value>Перевіряю SHA-256…</value>
+  </data>
+  <data name="SettingsModelsVerified" xml:space="preserve">
+    <value>SHA-256 збігається з каталогом.</value>
+  </data>
+  <data name="SettingsModelsVerifyMismatch" xml:space="preserve">
+    <value>SHA-256 не збігається з каталогом. Видаліть файл і завантажте його знову.</value>
+  </data>
+  <data name="SettingsModelsVerifyFailed" xml:space="preserve">
+    <value>Не вдалося перевірити файл: {0}</value>
+  </data>
+  <data name="SettingsModelsMeasuring" xml:space="preserve">
+    <value>Вимірюю на вбудованому записі…</value>
+  </data>
+  <data name="SettingsModelsMeasureFailed" xml:space="preserve">
+    <value>Не вдалося виміряти: {0}</value>
+  </data>
 </root>

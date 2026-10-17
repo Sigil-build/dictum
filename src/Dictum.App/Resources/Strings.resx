@@ -1028,4 +1028,94 @@
   <data name="ModelNoteTiny" xml:space="preserve">
     <value>English only, for tests</value>
   </data>
+  <data name="SettingsModels" xml:space="preserve">
+    <value>Models</value>
+  </data>
+  <data name="SettingsModelsProbing" xml:space="preserve">
+    <value>Looking for a GPU…</value>
+  </data>
+  <data name="SettingsModelsRecommendedGpu" xml:space="preserve">
+    <value>Recommended for your GPU</value>
+  </data>
+  <data name="SettingsModelsRecommendedCpu" xml:space="preserve">
+    <value>Recommended for your computer</value>
+  </data>
+  <data name="SettingsModelsInstalled" xml:space="preserve">
+    <value>Installed</value>
+  </data>
+  <data name="SettingsModelsDownloading" xml:space="preserve">
+    <value>Downloading</value>
+  </data>
+  <data name="SettingsModelsQueued" xml:space="preserve">
+    <value>Waiting</value>
+  </data>
+  <data name="SettingsModelsPaused" xml:space="preserve">
+    <value>Paused</value>
+  </data>
+  <data name="SettingsModelsFailed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="SettingsModelsNotInstalled" xml:space="preserve">
+    <value>Not installed</value>
+  </data>
+  <data name="SettingsModelsFast" xml:space="preserve">
+    <value>Fast</value>
+  </data>
+  <data name="SettingsModelsUsable" xml:space="preserve">
+    <value>Usable</value>
+  </data>
+  <data name="SettingsModelsTooSlow" xml:space="preserve">
+    <value>Too slow here</value>
+  </data>
+  <data name="SettingsModelsDownload" xml:space="preserve">
+    <value>Download · {0}</value>
+  </data>
+  <data name="SettingsModelsDownloadAnyway" xml:space="preserve">
+    <value>Download anyway · {0}</value>
+  </data>
+  <data name="SettingsModelsRetry" xml:space="preserve">
+    <value>Try again · {0}</value>
+  </data>
+  <data name="SettingsModelsDelete" xml:space="preserve">
+    <value>Delete · frees {0}</value>
+  </data>
+  <data name="SettingsModelsUnused" xml:space="preserve">
+    <value>Not used by any profile</value>
+  </data>
+  <data name="SettingsModelsDeleteRefused" xml:space="preserve">
+    <value>In use by {0}. Choose another model there first.</value>
+  </data>
+  <data name="SettingsModelsProgress" xml:space="preserve">
+    <value>{0} of {1}</value>
+  </data>
+  <data name="SettingsModelsProgressRate" xml:space="preserve">
+    <value>{0} of {1} · {2} · {3}</value>
+  </data>
+  <data name="SettingsModelsUseInShared" xml:space="preserve">
+    <value>{0} (also {1})</value>
+  </data>
+  <data name="SettingsModelsQueueFailed" xml:space="preserve">
+    <value>Could not update the download list: {0}</value>
+  </data>
+  <data name="SettingsModelsDeleteFailed" xml:space="preserve">
+    <value>Could not delete the file: {0}</value>
+  </data>
+  <data name="SettingsModelsVerifying" xml:space="preserve">
+    <value>Checking SHA-256…</value>
+  </data>
+  <data name="SettingsModelsVerified" xml:space="preserve">
+    <value>SHA-256 matches the catalog.</value>
+  </data>
+  <data name="SettingsModelsVerifyMismatch" xml:space="preserve">
+    <value>SHA-256 does not match the catalog. Delete the file and download it again.</value>
+  </data>
+  <data name="SettingsModelsVerifyFailed" xml:space="preserve">
+    <value>Could not check the file: {0}</value>
+  </data>
+  <data name="SettingsModelsMeasuring" xml:space="preserve">
+    <value>Measuring with the built-in sample…</value>
+  </data>
+  <data name="SettingsModelsMeasureFailed" xml:space="preserve">
+    <value>Could not measure: {0}</value>
+  </data>
 </root>
