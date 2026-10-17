@@ -490,17 +490,30 @@ public sealed partial class LlmEditor : ObservableObject
         await ApiKeys.RemoveAsync(_services.Secrets, ApiKeys.ProcessorSecretName(id), current, _session.Config, _services.Log, CancellationToken.None);
     }
 
+    /// <summary>
+    /// The store may answer after another processor is selected (a keyring prompt on Linux), so the answer goes to
+    /// <paramref name="id"/>, the processor the key was typed for (final review I5).
+    /// </summary>
     private async Task StoreKeyAsync(string id, string typed)
     {
         var result = await ApiKeys.StoreAsync(_services.Secrets, ApiKeys.ProcessorSecretName(id), typed, CancellationToken.None);
+        var shown = _id == id;
         if (result.Error is { } error)
         {
-            KeyError = string.Format(CultureInfo.CurrentCulture, Strings.SettingsProvidersKeyFailed, error);
+            if (shown)
+            {
+                KeyError = string.Format(CultureInfo.CurrentCulture, Strings.SettingsProvidersKeyFailed, error);
+            }
+
             return;
         }
 
-        KeyError = null;
-        EditLlm(l => l with { ApiKey = result.Value });
+        if (shown)
+        {
+            KeyError = null;
+        }
+
+        EditLlm(id, l => l with { ApiKey = result.Value });
     }
 
     private void SavePrompt()
@@ -592,7 +605,15 @@ public sealed partial class LlmEditor : ObservableObject
 
     private void EditLlm(Func<LlmProcessorConfig, LlmProcessorConfig> change)
     {
-        if (_loading || _id is not { } id)
+        if (_id is { } id)
+        {
+            EditLlm(id, change);
+        }
+    }
+
+    private void EditLlm(string id, Func<LlmProcessorConfig, LlmProcessorConfig> change)
+    {
+        if (_loading)
         {
             return;
         }

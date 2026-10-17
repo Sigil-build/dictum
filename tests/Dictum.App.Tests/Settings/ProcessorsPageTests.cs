@@ -391,4 +391,25 @@ public sealed class ProcessorsPageTests : IDisposable
         Assert.Null(Llm(session).ApiKey);
         Assert.Equal("sk-llm", _secrets.Values["dictum-processor-cleanup"]);
     }
+
+    // Final review I5: a keyring prompt on Linux answers after the user has moved on.
+    [Fact]
+    public async Task AKeyStoredLateGoesToTheProcessorItWasTypedFor()
+    {
+        var (page, session) = Open();
+        page.AddLlmCommand.Execute(null);
+        var before = Llm(session, "llm").ApiKey;
+        page.Selected = page.Processors.Single(p => p.Id == "cleanup");
+        var held = new TaskCompletionSource();
+        _secrets.Held = held;
+
+        page.Llm.KeyText = "sk-cleanup";
+        var committing = page.Llm.CommitKeyCommand.ExecuteAsync(null);
+        page.Selected = page.Processors.Single(p => p.Id == "llm");
+        held.SetResult();
+        await committing;
+
+        Assert.Equal("secret:dictum-processor-cleanup", Llm(session).ApiKey);
+        Assert.Equal(before, Llm(session, "llm").ApiKey);
+    }
 }
