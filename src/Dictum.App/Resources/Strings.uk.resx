@@ -218,4 +218,10 @@
   <data name="StatusError" xml:space="preserve">
     <value>Помилка</value>
   </data>
+  <data name="SettingsDbfs" xml:space="preserve">
+    <value>{0} dBFS</value>
+  </data>
+  <data name="SettingsInputLevel" xml:space="preserve">
+    <value>Рівень входу</value>
+  </data>
 </root>
