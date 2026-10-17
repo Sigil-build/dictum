@@ -12,6 +12,7 @@ public sealed class HistoryPageTests : IDisposable
     private static readonly DateTimeOffset Start = new(2026, 10, 17, 9, 0, 0, TimeSpan.Zero);
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-settings", Guid.NewGuid().ToString("N")[..8]);
     private readonly FakeClipboard _clipboard = new();
+    private readonly FakeRunner _runner = new();
 
     public HistoryPageTests() => Directory.CreateDirectory(_dir);
 
@@ -34,10 +35,12 @@ public sealed class HistoryPageTests : IDisposable
     private HistoryPage Open(int historySize = 200)
     {
         var store = new ConfigStore(Path.Combine(_dir, "config.json"), NullLog.Instance);
-        store.Save(new DictumConfig { General = new GeneralSettings { HistorySize = historySize } });
+        var config = ProfilesPageTests.Sample();
+        config.General = config.General with { HistorySize = historySize };
+        store.Save(config);
         var session = new SettingsSession(store, new ManualTimers(), NullLog.Instance);
         session.Load();
-        var page = new HistoryPage(session, File, _clipboard, NullLog.Instance);
+        var page = new HistoryPage(session, File, _clipboard, _runner, NullLog.Instance);
         page.OnShown();
         return page;
     }
@@ -195,5 +198,90 @@ public sealed class HistoryPageTests : IDisposable
             Texts.Add(text);
             return Task.CompletedTask;
         }
+    }
+
+    [Fact]
+    public void TheChainsAreTheProfilesThatHaveSteps()
+    {
+        ThreeDictations();
+
+        var page = Open();
+
+        Assert.Equal(["Work: cleanup → terms"], page.Chains.Select(c => c.Label));
+        Assert.True(page.HasChains);
+    }
+
+    // Review focus 5.
+    [Fact]
+    public void AReRunShowsTheResultAndLeavesTheFileAlone()
+    {
+        ThreeDictations();
+        var before = System.IO.File.ReadAllBytes(File);
+        var page = Open();
+
+        page.Chain = page.Chains[0];
+
+        var run = _runner.Runs.Single();
+        Assert.Equal("третій запис\nдругий рядок", run.Text);
+        Assert.Equal(["cleanup", "terms"], run.Steps.Select(s => s.Id));
+        Assert.Equal(("work", "uk, en", "Nexus5, Avalonia"), (run.Context.ProfileId, run.Context.Language, run.Context.Vocabulary));
+        Assert.Equal(("ТРЕТІЙ ЗАПИС\nДРУГИЙ РЯДОК", "Through Work · 42 ms"), (page.ReRunText, page.ReRunLabel));
+        Assert.Equal(before, System.IO.File.ReadAllBytes(File));
+        Assert.Empty(_clipboard.Texts);
+    }
+
+    // Review focus 5.
+    [Fact]
+    public void ANewerReRunWins()
+    {
+        ThreeDictations();
+        var page = Open();
+        var first = new TaskCompletionSource<RunResult>();
+        _runner.Held.Enqueue(first);
+
+        page.Chain = page.Chains[0];
+        page.Chain = null;
+        _runner.Answer = _ => new RunResult("newer", 5, null);
+        page.Chain = page.Chains[0];
+        first.SetResult(new RunResult("older", 900, null));
+
+        Assert.Equal("newer", page.ReRunText);
+    }
+
+    [Fact]
+    public void ChoosingAnotherDictationClearsTheResult()
+    {
+        ThreeDictations();
+        var page = Open();
+        page.Chain = page.Chains[0];
+
+        page.Selected = page.Items[1];
+
+        Assert.Null(page.ReRunText);
+        Assert.Null(page.ReRunLabel);
+    }
+
+    [Fact]
+    public async Task TheResultCanBeCopied()
+    {
+        ThreeDictations();
+        var page = Open();
+        page.Chain = page.Chains[0];
+
+        await page.CopyReRunCommand.ExecuteAsync(null);
+
+        Assert.Equal(["ТРЕТІЙ ЗАПИС\nДРУГИЙ РЯДОК"], _clipboard.Texts);
+    }
+
+    [Fact]
+    public void AFailedReRunShowsWhy()
+    {
+        ThreeDictations();
+        _runner.Answer = text => new RunResult(text, 3, "Connection refused");
+        var page = Open();
+
+        page.Chain = page.Chains[0];
+
+        Assert.Equal("Connection refused", page.ReRunError);
     }
 }

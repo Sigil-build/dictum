@@ -13,6 +13,7 @@ using Dictum.App.Tray;
 using Dictum.App.ViewModels;
 using Dictum.App.ViewModels.Settings;
 using Dictum.Audio.PortAudio;
+using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Host.Ipc;
@@ -138,6 +139,7 @@ public static class SelfTest
             var session = new SettingsSession(store, UiTimers.Instance, NullLog.Instance);
             session.Load();
             var offline = new Offline();
+            using var runner = new ProcessorRunner(new AppPaths(folder, folder), new UnavailableSecretStore(), NullLog.Instance);
             var general = new GeneralPage(session, new GeneralServices(offline, new FrameHub(TimeProvider.System), UiTimers.Instance,
                 null, null, new SoundPlayer(NullLog.Instance), TimeProvider.System, NullLog.Instance));
             SettingsPage[] pages =
@@ -151,7 +153,7 @@ public static class SelfTest
                 new SystemPage(new SystemServices(offline, new StatusViewModel("config.json", "dictum-gui.log", () => { }),
                     () => OverlayAvailability.Row(OverlayHost.Windows, true), () => TrayVisibility.Row(TrayDesktop.Other, true, null, null),
                     UiTimers.Instance, TimeProvider.System, "self-test")),
-                new HistoryPage(session, Path.Combine(folder, "history.jsonl"), new WindowClipboard(() => null), NullLog.Instance),
+                new HistoryPage(session, Path.Combine(folder, "history.jsonl"), new WindowClipboard(() => null), runner, NullLog.Instance),
             ];
             var locator = new ViewLocator();
             var built = pages.Select(page => locator.Build(page)).Where(view => view is UserControl).ToList();

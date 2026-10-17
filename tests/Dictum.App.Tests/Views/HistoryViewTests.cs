@@ -37,7 +37,7 @@ public sealed class HistoryViewTests(AvaloniaFixture fx) : IDisposable
         var session = new SettingsSession(store, new ManualTimers(), NullLog.Instance);
         session.Load();
         var window = new Window { Width = 900, Height = 600 };
-        var page = new HistoryPage(session, file, new WindowClipboard(() => window), NullLog.Instance);
+        var page = new HistoryPage(session, file, new WindowClipboard(() => window), new FakeRunner(), NullLog.Instance);
         page.OnShown();
         window.Content = new ViewLocator().Build(page);
 

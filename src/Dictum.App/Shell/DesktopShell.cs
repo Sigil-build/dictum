@@ -41,6 +41,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     private SettingsViewModel? _settings;
     private SettingsWindow? _settingsWindow;
     private ISecretStore? _secrets;
+    private ProcessorRunner? _runner;
     private ITrayPresenter? _presenter;
     private ConfigWatcher? _watcher;
     private HttpClient? _http;
@@ -243,7 +244,8 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             wait => Task.Delay(wait), TimeProvider.System, _log));
         var system = new SystemPage(new SystemServices(
             Supervisor, Status, () => OverlayRow(session), TrayRow, UiTimers.Instance, TimeProvider.System, DesktopName()));
-        var history = new HistoryPage(session, _paths.HistoryFile, new WindowClipboard(() => _settingsWindow), _log);
+        var runner = _runner ??= new ProcessorRunner(_paths, _secrets ??= PlatformFactory.CreateSecretStore(_log), _log);
+        var history = new HistoryPage(session, _paths.HistoryFile, new WindowClipboard(() => _settingsWindow), runner, _log);
         var settings = new SettingsViewModel(session,
         [
             (SettingsPageKey.General, general),
@@ -294,6 +296,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         }
 
         _http?.Dispose();
+        _runner?.Dispose();
         await Supervisor.DisposeAsync().ConfigureAwait(false);
     }
 

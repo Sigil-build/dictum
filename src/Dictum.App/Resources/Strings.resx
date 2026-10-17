@@ -932,4 +932,19 @@
   <data name="SettingsRulesImportFailed" xml:space="preserve">
     <value>The file could not be read: {0}</value>
   </data>
+  <data name="SettingsHistoryReRun" xml:space="preserve">
+    <value>Re-run through…</value>
+  </data>
+  <data name="SettingsHistoryChain" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="SettingsHistoryReRunLabel" xml:space="preserve">
+    <value>Through {0} · {1} ms</value>
+  </data>
+  <data name="SettingsHistoryCopyResult" xml:space="preserve">
+    <value>Copy result</value>
+  </data>
+  <data name="SettingsHistoryReRunResult" xml:space="preserve">
+    <value>Re-run result</value>
+  </data>
 </root>

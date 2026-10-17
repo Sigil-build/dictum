@@ -932,4 +932,19 @@
   <data name="SettingsRulesImportFailed" xml:space="preserve">
     <value>Не вдалося прочитати файл: {0}</value>
   </data>
+  <data name="SettingsHistoryReRun" xml:space="preserve">
+    <value>Обробити ще раз через…</value>
+  </data>
+  <data name="SettingsHistoryChain" xml:space="preserve">
+    <value>{0}: {1}</value>
+  </data>
+  <data name="SettingsHistoryReRunLabel" xml:space="preserve">
+    <value>Через {0} · {1} мс</value>
+  </data>
+  <data name="SettingsHistoryCopyResult" xml:space="preserve">
+    <value>Копіювати результат</value>
+  </data>
+  <data name="SettingsHistoryReRunResult" xml:space="preserve">
+    <value>Результат повторної обробки</value>
+  </data>
 </root>

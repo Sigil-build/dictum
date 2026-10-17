@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
+using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.History;
 
@@ -32,14 +33,18 @@ public sealed partial class HistoryPage : SettingsPage
     private readonly SettingsSession _session;
     private readonly string _file;
     private readonly ITextClipboard _clipboard;
+    private readonly IProcessorRunner _runner;
     private readonly ILog _log;
     private IReadOnlyList<HistoryItem> _all = [];
+    private CancellationTokenSource? _reRun;
+    private int _reRunCount;
 
-    public HistoryPage(SettingsSession session, string historyFile, ITextClipboard clipboard, ILog log)
+    public HistoryPage(SettingsSession session, string historyFile, ITextClipboard clipboard, IProcessorRunner runner, ILog log)
     {
         _session = session;
         _file = historyFile;
         _clipboard = clipboard;
+        _runner = runner;
         _log = log;
     }
 
@@ -61,7 +66,121 @@ public sealed partial class HistoryPage : SettingsPage
     [ObservableProperty]
     public partial string? Error { get; private set; }
 
-    public override void OnShown() => Reload();
+    public override void OnShown()
+    {
+        LoadChains();
+        Reload();
+    }
+
+    [ObservableProperty]
+    public partial IReadOnlyList<Option<string>> Chains { get; private set; } = [];
+
+    [ObservableProperty]
+    public partial Option<string>? Chain { get; set; }
+
+    [ObservableProperty]
+    public partial bool HasChains { get; private set; }
+
+    [ObservableProperty]
+    public partial string? ReRunText { get; private set; }
+
+    [ObservableProperty]
+    public partial string? ReRunLabel { get; private set; }
+
+    [ObservableProperty]
+    public partial string? ReRunError { get; private set; }
+
+    [ObservableProperty]
+    public partial bool ReRunning { get; private set; }
+
+    public override void OnHidden() => _reRun?.Cancel();
+
+    partial void OnChainChanged(Option<string>? value)
+    {
+        if (value is not null)
+        {
+            _ = ReRunAsync(value.Value);
+        }
+    }
+
+    partial void OnSelectedChanged(HistoryItem? value)
+    {
+        _reRun?.Cancel();
+        _reRunCount++;
+        ReRunning = false;
+        ReRunText = null;
+        ReRunLabel = null;
+        ReRunError = null;
+    }
+
+    [RelayCommand]
+    private async Task CopyReRunAsync()
+    {
+        if (ReRunText is not { } text)
+        {
+            return;
+        }
+
+        try
+        {
+            await _clipboard.SetTextAsync(text);
+        }
+        catch (Exception ex)
+        {
+            Error = string.Format(CultureInfo.CurrentCulture, Strings.SettingsHistoryCopyFailed, ex.Message);
+            _log.Warn($"Re-run result not copied: {ex.Message}");
+        }
+    }
+
+    private void LoadChains()
+    {
+        var config = _session.Config;
+        Chains = [.. config.Profiles.Where(p => p.Pipeline.Count > 0).Select(p => new Option<string>(p.Id,
+            string.Format(CultureInfo.CurrentCulture, Strings.SettingsHistoryChain, p.Name ?? p.Id, string.Join(" → ", p.Pipeline))))];
+        HasChains = Chains.Count > 0;
+    }
+
+    /// <summary>
+    /// The entry's raw text through a profile's chain, in the GUI (spec 7). Only the newest run shows, and nothing is
+    /// written to the history file or the clipboard.
+    /// </summary>
+    private async Task ReRunAsync(string profileId)
+    {
+        var config = _session.Config;
+        if (Selected is not { } item || config.Profiles.FirstOrDefault(p => p.Id == profileId) is not { } profile)
+        {
+            return;
+        }
+
+        _reRun?.Cancel();
+        var cancel = _reRun = new CancellationTokenSource();
+        var run = ++_reRunCount;
+        ReRunning = true;
+        try
+        {
+            List<(string Id, ProcessorConfig Config)> steps = [.. profile.Pipeline.Where(config.Processors.ContainsKey).Select(id => (id, config.Processors[id]))];
+            var result = await _runner.RunAsync(steps, item.Entry.RawText, ProcessorRunner.ContextFor(profile), cancel.Token);
+            if (run != _reRunCount)
+            {
+                return;
+            }
+
+            ReRunText = result.Text;
+            ReRunLabel = string.Format(CultureInfo.CurrentCulture, Strings.SettingsHistoryReRunLabel, profile.Name ?? profile.Id, result.Milliseconds);
+            ReRunError = result.Error;
+        }
+        catch (OperationCanceledException)
+        {
+            // Another entry was chosen, or the page left.
+        }
+        finally
+        {
+            if (run == _reRunCount)
+            {
+                ReRunning = false;
+            }
+        }
+    }
 
     partial void OnSearchChanged(string value) => Filter();
 

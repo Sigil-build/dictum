@@ -34,7 +34,7 @@ public partial class ProfilesView : UserControl
         // The view owns the words box and the pickers (final review C1): the page takes the text and gives back the
         // part still being typed; a picker clears itself once its pick has been taken.
         WordBox.TextChanged += (_, _) => Typed(WordBox, text => Page?.AddWords(text));
-        AddHandler(SelectingItemsControl.SelectionChangedEvent, OnPicked, RoutingStrategies.Bubble);
+        Pickers.ClearAfterPick(this);
         DataContextChanged += (_, _) =>
         {
             if (_page is not null)
@@ -68,14 +68,6 @@ public partial class ProfilesView : UserControl
         if (e.PropertyName == nameof(ProfilesPage.Selected))
         {
             WordBox.Text = "";
-        }
-    }
-
-    private static void OnPicked(object? sender, SelectionChangedEventArgs e)
-    {
-        if (e.Source is ComboBox { SelectedItem: not null } picker && picker.Classes.Contains("picker"))
-        {
-            Dispatcher.UIThread.Post(() => picker.SelectedItem = null);
         }
     }
 
