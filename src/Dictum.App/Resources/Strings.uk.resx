@@ -956,4 +956,76 @@
   <data name="SettingsLlmPromptRestoreFailed" xml:space="preserve">
     <value>Не вдалося повернути вбудований запит: {0}</value>
   </data>
+  <data name="UnitGigabytes" xml:space="preserve">
+    <value>{0} ГБ</value>
+  </data>
+  <data name="UnitMegabytes" xml:space="preserve">
+    <value>{0} МБ</value>
+  </data>
+  <data name="UnitMegabytesPerSecond" xml:space="preserve">
+    <value>{0} МБ/с</value>
+  </data>
+  <data name="UnitSeconds" xml:space="preserve">
+    <value>{0} с</value>
+  </data>
+  <data name="UnitShared" xml:space="preserve">
+    <value>{0} спільної</value>
+  </data>
+  <data name="UnitVram" xml:space="preserve">
+    <value>{0} відеопам'яті</value>
+  </data>
+  <data name="SettingsModelsSecondsLeft" xml:space="preserve">
+    <value>ще {0} с</value>
+  </data>
+  <data name="SettingsModelsMinutesLeft" xml:space="preserve">
+    <value>ще {0} хв</value>
+  </data>
+  <data name="SettingsModelsHoursLeft" xml:space="preserve">
+    <value>ще {0} год {1} хв</value>
+  </data>
+  <data name="SettingsModelsAllLanguages" xml:space="preserve">
+    <value>99 мов</value>
+  </data>
+  <data name="SettingsModelsMeta" xml:space="preserve">
+    <value>{0} · ліцензія {1} · {2} · {3}</value>
+  </data>
+  <data name="SettingsModelsSpeedDictations" xml:space="preserve">
+    <value>~{0} на 5 с мовлення, за вашими диктуваннями</value>
+  </data>
+  <data name="SettingsModelsSpeedMeasured" xml:space="preserve">
+    <value>~{0} на 5 с мовлення, виміряно</value>
+  </data>
+  <data name="SettingsModelsSpeedEstimate" xml:space="preserve">
+    <value>~{0} на 5 с мовлення (оцінка)</value>
+  </data>
+  <data name="SettingsModelsGpu" xml:space="preserve">
+    <value>Знайдено GPU: {0} · {1} · {2} оперативної пам'яті. Рекомендації враховують його.</value>
+  </data>
+  <data name="SettingsModelsGpuNoMemory" xml:space="preserve">
+    <value>Знайдено GPU: {0} · {1} оперативної пам'яті. Рекомендації враховують його.</value>
+  </data>
+  <data name="SettingsModelsSmallGpu" xml:space="preserve">
+    <value>Знайдено GPU: {0} · {1} · {2} оперативної пам'яті. У нього менше 2 ГБ, тож рекомендації — для процесора.</value>
+  </data>
+  <data name="SettingsModelsNoGpu" xml:space="preserve">
+    <value>GPU для Whisper не знайдено · {0} оперативної пам'яті. Рекомендації — для процесора.</value>
+  </data>
+  <data name="SettingsModelsDisk" xml:space="preserve">
+    <value>Моделі займають {0} · вільно {1}</value>
+  </data>
+  <data name="SettingsModelsDiskUsed" xml:space="preserve">
+    <value>Моделі займають {0}</value>
+  </data>
+  <data name="ModelNoteTurbo" xml:space="preserve">
+    <value>найкраща якість, потрібен GPU</value>
+  </data>
+  <data name="ModelNoteMedium" xml:space="preserve">
+    <value>повільніша на процесорі, точніша</value>
+  </data>
+  <data name="ModelNoteSmall" xml:space="preserve">
+    <value>швидка на процесорі</value>
+  </data>
+  <data name="ModelNoteTiny" xml:space="preserve">
+    <value>лише англійська, для тестів</value>
+  </data>
 </root>

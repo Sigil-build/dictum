@@ -956,4 +956,76 @@
   <data name="SettingsLlmPromptRestoreFailed" xml:space="preserve">
     <value>The built-in prompt could not be restored: {0}</value>
   </data>
+  <data name="UnitGigabytes" xml:space="preserve">
+    <value>{0} GB</value>
+  </data>
+  <data name="UnitMegabytes" xml:space="preserve">
+    <value>{0} MB</value>
+  </data>
+  <data name="UnitMegabytesPerSecond" xml:space="preserve">
+    <value>{0} MB/s</value>
+  </data>
+  <data name="UnitSeconds" xml:space="preserve">
+    <value>{0} s</value>
+  </data>
+  <data name="UnitShared" xml:space="preserve">
+    <value>{0} shared</value>
+  </data>
+  <data name="UnitVram" xml:space="preserve">
+    <value>{0} VRAM</value>
+  </data>
+  <data name="SettingsModelsSecondsLeft" xml:space="preserve">
+    <value>{0} s left</value>
+  </data>
+  <data name="SettingsModelsMinutesLeft" xml:space="preserve">
+    <value>{0} min left</value>
+  </data>
+  <data name="SettingsModelsHoursLeft" xml:space="preserve">
+    <value>{0} h {1} min left</value>
+  </data>
+  <data name="SettingsModelsAllLanguages" xml:space="preserve">
+    <value>99 languages</value>
+  </data>
+  <data name="SettingsModelsMeta" xml:space="preserve">
+    <value>{0} · {1} licence · {2} · {3}</value>
+  </data>
+  <data name="SettingsModelsSpeedDictations" xml:space="preserve">
+    <value>~{0} for 5 s of speech, from your dictations</value>
+  </data>
+  <data name="SettingsModelsSpeedMeasured" xml:space="preserve">
+    <value>~{0} for 5 s of speech, measured</value>
+  </data>
+  <data name="SettingsModelsSpeedEstimate" xml:space="preserve">
+    <value>~{0} for 5 s of speech (estimate)</value>
+  </data>
+  <data name="SettingsModelsGpu" xml:space="preserve">
+    <value>GPU found: {0} · {1} · {2} RAM. Recommendations are based on it.</value>
+  </data>
+  <data name="SettingsModelsGpuNoMemory" xml:space="preserve">
+    <value>GPU found: {0} · {1} RAM. Recommendations are based on it.</value>
+  </data>
+  <data name="SettingsModelsSmallGpu" xml:space="preserve">
+    <value>GPU found: {0} · {1} · {2} RAM. It has under 2 GB, so recommendations are for the CPU.</value>
+  </data>
+  <data name="SettingsModelsNoGpu" xml:space="preserve">
+    <value>No GPU for Whisper found · {0} RAM. Recommendations are for the CPU.</value>
+  </data>
+  <data name="SettingsModelsDisk" xml:space="preserve">
+    <value>Models use {0} · {1} free</value>
+  </data>
+  <data name="SettingsModelsDiskUsed" xml:space="preserve">
+    <value>Models use {0}</value>
+  </data>
+  <data name="ModelNoteTurbo" xml:space="preserve">
+    <value>best quality, needs a GPU</value>
+  </data>
+  <data name="ModelNoteMedium" xml:space="preserve">
+    <value>slower on a CPU, more accurate</value>
+  </data>
+  <data name="ModelNoteSmall" xml:space="preserve">
+    <value>fast on a CPU</value>
+  </data>
+  <data name="ModelNoteTiny" xml:space="preserve">
+    <value>English only, for tests</value>
+  </data>
 </root>
