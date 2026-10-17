@@ -1,0 +1,51 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Dictum.App.ViewModels.Settings"
+             xmlns:controls="using:Dictum.App.Controls"
+             xmlns:res="using:Dictum.App.Resources"
+             x:Class="Dictum.App.Views.Settings.OverlayView"
+             x:DataType="vm:OverlayPage">
+  <ScrollViewer>
+    <StackPanel Margin="16,4,32,24" Spacing="4">
+      <Button Classes="link" Content="{Binding BackLabel}" Command="{Binding BackCommand}" />
+      <TextBlock Classes="title" Text="{Binding Title}" Margin="0,4,0,16" />
+
+      <StackPanel Spacing="4" IsEnabled="{Binding CanEdit}">
+        <controls:SettingsRow Icon="{DynamicResource icon.overlay}" Label="{x:Static res:Strings.SettingsOverlayEnabled}">
+          <ToggleSwitch IsChecked="{Binding Enabled}"
+                        OnContent="{x:Static res:Strings.CommonOn}" OffContent="{x:Static res:Strings.CommonOff}"
+                        AutomationProperties.Name="{x:Static res:Strings.SettingsOverlayEnabled}" />
+        </controls:SettingsRow>
+
+        <controls:SettingsRow Label="{x:Static res:Strings.SettingsOverlayPosition}">
+          <ComboBox Width="200" ItemsSource="{Binding Positions}" SelectedItem="{Binding Position}"
+                    AutomationProperties.Name="{x:Static res:Strings.SettingsOverlayPosition}" />
+        </controls:SettingsRow>
+
+        <controls:SettingsRow Label="{x:Static res:Strings.SettingsOverlaySize}">
+          <ListBox Classes="segmented" ItemsSource="{Binding Sizes}" SelectedItem="{Binding Size}"
+                   AutomationProperties.Name="{x:Static res:Strings.SettingsOverlaySize}" />
+        </controls:SettingsRow>
+
+        <controls:SettingsRow Label="{x:Static res:Strings.SettingsOverlayOpacity}">
+          <StackPanel Orientation="Horizontal" Spacing="12">
+            <Slider Width="200" Minimum="30" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True"
+                    Value="{Binding Opacity}" AutomationProperties.Name="{x:Static res:Strings.SettingsOverlayOpacity}" />
+            <TextBlock Width="48" Text="{Binding OpacityText}" VerticalAlignment="Center" TextAlignment="Right"
+                       Foreground="{DynamicResource color.text.secondary}" />
+          </StackPanel>
+        </controls:SettingsRow>
+
+        <controls:SettingsRow Label="{x:Static res:Strings.SettingsOverlayPalette}">
+          <ListBox Classes="segmented" ItemsSource="{Binding Palettes}" SelectedItem="{Binding Palette}"
+                   AutomationProperties.Name="{x:Static res:Strings.SettingsOverlayPalette}" />
+        </controls:SettingsRow>
+      </StackPanel>
+
+      <TextBlock Text="{x:Static res:Strings.SettingsOverlayPreview}" Margin="0,16,0,4" FontWeight="SemiBold"
+                 Foreground="{DynamicResource color.text.primary}" />
+      <controls:OverlayPreview Palette="{Binding PreviewPalette}" Zoom="{Binding PreviewZoom}"
+                               OverlayOpacity="{Binding PreviewOpacity}" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

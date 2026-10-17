@@ -13,6 +13,7 @@ public sealed class ViewLocator : IDataTemplate
     public Control? Build(object? param) => param switch
     {
         GeneralPage model => new GeneralView { DataContext = model },
+        OverlayPage model => new OverlayView { DataContext = model },
         StatusViewModel model => new StatusView { DataContext = model },
         null => null,
         _ => new TextBlock { Text = $"No view for {param.GetType().Name}" },

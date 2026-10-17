@@ -67,7 +67,7 @@
         <controls:SettingsRow Icon="{DynamicResource icon.overlay}"
                               Label="{x:Static res:Strings.SettingsOverlay}"
                               Description="{x:Static res:Strings.SettingsOverlayHint}">
-          <Button x:Name="OverlayButton" Content="{x:Static res:Strings.SettingsOverlayOpen}" />
+          <Button Content="{x:Static res:Strings.SettingsOverlayOpen}" Command="{Binding OpenOverlayCommand}" />
         </controls:SettingsRow>
       </StackPanel>
     </StackPanel>

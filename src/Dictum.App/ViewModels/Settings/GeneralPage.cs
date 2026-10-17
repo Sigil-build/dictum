@@ -68,11 +68,15 @@ public sealed partial class GeneralPage : SettingsPage
         session.Changed += Load;
         Load();
         ReadLoginItem();
+        Overlay = new OverlayPage(session, Strings.SettingsGeneral);
     }
 
     public override string Title => Strings.SettingsGeneral;
 
     public IReadOnlyList<Option<string?>> UiLanguages { get; }
+
+    /// <summary>The Listening overlay sub-page.</summary>
+    public OverlayPage Overlay { get; }
 
     [ObservableProperty]
     public partial bool CanEdit { get; private set; }
@@ -208,6 +212,9 @@ public sealed partial class GeneralPage : SettingsPage
             _session.Edit(c => c with { General = c.General with { UiLanguage = value.Value } });
         }
     }
+
+    [RelayCommand]
+    private void OpenOverlay() => Navigate(Overlay);
 
     [RelayCommand]
     private async Task PreviewAsync()

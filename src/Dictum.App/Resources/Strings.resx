@@ -299,4 +299,52 @@
   <data name="SettingsOverlayOpen" xml:space="preserve">
     <value>Overlay settings ›</value>
   </data>
+  <data name="SettingsBack" xml:space="preserve">
+    <value>‹ {0}</value>
+  </data>
+  <data name="SettingsOverlayEnabled" xml:space="preserve">
+    <value>Show the overlay while you dictate</value>
+  </data>
+  <data name="SettingsOverlayPosition" xml:space="preserve">
+    <value>Position</value>
+  </data>
+  <data name="SettingsOverlayBottom" xml:space="preserve">
+    <value>Bottom of the screen</value>
+  </data>
+  <data name="SettingsOverlayTop" xml:space="preserve">
+    <value>Top of the screen</value>
+  </data>
+  <data name="SettingsOverlaySize" xml:space="preserve">
+    <value>Size</value>
+  </data>
+  <data name="SettingsOverlaySmall" xml:space="preserve">
+    <value>Small</value>
+  </data>
+  <data name="SettingsOverlayMedium" xml:space="preserve">
+    <value>Medium</value>
+  </data>
+  <data name="SettingsOverlayLarge" xml:space="preserve">
+    <value>Large</value>
+  </data>
+  <data name="SettingsOverlayOpacity" xml:space="preserve">
+    <value>Opacity</value>
+  </data>
+  <data name="SettingsOverlayOpacityValue" xml:space="preserve">
+    <value>{0} %</value>
+  </data>
+  <data name="SettingsOverlayPalette" xml:space="preserve">
+    <value>Colour theme</value>
+  </data>
+  <data name="SettingsOverlayAurora" xml:space="preserve">
+    <value>Aurora</value>
+  </data>
+  <data name="SettingsOverlayEmber" xml:space="preserve">
+    <value>Ember</value>
+  </data>
+  <data name="SettingsOverlayMist" xml:space="preserve">
+    <value>Mist (neutral)</value>
+  </data>
+  <data name="SettingsOverlayPreview" xml:space="preserve">
+    <value>Preview</value>
+  </data>
 </root>

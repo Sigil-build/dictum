@@ -299,4 +299,52 @@
   <data name="SettingsOverlayOpen" xml:space="preserve">
     <value>Налаштування індикатора ›</value>
   </data>
+  <data name="SettingsBack" xml:space="preserve">
+    <value>‹ {0}</value>
+  </data>
+  <data name="SettingsOverlayEnabled" xml:space="preserve">
+    <value>Показувати індикатор під час диктування</value>
+  </data>
+  <data name="SettingsOverlayPosition" xml:space="preserve">
+    <value>Розташування</value>
+  </data>
+  <data name="SettingsOverlayBottom" xml:space="preserve">
+    <value>Унизу екрана</value>
+  </data>
+  <data name="SettingsOverlayTop" xml:space="preserve">
+    <value>Угорі екрана</value>
+  </data>
+  <data name="SettingsOverlaySize" xml:space="preserve">
+    <value>Розмір</value>
+  </data>
+  <data name="SettingsOverlaySmall" xml:space="preserve">
+    <value>Малий</value>
+  </data>
+  <data name="SettingsOverlayMedium" xml:space="preserve">
+    <value>Середній</value>
+  </data>
+  <data name="SettingsOverlayLarge" xml:space="preserve">
+    <value>Великий</value>
+  </data>
+  <data name="SettingsOverlayOpacity" xml:space="preserve">
+    <value>Непрозорість</value>
+  </data>
+  <data name="SettingsOverlayOpacityValue" xml:space="preserve">
+    <value>{0} %</value>
+  </data>
+  <data name="SettingsOverlayPalette" xml:space="preserve">
+    <value>Кольорова тема</value>
+  </data>
+  <data name="SettingsOverlayAurora" xml:space="preserve">
+    <value>Полярне сяйво</value>
+  </data>
+  <data name="SettingsOverlayEmber" xml:space="preserve">
+    <value>Жарина</value>
+  </data>
+  <data name="SettingsOverlayMist" xml:space="preserve">
+    <value>Туман (нейтральна)</value>
+  </data>
+  <data name="SettingsOverlayPreview" xml:space="preserve">
+    <value>Попередній перегляд</value>
+  </data>
 </root>
