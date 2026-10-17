@@ -521,4 +521,61 @@
   <data name="SettingsHotkeyAccessibleNone" xml:space="preserve">
     <value>Гарячої клавіші немає. Натисніть, щоб задати</value>
   </data>
+  <data name="SettingsProfiles" xml:space="preserve">
+    <value>Профілі</value>
+  </data>
+  <data name="SettingsProfilesNewName" xml:space="preserve">
+    <value>Новий профіль</value>
+  </data>
+  <data name="SettingsProfilesCaption" xml:space="preserve">
+    <value>{0} · {1}</value>
+  </data>
+  <data name="SettingsProfilesPushToTalk" xml:space="preserve">
+    <value>Утримувати</value>
+  </data>
+  <data name="SettingsProfilesToggle" xml:space="preserve">
+    <value>Перемикати</value>
+  </data>
+  <data name="SettingsProfilesLanguageOne" xml:space="preserve">
+    <value>Одна</value>
+  </data>
+  <data name="SettingsProfilesLanguageSeveral" xml:space="preserve">
+    <value>Кілька</value>
+  </data>
+  <data name="SettingsProfilesLanguageAuto" xml:space="preserve">
+    <value>Авто</value>
+  </data>
+  <data name="SettingsProfilesSimilar" xml:space="preserve">
+    <value>{0} і {1} — близькі мови, і Whisper часто їх плутає. Залиште тут одну, а другу перенесіть в окремий профіль.</value>
+  </data>
+  <data name="SettingsProfilesWordCount" xml:space="preserve">
+    <value>Слів: {0}</value>
+  </data>
+  <data name="SettingsChainLlm" xml:space="preserve">
+    <value>Запит до LLM</value>
+  </data>
+  <data name="SettingsChainRules" xml:space="preserve">
+    <value>Правил: {0}</value>
+  </data>
+  <data name="SettingsChainMissing" xml:space="preserve">
+    <value>Не знайдено</value>
+  </data>
+  <data name="SettingsProfilesStep" xml:space="preserve">
+    <value>{0} · {1}</value>
+  </data>
+  <data name="SettingsProfilesShortcutAuto" xml:space="preserve">
+    <value>Автоматично</value>
+  </data>
+  <data name="SettingsProfilesProviderMissing" xml:space="preserve">
+    <value>{0} (не знайдено)</value>
+  </data>
+  <data name="SettingsProfilesNotRegistered" xml:space="preserve">
+    <value>Демон не зміг зареєструвати цю гарячу клавішу; можливо, її вже використовує інша програма.</value>
+  </data>
+  <data name="SettingsProviderLocal" xml:space="preserve">
+    <value>Локальний Whisper · {0}</value>
+  </data>
+  <data name="SettingsProviderRemote" xml:space="preserve">
+    <value>Сервер · {0}</value>
+  </data>
 </root>

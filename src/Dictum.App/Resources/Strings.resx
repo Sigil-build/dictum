@@ -521,4 +521,61 @@
   <data name="SettingsHotkeyAccessibleNone" xml:space="preserve">
     <value>No hotkey. Press to set one</value>
   </data>
+  <data name="SettingsProfiles" xml:space="preserve">
+    <value>Profiles</value>
+  </data>
+  <data name="SettingsProfilesNewName" xml:space="preserve">
+    <value>New profile</value>
+  </data>
+  <data name="SettingsProfilesCaption" xml:space="preserve">
+    <value>{0} · {1}</value>
+  </data>
+  <data name="SettingsProfilesPushToTalk" xml:space="preserve">
+    <value>Push to talk</value>
+  </data>
+  <data name="SettingsProfilesToggle" xml:space="preserve">
+    <value>Toggle</value>
+  </data>
+  <data name="SettingsProfilesLanguageOne" xml:space="preserve">
+    <value>One</value>
+  </data>
+  <data name="SettingsProfilesLanguageSeveral" xml:space="preserve">
+    <value>Several</value>
+  </data>
+  <data name="SettingsProfilesLanguageAuto" xml:space="preserve">
+    <value>Auto</value>
+  </data>
+  <data name="SettingsProfilesSimilar" xml:space="preserve">
+    <value>{0} and {1} are closely related — Whisper often picks the wrong one. Keep one here and move the other to its own profile.</value>
+  </data>
+  <data name="SettingsProfilesWordCount" xml:space="preserve">
+    <value>Words: {0}</value>
+  </data>
+  <data name="SettingsChainLlm" xml:space="preserve">
+    <value>LLM prompt</value>
+  </data>
+  <data name="SettingsChainRules" xml:space="preserve">
+    <value>Rules: {0}</value>
+  </data>
+  <data name="SettingsChainMissing" xml:space="preserve">
+    <value>Not found</value>
+  </data>
+  <data name="SettingsProfilesStep" xml:space="preserve">
+    <value>{0} · {1}</value>
+  </data>
+  <data name="SettingsProfilesShortcutAuto" xml:space="preserve">
+    <value>Automatic</value>
+  </data>
+  <data name="SettingsProfilesProviderMissing" xml:space="preserve">
+    <value>{0} (not found)</value>
+  </data>
+  <data name="SettingsProfilesNotRegistered" xml:space="preserve">
+    <value>The daemon could not register this hotkey; another app may already use it.</value>
+  </data>
+  <data name="SettingsProviderLocal" xml:space="preserve">
+    <value>Local Whisper · {0}</value>
+  </data>
+  <data name="SettingsProviderRemote" xml:space="preserve">
+    <value>Remote · {0}</value>
+  </data>
 </root>
