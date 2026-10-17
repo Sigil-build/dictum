@@ -28,6 +28,9 @@ public sealed partial class SpeechProvidersPage : SettingsPage
 
     public override string Title => Strings.SettingsSpeechProviders;
 
+    /// <summary>Models downloaded on Settings → Models since the page was built appear in its model dropdowns.</summary>
+    public override void OnShown() => Load();
+
     [ObservableProperty]
     public partial IReadOnlyList<ProviderCard> Cards { get; private set; } = [];
 

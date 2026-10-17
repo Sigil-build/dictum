@@ -38,6 +38,8 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     private readonly IOverlayDesktop _overlayDesktop;
     private readonly IAutostart? _autostart;
     private readonly SoundPlayer _sounds;
+    private readonly Func<HardwareInfo> _probeHardware;
+    private readonly SpeedMeasurements _measurements = new();
     private SettingsViewModel? _settings;
     private SettingsWindow? _settingsWindow;
     private ISecretStore? _secrets;
@@ -46,6 +48,8 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     private ConfigWatcher? _watcher;
     private HttpClient? _http;
     private DownloadQueue? _downloads;
+    private IModelDownloads? _modelDownloads;
+    private Task<HardwareInfo>? _hardware;
     private DispatcherTimer? _tick;
     private Action<int>? _shutdown;
     private volatile bool _highContrast;
@@ -55,6 +59,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     /// <param name="createTray">The OS tray; <see cref="CreateTrayAsync"/> in the app, a fake in tests.</param>
     /// <param name="overlayDesktop">The overlay's OS side; <see cref="OverlayDesktop.None"/> when left out (tests).</param>
     /// <param name="autostart">The OS login item for Settings → General; none when left out, so tests never reach the real one.</param>
+    /// <param name="probeHardware">The GPU probe for Settings → Models; the real Vulkan one when left out.</param>
     public DesktopShell(
         AppPaths paths,
         DictumLog log,
@@ -63,7 +68,8 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         IDaemonLauncher launcher,
         Func<Application, Func<bool>, Task<ITrayPresenter?>> createTray,
         IOverlayDesktop? overlayDesktop = null,
-        IAutostart? autostart = null)
+        IAutostart? autostart = null,
+        Func<HardwareInfo>? probeHardware = null)
     {
         _paths = paths;
         _log = log;
@@ -76,6 +82,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         _overlayDesktop = overlayDesktop ?? OverlayDesktop.None;
         Overlay = new OverlayController(() => new OverlayWindow(_overlayDesktop.Prepare), _overlayDesktop, () => _highContrast, TimeProvider.System, log);
         _autostart = autostart;
+        _probeHardware = probeHardware ?? (() => HardwareProbe.Detect(paths));
         _sounds = new SoundPlayer(log);
         Frames = new FrameHub(TimeProvider.System);
     }
@@ -246,6 +253,11 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             Supervisor, Status, () => OverlayRow(session), TrayRow, UiTimers.Instance, TimeProvider.System, DesktopName()));
         var runner = _runner ??= new ProcessorRunner(_paths, _secrets ??= PlatformFactory.CreateSecretStore(_log), _log);
         var processors = new ProcessorsPage(session, new ProcessorsServices(runner, _secrets, new PromptFiles(_paths.PromptsDirectory), UiTimers.Instance, _log));
+        var models = new ModelsPage(session, new ModelsServices(
+            _paths, Catalog.BuiltIn, _modelDownloads ?? ModelDownloads.None,
+            () => _hardware ??= Task.Run(_probeHardware), () => HardwareProbe.FreeDiskBytes(_paths),
+            GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, Environment.ProcessorCount, _measurements, Supervisor,
+            wait => Task.Delay(wait), TimeProvider.System, _log));
         var history = new HistoryPage(session, _paths.HistoryFile, new WindowClipboard(() => _settingsWindow), runner, _log);
         var settings = new SettingsViewModel(session,
         [
@@ -253,6 +265,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             (SettingsPageKey.Profiles, profiles),
             (SettingsPageKey.SpeechProviders, providers),
             (SettingsPageKey.Processors, processors),
+            (SettingsPageKey.Models, models),
             (SettingsPageKey.System, system),
             (SettingsPageKey.History, history),
         ]);
@@ -369,6 +382,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         _http = FileDownloader.CreateHttpClient("dictum-gui");
         _downloads = new DownloadQueue(new FileDownloader(_http), _paths, Catalog.BuiltIn, () => HardwareProbe.FreeDiskBytes(_paths));
         var queue = _downloads;
+        _modelDownloads = new QueueDownloads(queue, action => Dispatcher.UIThread.Post(action));
         queue.Changed += _ => Dispatcher.UIThread.Post(() => _tray.OnDownloads(QueueProgress.Of(queue.Items)));
         try
         {

@@ -12,6 +12,7 @@ using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Host.Ipc;
+using Dictum.Setup;
 
 namespace Dictum.App.Tests.Shell;
 
@@ -159,7 +160,8 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         var socket = Path.Combine(_dir, "d.sock");
         var launcher = new FakeLauncher(socket);
         var presenter = new TrayControllerTests.FakePresenter();
-        var shell = new DesktopShell(paths, log, store, socket, launcher, (_, _) => Task.FromResult<ITrayPresenter?>(tray ? presenter : null));
+        var shell = new DesktopShell(paths, log, store, socket, launcher, (_, _) => Task.FromResult<ITrayPresenter?>(tray ? presenter : null),
+            probeHardware: () => new HardwareInfo("Test GPU", 0, 4L * 1024 * 1024 * 1024));
         return (shell, launcher, presenter);
     }
 
@@ -191,8 +193,26 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         shell.ShowSettings(SettingsPageKey.Profiles);
         var model = (SettingsViewModel)SettingsWindow.Open[0].DataContext!;
 
-        Assert.Equal(["General", "Profiles", "Speech providers", "Processors", "System", "History"], model.Pages.Select(p => p.Title));
+        Assert.Equal(["General", "Profiles", "Speech providers", "Processors", "Models", "System", "History"], model.Pages.Select(p => p.Title));
         Assert.IsType<ProfilesPage>(model.Current);
+        CloseSettings();
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
+    [Fact]
+    public Task TheModelsPageGetsTheShellsProbe() => fx.UiAsync(async () =>
+    {
+        var (shell, launcher, _) = Create();
+        shell.Start(Application.Current!, _ => { });
+
+        shell.ShowSettings(SettingsPageKey.Models);
+        var model = (SettingsViewModel)SettingsWindow.Open[0].DataContext!;
+        var page = Assert.IsType<ModelsPage>(model.Current);
+        await page.ProbeAsync();
+
+        Assert.StartsWith("GPU found: Test GPU · 4.0 GB VRAM · ", page.HardwareText);
+        Assert.Equal(3, page.Cards.Count);
         CloseSettings();
         await shell.DisposeAsync();
         await launcher.DisposeAsync();

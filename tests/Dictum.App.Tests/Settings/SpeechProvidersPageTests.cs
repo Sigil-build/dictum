@@ -13,6 +13,7 @@ public sealed class SpeechProvidersPageTests : IDisposable
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-settings", Guid.NewGuid().ToString("N")[..8]);
     private readonly ManualTimers _timers = new();
     private readonly ManualClock _clock = new(DateTimeOffset.UnixEpoch);
+    private readonly List<Option<string>> _choices = [new("ggml-large-v3-turbo-q8_0.bin", "Turbo"), new("ggml-small-q8_0.bin", "Small")];
     private readonly FakeChannel _channel = new();
     private readonly FakeSecrets _secrets = new();
     private readonly ListLog _log = new();
@@ -41,7 +42,7 @@ public sealed class SpeechProvidersPageTests : IDisposable
         session.Load();
         _frames = new FrameHub(_clock);
         var services = new SpeechServices(_channel, _frames, _timers, _secrets,
-            current => [new("ggml-large-v3-turbo-q8_0.bin", "Turbo"), new("ggml-small-q8_0.bin", "Small")],
+            current => [.. _choices],
             model => model != "ggml-silero-v6.2.0.bin",
             wait =>
             {
@@ -378,5 +379,17 @@ public sealed class SpeechProvidersPageTests : IDisposable
         await test;
 
         Assert.Equal("secret:dictum-stt-remote", keyAtTest);
+    }
+
+    // PR 4d: a model downloaded on Settings → Models appears here without a config change.
+    [Fact]
+    public void ShowingThePageListsModelsDownloadedSinceItOpened()
+    {
+        var (page, _) = Open();
+        _choices.Add(new("ggml-medium-q8_0.bin", "Medium"));
+
+        page.OnShown();
+
+        Assert.Contains("Medium", Card(page, "local").Models.Select(m => m.Label));
     }
 }

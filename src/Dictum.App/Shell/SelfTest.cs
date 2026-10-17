@@ -17,6 +17,7 @@ using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Host.Ipc;
+using Dictum.Setup;
 
 namespace Dictum.App.Shell;
 
@@ -152,6 +153,9 @@ public static class SelfTest
                     new UnavailableSecretStore(), _ => [], _ => false, _ => Task.CompletedTask, TimeProvider.System, NullLog.Instance)),
                 new ProcessorsPage(session, new ProcessorsServices(runner, new UnavailableSecretStore(), new PromptFiles(Path.Combine(folder, "prompts")),
                     UiTimers.Instance, NullLog.Instance)),
+                new ModelsPage(session, new ModelsServices(new AppPaths(folder, folder), Catalog.BuiltIn, ModelDownloads.None,
+                    () => Task.FromResult(new HardwareInfo(null, 0)), () => long.MaxValue, 0, 1, new SpeedMeasurements(), offline,
+                    _ => Task.CompletedTask, TimeProvider.System, NullLog.Instance)),
                 new SystemPage(new SystemServices(offline, new StatusViewModel("config.json", "dictum-gui.log", () => { }),
                     () => OverlayAvailability.Row(OverlayHost.Windows, true), () => TrayVisibility.Row(TrayDesktop.Other, true, null, null),
                     UiTimers.Instance, TimeProvider.System, "self-test")),

@@ -13,6 +13,7 @@ public enum SettingsPageKey
     Profiles,
     SpeechProviders,
     Processors,
+    Models,
     System,
     History,
 }
