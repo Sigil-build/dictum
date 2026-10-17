@@ -947,4 +947,7 @@
   <data name="SettingsHistoryReRunResult" xml:space="preserve">
     <value>Re-run result</value>
   </data>
+  <data name="SettingsLlmPromptShared" xml:space="preserve">
+    <value>Also used by: {0}. An edit here changes their prompt too.</value>
+  </data>
 </root>

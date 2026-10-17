@@ -90,6 +90,7 @@ public sealed partial class ProcessorsPage : SettingsPage
     {
         var id = UniqueId(_session.Config, "llm");
         var model = _session.Config.Processors.Values.OfType<LlmProcessorConfig>().FirstOrDefault();
+        var prompt = NewPrompt(id);
         _id = id;
         _session.Edit(c =>
         {
@@ -97,7 +98,7 @@ public sealed partial class ProcessorsPage : SettingsPage
             {
                 BaseUrl = model?.BaseUrl ?? "http://localhost:8080/v1",
                 Model = model?.Model ?? "local",
-                Prompt = "cleanup",
+                Prompt = prompt,
                 ApiKey = model?.ApiKey,
             };
             return c;
@@ -182,6 +183,34 @@ public sealed partial class ProcessorsPage : SettingsPage
         finally
         {
             _loading = false;
+        }
+    }
+
+    /// <summary>
+    /// The new processor's own prompt, started from cleanup's text, so typing in it never rewrites the prompt other
+    /// processors use (final review I2). The name is free in any letter case, since Windows file names ignore it. If
+    /// the file cannot be written, the processor shares cleanup's prompt and the editor says so.
+    /// </summary>
+    private string NewPrompt(string id)
+    {
+        var taken = _services.Prompts.Names()
+            .Concat(_session.Config.Processors.Values.OfType<LlmProcessorConfig>().Select(l => l.Prompt))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var name = id;
+        for (var n = 2; taken.Contains(name); n++)
+        {
+            name = $"{id}-{n}";
+        }
+
+        try
+        {
+            _services.Prompts.Write(name, _services.Prompts.Read("cleanup"));
+            return name;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _services.Log.Warn($"could not write prompts/{name}.md for the new processor; it shares cleanup", ex);
+            return "cleanup";
         }
     }
 

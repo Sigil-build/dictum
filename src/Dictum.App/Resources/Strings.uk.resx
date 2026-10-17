@@ -947,4 +947,7 @@
   <data name="SettingsHistoryReRunResult" xml:space="preserve">
     <value>Результат повторної обробки</value>
   </data>
+  <data name="SettingsLlmPromptShared" xml:space="preserve">
+    <value>Також використовують: {0}. Зміна тут змінює запит і для них.</value>
+  </data>
 </root>

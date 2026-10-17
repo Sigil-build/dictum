@@ -103,6 +103,8 @@
                 <Button Grid.Column="3" Classes="link" Content="{x:Static res:Strings.SettingsLlmRestorePrompt}" Command="{Binding Llm.RestorePromptCommand}" />
               </Grid>
               <TextBlock Text="{Binding Llm.PromptNote}" Classes="hint" />
+              <TextBlock Text="{Binding Llm.PromptShared}" Classes="hint" TextWrapping="Wrap"
+                         IsVisible="{Binding Llm.PromptShared, Converter={x:Static ObjectConverters.IsNotNull}}" />
               <TextBox x:Name="PromptBox" Text="{Binding Llm.PromptText}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="160"
                        FontFamily="{DynamicResource font.family.mono}" AutomationProperties.Name="{x:Static res:Strings.SettingsLlmPrompt}" />
               <TextBlock Text="{Binding Llm.PromptError}" Classes="error" IsVisible="{Binding Llm.PromptError, Converter={x:Static ObjectConverters.IsNotNull}}" />

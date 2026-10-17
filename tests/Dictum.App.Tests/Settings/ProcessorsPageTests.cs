@@ -247,7 +247,7 @@ public sealed class ProcessorsPageTests : IDisposable
         page.AddLlmCommand.Execute(null);
         Assert.Equal("llm", page.Selected?.Id);
         var added = Llm(session, "llm");
-        Assert.Equal(("http://localhost:11434/v1", "qwen2.5:7b", "cleanup"), (added.BaseUrl, added.Model, added.Prompt));
+        Assert.Equal(("http://localhost:11434/v1", "qwen2.5:7b", "llm"), (added.BaseUrl, added.Model, added.Prompt));
 
         page.AddRulesCommand.Execute(null);
         Assert.Equal("rules", page.Selected?.Id);
@@ -328,5 +328,50 @@ public sealed class ProcessorsPageTests : IDisposable
 
         Assert.Null(page.Llm.PreviewText);
         Assert.False(page.Llm.Previewing);
+    }
+
+    // Final review I2.
+    [Fact]
+    public void ANewLlmProcessorGetsItsOwnPrompt()
+    {
+        var (page, _) = Open();
+        var cleanup = _prompts.Read("cleanup");
+
+        page.AddLlmCommand.Execute(null);
+        Assert.Equal(cleanup, _prompts.Read("llm"));
+        Assert.Equal("llm", page.Llm.Prompt);
+        Assert.Null(page.Llm.PromptShared);
+
+        page.Llm.PromptText = "Mine {{text}}";
+        _timers.Fire();
+        Assert.Equal("Mine {{text}}", _prompts.Read("llm"));
+        Assert.False(_prompts.HasFile("cleanup"));
+    }
+
+    // Final review I2 and M1: "LLM.md" is the same file as "llm.md" on Windows.
+    [Fact]
+    public void ANewLlmProcessorNeverTakesAnExistingPromptName()
+    {
+        var (page, session) = Open();
+        _prompts.Write("LLM", "theirs {{text}}");
+
+        page.AddLlmCommand.Execute(null);
+
+        Assert.Equal("llm-2", Llm(session, "llm").Prompt);
+        Assert.Equal("theirs {{text}}", _prompts.Read("LLM"));
+    }
+
+    // Final review I2.
+    [Fact]
+    public void ASharedPromptSaysWhoElseUsesIt()
+    {
+        var (page, session) = Open();
+        session.Edit(c =>
+        {
+            c.Processors["summary"] = Llm(session) with { Prompt = "cleanup" };
+            return c;
+        });
+
+        Assert.Equal(string.Format(Strings.Culture, Strings.SettingsLlmPromptShared, "summary"), page.Llm.PromptShared);
     }
 }

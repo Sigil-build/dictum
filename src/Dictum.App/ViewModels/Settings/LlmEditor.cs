@@ -131,6 +131,10 @@ public sealed partial class LlmEditor : ObservableObject
     [ObservableProperty]
     public partial string? PromptError { get; private set; }
 
+    /// <summary>The other LLM processors that use this prompt, whom an edit here changes too; null when none.</summary>
+    [ObservableProperty]
+    public partial string? PromptShared { get; private set; }
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RestorePromptCommand))]
     public partial bool CanRestorePrompt { get; private set; }
@@ -233,6 +237,13 @@ public sealed partial class LlmEditor : ObservableObject
             }
 
             ShowPromptState(llm.Prompt);
+            var sharers = config.Processors
+                .Where(kv => kv.Key != id && kv.Value is LlmProcessorConfig other && other.Prompt == llm.Prompt)
+                .Select(kv => kv.Key)
+                .ToList();
+            PromptShared = sharers.Count == 0
+                ? null
+                : string.Format(CultureInfo.CurrentCulture, Strings.SettingsLlmPromptShared, string.Join(", ", sharers));
         }
         finally
         {
