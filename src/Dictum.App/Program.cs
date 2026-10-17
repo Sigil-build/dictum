@@ -7,6 +7,7 @@ using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Host.Ipc;
+using Dictum.Platform.Linux.X11;
 
 namespace Dictum.App;
 
@@ -20,6 +21,12 @@ internal static class Program
             // UTF-8, so the Ukrainian lines stay readable in CI logs; a GUI exe has no console code page to follow.
             using var output = new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false)) { AutoFlush = true };
             return SelfTest.Run(output);
+        }
+
+        if (OperatingSystem.IsLinux())
+        {
+            // Spike: Avalonia's X11 backend reported scale 1 where KDE signals the scale through Xft.dpi.
+            DisplayScale.Apply();
         }
 
         var paths = AppPaths.FromEnvironment();
