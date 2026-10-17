@@ -17,7 +17,7 @@ public sealed class ReplaceProcessor : ITextProcessor
     {
         Id = id;
         _log = log;
-        _rules = [.. config.Rules.Select(Compile)];
+        _rules = [.. config.Rules.Select(Compile).OfType<Func<string, string>>()];
     }
 
     public string Id { get; }
@@ -39,8 +39,13 @@ public sealed class ReplaceProcessor : ITextProcessor
         return Task.FromResult(text);
     }
 
-    private static Func<string, string> Compile(ReplaceRule rule)
+    private static Func<string, string>? Compile(ReplaceRule rule)
     {
+        if (rule.Disabled)
+        {
+            return null;
+        }
+
         if (!string.IsNullOrEmpty(rule.Pattern))
         {
             var regex = new Regex(rule.Pattern, RegexOptions.CultureInvariant, RegexTimeout);
@@ -48,7 +53,21 @@ public sealed class ReplaceProcessor : ITextProcessor
         }
 
         var from = rule.From ?? string.Empty;
+        if (from.Length == 0)
+        {
+            return null;
+        }
+
+        if (rule.WholeWord)
+        {
+            // No letter or digit on either side; the replacement is literal, so a "$" stays a dollar sign.
+            var options = RegexOptions.CultureInvariant | (rule.IgnoreCase ? RegexOptions.IgnoreCase : RegexOptions.None);
+            var word = new Regex($@"(?<!\w){Regex.Escape(from)}(?!\w)", options, RegexTimeout);
+            var to = rule.To.Replace("$", "$$", StringComparison.Ordinal);
+            return text => word.Replace(text, to);
+        }
+
         var comparison = rule.IgnoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        return text => from.Length == 0 ? text : text.Replace(from, rule.To, comparison);
+        return text => text.Replace(from, rule.To, comparison);
     }
 }

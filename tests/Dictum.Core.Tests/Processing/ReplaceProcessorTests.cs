@@ -42,4 +42,49 @@ public class ReplaceProcessorTests
 
         Assert.Equal("api API 50%", result);
     }
+
+    // Review focus 4.
+    [Fact]
+    public async Task WholeWordLeavesLongerWordsAlone()
+    {
+        var processor = new ReplaceProcessor("r", new ReplaceProcessorConfig
+        {
+            Rules =
+            [
+                new ReplaceRule { From = "мейн", To = "main", WholeWord = true },
+                new ReplaceRule { From = "api", To = "API", WholeWord = true, IgnoreCase = false },
+            ],
+        }, NullLog.Instance);
+
+        var result = await processor.ProcessAsync("Мейн, мейнфрейм і api, Api, rapid", Context, TestContext.Current.CancellationToken);
+
+        Assert.Equal("main, мейнфрейм і API, Api, rapid", result);
+    }
+
+    // Review focus 4.
+    [Fact]
+    public async Task ADollarInTheReplacementStaysLiteral()
+    {
+        var processor = new ReplaceProcessor("r", new ReplaceProcessorConfig
+        {
+            Rules = [new ReplaceRule { From = "п'ять доларів", To = "$5", WholeWord = true }],
+        }, NullLog.Instance);
+
+        Assert.Equal("ціна $5", await processor.ProcessAsync("ціна п'ять доларів", Context, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task DisabledRulesAreSkipped()
+    {
+        var processor = new ReplaceProcessor("r", new ReplaceProcessorConfig
+        {
+            Rules =
+            [
+                new ReplaceRule { From = "кубер", To = "Kubernetes", Disabled = true },
+                new ReplaceRule { Pattern = "дот нет", To = ".NET", Disabled = true },
+            ],
+        }, NullLog.Instance);
+
+        Assert.Equal("кубер і дот нет", await processor.ProcessAsync("кубер і дот нет", Context, TestContext.Current.CancellationToken));
+    }
 }

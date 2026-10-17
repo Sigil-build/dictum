@@ -84,6 +84,14 @@ public sealed record ReplaceRule
 
     /// <summary>Applies to literal rules; regex rules use inline flags such as <c>(?i)</c>.</summary>
     public bool IgnoreCase { get; set; } = true;
+
+    /// <summary>A literal rule matches whole words only: "мейн" leaves "мейнфрейм" alone. Regex rules write their own boundaries.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool WholeWord { get; set; }
+
+    /// <summary>The rule stays in the list but is not applied (the Settings table's "On" column, off).</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Disabled { get; set; }
 }
 
 public enum LlmErrorMode
