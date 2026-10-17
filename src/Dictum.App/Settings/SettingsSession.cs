@@ -41,6 +41,9 @@ public sealed class SettingsSession(ConfigStore store, ITimers timers, ILog log)
 
     public bool CanEdit => Problem is null;
 
+    /// <summary>The copy has validator errors, so nothing is saved until they are fixed. An invalid file is <see cref="Problem"/> instead.</summary>
+    public bool HasErrors => CanEdit && Issues.Any(i => i.Severity == ConfigIssueSeverity.Error);
+
     /// <summary>The copy, its issues, the problem or the save error changed.</summary>
     public event Action? Changed;
 
@@ -89,7 +92,7 @@ public sealed class SettingsSession(ConfigStore store, ITimers timers, ILog log)
         if (!Issues.Any(i => i.Severity == ConfigIssueSeverity.Error) && ConfigStore.Serialize(next) != _known)
         {
             _toSave = next;
-            _pending = timers.Once(SaveDelay, Save);
+            _pending = timers.Once(SaveDelay, () => Save());
         }
 
         Changed?.Invoke();
@@ -98,17 +101,17 @@ public sealed class SettingsSession(ConfigStore store, ITimers timers, ILog log)
     /// <summary>The first issue at exactly this config path, such as "general.historySize".</summary>
     public string? IssueAt(string path) => Issues.FirstOrDefault(i => i.Path == path)?.Message;
 
-    /// <summary>Saves a pending edit now: the window is closing.</summary>
-    public void Flush()
+    /// <summary>Saves a pending edit now (the window is closing, or a provider is about to be tested); true when the file was written.</summary>
+    public bool Flush()
     {
         if (_pending is null)
         {
-            return;
+            return false;
         }
 
         _pending.Dispose();
         _pending = null;
-        Save();
+        return Save();
     }
 
     /// <summary>The config watcher read a valid file.</summary>
@@ -137,12 +140,12 @@ public sealed class SettingsSession(ConfigStore store, ITimers timers, ILog log)
         Changed?.Invoke();
     }
 
-    private void Save()
+    private bool Save()
     {
         _pending = null;
         if (_toSave is not { } config)
         {
-            return;
+            return false;
         }
 
         _toSave = null;
@@ -164,6 +167,8 @@ public sealed class SettingsSession(ConfigStore store, ITimers timers, ILog log)
         {
             Changed?.Invoke();
         }
+
+        return SaveError is null;
     }
 
     private void Know(DictumConfig config)

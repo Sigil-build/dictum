@@ -506,4 +506,7 @@
   <data name="SettingsHistoryCopyFailed" xml:space="preserve">
     <value>The text could not be copied: {0}</value>
   </data>
+  <data name="SettingsNotSaved" xml:space="preserve">
+    <value>Changes are not saved until the fields marked in red are fixed.</value>
+  </data>
 </root>

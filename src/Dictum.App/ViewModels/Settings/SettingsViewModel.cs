@@ -34,8 +34,8 @@ public sealed partial class SettingsViewModel : ViewModelBase
         }
 
         Version = string.Format(CultureInfo.CurrentCulture, Strings.SettingsVersion, AppVersion());
-        Banner = session.Problem ?? session.SaveError;
-        session.Changed += () => Banner = session.Problem ?? session.SaveError;
+        Banner = BannerFor(session);
+        session.Changed += () => Banner = BannerFor(session);
     }
 
     /// <summary>The config the pages edit; the shell gives it the config watcher's reports.</summary>
@@ -110,6 +110,9 @@ public sealed partial class SettingsViewModel : ViewModelBase
         };
         page.BackRequested += () => Show(Selected);
     }
+
+    private static string? BannerFor(SettingsSession session) =>
+        session.Problem ?? session.SaveError ?? (session.HasErrors ? Strings.SettingsNotSaved : null);
 
     private static string AppVersion() =>
         (typeof(SettingsViewModel).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "?").Split('+')[0];

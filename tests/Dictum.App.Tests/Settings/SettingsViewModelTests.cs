@@ -1,4 +1,5 @@
 using Dictum.App.Daemon;
+using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.App.ViewModels.Settings;
 using Dictum.Core.Configuration;
@@ -185,5 +186,18 @@ public sealed class SettingsViewModelTests : IDisposable
         public DaemonLink? Last { get; private set; }
 
         public override void OnLink(DaemonLink link) => Last = link;
+    }
+
+    // Review focus 3.
+    [Fact]
+    public void UnsavedErrorsShowTheBanner()
+    {
+        var (model, _, _, session, _) = Create();
+
+        session.Edit(c => c with { General = c.General with { HistorySize = -1 } });
+        Assert.Equal(Strings.SettingsNotSaved, model.Banner);
+
+        session.Edit(c => c with { General = c.General with { HistorySize = 5 } });
+        Assert.Null(model.Banner);
     }
 }

@@ -294,4 +294,38 @@ public sealed class SettingsSessionTests : IDisposable
         Assert.True(session.CanEdit);
         Assert.Null(session.Problem);
     }
+
+    [Fact]
+    public void FlushSaysWhetherItWrote()
+    {
+        var session = Open(HistoryOf(100));
+        Assert.False(session.Flush());
+
+        session.Edit(SetHistory(300));
+        Assert.True(session.Flush());
+        Assert.False(session.Flush());
+    }
+
+    [Fact]
+    public void HasErrorsFollowsTheCopy()
+    {
+        var session = Open(HistoryOf(100));
+        Assert.False(session.HasErrors);
+
+        session.Edit(SetHistory(-1));
+        Assert.True(session.HasErrors);
+
+        session.Edit(SetHistory(5));
+        Assert.False(session.HasErrors);
+    }
+
+    [Fact]
+    public void AnInvalidFileIsAProblemNotAnUnsavedError()
+    {
+        var session = Open(HistoryOf(100));
+
+        session.OnFileInvalid(new ConfigException("Config is invalid: broken", [new ConfigIssue(ConfigIssueSeverity.Error, "general.historySize", "must be zero or positive")]));
+
+        Assert.False(session.HasErrors);
+    }
 }
