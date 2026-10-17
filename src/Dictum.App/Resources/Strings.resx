@@ -347,4 +347,49 @@
   <data name="SettingsOverlayPreview" xml:space="preserve">
     <value>Preview</value>
   </data>
+  <data name="SettingsTrayName" xml:space="preserve">
+    <value>Tray icon</value>
+  </data>
+  <data name="SettingsTrayShown" xml:space="preserve">
+    <value>Always visible</value>
+  </data>
+  <data name="SettingsTrayInTray" xml:space="preserve">
+    <value>In the tray</value>
+  </data>
+  <data name="SettingsTrayHidden" xml:space="preserve">
+    <value>Hidden in the overflow area</value>
+  </data>
+  <data name="SettingsTrayHiddenWindows" xml:space="preserve">
+    <value>The recording state is only visible while the icon is pinned. Taskbar settings → Other system tray icons → Dictum: On.</value>
+  </data>
+  <data name="SettingsTrayHiddenKde" xml:space="preserve">
+    <value>The recording state is only visible while the icon is shown. System Tray settings → Entries → Dictum: Shown.</value>
+  </data>
+  <data name="SettingsTrayNoHost" xml:space="preserve">
+    <value>No tray on this desktop</value>
+  </data>
+  <data name="SettingsTrayOpen" xml:space="preserve">
+    <value>Open tray settings</value>
+  </data>
+  <data name="SettingsOverlayRowReady" xml:space="preserve">
+    <value>Shows while you dictate</value>
+  </data>
+  <data name="SettingsOverlayRowReadyDetail" xml:space="preserve">
+    <value>It appears at the bottom or top of the screen with the pointer, lets clicks through and never takes the keyboard focus.</value>
+  </data>
+  <data name="SettingsOverlayRowOff" xml:space="preserve">
+    <value>Turned off</value>
+  </data>
+  <data name="SettingsOverlayRowOffDetail" xml:space="preserve">
+    <value>Turn it on in General → Listening overlay.</value>
+  </data>
+  <data name="SettingsOverlayRowNoX" xml:space="preserve">
+    <value>Needs XWayland</value>
+  </data>
+  <data name="SettingsOverlayRowNoXDetail" xml:space="preserve">
+    <value>The overlay is an X11 window, and this Wayland session runs without XWayland. The tray icon still shows the recording state.</value>
+  </data>
+  <data name="SettingsOverlayRowUnsupported" xml:space="preserve">
+    <value>Not available on this system yet</value>
+  </data>
 </root>

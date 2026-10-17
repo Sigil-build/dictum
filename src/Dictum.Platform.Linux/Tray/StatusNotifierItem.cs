@@ -243,7 +243,7 @@ public sealed class StatusNotifierItem(DBusConnection connection, string menuPat
         switch (name)
         {
             case "Category": writer.WriteVariantString("ApplicationStatus"); break;
-            case "Id": writer.WriteVariantString("dictum"); break; // stable: Plasma keys per-item visibility on it
+            case "Id": writer.WriteVariantString(PlasmaTray.ItemId); break; // stable: Plasma keys per-item visibility on it
             case "Title": writer.WriteVariantString(state.Title); break;
             case "Status": writer.WriteVariantString(state.Status); break;
             case "WindowId": writer.WriteVariantInt32(0); break;

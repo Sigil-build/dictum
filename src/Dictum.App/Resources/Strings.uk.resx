@@ -347,4 +347,49 @@
   <data name="SettingsOverlayPreview" xml:space="preserve">
     <value>Попередній перегляд</value>
   </data>
+  <data name="SettingsTrayName" xml:space="preserve">
+    <value>Значок у треї</value>
+  </data>
+  <data name="SettingsTrayShown" xml:space="preserve">
+    <value>Завжди видно</value>
+  </data>
+  <data name="SettingsTrayInTray" xml:space="preserve">
+    <value>У треї</value>
+  </data>
+  <data name="SettingsTrayHidden" xml:space="preserve">
+    <value>Сховано серед прихованих значків</value>
+  </data>
+  <data name="SettingsTrayHiddenWindows" xml:space="preserve">
+    <value>Стан запису видно, лише коли значок закріплено. Параметри панелі завдань → Інші значки в системному треї → Dictum: Увімк.</value>
+  </data>
+  <data name="SettingsTrayHiddenKde" xml:space="preserve">
+    <value>Стан запису видно, лише коли значок показано. Параметри системного лотка → Записи → Dictum: Показано.</value>
+  </data>
+  <data name="SettingsTrayNoHost" xml:space="preserve">
+    <value>На цьому робочому столі немає трею</value>
+  </data>
+  <data name="SettingsTrayOpen" xml:space="preserve">
+    <value>Відкрити параметри трею</value>
+  </data>
+  <data name="SettingsOverlayRowReady" xml:space="preserve">
+    <value>З'являється під час диктування</value>
+  </data>
+  <data name="SettingsOverlayRowReadyDetail" xml:space="preserve">
+    <value>Він з'являється внизу або вгорі екрана, де вказівник, пропускає клацання і не забирає фокус клавіатури.</value>
+  </data>
+  <data name="SettingsOverlayRowOff" xml:space="preserve">
+    <value>Вимкнено</value>
+  </data>
+  <data name="SettingsOverlayRowOffDetail" xml:space="preserve">
+    <value>Увімкніть його в розділі «Загальні» → «Індикатор диктування».</value>
+  </data>
+  <data name="SettingsOverlayRowNoX" xml:space="preserve">
+    <value>Потрібен XWayland</value>
+  </data>
+  <data name="SettingsOverlayRowNoXDetail" xml:space="preserve">
+    <value>Індикатор — це вікно X11, а цей сеанс Wayland працює без XWayland. Стан запису й далі видно на значку в треї.</value>
+  </data>
+  <data name="SettingsOverlayRowUnsupported" xml:space="preserve">
+    <value>На цій системі поки недоступний</value>
+  </data>
 </root>
