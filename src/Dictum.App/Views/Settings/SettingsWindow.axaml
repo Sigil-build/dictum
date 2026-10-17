@@ -1,0 +1,73 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Dictum.App.ViewModels.Settings"
+        xmlns:res="using:Dictum.App.Resources"
+        x:Class="Dictum.App.Views.Settings.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Title="{x:Static res:Strings.SettingsWindowTitle}"
+        Width="960" Height="640" MinWidth="800" MinHeight="560"
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True" ExtendClientAreaTitleBarHeightHint="40"
+        Background="{DynamicResource color.bg.base}">
+  <Window.Styles>
+    <Style Selector="ListBox.rail">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+    </Style>
+    <Style Selector="ListBox.rail ListBoxItem">
+      <Setter Property="MinHeight" Value="36" />
+      <Setter Property="Padding" Value="12,0" />
+      <Setter Property="Margin" Value="0,0,0,2" />
+      <Setter Property="CornerRadius" Value="{DynamicResource radius.control}" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+    </Style>
+    <Style Selector="ListBox.rail ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource color.bg.controlHover}" />
+    </Style>
+    <Style Selector="ListBox.rail ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource color.bg.navSelected}" />
+      <Setter Property="Foreground" Value="{DynamicResource color.text.primary}" />
+    </Style>
+  </Window.Styles>
+  <Grid RowDefinitions="Auto,*" ColumnDefinitions="200,*">
+    <!-- The custom title bar: only where the window really extends into its decorations (Windows; research §3). -->
+    <Border Grid.ColumnSpan="2" Height="40" Background="Transparent"
+            IsVisible="{Binding $parent[Window].IsExtendedIntoWindowDecorations}"
+            WindowDecorationProperties.ElementRole="TitleBar">
+      <StackPanel Orientation="Horizontal" Spacing="10" Margin="14,0,0,0">
+        <Viewbox Width="18" Height="18" VerticalAlignment="Center">
+          <Canvas Width="32" Height="32">
+            <Ellipse Canvas.Left="3" Canvas.Top="3" Width="26" Height="26" StrokeThickness="3" Stroke="{DynamicResource color.tray.brand}" />
+            <Path Data="M7 16 C 10 16 10.5 9 13 9 C 15.5 9 16.5 23 19 23 C 21.5 23 22 16 25 16"
+                  StrokeThickness="3" StrokeLineCap="Round" Stroke="{DynamicResource color.tray.brand}" />
+          </Canvas>
+        </Viewbox>
+        <TextBlock Text="Dictum" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource color.text.primary}" />
+      </StackPanel>
+    </Border>
+    <DockPanel Grid.Row="1" Margin="8,4,8,12">
+      <TextBlock DockPanel.Dock="Bottom" Text="{Binding Version}" Margin="12,0" FontSize="11"
+                 Foreground="{DynamicResource color.text.secondary}" />
+      <ListBox Classes="rail" ItemsSource="{Binding Pages}" SelectedItem="{Binding Selected}"
+               AutomationProperties.Name="{x:Static res:Strings.SettingsSections}">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:SettingsPage">
+            <Panel>
+              <Border Width="3" Height="16" CornerRadius="2" Margin="-12,0,0,0" HorizontalAlignment="Left"
+                      Background="{DynamicResource color.accent}" IsVisible="{Binding $parent[ListBoxItem].IsSelected}" />
+              <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+            </Panel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </DockPanel>
+    <DockPanel Grid.Row="1" Grid.Column="1">
+      <!-- Read-only pages or a failed save; the Banner style comes with Task 3. -->
+      <Border DockPanel.Dock="Top" Classes="banner" Margin="16,4,32,8"
+              IsVisible="{Binding Banner, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <TextBlock Text="{Binding Banner}" TextWrapping="Wrap" />
+      </Border>
+      <TransitioningContentControl x:Name="PageHost" Content="{Binding Current}" />
+    </DockPanel>
+  </Grid>
+</Window>

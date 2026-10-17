@@ -194,4 +194,13 @@
   <data name="SettingsSaveFailed" xml:space="preserve">
     <value>Зміни не збережено: {0}</value>
   </data>
+  <data name="SettingsWindowTitle" xml:space="preserve">
+    <value>Налаштування Dictum</value>
+  </data>
+  <data name="SettingsSections" xml:space="preserve">
+    <value>Розділи налаштувань</value>
+  </data>
+  <data name="SettingsVersion" xml:space="preserve">
+    <value>Dictum {0}</value>
+  </data>
 </root>
