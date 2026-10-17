@@ -74,4 +74,26 @@ public sealed class ProcessorsViewTests(AvaloniaFixture fx) : IDisposable
         Assert.Equal("мейн", FindBoxes(window)[1].Text);
         window.Close();
     });
+
+
+    // Final review C1: real typing sends one key per event; the box must keep focus as the blank row becomes a rule.
+    [Fact]
+    public Task TypingOneKeyAtATimeInTheBlankRowKeepsFocus() => fx.Ui(() =>
+    {
+        var (window, page, session) = Show();
+        page.Selected = page.Processors.Single(p => p.Id == "terms");
+        Dispatcher.UIThread.RunJobs();
+        var blank = FindBoxes(window)[^1];
+        blank.Focus();
+
+        foreach (var key in new[] { "м", "е", "й", "н" })
+        {
+            window.KeyTextInput(key);
+            Dispatcher.UIThread.RunJobs();
+            Assert.Same(blank, TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement());
+        }
+
+        Assert.Equal(["кубер", "мейн"], ((ReplaceProcessorConfig)session.Config.Processors["terms"]).Rules.Select(r => r.From));
+        window.Close();
+    });
 }

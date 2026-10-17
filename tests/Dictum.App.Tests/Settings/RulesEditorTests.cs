@@ -146,4 +146,19 @@ public sealed class RulesEditorTests : IDisposable
         Assert.Equal(["кубер", "дот нет"], Rules(session).Select(r => r.From));
         Assert.Equal("Rules imported: 1. Skipped: Line 2: nothing to find.", editor.ImportNote);
     }
+
+
+    // Final review M2: Regex ticked on an empty Find must stay ticked, or the pattern is saved as plain text.
+    [Fact]
+    public void RegexTickedOnAnEmptyFindSticks()
+    {
+        var (editor, session) = Open();
+        editor.Rows[0].Find = "";
+
+        editor.Rows[0].IsRegex = true;
+        editor.Rows[0].Find = "a+";
+
+        Assert.Equal(((string?)null, "a+"), (Rules(session)[0].From, Rules(session)[0].Pattern));
+        Assert.True(editor.Rows[0].IsRegex);
+    }
 }

@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -50,7 +51,10 @@ public sealed partial class RuleRow(RulesEditor editor) : ObservableObject
         _loading = true;
         Index = index;
         IsDraft = false;
-        IsRegex = !string.IsNullOrEmpty(rule.Pattern);
+
+        // A rule with nothing to find keeps the Regex box as ticked: a reset here, inside the box's own binding write,
+        // never reaches the box, and the pattern typed next would be saved as plain text (final review M2).
+        IsRegex = !string.IsNullOrEmpty(rule.Pattern) || (string.IsNullOrEmpty(rule.From) && IsRegex);
         Find = (IsRegex ? rule.Pattern : rule.From) ?? "";
         Replace = rule.To;
         MatchCase = !rule.IgnoreCase;
@@ -133,15 +137,15 @@ public sealed partial class RuleRow(RulesEditor editor) : ObservableObject
 
 /// <summary>
 /// The replace-rules table of the Processors page (spec 7). Edits go through the session by position within the
-/// processor. Rows are kept and reloaded in place, so the cell being typed in keeps its focus.
+/// processor. Rows are kept and reloaded in place, and the collection itself changes slot by slot, so the cell being
+/// typed in keeps its control and its focus when the blank row becomes a rule (final review C1).
 /// </summary>
 public sealed partial class RulesEditor(SettingsSession session) : ObservableObject
 {
     private string? _id;
     private List<RuleRow> _rows = [];
 
-    [ObservableProperty]
-    public partial IReadOnlyList<RuleRow> Rows { get; private set; } = [];
+    public ObservableCollection<RuleRow> Rows { get; } = [];
 
     [ObservableProperty]
     public partial string? ImportNote { get; private set; }
@@ -157,6 +161,7 @@ public sealed partial class RulesEditor(SettingsSession session) : ObservableObj
         {
             _id = id;
             _rows = [];
+            Rows.Clear();
             ImportNote = null;
         }
 
@@ -173,9 +178,21 @@ public sealed partial class RulesEditor(SettingsSession session) : ObservableObj
         draft.LoadDraft(replace.Rules.Count);
         rows.Add(draft);
         _rows = rows;
-        if (!rows.SequenceEqual(Rows))
+        for (var i = 0; i < rows.Count; i++)
         {
-            Rows = rows;
+            if (i == Rows.Count)
+            {
+                Rows.Add(rows[i]);
+            }
+            else if (!ReferenceEquals(Rows[i], rows[i]))
+            {
+                Rows[i] = rows[i];
+            }
+        }
+
+        while (Rows.Count > rows.Count)
+        {
+            Rows.RemoveAt(Rows.Count - 1);
         }
     }
 
