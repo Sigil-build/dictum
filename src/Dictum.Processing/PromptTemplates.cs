@@ -15,7 +15,7 @@ public sealed partial class PromptTemplates(string userDirectory)
 {
     private const string ResourcePrefix = "Dictum.Processing.Prompts.";
 
-    private readonly ConcurrentDictionary<string, string> _cache = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, (Stamp? Stamp, string Text)> _cache = new(StringComparer.Ordinal);
 
     public static IReadOnlyList<string> BuiltIn { get; } =
         [.. typeof(PromptTemplates).Assembly.GetManifestResourceNames()
@@ -23,7 +23,24 @@ public sealed partial class PromptTemplates(string userDirectory)
             .Select(n => n[ResourcePrefix.Length..^".md".Length])
             .Order(StringComparer.Ordinal)];
 
-    public string Load(string name) => _cache.GetOrAdd(name, LoadUncached);
+    /// <summary>
+    /// The template by name. A user file is read again when its time or size changes, so an edit made in Settings or by
+    /// hand reaches the next dictation without a config reload; the daemon keeps one instance per engine (final review
+    /// C2). The cost is one file stat per load.
+    /// </summary>
+    public string Load(string name)
+    {
+        var userFile = UserFile(name);
+        var stamp = StampOf(userFile);
+        if (_cache.TryGetValue(name, out var cached) && cached.Stamp == stamp)
+        {
+            return cached.Text;
+        }
+
+        var text = stamp is null ? LoadBuiltIn(name, userFile) : File.ReadAllText(userFile);
+        _cache[name] = (stamp, text);
+        return text;
+    }
 
     /// <summary>Fills placeholders in one pass, so placeholders inside the dictated text stay as they are.</summary>
     public string Render(string name, string text, ProcessingContext context) =>
@@ -69,19 +86,24 @@ public sealed partial class PromptTemplates(string userDirectory)
         }
     }
 
-    private string LoadUncached(string name)
+    private string UserFile(string name)
     {
         if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || name.Contains("..", StringComparison.Ordinal))
         {
             throw new ConfigException($"Invalid prompt name '{name}'.");
         }
 
-        var userFile = Path.Combine(userDirectory, name + ".md");
-        if (File.Exists(userFile))
-        {
-            return File.ReadAllText(userFile);
-        }
+        return Path.Combine(userDirectory, name + ".md");
+    }
 
+    private static Stamp? StampOf(string path)
+    {
+        var info = new FileInfo(path);
+        return info.Exists ? new Stamp(info.LastWriteTimeUtc, info.Length) : null;
+    }
+
+    private static string LoadBuiltIn(string name, string userFile)
+    {
         using var stream = typeof(PromptTemplates).Assembly.GetManifestResourceStream(ResourcePrefix + name + ".md");
         if (stream is null)
         {
@@ -92,4 +114,6 @@ public sealed partial class PromptTemplates(string userDirectory)
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd();
     }
+
+    private readonly record struct Stamp(DateTime Written, long Length);
 }
