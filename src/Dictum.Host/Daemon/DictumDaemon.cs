@@ -517,7 +517,8 @@ public sealed class DictumDaemon : IAsyncDisposable
             var language = engine.Config.Profiles.FirstOrDefault(p => p.Stt == id)?.Language;
             var watch = Stopwatch.StartNew();
             var transcript = await stt.TranscribeAsync(clip, SttRequest.ForSetting(language, null) ?? new SttRequest(null, null), ct).ConfigureAwait(false);
-            return new SttTestResult(transcript.Text.Trim(), transcript.Language, watch.ElapsedMilliseconds, transcript.Backend, transcript.Model);
+            return new SttTestResult(transcript.Text.Trim(), transcript.Language, watch.ElapsedMilliseconds, transcript.Backend, transcript.Model,
+                clip.Duration.TotalSeconds);
         }
         finally
         {

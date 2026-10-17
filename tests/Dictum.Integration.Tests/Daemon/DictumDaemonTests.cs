@@ -705,4 +705,16 @@ public class DictumDaemonTests
             await Task.Delay(10, _ct);
         }
     }
+
+    // PR 4d: "Measure" on Settings → Models divides the latency by the length of what was transcribed.
+    [Fact]
+    public async Task TestSttReportsHowLongTheAudioWas()
+    {
+        await using var daemon = await StartAsync(Config());
+
+        var response = await daemon.HandleAsync(new IpcRequest("test-stt", Stt: "s", Sample: true), _ct);
+
+        Assert.True(response.Ok, response.Error);
+        Assert.InRange(response.Test!.AudioSeconds.GetValueOrDefault(), 6.8, 7.0);
+    }
 }

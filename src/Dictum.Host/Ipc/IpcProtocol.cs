@@ -56,7 +56,8 @@ public sealed record DaemonStatus(
 /// <param name="Registered">The hotkey backend accepted the binding.</param>
 public sealed record ProfileStatus(string Id, string? Hotkey, string Mode, bool Registered);
 
-public sealed record SttTestResult(string Text, string? Language, long LatencyMs, string? Backend, string? Model);
+/// <param name="AudioSeconds">How long the transcribed audio was; Settings → Models divides the latency by it ("Measure").</param>
+public sealed record SttTestResult(string Text, string? Language, long LatencyMs, string? Backend, string? Model, double? AudioSeconds = null);
 
 public static class DictationOutcome
 {
