@@ -509,4 +509,16 @@
   <data name="SettingsNotSaved" xml:space="preserve">
     <value>Changes are not saved until the fields marked in red are fixed.</value>
   </data>
+  <data name="SettingsHotkeyListening" xml:space="preserve">
+    <value>Listening for keys… Esc cancels, Backspace removes the hotkey</value>
+  </data>
+  <data name="SettingsHotkeyNone" xml:space="preserve">
+    <value>No hotkey</value>
+  </data>
+  <data name="SettingsHotkeyAccessible" xml:space="preserve">
+    <value>Hotkey: {0}. Press to change</value>
+  </data>
+  <data name="SettingsHotkeyAccessibleNone" xml:space="preserve">
+    <value>No hotkey. Press to set one</value>
+  </data>
 </root>

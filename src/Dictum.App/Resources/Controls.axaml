@@ -115,4 +115,32 @@
     <Setter Property="Foreground" Value="{DynamicResource color.status.warn.fg}" />
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
+  <!-- Hotkey recorder (design §4.13): keycaps; dashed accent while listening. -->
+  <Style Selector="Button.hotkey">
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Button.hotkey:recording /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="BorderBrush" Value="{DynamicResource color.accent}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="Foreground" Value="{DynamicResource color.accent}" />
+  </Style>
+  <Style Selector="Ellipse.recordingDot">
+    <Setter Property="Fill" Value="{DynamicResource color.accent}" />
+  </Style>
+  <Style Selector="Border.keycap">
+    <Setter Property="Padding" Value="8,2" />
+    <Setter Property="CornerRadius" Value="{DynamicResource radius.control}" />
+    <Setter Property="Background" Value="{DynamicResource color.bg.layer}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource color.border.strong}" />
+    <Setter Property="BorderThickness" Value="1,1,1,2" />
+  </Style>
+  <Style Selector="Border.keycap > TextBlock">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource color.text.primary}" />
+  </Style>
+  <Style Selector="TextBlock.keycapPlus">
+    <Setter Property="Foreground" Value="{DynamicResource color.text.secondary}" />
+  </Style>
 </Styles>

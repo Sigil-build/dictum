@@ -509,4 +509,16 @@
   <data name="SettingsNotSaved" xml:space="preserve">
     <value>Зміни не збережено, доки не виправлено поля, позначені червоним.</value>
   </data>
+  <data name="SettingsHotkeyListening" xml:space="preserve">
+    <value>Слухаю клавіші… Esc — скасувати, Backspace — прибрати гарячу клавішу</value>
+  </data>
+  <data name="SettingsHotkeyNone" xml:space="preserve">
+    <value>Без гарячої клавіші</value>
+  </data>
+  <data name="SettingsHotkeyAccessible" xml:space="preserve">
+    <value>Гаряча клавіша: {0}. Натисніть, щоб змінити</value>
+  </data>
+  <data name="SettingsHotkeyAccessibleNone" xml:space="preserve">
+    <value>Гарячої клавіші немає. Натисніть, щоб задати</value>
+  </data>
 </root>
