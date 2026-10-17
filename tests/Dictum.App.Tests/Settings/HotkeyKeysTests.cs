@@ -53,4 +53,26 @@ public sealed class HotkeyKeysTests
         Assert.Equal("Ctrl + Alt + Space", HotkeyKeys.Spoken("Ctrl+Alt+Space"));
         Assert.Equal("", HotkeyKeys.Spoken(null));
     }
+
+
+    // Final review I3: the daemon swallows its hotkey in every app, so a key that types needs Ctrl, Alt or Win.
+    [Theory]
+    [InlineData(PhysicalKey.Enter, KeyModifiers.None)]
+    [InlineData(PhysicalKey.Tab, KeyModifiers.None)]
+    [InlineData(PhysicalKey.Space, KeyModifiers.None)]
+    [InlineData(PhysicalKey.A, KeyModifiers.None)]
+    [InlineData(PhysicalKey.A, KeyModifiers.Shift)]
+    [InlineData(PhysicalKey.Digit1, KeyModifiers.Shift)]
+    [InlineData(PhysicalKey.F5, KeyModifiers.None)]
+    public void KeysThatTypeNeedCtrlAltOrWin(PhysicalKey key, KeyModifiers modifiers) => Assert.Null(HotkeyKeys.Chord(key, modifiers));
+
+    [Theory]
+    [InlineData(PhysicalKey.F13, KeyModifiers.None, "F13")]
+    [InlineData(PhysicalKey.F24, KeyModifiers.Shift, "Shift+F24")]
+    [InlineData(PhysicalKey.Pause, KeyModifiers.None, "Pause")]
+    [InlineData(PhysicalKey.ScrollLock, KeyModifiers.None, "ScrollLock")]
+    [InlineData(PhysicalKey.A, KeyModifiers.Alt | KeyModifiers.Shift, "Alt+Shift+A")]
+    [InlineData(PhysicalKey.Enter, KeyModifiers.Meta, "Meta+Enter")]
+    public void KeysNothingTypesOrWithCtrlAltWinAreChords(PhysicalKey key, KeyModifiers modifiers, string hotkey) =>
+        Assert.Equal(hotkey, HotkeyKeys.Chord(key, modifiers)?.ToString());
 }

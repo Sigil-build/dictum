@@ -97,4 +97,48 @@ public class HotkeyRecorderTests(AvaloniaFixture fx)
         Assert.Equal("Hotkey: Ctrl + Alt + Space. Press to change", AutomationProperties.GetName(recorder));
         window.Close();
     });
+
+
+    // Final review I2: Space's key-up used to click the button and start listening again.
+    [Fact]
+    public Task ReleasingTheChordDoesNotStartListeningAgain() => fx.Ui(() =>
+    {
+        var (window, recorder, _) = Show(null);
+
+        window.KeyPress(Key.Space, RawInputModifiers.Control | RawInputModifiers.Alt, PhysicalKey.Space, " ");
+        window.KeyRelease(Key.Space, RawInputModifiers.Control | RawInputModifiers.Alt, PhysicalKey.Space, " ");
+        window.KeyRelease(Key.LeftAlt, RawInputModifiers.Control, PhysicalKey.AltLeft, null);
+        window.KeyRelease(Key.LeftCtrl, RawInputModifiers.None, PhysicalKey.ControlLeft, null);
+
+        Assert.Equal("Ctrl+Alt+Space", recorder.Hotkey);
+        Assert.False(recorder.IsRecording);
+        window.Close();
+    });
+
+    // Final review I3: a bare Enter or a letter keeps listening instead of becoming a hotkey.
+    [Fact]
+    public Task KeysThatTypeKeepListening() => fx.Ui(() =>
+    {
+        var (window, recorder, _) = Show(null);
+
+        window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, "\r");
+        window.KeyPress(Key.A, RawInputModifiers.Shift, PhysicalKey.A, "A");
+
+        Assert.True(recorder.IsRecording);
+        Assert.Null(recorder.Hotkey);
+        window.Close();
+    });
+
+    // Final review I3: Tab stops listening and moves on, as it does everywhere else.
+    [Fact]
+    public Task TabStopsListening() => fx.Ui(() =>
+    {
+        var (window, recorder, _) = Show();
+
+        window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+
+        Assert.False(recorder.IsRecording);
+        Assert.Equal("Ctrl+Alt+Space", recorder.Hotkey);
+        window.Close();
+    });
 }

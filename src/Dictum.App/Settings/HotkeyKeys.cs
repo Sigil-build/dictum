@@ -56,9 +56,25 @@ public static class HotkeyKeys
         | (modifiers.HasFlag(KeyModifiers.Shift) ? HotkeyModifiers.Shift : HotkeyModifiers.None)
         | (modifiers.HasFlag(KeyModifiers.Meta) ? HotkeyModifiers.Meta : HotkeyModifiers.None);
 
-    /// <summary>The hotkey a key press makes; null for a modifier alone or a key Dictum cannot bind.</summary>
-    public static Hotkey? Chord(PhysicalKey key, KeyModifiers modifiers) =>
-        IsModifier(key) || Key(key) is not { } hotkeyKey ? null : new Hotkey(Modifiers(modifiers), hotkeyKey);
+    /// <summary>
+    /// The hotkey a key press makes; null for a modifier alone, a key Dictum cannot bind, or a key that types something
+    /// without Ctrl, Alt or Win. The daemon swallows its hotkey in every app, so a bare Enter or Shift+A would stop
+    /// working everywhere (final review I3). F13–F24, Pause and Scroll Lock type nothing and may stand alone.
+    /// </summary>
+    public static Hotkey? Chord(PhysicalKey key, KeyModifiers modifiers)
+    {
+        if (IsModifier(key) || Key(key) is not { } hotkeyKey)
+        {
+            return null;
+        }
+
+        var chord = Modifiers(modifiers);
+        var held = chord & (HotkeyModifiers.Ctrl | HotkeyModifiers.Alt | HotkeyModifiers.Meta);
+        return held == HotkeyModifiers.None && !TypesNothing(hotkeyKey) ? null : new Hotkey(chord, hotkeyKey);
+    }
+
+    private static bool TypesNothing(HotkeyKey key) =>
+        key is >= HotkeyKey.F13 and <= HotkeyKey.F24 or HotkeyKey.Pause or HotkeyKey.ScrollLock;
 
     /// <summary>"Ctrl+Alt+Space" as "Ctrl + Alt + Space", so a screen reader says each key.</summary>
     public static string Spoken(string? hotkey) => hotkey is null ? "" : string.Join(" + ", hotkey.Split('+'));

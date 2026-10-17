@@ -29,6 +29,8 @@ public sealed class HotkeyRecorder : Button
     public static readonly StyledProperty<bool> IsRecordingProperty =
         AvaloniaProperty.Register<HotkeyRecorder, bool>(nameof(IsRecording), defaultBindingMode: BindingMode.TwoWay);
 
+    private PhysicalKey? _ending;
+
     public HotkeyRecorder()
     {
         Classes.Add("hotkey");
@@ -68,20 +70,27 @@ public sealed class HotkeyRecorder : Button
             return;
         }
 
+        if (e.KeyModifiers == KeyModifiers.None && e.PhysicalKey == PhysicalKey.Tab)
+        {
+            // Tab stops listening and moves focus on, as it does everywhere else.
+            IsRecording = false;
+            return;
+        }
+
         e.Handled = true;
         if (e.KeyModifiers == KeyModifiers.None && e.PhysicalKey == PhysicalKey.Escape)
         {
-            IsRecording = false;
+            End(e.PhysicalKey);
         }
         else if (e.KeyModifiers == KeyModifiers.None && e.PhysicalKey is PhysicalKey.Backspace or PhysicalKey.Delete)
         {
             Hotkey = null;
-            IsRecording = false;
+            End(e.PhysicalKey);
         }
         else if (HotkeyKeys.Chord(e.PhysicalKey, e.KeyModifiers) is { } chord)
         {
             Hotkey = chord.ToString();
-            IsRecording = false;
+            End(e.PhysicalKey);
         }
     }
 
@@ -90,6 +99,14 @@ public sealed class HotkeyRecorder : Button
         // A Space or Enter release must not click the button again while it listens.
         if (IsRecording)
         {
+            e.Handled = true;
+            return;
+        }
+
+        // The release of the key that ended listening must not click the button again (final review I2: Space did).
+        if (_ending == e.PhysicalKey)
+        {
+            _ending = null;
             e.Handled = true;
             return;
         }
@@ -107,6 +124,12 @@ public sealed class HotkeyRecorder : Button
     {
         IsRecording = false;
         base.OnDetachedFromVisualTree(e);
+    }
+
+    private void End(PhysicalKey key)
+    {
+        _ending = key;
+        IsRecording = false;
     }
 
     private void Show()

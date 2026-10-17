@@ -510,7 +510,7 @@
     <value>Changes are not saved until the fields marked in red are fixed.</value>
   </data>
   <data name="SettingsHotkeyListening" xml:space="preserve">
-    <value>Listening for keys… Esc cancels, Backspace removes the hotkey</value>
+    <value>Listening for keys… Use Ctrl, Alt or Win with a key. Esc cancels, Backspace removes the hotkey</value>
   </data>
   <data name="SettingsHotkeyNone" xml:space="preserve">
     <value>No hotkey</value>

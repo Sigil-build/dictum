@@ -510,7 +510,7 @@
     <value>Зміни не збережено, доки не виправлено поля, позначені червоним.</value>
   </data>
   <data name="SettingsHotkeyListening" xml:space="preserve">
-    <value>Слухаю клавіші… Esc — скасувати, Backspace — прибрати гарячу клавішу</value>
+    <value>Слухаю клавіші… Натисніть клавішу разом із Ctrl, Alt або Win. Esc — скасувати, Backspace — прибрати гарячу клавішу</value>
   </data>
   <data name="SettingsHotkeyNone" xml:space="preserve">
     <value>Без гарячої клавіші</value>
