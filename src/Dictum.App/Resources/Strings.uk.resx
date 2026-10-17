@@ -662,4 +662,64 @@
   <data name="SettingsRemove" xml:space="preserve">
     <value>Прибрати</value>
   </data>
+  <data name="SettingsSpeechProviders" xml:space="preserve">
+    <value>Розпізнавання мовлення</value>
+  </data>
+  <data name="SettingsProvidersLocalTitle" xml:space="preserve">
+    <value>Локальний Whisper · {0}</value>
+  </data>
+  <data name="SettingsProvidersRemoteTitle" xml:space="preserve">
+    <value>Сервер · {0}</value>
+  </data>
+  <data name="SettingsProvidersUsedBy" xml:space="preserve">
+    <value>Використовують: {0}</value>
+  </data>
+  <data name="SettingsProvidersUnused" xml:space="preserve">
+    <value>Жоден профіль не використовує</value>
+  </data>
+  <data name="SettingsProvidersModelMissing" xml:space="preserve">
+    <value>{0} (не завантажено)</value>
+  </data>
+  <data name="SettingsProvidersRuntimeAuto" xml:space="preserve">
+    <value>Автоматично</value>
+  </data>
+  <data name="SettingsProvidersRuntimeCpu" xml:space="preserve">
+    <value>Процесор</value>
+  </data>
+  <data name="SettingsProvidersVadMissing" xml:space="preserve">
+    <value>Модель визначення мовлення {0} не завантажено. Щоб отримати її, виконайте 'dictum models pull vad-silero-6.2'.</value>
+  </data>
+  <data name="SettingsProvidersNoKey" xml:space="preserve">
+    <value>Без ключа</value>
+  </data>
+  <data name="SettingsProvidersKeyStored" xml:space="preserve">
+    <value>Зберігається в системному сховищі ключів</value>
+  </data>
+  <data name="SettingsProvidersKeyEnv" xml:space="preserve">
+    <value>Береться зі змінної середовища {0}</value>
+  </data>
+  <data name="SettingsProvidersKeyPlain" xml:space="preserve">
+    <value>Записаний у config.json відкритим текстом. Введіть його ще раз, щоб перенести до сховища ключів.</value>
+  </data>
+  <data name="SettingsProvidersKeyFailed" xml:space="preserve">
+    <value>Не вдалося зберегти ключ: {0}</value>
+  </data>
+  <data name="SettingsProvidersTest" xml:space="preserve">
+    <value>Перевірити</value>
+  </data>
+  <data name="SettingsProvidersRecognised" xml:space="preserve">
+    <value>Розпізнано за {0} мс</value>
+  </data>
+  <data name="SettingsProvidersNothingHeard" xml:space="preserve">
+    <value>Нічого не розпізнано.</value>
+  </data>
+  <data name="SettingsProvidersTestFailed" xml:space="preserve">
+    <value>Перевірка не вдалася.</value>
+  </data>
+  <data name="SettingsProvidersFixFirst" xml:space="preserve">
+    <value>Спершу виправте поля, позначені червоним: перевірка бере збережені налаштування.</value>
+  </data>
+  <data name="SettingsProvidersNoDaemon" xml:space="preserve">
+    <value>Для перевірки потрібен демон, а він зараз не працює.</value>
+  </data>
 </root>

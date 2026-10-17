@@ -662,4 +662,64 @@
   <data name="SettingsRemove" xml:space="preserve">
     <value>Remove</value>
   </data>
+  <data name="SettingsSpeechProviders" xml:space="preserve">
+    <value>Speech providers</value>
+  </data>
+  <data name="SettingsProvidersLocalTitle" xml:space="preserve">
+    <value>Local Whisper · {0}</value>
+  </data>
+  <data name="SettingsProvidersRemoteTitle" xml:space="preserve">
+    <value>Remote server · {0}</value>
+  </data>
+  <data name="SettingsProvidersUsedBy" xml:space="preserve">
+    <value>Used by: {0}</value>
+  </data>
+  <data name="SettingsProvidersUnused" xml:space="preserve">
+    <value>Not used by any profile</value>
+  </data>
+  <data name="SettingsProvidersModelMissing" xml:space="preserve">
+    <value>{0} (not downloaded)</value>
+  </data>
+  <data name="SettingsProvidersRuntimeAuto" xml:space="preserve">
+    <value>Automatic</value>
+  </data>
+  <data name="SettingsProvidersRuntimeCpu" xml:space="preserve">
+    <value>CPU</value>
+  </data>
+  <data name="SettingsProvidersVadMissing" xml:space="preserve">
+    <value>The voice activity model {0} is not downloaded. Run 'dictum models pull vad-silero-6.2' to get it.</value>
+  </data>
+  <data name="SettingsProvidersNoKey" xml:space="preserve">
+    <value>No key</value>
+  </data>
+  <data name="SettingsProvidersKeyStored" xml:space="preserve">
+    <value>Stored in the system keyring</value>
+  </data>
+  <data name="SettingsProvidersKeyEnv" xml:space="preserve">
+    <value>Read from the environment variable {0}</value>
+  </data>
+  <data name="SettingsProvidersKeyPlain" xml:space="preserve">
+    <value>Written in config.json as plain text. Enter it again to move it to the keyring.</value>
+  </data>
+  <data name="SettingsProvidersKeyFailed" xml:space="preserve">
+    <value>The key could not be stored: {0}</value>
+  </data>
+  <data name="SettingsProvidersTest" xml:space="preserve">
+    <value>Test</value>
+  </data>
+  <data name="SettingsProvidersRecognised" xml:space="preserve">
+    <value>Recognised in {0} ms</value>
+  </data>
+  <data name="SettingsProvidersNothingHeard" xml:space="preserve">
+    <value>Nothing was recognised.</value>
+  </data>
+  <data name="SettingsProvidersTestFailed" xml:space="preserve">
+    <value>The test failed.</value>
+  </data>
+  <data name="SettingsProvidersFixFirst" xml:space="preserve">
+    <value>Fix the fields marked in red first: the test uses the saved settings.</value>
+  </data>
+  <data name="SettingsProvidersNoDaemon" xml:space="preserve">
+    <value>The test needs the daemon, which is not running right now.</value>
+  </data>
 </root>
