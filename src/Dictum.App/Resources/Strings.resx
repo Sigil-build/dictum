@@ -224,4 +224,79 @@
   <data name="SettingsInputLevel" xml:space="preserve">
     <value>Input level</value>
   </data>
+  <data name="SettingsGeneral" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="SettingsStartAtLogin" xml:space="preserve">
+    <value>Start Dictum at login</value>
+  </data>
+  <data name="SettingsStartAtLoginHint" xml:space="preserve">
+    <value>Runs in the tray. Nothing opens on screen.</value>
+  </data>
+  <data name="SettingsStartAtLoginFailed" xml:space="preserve">
+    <value>The login item could not be changed: {0}</value>
+  </data>
+  <data name="SettingsMicrophone" xml:space="preserve">
+    <value>Microphone</value>
+  </data>
+  <data name="SettingsMicrophoneHint" xml:space="preserve">
+    <value>Speak to check the level. Green is good; red means clipping.</value>
+  </data>
+  <data name="SettingsMicrophoneDefault" xml:space="preserve">
+    <value>Default — {0}</value>
+  </data>
+  <data name="SettingsMicrophoneSystemDefault" xml:space="preserve">
+    <value>System default</value>
+  </data>
+  <data name="SettingsMicrophoneMissing" xml:space="preserve">
+    <value>{0} (not connected)</value>
+  </data>
+  <data name="SettingsMeterNoDaemon" xml:space="preserve">
+    <value>The meter needs the daemon, which is not running right now.</value>
+  </data>
+  <data name="SettingsSounds" xml:space="preserve">
+    <value>Sounds</value>
+  </data>
+  <data name="SettingsSoundsHint" xml:space="preserve">
+    <value>A short tick when recording starts and stops.</value>
+  </data>
+  <data name="SettingsSoundsPreview" xml:space="preserve">
+    <value>Preview</value>
+  </data>
+  <data name="SettingsHistory" xml:space="preserve">
+    <value>History</value>
+  </data>
+  <data name="SettingsHistoryHint" xml:space="preserve">
+    <value>Keep the text of recent dictations on this machine only. 0 turns history off.</value>
+  </data>
+  <data name="SettingsHistoryCount" xml:space="preserve">
+    <value>Dictations to keep</value>
+  </data>
+  <data name="SettingsNumberRequired" xml:space="preserve">
+    <value>Enter a number.</value>
+  </data>
+  <data name="SettingsUiLanguage" xml:space="preserve">
+    <value>UI language</value>
+  </data>
+  <data name="SettingsUiLanguageHint" xml:space="preserve">
+    <value>Takes effect the next time Dictum starts.</value>
+  </data>
+  <data name="SettingsUiLanguageSystem" xml:space="preserve">
+    <value>Same as the system</value>
+  </data>
+  <data name="SettingsUiLanguageEnglish" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="SettingsUiLanguageUkrainian" xml:space="preserve">
+    <value>Українська</value>
+  </data>
+  <data name="SettingsOverlay" xml:space="preserve">
+    <value>Listening overlay</value>
+  </data>
+  <data name="SettingsOverlayHint" xml:space="preserve">
+    <value>Position, size, opacity and colour theme. Reduced motion follows the system setting.</value>
+  </data>
+  <data name="SettingsOverlayOpen" xml:space="preserve">
+    <value>Overlay settings ›</value>
+  </data>
 </root>

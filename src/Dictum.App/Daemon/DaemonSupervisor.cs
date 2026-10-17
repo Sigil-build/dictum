@@ -28,7 +28,7 @@ public sealed record SupervisorOptions
 /// Keeps the desktop app connected to <c>dictum daemon</c>: uses a running daemon or starts one, subscribes to its
 /// events, and starts it again when it goes away. Events are raised on a background thread.
 /// </summary>
-public sealed class DaemonSupervisor : IAsyncDisposable
+public sealed class DaemonSupervisor : IDaemonChannel, IAsyncDisposable
 {
     private readonly string _socketPath;
     private readonly Func<bool> _configExists;

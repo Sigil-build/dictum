@@ -224,4 +224,79 @@
   <data name="SettingsInputLevel" xml:space="preserve">
     <value>Рівень входу</value>
   </data>
+  <data name="SettingsGeneral" xml:space="preserve">
+    <value>Загальні</value>
+  </data>
+  <data name="SettingsStartAtLogin" xml:space="preserve">
+    <value>Запускати Dictum під час входу в систему</value>
+  </data>
+  <data name="SettingsStartAtLoginHint" xml:space="preserve">
+    <value>Працює в треї. На екрані нічого не відкривається.</value>
+  </data>
+  <data name="SettingsStartAtLoginFailed" xml:space="preserve">
+    <value>Не вдалося змінити автозапуск: {0}</value>
+  </data>
+  <data name="SettingsMicrophone" xml:space="preserve">
+    <value>Мікрофон</value>
+  </data>
+  <data name="SettingsMicrophoneHint" xml:space="preserve">
+    <value>Скажіть щось, щоб перевірити рівень. Зелений — добре, червоний — перевантаження.</value>
+  </data>
+  <data name="SettingsMicrophoneDefault" xml:space="preserve">
+    <value>Типовий — {0}</value>
+  </data>
+  <data name="SettingsMicrophoneSystemDefault" xml:space="preserve">
+    <value>Типовий у системі</value>
+  </data>
+  <data name="SettingsMicrophoneMissing" xml:space="preserve">
+    <value>{0} (не під'єднано)</value>
+  </data>
+  <data name="SettingsMeterNoDaemon" xml:space="preserve">
+    <value>Індикатору потрібен демон, а він зараз не працює.</value>
+  </data>
+  <data name="SettingsSounds" xml:space="preserve">
+    <value>Звуки</value>
+  </data>
+  <data name="SettingsSoundsHint" xml:space="preserve">
+    <value>Короткий сигнал, коли запис починається і закінчується.</value>
+  </data>
+  <data name="SettingsSoundsPreview" xml:space="preserve">
+    <value>Прослухати</value>
+  </data>
+  <data name="SettingsHistory" xml:space="preserve">
+    <value>Історія</value>
+  </data>
+  <data name="SettingsHistoryHint" xml:space="preserve">
+    <value>Зберігати текст останніх диктувань лише на цьому комп'ютері. 0 вимикає історію.</value>
+  </data>
+  <data name="SettingsHistoryCount" xml:space="preserve">
+    <value>Скільки диктувань зберігати</value>
+  </data>
+  <data name="SettingsNumberRequired" xml:space="preserve">
+    <value>Введіть число.</value>
+  </data>
+  <data name="SettingsUiLanguage" xml:space="preserve">
+    <value>Мова інтерфейсу</value>
+  </data>
+  <data name="SettingsUiLanguageHint" xml:space="preserve">
+    <value>Діє після наступного запуску Dictum.</value>
+  </data>
+  <data name="SettingsUiLanguageSystem" xml:space="preserve">
+    <value>Як у системі</value>
+  </data>
+  <data name="SettingsUiLanguageEnglish" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="SettingsUiLanguageUkrainian" xml:space="preserve">
+    <value>Українська</value>
+  </data>
+  <data name="SettingsOverlay" xml:space="preserve">
+    <value>Індикатор диктування</value>
+  </data>
+  <data name="SettingsOverlayHint" xml:space="preserve">
+    <value>Розташування, розмір, непрозорість і кольорова тема. Менше анімації — за налаштуванням системи.</value>
+  </data>
+  <data name="SettingsOverlayOpen" xml:space="preserve">
+    <value>Налаштування індикатора ›</value>
+  </data>
 </root>

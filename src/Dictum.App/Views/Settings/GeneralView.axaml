@@ -1,0 +1,75 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Dictum.App.ViewModels.Settings"
+             xmlns:controls="using:Dictum.App.Controls"
+             xmlns:res="using:Dictum.App.Resources"
+             x:Class="Dictum.App.Views.Settings.GeneralView"
+             x:DataType="vm:GeneralPage">
+  <ScrollViewer>
+    <StackPanel Margin="16,4,32,24" Spacing="4">
+      <TextBlock Classes="title" Text="{Binding Title}" Margin="0,0,0,16" />
+
+      <controls:SettingsRow Icon="{DynamicResource icon.login}"
+                            Label="{x:Static res:Strings.SettingsStartAtLogin}"
+                            Description="{x:Static res:Strings.SettingsStartAtLoginHint}"
+                            Error="{Binding StartAtLoginError}">
+        <ToggleSwitch IsChecked="{Binding StartAtLogin}" IsEnabled="{Binding CanChangeStartAtLogin}"
+                      OnContent="{x:Static res:Strings.CommonOn}" OffContent="{x:Static res:Strings.CommonOff}"
+                      AutomationProperties.Name="{x:Static res:Strings.SettingsStartAtLogin}" />
+      </controls:SettingsRow>
+
+      <StackPanel Spacing="4" IsEnabled="{Binding CanEdit}">
+        <controls:SettingsRow Icon="{DynamicResource icon.microphone}"
+                              Label="{x:Static res:Strings.SettingsMicrophone}"
+                              Description="{x:Static res:Strings.SettingsMicrophoneHint}">
+          <ComboBox Width="280" ItemsSource="{Binding Microphones}" SelectedItem="{Binding Microphone}"
+                    AutomationProperties.Name="{x:Static res:Strings.SettingsMicrophone}" />
+          <controls:SettingsRow.Footer>
+            <StackPanel Spacing="6">
+              <Grid ColumnDefinitions="*,12,64">
+                <controls:LevelMeterBar Level="{Binding MeterLevel}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Text="{Binding MeterText}" FontSize="12" TextAlignment="Right"
+                           Foreground="{DynamicResource color.text.secondary}" />
+              </Grid>
+              <TextBlock Text="{Binding MeterNote}" FontSize="12" TextWrapping="Wrap"
+                         Foreground="{DynamicResource color.text.secondary}"
+                         IsVisible="{Binding MeterNote, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
+          </controls:SettingsRow.Footer>
+        </controls:SettingsRow>
+
+        <controls:SettingsRow Icon="{DynamicResource icon.sounds}"
+                              Label="{x:Static res:Strings.SettingsSounds}"
+                              Description="{x:Static res:Strings.SettingsSoundsHint}">
+          <StackPanel Orientation="Horizontal" Spacing="20">
+            <ToggleSwitch IsChecked="{Binding Sounds}"
+                          OnContent="{x:Static res:Strings.CommonOn}" OffContent="{x:Static res:Strings.CommonOff}"
+                          AutomationProperties.Name="{x:Static res:Strings.SettingsSounds}" />
+            <Button Content="{x:Static res:Strings.SettingsSoundsPreview}" Command="{Binding PreviewCommand}" />
+          </StackPanel>
+        </controls:SettingsRow>
+
+        <controls:SettingsRow Icon="{DynamicResource icon.history}"
+                              Label="{x:Static res:Strings.SettingsHistory}"
+                              Description="{x:Static res:Strings.SettingsHistoryHint}"
+                              Error="{Binding HistoryError}">
+          <NumericUpDown Value="{Binding HistorySize}" Minimum="0" Maximum="5000" Increment="1" FormatString="0"
+                         Width="120" AutomationProperties.Name="{x:Static res:Strings.SettingsHistoryCount}" />
+        </controls:SettingsRow>
+
+        <controls:SettingsRow Icon="{DynamicResource icon.language}"
+                              Label="{x:Static res:Strings.SettingsUiLanguage}"
+                              Description="{x:Static res:Strings.SettingsUiLanguageHint}">
+          <ComboBox Width="200" ItemsSource="{Binding UiLanguages}" SelectedItem="{Binding UiLanguage}"
+                    AutomationProperties.Name="{x:Static res:Strings.SettingsUiLanguage}" />
+        </controls:SettingsRow>
+
+        <controls:SettingsRow Icon="{DynamicResource icon.overlay}"
+                              Label="{x:Static res:Strings.SettingsOverlay}"
+                              Description="{x:Static res:Strings.SettingsOverlayHint}">
+          <Button x:Name="OverlayButton" Content="{x:Static res:Strings.SettingsOverlayOpen}" />
+        </controls:SettingsRow>
+      </StackPanel>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

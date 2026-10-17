@@ -1,7 +1,9 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Dictum.App.ViewModels;
+using Dictum.App.ViewModels.Settings;
 using Dictum.App.Views;
+using Dictum.App.Views.Settings;
 
 namespace Dictum.App;
 
@@ -10,6 +12,7 @@ public sealed class ViewLocator : IDataTemplate
 {
     public Control? Build(object? param) => param switch
     {
+        GeneralPage model => new GeneralView { DataContext = model },
         StatusViewModel model => new StatusView { DataContext = model },
         null => null,
         _ => new TextBlock { Text = $"No view for {param.GetType().Name}" },
