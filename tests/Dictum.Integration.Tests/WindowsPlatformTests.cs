@@ -157,6 +157,31 @@ public class WindowsPlatformTests
     public void RunKeyValuesAreReadBack(string command, LoginApp app) => Assert.Equal(app, RunKeyAutostart.Parse(command));
 
     [Fact]
+    public void TheOverlayStyleMakesAWindowClickThroughAndInactive()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Windows only");
+            return;
+        }
+
+        var window = OverlayTestWindow.Create();
+        try
+        {
+            Assert.Equal(0, OverlayWindowStyle.ExtendedStyle(window) & OverlayWindowStyle.Required);
+
+            OverlayWindowStyle.Apply(window);
+
+            Assert.Equal(OverlayWindowStyle.Required, OverlayWindowStyle.ExtendedStyle(window) & OverlayWindowStyle.Required);
+            _ = OverlayWindowStyle.AnimationsEnabled();
+        }
+        finally
+        {
+            OverlayTestWindow.Destroy(window);
+        }
+    }
+
+    [Fact]
     public void TheTrayIconSizeFollowsTheDisplayScale()
     {
         if (!OperatingSystem.IsWindows())
@@ -236,6 +261,31 @@ internal sealed partial class ClipboardHold(Task closed) : IAsyncDisposable
     private static partial bool CloseClipboard();
 
     private const nint HwndMessage = -3;
+
+    [LibraryImport("user32", EntryPoint = "CreateWindowExW", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
+    private static partial nint CreateWindowEx(
+        uint exStyle, string className, string? windowName, uint style,
+        int x, int y, int width, int height, nint parent, nint menu, nint instance, nint param);
+
+    [LibraryImport("user32")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static partial bool DestroyWindow(nint window);
+}
+
+/// <summary>A plain hidden popup window to put the overlay's styles on.</summary>
+[SupportedOSPlatform("windows")]
+internal static partial class OverlayTestWindow
+{
+    private const uint WsPopup = 0x80000000;
+
+    public static nint Create()
+    {
+        var window = CreateWindowEx(0, "STATIC", null, WsPopup, 0, 0, 10, 10, 0, 0, 0, 0);
+        Assert.NotEqual((nint)0, window);
+        return window;
+    }
+
+    public static void Destroy(nint window) => DestroyWindow(window);
 
     [LibraryImport("user32", EntryPoint = "CreateWindowExW", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
     private static partial nint CreateWindowEx(

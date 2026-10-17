@@ -1,5 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup>
+    <!-- LibraryImport to libX11 and libXext for the overlay window (pointers to atoms and rectangles). -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="../Dictum.Platform/Dictum.Platform.csproj" />
   </ItemGroup>

@@ -12,6 +12,8 @@ internal static unsafe partial class Win32
     public const uint CredTypeGeneric = 1;
     public const uint CredPersistLocalMachine = 2;
     public const int ErrorNotFound = 1168;
+    public const int GwlExStyle = -20;
+    public const uint LwaAlpha = 0x2;
 
     [LibraryImport("user32", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -51,6 +53,31 @@ internal static unsafe partial class Win32
 
     [LibraryImport("user32")]
     public static partial uint GetWindowThreadProcessId(nint window, out uint processId);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct Point32
+    {
+        public int X;
+        public int Y;
+    }
+
+    [LibraryImport("user32", EntryPoint = "GetWindowLongPtrW")]
+    public static partial nint GetWindowLongPtr(nint window, int index);
+
+    [LibraryImport("user32", EntryPoint = "SetWindowLongPtrW", SetLastError = true)]
+    public static partial nint SetWindowLongPtr(nint window, int index, nint value);
+
+    [LibraryImport("user32", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool SetLayeredWindowAttributes(nint window, uint colourKey, byte alpha, uint flags);
+
+    [LibraryImport("user32")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool GetCursorPos(out Point32 point);
+
+    [LibraryImport("user32", EntryPoint = "SystemParametersInfoW")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool SystemParametersInfo(uint action, uint parameter, out int value, uint update);
 
     [LibraryImport("kernel32", SetLastError = true)]
     public static partial nint GlobalAlloc(uint flags, nuint bytes);
