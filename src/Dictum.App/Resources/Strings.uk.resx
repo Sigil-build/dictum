@@ -863,4 +863,73 @@
   <data name="SettingsRulesImportProblems" xml:space="preserve">
     <value>Імпортовано правил: {0}. Пропущено: {1}</value>
   </data>
+  <data name="SettingsProcessorsAddLlm" xml:space="preserve">
+    <value>+ Запит до LLM</value>
+  </data>
+  <data name="SettingsProcessorsAddRules" xml:space="preserve">
+    <value>+ Правила заміни</value>
+  </data>
+  <data name="SettingsProcessorsRemove" xml:space="preserve">
+    <value>Прибрати обробник</value>
+  </data>
+  <data name="SettingsLlmTemperature" xml:space="preserve">
+    <value>Температура</value>
+  </data>
+  <data name="SettingsLlmOnError" xml:space="preserve">
+    <value>Якщо сервер не відповів</value>
+  </data>
+  <data name="SettingsLlmWording" xml:space="preserve">
+    <value>Формулювання</value>
+  </data>
+  <data name="SettingsLlmMaxTokens" xml:space="preserve">
+    <value>Макс. токенів (порожньо — автоматично)</value>
+  </data>
+  <data name="SettingsLlmPrompt" xml:space="preserve">
+    <value>Запит</value>
+  </data>
+  <data name="SettingsLlmRestorePrompt" xml:space="preserve">
+    <value>Повернути вбудований запит</value>
+  </data>
+  <data name="SettingsLlmNewPrompt" xml:space="preserve">
+    <value>Назва нового запиту</value>
+  </data>
+  <data name="SettingsLlmCreatePrompt" xml:space="preserve">
+    <value>Зберегти як новий запит</value>
+  </data>
+  <data name="SettingsLlmPreview" xml:space="preserve">
+    <value>Попередній перегляд</value>
+  </data>
+  <data name="SettingsLlmSample" xml:space="preserve">
+    <value>Зразок речення</value>
+  </data>
+  <data name="SettingsLlmPreviewNow" xml:space="preserve">
+    <value>Запустити зараз</value>
+  </data>
+  <data name="SettingsRulesFind" xml:space="preserve">
+    <value>Знайти</value>
+  </data>
+  <data name="SettingsRulesRegex" xml:space="preserve">
+    <value>Регулярний вираз</value>
+  </data>
+  <data name="SettingsRulesReplace" xml:space="preserve">
+    <value>Замінити на</value>
+  </data>
+  <data name="SettingsRulesMatchCase" xml:space="preserve">
+    <value>Враховувати регістр</value>
+  </data>
+  <data name="SettingsRulesWholeWord" xml:space="preserve">
+    <value>Ціле слово</value>
+  </data>
+  <data name="SettingsRulesHint" xml:space="preserve">
+    <value>Застосовуються по черзі. Порожній рядок унизу додає правило.</value>
+  </data>
+  <data name="SettingsRulesImport" xml:space="preserve">
+    <value>Імпорт із CSV…</value>
+  </data>
+  <data name="SettingsRulesCsvFiles" xml:space="preserve">
+    <value>Файли CSV</value>
+  </data>
+  <data name="SettingsRulesImportFailed" xml:space="preserve">
+    <value>Не вдалося прочитати файл: {0}</value>
+  </data>
 </root>

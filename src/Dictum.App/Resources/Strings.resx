@@ -863,4 +863,73 @@
   <data name="SettingsRulesImportProblems" xml:space="preserve">
     <value>Rules imported: {0}. Skipped: {1}</value>
   </data>
+  <data name="SettingsProcessorsAddLlm" xml:space="preserve">
+    <value>+ LLM prompt</value>
+  </data>
+  <data name="SettingsProcessorsAddRules" xml:space="preserve">
+    <value>+ Replace rules</value>
+  </data>
+  <data name="SettingsProcessorsRemove" xml:space="preserve">
+    <value>Remove processor</value>
+  </data>
+  <data name="SettingsLlmTemperature" xml:space="preserve">
+    <value>Temperature</value>
+  </data>
+  <data name="SettingsLlmOnError" xml:space="preserve">
+    <value>If the server fails</value>
+  </data>
+  <data name="SettingsLlmWording" xml:space="preserve">
+    <value>Wording</value>
+  </data>
+  <data name="SettingsLlmMaxTokens" xml:space="preserve">
+    <value>Max tokens (empty = automatic)</value>
+  </data>
+  <data name="SettingsLlmPrompt" xml:space="preserve">
+    <value>Prompt</value>
+  </data>
+  <data name="SettingsLlmRestorePrompt" xml:space="preserve">
+    <value>Restore the built-in prompt</value>
+  </data>
+  <data name="SettingsLlmNewPrompt" xml:space="preserve">
+    <value>New prompt name</value>
+  </data>
+  <data name="SettingsLlmCreatePrompt" xml:space="preserve">
+    <value>Save as a new prompt</value>
+  </data>
+  <data name="SettingsLlmPreview" xml:space="preserve">
+    <value>Preview</value>
+  </data>
+  <data name="SettingsLlmSample" xml:space="preserve">
+    <value>Sample sentence</value>
+  </data>
+  <data name="SettingsLlmPreviewNow" xml:space="preserve">
+    <value>Run now</value>
+  </data>
+  <data name="SettingsRulesFind" xml:space="preserve">
+    <value>Find</value>
+  </data>
+  <data name="SettingsRulesRegex" xml:space="preserve">
+    <value>Regex</value>
+  </data>
+  <data name="SettingsRulesReplace" xml:space="preserve">
+    <value>Replace</value>
+  </data>
+  <data name="SettingsRulesMatchCase" xml:space="preserve">
+    <value>Match case</value>
+  </data>
+  <data name="SettingsRulesWholeWord" xml:space="preserve">
+    <value>Whole word</value>
+  </data>
+  <data name="SettingsRulesHint" xml:space="preserve">
+    <value>Applied in order. The blank row at the end adds a rule.</value>
+  </data>
+  <data name="SettingsRulesImport" xml:space="preserve">
+    <value>Import from CSV…</value>
+  </data>
+  <data name="SettingsRulesCsvFiles" xml:space="preserve">
+    <value>CSV files</value>
+  </data>
+  <data name="SettingsRulesImportFailed" xml:space="preserve">
+    <value>The file could not be read: {0}</value>
+  </data>
 </root>

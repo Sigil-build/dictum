@@ -1,0 +1,176 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Dictum.App.ViewModels.Settings"
+             xmlns:res="using:Dictum.App.Resources"
+             x:Class="Dictum.App.Views.Settings.ProcessorsView"
+             x:DataType="vm:ProcessorsPage">
+  <Grid ColumnDefinitions="180,16,*" Margin="16,4,24,16">
+    <DockPanel>
+      <TextBlock DockPanel.Dock="Top" Classes="title" Text="{Binding Title}" Margin="0,0,0,8" />
+      <StackPanel DockPanel.Dock="Bottom" Spacing="4" Margin="0,4,0,0" IsEnabled="{Binding CanEdit}">
+        <Button Content="{x:Static res:Strings.SettingsProcessorsAddLlm}" HorizontalAlignment="Stretch" Command="{Binding AddLlmCommand}" />
+        <Button Content="{x:Static res:Strings.SettingsProcessorsAddRules}" HorizontalAlignment="Stretch" Command="{Binding AddRulesCommand}" />
+      </StackPanel>
+      <ListBox ItemsSource="{Binding Processors}" SelectedItem="{Binding Selected}" Background="Transparent"
+               AutomationProperties.Name="{x:Static res:Strings.SettingsProcessors}">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="vm:ProcessorItem">
+            <StackPanel Spacing="2" Margin="0,4">
+              <TextBlock Text="{Binding Id}" FontWeight="SemiBold" Foreground="{DynamicResource color.text.primary}" />
+              <TextBlock Text="{Binding Caption}" Classes="hint" />
+            </StackPanel>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </DockPanel>
+
+    <ScrollViewer Grid.Column="2" IsVisible="{Binding HasProcessor}">
+      <StackPanel Spacing="10" Margin="0,48,0,0" IsEnabled="{Binding CanEdit}">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel>
+            <TextBlock Text="{Binding Selected.Id}" FontWeight="SemiBold" Foreground="{DynamicResource color.text.primary}" />
+            <TextBlock Text="{Binding UsedBy}" Classes="hint" />
+          </StackPanel>
+          <Button Grid.Column="1" Classes="destructive" Content="{x:Static res:Strings.SettingsProcessorsRemove}" Command="{Binding RemoveCommand}" />
+        </Grid>
+
+        <!-- LLM prompt -->
+        <StackPanel Spacing="10" IsVisible="{Binding IsLlm}">
+          <Border Classes="editorRow">
+            <Grid ColumnDefinitions="*,12,*" RowDefinitions="Auto,12,Auto,12,Auto,12,Auto">
+              <StackPanel Spacing="4">
+                <TextBlock Text="{x:Static res:Strings.SettingsProvidersUrl}" Classes="hint" />
+                <TextBox Text="{Binding Llm.Url}" AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersUrl}" />
+                <TextBlock Text="{Binding Llm.UrlError}" Classes="error" IsVisible="{Binding Llm.UrlError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              </StackPanel>
+              <StackPanel Grid.Column="2" Spacing="4">
+                <TextBlock Text="{x:Static res:Strings.SettingsProvidersModel}" Classes="hint" />
+                <TextBox Text="{Binding Llm.Model}" AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersModel}" />
+                <TextBlock Text="{Binding Llm.ModelError}" Classes="error" IsVisible="{Binding Llm.ModelError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              </StackPanel>
+              <StackPanel Grid.Row="2" Spacing="4">
+                <TextBlock Text="{x:Static res:Strings.SettingsProvidersApiKey}" Classes="hint" />
+                <TextBox Classes="apiKey" Text="{Binding Llm.KeyText}" PasswordChar="•"
+                         PlaceholderText="{x:Static res:Strings.SettingsProvidersApiKeyPlaceholder}"
+                         AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersApiKey}">
+                  <TextBox.KeyBindings>
+                    <KeyBinding Gesture="Enter" Command="{Binding Llm.CommitKeyCommand}" />
+                  </TextBox.KeyBindings>
+                </TextBox>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="{Binding Llm.KeyState}" Classes="hint" VerticalAlignment="Center" />
+                  <Button Classes="link" Content="{x:Static res:Strings.SettingsProvidersRemoveKey}" Command="{Binding Llm.RemoveKeyCommand}" />
+                </StackPanel>
+                <TextBlock Text="{Binding Llm.KeyError}" Classes="error" IsVisible="{Binding Llm.KeyError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              </StackPanel>
+              <StackPanel Grid.Row="2" Grid.Column="2" Spacing="4">
+                <TextBlock Text="{x:Static res:Strings.SettingsProvidersTimeout}" Classes="hint" />
+                <NumericUpDown Value="{Binding Llm.TimeoutSeconds}" Minimum="1" Maximum="600" Increment="1" FormatString="0" Width="120"
+                               HorizontalAlignment="Left" AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersTimeout}" />
+                <TextBlock Text="{Binding Llm.TimeoutError}" Classes="error" IsVisible="{Binding Llm.TimeoutError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              </StackPanel>
+              <StackPanel Grid.Row="4" Spacing="4">
+                <TextBlock Text="{x:Static res:Strings.SettingsLlmTemperature}" Classes="hint" />
+                <NumericUpDown Value="{Binding Llm.Temperature}" Minimum="0" Maximum="2" Increment="0.1" FormatString="0.0" Width="120"
+                               HorizontalAlignment="Left" AutomationProperties.Name="{x:Static res:Strings.SettingsLlmTemperature}" />
+                <TextBlock Text="{Binding Llm.TemperatureError}" Classes="error" IsVisible="{Binding Llm.TemperatureError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              </StackPanel>
+              <StackPanel Grid.Row="4" Grid.Column="2" Spacing="4">
+                <TextBlock Text="{x:Static res:Strings.SettingsLlmMaxTokens}" Classes="hint" />
+                <NumericUpDown Value="{Binding Llm.MaxTokens}" Minimum="1" Maximum="32000" Increment="64" FormatString="0" Width="120"
+                               HorizontalAlignment="Left" AutomationProperties.Name="{x:Static res:Strings.SettingsLlmMaxTokens}" />
+                <TextBlock Text="{Binding Llm.MaxTokensError}" Classes="error" IsVisible="{Binding Llm.MaxTokensError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              </StackPanel>
+              <StackPanel Grid.Row="6" Spacing="4">
+                <TextBlock Text="{x:Static res:Strings.SettingsLlmOnError}" Classes="hint" />
+                <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding Llm.ErrorModes}" SelectedItem="{Binding Llm.OnError}"
+                          AutomationProperties.Name="{x:Static res:Strings.SettingsLlmOnError}" />
+              </StackPanel>
+              <StackPanel Grid.Row="6" Grid.Column="2" Spacing="4">
+                <TextBlock Text="{x:Static res:Strings.SettingsLlmWording}" Classes="hint" />
+                <ComboBox HorizontalAlignment="Stretch" ItemsSource="{Binding Llm.Wordings}" SelectedItem="{Binding Llm.Wording}"
+                          AutomationProperties.Name="{x:Static res:Strings.SettingsLlmWording}" />
+              </StackPanel>
+            </Grid>
+          </Border>
+
+          <Border Classes="editorRow">
+            <StackPanel Spacing="8">
+              <Grid ColumnDefinitions="Auto,12,*,Auto">
+                <TextBlock Text="{x:Static res:Strings.SettingsLlmPrompt}" VerticalAlignment="Center" />
+                <ComboBox Grid.Column="2" Width="260" ItemsSource="{Binding Llm.Prompts}" SelectedItem="{Binding Llm.Prompt}"
+                          AutomationProperties.Name="{x:Static res:Strings.SettingsLlmPrompt}" />
+                <Button Grid.Column="3" Classes="link" Content="{x:Static res:Strings.SettingsLlmRestorePrompt}" Command="{Binding Llm.RestorePromptCommand}" />
+              </Grid>
+              <TextBlock Text="{Binding Llm.PromptNote}" Classes="hint" />
+              <TextBox x:Name="PromptBox" Text="{Binding Llm.PromptText}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="160"
+                       FontFamily="{DynamicResource font.family.mono}" AutomationProperties.Name="{x:Static res:Strings.SettingsLlmPrompt}" />
+              <TextBlock Text="{Binding Llm.PromptError}" Classes="error" IsVisible="{Binding Llm.PromptError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBox Width="220" Text="{Binding Llm.NewPromptName}" PlaceholderText="{x:Static res:Strings.SettingsLlmNewPrompt}"
+                         AutomationProperties.Name="{x:Static res:Strings.SettingsLlmNewPrompt}" />
+                <Button Content="{x:Static res:Strings.SettingsLlmCreatePrompt}" Command="{Binding Llm.CreatePromptCommand}" />
+              </StackPanel>
+              <TextBlock Text="{Binding Llm.NewPromptError}" Classes="error" IsVisible="{Binding Llm.NewPromptError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
+          </Border>
+
+          <Border Classes="editorRow">
+            <StackPanel Spacing="8">
+              <Grid ColumnDefinitions="Auto,12,*,Auto">
+                <TextBlock Text="{x:Static res:Strings.SettingsLlmPreview}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                <ListBox Grid.Column="2" Classes="segmented" ItemsSource="{Binding Llm.Languages}" SelectedItem="{Binding Llm.SampleLanguage}"
+                         AutomationProperties.Name="{x:Static res:Strings.SettingsLlmSample}" />
+                <Button Grid.Column="3" Content="{x:Static res:Strings.SettingsLlmPreviewNow}" Command="{Binding Llm.PreviewNowCommand}" />
+              </Grid>
+              <TextBox Text="{Binding Llm.SampleText}" TextWrapping="Wrap" AutomationProperties.Name="{x:Static res:Strings.SettingsLlmSample}" />
+              <ProgressBar IsIndeterminate="True" IsVisible="{Binding Llm.Previewing}" Height="2" />
+              <SelectableTextBlock Text="{Binding Llm.PreviewText}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
+              <TextBlock Text="{Binding Llm.PreviewLatency}" Classes="hint" />
+              <TextBlock Text="{Binding Llm.PreviewError}" Classes="error" IsVisible="{Binding Llm.PreviewError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+
+        <!-- Replace rules -->
+        <Border Classes="editorRow" IsVisible="{Binding IsRules}">
+          <StackPanel Spacing="6">
+            <TextBlock Text="{x:Static res:Strings.SettingsRulesHint}" Classes="hint" />
+            <Grid ColumnDefinitions="*,8,90,8,*,8,110,8,90,8,60,8,32">
+              <TextBlock Text="{x:Static res:Strings.SettingsRulesFind}" Classes="hint" />
+              <TextBlock Grid.Column="2" Text="{x:Static res:Strings.SettingsRulesRegex}" Classes="hint" />
+              <TextBlock Grid.Column="4" Text="{x:Static res:Strings.SettingsRulesReplace}" Classes="hint" />
+              <TextBlock Grid.Column="6" Text="{x:Static res:Strings.SettingsRulesMatchCase}" Classes="hint" />
+              <TextBlock Grid.Column="8" Text="{x:Static res:Strings.SettingsRulesWholeWord}" Classes="hint" />
+              <TextBlock Grid.Column="10" Text="{x:Static res:Strings.CommonOn}" Classes="hint" />
+            </Grid>
+            <ItemsControl ItemsSource="{Binding Rules.Rows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:RuleRow">
+                  <StackPanel Spacing="2" Margin="0,0,0,4">
+                    <Grid ColumnDefinitions="*,8,90,8,*,8,110,8,90,8,60,8,32">
+                      <TextBox Classes="ruleFind" Text="{Binding Find}" AutomationProperties.Name="{x:Static res:Strings.SettingsRulesFind}" />
+                      <CheckBox Grid.Column="2" IsChecked="{Binding IsRegex}" AutomationProperties.Name="{x:Static res:Strings.SettingsRulesRegex}" />
+                      <TextBox Grid.Column="4" Text="{Binding Replace}" AutomationProperties.Name="{x:Static res:Strings.SettingsRulesReplace}" />
+                      <CheckBox Grid.Column="6" IsChecked="{Binding MatchCase}" AutomationProperties.Name="{x:Static res:Strings.SettingsRulesMatchCase}" />
+                      <CheckBox Grid.Column="8" IsChecked="{Binding WholeWord}" IsEnabled="{Binding CanWholeWord}"
+                                AutomationProperties.Name="{x:Static res:Strings.SettingsRulesWholeWord}" />
+                      <CheckBox Grid.Column="10" IsChecked="{Binding On}" AutomationProperties.Name="{x:Static res:Strings.CommonOn}" />
+                      <Button Grid.Column="12" Classes="chipRemove" Command="{Binding RemoveCommand}" IsVisible="{Binding !IsDraft}"
+                              AutomationProperties.Name="{x:Static res:Strings.SettingsRemove}" />
+                    </Grid>
+                    <TextBlock Text="{Binding Error}" Classes="error" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <Button x:Name="ImportButton" Content="{x:Static res:Strings.SettingsRulesImport}" />
+              <TextBlock Text="{Binding Rules.ImportNote}" Classes="hint" VerticalAlignment="Center" />
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

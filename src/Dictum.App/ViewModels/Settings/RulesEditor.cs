@@ -192,6 +192,10 @@ public sealed partial class RulesEditor(SettingsSession session) : ObservableObj
             : string.Format(CultureInfo.CurrentCulture, Strings.SettingsRulesImportProblems, rules.Count, string.Join(" ", problems));
     }
 
+    /// <summary>The CSV file could not be read (the view's file picker reports it here).</summary>
+    public void ShowImportError(string message) =>
+        ImportNote = string.Format(CultureInfo.CurrentCulture, Strings.SettingsRulesImportFailed, message);
+
     internal void Add(RuleRow draft) => Edit(list => list.Add(draft.ToRule()));
 
     internal void Set(int index, ReplaceRule rule) => Edit(list =>
