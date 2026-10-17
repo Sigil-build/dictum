@@ -47,10 +47,13 @@ public static class ApiKeys
         }
     }
 
-    /// <summary>Deletes the stored key when <paramref name="current"/> is this provider's own secret; a shared one stays.</summary>
-    public static async Task RemoveAsync(ISecretStore secrets, string secretName, string? current, ILog log, CancellationToken ct)
+    /// <summary>
+    /// Deletes the stored key when <paramref name="current"/> is this provider's own secret and nothing in
+    /// <paramref name="remaining"/>, the config after the change, still refers to it; a shared one stays.
+    /// </summary>
+    public static async Task RemoveAsync(ISecretStore secrets, string secretName, string? current, DictumConfig remaining, ILog log, CancellationToken ct)
     {
-        if (current != SecretPrefix + secretName)
+        if (current != SecretPrefix + secretName || IsReferenced(remaining, current))
         {
             return;
         }
@@ -64,4 +67,9 @@ public static class ApiKeys
             log.Warn($"Secret '{secretName}' not deleted: {ex.Message}");
         }
     }
+
+    // A new processor copies the first one's key reference (final review I3), and a hand-edited config may share one.
+    private static bool IsReferenced(DictumConfig config, string reference) =>
+        config.Stt.Values.OfType<OpenAiCompatibleSttConfig>().Any(s => s.ApiKey == reference)
+        || config.Processors.Values.OfType<LlmProcessorConfig>().Any(l => l.ApiKey == reference);
 }

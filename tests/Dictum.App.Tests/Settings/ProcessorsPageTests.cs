@@ -374,4 +374,21 @@ public sealed class ProcessorsPageTests : IDisposable
 
         Assert.Equal(string.Format(Strings.Culture, Strings.SettingsLlmPromptShared, "summary"), page.Llm.PromptShared);
     }
+
+    // Final review I3: "+ LLM prompt" copies the first processor's key reference.
+    [Fact]
+    public async Task ACopiedKeyOutlivesTheOriginal()
+    {
+        var (page, session) = Open();
+        page.Llm.KeyText = "sk-llm";
+        await page.Llm.CommitKeyCommand.ExecuteAsync(null);
+        page.AddLlmCommand.Execute(null);
+        Assert.Equal("secret:dictum-processor-cleanup", Llm(session, "llm").ApiKey);
+
+        page.Selected = page.Processors.Single(p => p.Id == "cleanup");
+        await page.Llm.RemoveKeyCommand.ExecuteAsync(null);
+
+        Assert.Null(Llm(session).ApiKey);
+        Assert.Equal("sk-llm", _secrets.Values["dictum-processor-cleanup"]);
+    }
 }

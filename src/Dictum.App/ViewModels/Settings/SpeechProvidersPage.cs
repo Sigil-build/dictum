@@ -65,7 +65,7 @@ public sealed partial class SpeechProvidersPage : SettingsPage
             c.Stt.Remove(card.Id);
             return c;
         });
-        _ = ApiKeys.RemoveAsync(_services.Secrets, card.SecretName, key, _services.Log, CancellationToken.None);
+        _ = ApiKeys.RemoveAsync(_services.Secrets, card.SecretName, key, _session.Config, _services.Log, CancellationToken.None);
     }
 
     private void Load()

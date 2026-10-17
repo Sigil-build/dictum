@@ -487,7 +487,7 @@ public sealed partial class LlmEditor : ObservableObject
 
         var current = (_session.Config.Processors.GetValueOrDefault(id) as LlmProcessorConfig)?.ApiKey;
         EditLlm(l => l with { ApiKey = null });
-        await ApiKeys.RemoveAsync(_services.Secrets, ApiKeys.ProcessorSecretName(id), current, _services.Log, CancellationToken.None);
+        await ApiKeys.RemoveAsync(_services.Secrets, ApiKeys.ProcessorSecretName(id), current, _session.Config, _services.Log, CancellationToken.None);
     }
 
     private async Task StoreKeyAsync(string id, string typed)

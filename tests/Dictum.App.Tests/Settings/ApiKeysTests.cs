@@ -62,10 +62,33 @@ public sealed class ApiKeysTests
         _secrets.Values["dictum-stt-remote"] = "sk-123";
         _secrets.Values["shared-key"] = "sk-456";
 
-        await ApiKeys.RemoveAsync(_secrets, "dictum-stt-remote", "secret:shared-key", NullLog.Instance, _ct);
+        await ApiKeys.RemoveAsync(_secrets, "dictum-stt-remote", "secret:shared-key", new DictumConfig(), NullLog.Instance, _ct);
         Assert.Equal(2, _secrets.Values.Count);
 
-        await ApiKeys.RemoveAsync(_secrets, "dictum-stt-remote", "secret:dictum-stt-remote", NullLog.Instance, _ct);
+        await ApiKeys.RemoveAsync(_secrets, "dictum-stt-remote", "secret:dictum-stt-remote", new DictumConfig(), NullLog.Instance, _ct);
         Assert.False(_secrets.Values.ContainsKey("dictum-stt-remote"));
+    }
+
+    // Final review I3: another provider or processor still holds the reference.
+    [Theory]
+    [InlineData("stt")]
+    [InlineData("processor")]
+    public async Task AKeyStillReferencedElsewhereStays(string holder)
+    {
+        _secrets.Values["dictum-processor-cleanup"] = "sk-123";
+        const string reference = "secret:dictum-processor-cleanup";
+        var config = new DictumConfig();
+        if (holder == "stt")
+        {
+            config.Stt["remote"] = new OpenAiCompatibleSttConfig { BaseUrl = "http://localhost:8080/v1", Model = "whisper-1", ApiKey = reference };
+        }
+        else
+        {
+            config.Processors["llm"] = new LlmProcessorConfig { BaseUrl = "http://localhost:8080/v1", Model = "local", Prompt = "llm", ApiKey = reference };
+        }
+
+        await ApiKeys.RemoveAsync(_secrets, "dictum-processor-cleanup", reference, config, NullLog.Instance, _ct);
+
+        Assert.Equal("sk-123", _secrets.Values["dictum-processor-cleanup"]);
     }
 }

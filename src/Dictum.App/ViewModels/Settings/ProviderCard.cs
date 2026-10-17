@@ -314,7 +314,7 @@ public sealed partial class ProviderCard : ObservableObject
     {
         var current = (_session.Config.Stt.GetValueOrDefault(Id) as OpenAiCompatibleSttConfig)?.ApiKey;
         EditRemote(r => r with { ApiKey = null });
-        await ApiKeys.RemoveAsync(_services.Secrets, SecretName, current, _services.Log, CancellationToken.None);
+        await ApiKeys.RemoveAsync(_services.Secrets, SecretName, current, _session.Config, _services.Log, CancellationToken.None);
     }
 
     [RelayCommand(CanExecute = nameof(CanTest))]
