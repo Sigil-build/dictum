@@ -170,4 +170,16 @@
   <data name="ProblemUnexpected" xml:space="preserve">
     <value>Під час запуску чи нагляду за демоном щось пішло не так; подробиці в {0}.</value>
   </data>
+  <data name="OverlayListening" xml:space="preserve">
+    <value>Слухаю</value>
+  </data>
+  <data name="OverlayTranscribing" xml:space="preserve">
+    <value>Розпізнаю…</value>
+  </data>
+  <data name="OverlayCleaningUp" xml:space="preserve">
+    <value>Обробляю текст…</value>
+  </data>
+  <data name="OverlayCancelled" xml:space="preserve">
+    <value>Скасовано</value>
+  </data>
 </root>

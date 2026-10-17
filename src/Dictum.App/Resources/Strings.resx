@@ -170,4 +170,16 @@
   <data name="ProblemUnexpected" xml:space="preserve">
     <value>Something went wrong while starting or watching the daemon; details are in {0}.</value>
   </data>
+  <data name="OverlayListening" xml:space="preserve">
+    <value>Listening</value>
+  </data>
+  <data name="OverlayTranscribing" xml:space="preserve">
+    <value>Transcribing…</value>
+  </data>
+  <data name="OverlayCleaningUp" xml:space="preserve">
+    <value>Cleaning up…</value>
+  </data>
+  <data name="OverlayCancelled" xml:space="preserve">
+    <value>Cancelled</value>
+  </data>
 </root>
