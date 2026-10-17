@@ -528,4 +528,22 @@ public sealed class ModelsPageTests : IDisposable
         Card(page, Turbo).DeleteCommand.Execute(null);
         Assert.True(File.Exists(ModelPath(TurboFile)));
     }
+
+    // Final review I2: the daemon says which file it ran; another model's speed is not kept under this one.
+    [Fact]
+    public async Task AMeasureOfAnotherModelIsNotKept()
+    {
+        Install(TurboFile, TurboData);
+        _channel.Answer = request => request.Command == "test-stt"
+            ? new IpcResponse(true, Test: new SttTestResult("тестовий запис", "uk", 6_884, "vulkan", SmallFile, 6.884))
+            : new IpcResponse(true);
+        var (page, _) = Open();
+        var turbo = Card(page, Turbo);
+
+        await turbo.MeasureCommand.ExecuteAsync(null);
+
+        Assert.Empty(_measurements.Ratios);
+        Assert.Equal("Dictum ran ggml-small-q8_0.bin, not this model. Try again in a moment.", turbo.Error);
+        Assert.Equal("~5.5 s for 5 s of speech (estimate)", turbo.SpeedText);
+    }
 }

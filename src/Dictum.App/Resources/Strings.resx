@@ -1139,4 +1139,7 @@
   <data name="SettingsModelsResumable" xml:space="preserve">
     <value>Resumable. SHA-256 is checked after the download.</value>
   </data>
+  <data name="SettingsModelsMeasureOtherModel" xml:space="preserve">
+    <value>Dictum ran {0}, not this model. Try again in a moment.</value>
+  </data>
 </root>

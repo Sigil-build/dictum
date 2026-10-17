@@ -221,6 +221,14 @@ public sealed partial class ModelsPage : SettingsPage
                     return;
                 }
 
+                // The daemon may still run the previous model, e.g. right after a reload; its speed is not this one's (final review I2).
+                if (!string.Equals(Path.GetFileName(test.Model), card.Entry.File, StringComparison.OrdinalIgnoreCase))
+                {
+                    card.CheckText = null;
+                    card.Error = string.Format(CultureInfo.CurrentCulture, Strings.SettingsModelsMeasureOtherModel, test.Model ?? "?");
+                    return;
+                }
+
                 var ratio = test.LatencyMs / 1000.0 / test.AudioSeconds.GetValueOrDefault();
                 best = Math.Min(best ?? ratio, ratio);
             }

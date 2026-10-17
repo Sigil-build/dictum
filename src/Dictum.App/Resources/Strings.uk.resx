@@ -1139,4 +1139,7 @@
   <data name="SettingsModelsResumable" xml:space="preserve">
     <value>Завантаження можна продовжити. Після нього перевіряється SHA-256.</value>
   </data>
+  <data name="SettingsModelsMeasureOtherModel" xml:space="preserve">
+    <value>Dictum запустив {0}, а не цю модель. Спробуйте ще раз за мить.</value>
+  </data>
 </root>
