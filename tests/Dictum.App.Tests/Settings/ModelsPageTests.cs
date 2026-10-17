@@ -84,7 +84,7 @@ public sealed class ModelsPageTests : IDisposable
             () => _probeFails
                 ? Task.FromException<HardwareInfo>(new InvalidOperationException("vkCreateInstance failed"))
                 : _probe?.Task ?? Task.FromResult(_hardware),
-            () => 48_000_000_000, Memory, 8, _measurements, _channel,
+            () => 48_000_000_000, Memory, 8, _measurements, _channel, _timers,
             wait =>
             {
                 _waits.Add(wait);
@@ -545,5 +545,27 @@ public sealed class ModelsPageTests : IDisposable
         Assert.Empty(_measurements.Ratios);
         Assert.Equal("Dictum ran ggml-small-q8_0.bin, not this model. Try again in a moment.", turbo.Error);
         Assert.Equal("~5.5 s for 5 s of speech (estimate)", turbo.SpeedText);
+    }
+
+    // Final review I3: the queue reports nothing while a download stalls; the line must not keep its last rate.
+    [Fact]
+    public void AStalledDownloadStopsShowingARate()
+    {
+        var (page, _) = Open();
+        var medium = Card(page, Medium);
+        _downloads.Set(new QueuedDownload(medium.Entry, DownloadState.Downloading, 0));
+        _clock.Advance(TimeSpan.FromSeconds(2));
+        _downloads.Set(new QueuedDownload(medium.Entry, DownloadState.Downloading, 1_000_000));
+        Assert.Equal("1 MB of 2 MB · 0.5 MB/s · 2 s left", medium.ProgressText);
+
+        for (var i = 0; i < 6; i++)
+        {
+            _clock.Advance(TimeSpan.FromSeconds(1));
+            _timers.Fire();
+        }
+
+        Assert.Equal("1 MB of 2 MB", medium.ProgressText);
+        _downloads.Set(new QueuedDownload(medium.Entry, DownloadState.Done, 2_000_000));
+        Assert.Equal(0, _timers.Pending);
     }
 }

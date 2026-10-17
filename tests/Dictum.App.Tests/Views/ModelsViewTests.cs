@@ -45,7 +45,7 @@ public sealed class ModelsViewTests(AvaloniaFixture fx) : IDisposable
         session.Load();
         var page = new ModelsPage(session, new ModelsServices(Paths, ModelsPageTests.TestCatalog(), _downloads,
             () => Task.FromResult(ModelsPageTests.IrisXe), () => 48_000_000_000, ModelsPageTests.Memory, 8, new SpeedMeasurements(),
-            new FakeChannel(), _ => Task.CompletedTask, TimeProvider.System, NullLog.Instance));
+            new FakeChannel(), new ManualTimers(), _ => Task.CompletedTask, TimeProvider.System, NullLog.Instance));
         page.OnShown();
         var window = new Window { Content = new ViewLocator().Build(page), Width = 1100, Height = 1400 };
         window.Show();

@@ -256,7 +256,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         var models = new ModelsPage(session, new ModelsServices(
             _paths, Catalog.BuiltIn, _modelDownloads ?? ModelDownloads.None,
             () => _hardware ??= Task.Run(_probeHardware), () => HardwareProbe.FreeDiskBytes(_paths),
-            GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, Environment.ProcessorCount, _measurements, Supervisor,
+            GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, Environment.ProcessorCount, _measurements, Supervisor, UiTimers.Instance,
             wait => Task.Delay(wait), TimeProvider.System, _log));
         var history = new HistoryPage(session, _paths.HistoryFile, new WindowClipboard(() => _settingsWindow), runner, _log);
         var settings = new SettingsViewModel(session,

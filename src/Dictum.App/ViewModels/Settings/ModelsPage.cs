@@ -17,6 +17,7 @@ namespace Dictum.App.ViewModels.Settings;
 /// <param name="FreeDiskBytes">Free space where the models are; <see cref="long.MaxValue"/> when unknown.</param>
 /// <param name="MemoryBytes">The computer's memory, for the GPU and memory line.</param>
 /// <param name="CpuCores">For the CPU speed anchors (spec 10.2).</param>
+/// <param name="Timers">A one-second tick while a file downloads, so a stall shows (final review I3).</param>
 /// <param name="Delay">Waits for the daemon's reload before a measurement, as the provider test does (4b I1).</param>
 public sealed record ModelsServices(
     AppPaths Paths,
@@ -28,6 +29,7 @@ public sealed record ModelsServices(
     int CpuCores,
     SpeedMeasurements Measurements,
     IDaemonChannel Channel,
+    ITimers Timers,
     Func<TimeSpan, Task> Delay,
     TimeProvider Time,
     ILog Log);
@@ -48,6 +50,7 @@ public sealed partial class ModelsPage : SettingsPage
     private IReadOnlyDictionary<string, double> _dictated = new Dictionary<string, double>();
     private HardwareInfo? _hardware;
     private Task? _probe;
+    private IDisposable? _tick;
     private bool _listening;
     private DateTimeOffset? _lastSave;
 
@@ -107,6 +110,9 @@ public sealed partial class ModelsPage : SettingsPage
             _listening = false;
             _services.Downloads.Changed -= OnDownloads;
         }
+
+        _tick?.Dispose();
+        _tick = null;
     }
 
     /// <summary>Finds the GPU once; the line, the recommendation and the estimates follow. A failed probe counts as no GPU.</summary>
@@ -318,6 +324,7 @@ public sealed partial class ModelsPage : SettingsPage
                 _session.CanEdit));
         }
 
+        Tick(items);
         ShowDisk();
         HardwareText = _hardware is { } probed ? ModelText.Hardware(probed, _services.MemoryBytes) : Strings.SettingsModelsProbing;
     }
@@ -346,6 +353,24 @@ public sealed partial class ModelsPage : SettingsPage
         }
 
         return string.Format(CultureInfo.CurrentCulture, Strings.SettingsModelsProgress, done, total);
+    }
+
+    /// <summary>
+    /// A one-second tick while a file downloads and the page is shown: the queue reports nothing during a stall, so the
+    /// tick adds a sample with the same bytes and the rate falls to nothing (final review I3).
+    /// </summary>
+    private void Tick(IReadOnlyList<QueuedDownload> items)
+    {
+        var downloading = _listening && items.Any(i => i.State == DownloadState.Downloading);
+        if (downloading && _tick is null)
+        {
+            _tick = _services.Timers.Every(TimeSpan.FromSeconds(1), () => Refresh(sample: true));
+        }
+        else if (!downloading && _tick is not null)
+        {
+            _tick.Dispose();
+            _tick = null;
+        }
     }
 
     private void ShowDisk()
