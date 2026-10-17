@@ -809,4 +809,49 @@
   <data name="SettingsRulesCsvQuote" xml:space="preserve">
     <value>Line {0}: a quote is not closed.</value>
   </data>
+  <data name="SettingsProcessors" xml:space="preserve">
+    <value>Processors</value>
+  </data>
+  <data name="SettingsProcessorsLlmCaption" xml:space="preserve">
+    <value>LLM prompt · {0}</value>
+  </data>
+  <data name="SettingsProcessorsUnused" xml:space="preserve">
+    <value>Not in any profile's chain</value>
+  </data>
+  <data name="SettingsLlmOnErrorKeep" xml:space="preserve">
+    <value>Keep the text as recognised</value>
+  </data>
+  <data name="SettingsLlmOnErrorFail" xml:space="preserve">
+    <value>Fail the dictation</value>
+  </data>
+  <data name="SettingsLlmWordingAuto" xml:space="preserve">
+    <value>Automatic</value>
+  </data>
+  <data name="SettingsLlmWordingKeep" xml:space="preserve">
+    <value>Keep the wording</value>
+  </data>
+  <data name="SettingsLlmWordingFree" xml:space="preserve">
+    <value>Allow rewording</value>
+  </data>
+  <data name="SettingsLlmPromptBuiltIn" xml:space="preserve">
+    <value>A built-in prompt. Editing it saves your version as prompts/{0}.md.</value>
+  </data>
+  <data name="SettingsLlmPromptOverride" xml:space="preserve">
+    <value>Your version in prompts/{0}.md replaces the built-in prompt.</value>
+  </data>
+  <data name="SettingsLlmPromptFile" xml:space="preserve">
+    <value>Saved as prompts/{0}.md.</value>
+  </data>
+  <data name="SettingsLlmPromptNameInvalid" xml:space="preserve">
+    <value>Use a name that can be a file name.</value>
+  </data>
+  <data name="SettingsLlmPromptNameTaken" xml:space="preserve">
+    <value>A prompt with this name exists.</value>
+  </data>
+  <data name="SettingsLlmPromptSaveFailed" xml:space="preserve">
+    <value>The prompt could not be saved: {0}</value>
+  </data>
+  <data name="SettingsLlmLatency" xml:space="preserve">
+    <value>{0} ms</value>
+  </data>
 </root>

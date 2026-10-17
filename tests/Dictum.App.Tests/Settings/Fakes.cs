@@ -1,7 +1,9 @@
 using Dictum.App.Daemon;
+using Dictum.App.Settings;
 using Dictum.Audio.PortAudio;
 using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
+using Dictum.Core.Processing;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
 
@@ -140,5 +142,24 @@ internal sealed class FakeSecrets : ISecretStore
     {
         Values.Remove(key);
         return Task.CompletedTask;
+    }
+}
+
+/// <summary>Records runs and answers them; a held answer lets a test finish runs out of order.</summary>
+internal sealed class FakeRunner : IProcessorRunner
+{
+    public List<(IReadOnlyList<(string Id, ProcessorConfig Config)> Steps, string Text, ProcessingContext Context)> Runs { get; } = [];
+
+    public Func<string, RunResult> Answer { get; set; } = text => new RunResult(text.ToUpperInvariant(), 42, null);
+
+    public Queue<TaskCompletionSource<RunResult>> Held { get; } = new();
+
+    public Action? OnRun { get; set; }
+
+    public Task<RunResult> RunAsync(IReadOnlyList<(string Id, ProcessorConfig Config)> steps, string text, ProcessingContext context, CancellationToken ct)
+    {
+        Runs.Add((steps, text, context));
+        OnRun?.Invoke();
+        return Held.TryDequeue(out var held) ? held.Task : Task.FromResult(Answer(text));
     }
 }

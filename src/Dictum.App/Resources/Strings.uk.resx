@@ -809,4 +809,49 @@
   <data name="SettingsRulesCsvQuote" xml:space="preserve">
     <value>Рядок {0}: лапки не закрито.</value>
   </data>
+  <data name="SettingsProcessors" xml:space="preserve">
+    <value>Обробники</value>
+  </data>
+  <data name="SettingsProcessorsLlmCaption" xml:space="preserve">
+    <value>Запит до LLM · {0}</value>
+  </data>
+  <data name="SettingsProcessorsUnused" xml:space="preserve">
+    <value>Не входить у жоден ланцюжок</value>
+  </data>
+  <data name="SettingsLlmOnErrorKeep" xml:space="preserve">
+    <value>Лишити текст як розпізнано</value>
+  </data>
+  <data name="SettingsLlmOnErrorFail" xml:space="preserve">
+    <value>Вважати диктування невдалим</value>
+  </data>
+  <data name="SettingsLlmWordingAuto" xml:space="preserve">
+    <value>Автоматично</value>
+  </data>
+  <data name="SettingsLlmWordingKeep" xml:space="preserve">
+    <value>Зберігати формулювання</value>
+  </data>
+  <data name="SettingsLlmWordingFree" xml:space="preserve">
+    <value>Дозволити переформулювати</value>
+  </data>
+  <data name="SettingsLlmPromptBuiltIn" xml:space="preserve">
+    <value>Вбудований запит. Ваші зміни збережуться як prompts/{0}.md.</value>
+  </data>
+  <data name="SettingsLlmPromptOverride" xml:space="preserve">
+    <value>Ваша версія з prompts/{0}.md замінює вбудований запит.</value>
+  </data>
+  <data name="SettingsLlmPromptFile" xml:space="preserve">
+    <value>Зберігається як prompts/{0}.md.</value>
+  </data>
+  <data name="SettingsLlmPromptNameInvalid" xml:space="preserve">
+    <value>Назва має бути придатною для імені файла.</value>
+  </data>
+  <data name="SettingsLlmPromptNameTaken" xml:space="preserve">
+    <value>Запит із такою назвою вже є.</value>
+  </data>
+  <data name="SettingsLlmPromptSaveFailed" xml:space="preserve">
+    <value>Не вдалося зберегти запит: {0}</value>
+  </data>
+  <data name="SettingsLlmLatency" xml:space="preserve">
+    <value>{0} мс</value>
+  </data>
 </root>

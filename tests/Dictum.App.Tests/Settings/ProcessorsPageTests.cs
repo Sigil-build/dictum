@@ -1,0 +1,275 @@
+using Dictum.App.Resources;
+using Dictum.App.Settings;
+using Dictum.App.ViewModels.Settings;
+using Dictum.Core.Configuration;
+using Dictum.Core.Diagnostics;
+
+namespace Dictum.App.Tests.Settings;
+
+public sealed class ProcessorsPageTests : IDisposable
+{
+    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-settings", Guid.NewGuid().ToString("N")[..8]);
+    private readonly ManualTimers _timers = new();
+    private readonly FakeRunner _runner = new();
+    private readonly FakeSecrets _secrets = new();
+    private readonly PromptFiles _prompts;
+
+    public ProcessorsPageTests()
+    {
+        Directory.CreateDirectory(_dir);
+        _prompts = new PromptFiles(Path.Combine(_dir, "prompts"));
+    }
+
+    private ConfigStore Store => new(Path.Combine(_dir, "config.json"), NullLog.Instance);
+
+    public void Dispose()
+    {
+        try
+        {
+            Directory.Delete(_dir, recursive: true);
+        }
+        catch (IOException)
+        {
+        }
+    }
+
+    private (ProcessorsPage Page, SettingsSession Session) Open()
+    {
+        Store.Save(ProfilesPageTests.Sample());
+        var session = new SettingsSession(Store, _timers, NullLog.Instance);
+        session.Load();
+        return (new ProcessorsPage(session, new ProcessorsServices(_runner, _secrets, _prompts, _timers, NullLog.Instance)), session);
+    }
+
+    private static LlmProcessorConfig Llm(SettingsSession session, string id = "cleanup") => (LlmProcessorConfig)session.Config.Processors[id];
+
+    [Fact]
+    public void TheListShowsEachProcessorWithItsKind()
+    {
+        var (page, _) = Open();
+
+        Assert.Equal(["cleanup", "terms", "filler"], page.Processors.Select(p => p.Id));
+        Assert.Equal(["LLM prompt · cleanup", "Rules: 1", "Rules: 0"], page.Processors.Select(p => p.Caption));
+        Assert.True(page.IsLlm);
+        Assert.Equal("Used by: Work", page.UsedBy);
+        Assert.False(page.CanRemove);
+    }
+
+    [Fact]
+    public void TheLlmEditorShowsTheProcessorAndItsPrompt()
+    {
+        var (page, _) = Open();
+
+        Assert.Equal(("http://localhost:11434/v1", "qwen2.5:7b", "cleanup"), (page.Llm.Url, page.Llm.Model, page.Llm.Prompt));
+        Assert.Contains("{{text}}", page.Llm.PromptText, StringComparison.Ordinal);
+        Assert.Equal("A built-in prompt. Editing it saves your version as prompts/cleanup.md.", page.Llm.PromptNote);
+        Assert.Contains("cleanup", page.Llm.Prompts);
+    }
+
+    [Fact]
+    public void LlmFieldsAreSaved()
+    {
+        var (page, session) = Open();
+
+        page.Llm.Model = "qwen3:8b";
+        page.Llm.Temperature = 0.7m;
+        page.Llm.TimeoutSeconds = 9;
+        page.Llm.OnError = page.Llm.ErrorModes.Single(m => m.Value == LlmErrorMode.Fail);
+        page.Llm.Wording = page.Llm.Wordings.Single(w => w.Value == true);
+        page.Llm.MaxTokens = 300;
+
+        var llm = Llm(session);
+        Assert.Equal(("qwen3:8b", 0.7, 9000, LlmErrorMode.Fail, (bool?)true, (int?)300),
+            (llm.Model, llm.Temperature, llm.TimeoutMs, llm.OnError, llm.PreserveText, llm.MaxTokens));
+
+        page.Llm.MaxTokens = null;
+        Assert.Null(Llm(session).MaxTokens);
+    }
+
+    [Fact]
+    public void AnEmptiedTemperatureSavesNothingItPassedThrough()
+    {
+        var (page, session) = Open();
+
+        page.Llm.Temperature = 1.5m;
+        page.Llm.Temperature = null;
+        session.Flush();
+
+        Assert.Equal(0.2, ((LlmProcessorConfig)Store.Load().Processors["cleanup"]).Temperature);
+        Assert.Equal(Strings.SettingsNumberRequired, page.Llm.TemperatureError);
+    }
+
+    [Fact]
+    public void APromptEditIsWrittenAfterTheDelay()
+    {
+        var (page, _) = Open();
+
+        page.Llm.PromptText = "Fix {{text}}";
+        Assert.False(_prompts.HasFile("cleanup"));
+
+        _timers.Fire();
+        Assert.Equal("Fix {{text}}", _prompts.Read("cleanup"));
+        Assert.Equal("Your version in prompts/cleanup.md replaces the built-in prompt.", page.Llm.PromptNote);
+        Assert.True(page.Llm.CanRestorePrompt);
+    }
+
+    // Review focus 2.
+    [Fact]
+    public async Task ThePreviewUsesTheEditedPrompt()
+    {
+        var (page, _) = Open();
+        string? promptAtRun = null;
+        _runner.OnRun = () => promptAtRun = _prompts.Read("cleanup");
+
+        page.Llm.PromptText = "X {{text}}";
+        await page.Llm.PreviewNowCommand.ExecuteAsync(null);
+
+        Assert.Equal("X {{text}}", promptAtRun);
+    }
+
+    [Fact]
+    public void ThePreviewRunsTheSampleAfterTheDelay()
+    {
+        var (page, session) = Open();
+        _runner.Answer = _ => new RunResult("So I want you to check this code.", 812, null);
+
+        page.Llm.SampleLanguage = page.Llm.Languages.Single(l => l.Value == "en");
+        _timers.Fire();
+
+        var run = _runner.Runs.Last();
+        Assert.Equal(LlmEditor.Samples["en"], run.Text);
+        Assert.Equal("en", run.Context.Language);
+        Assert.Equal("cleanup", run.Steps.Single().Id);
+        Assert.Same(Llm(session), run.Steps.Single().Config);
+        Assert.Equal(("So I want you to check this code.", "812 ms", (string?)null), (page.Llm.PreviewText, page.Llm.PreviewLatency, page.Llm.PreviewError));
+    }
+
+    // Review focus 2.
+    [Fact]
+    public async Task ANewerPreviewWins()
+    {
+        var (page, _) = Open();
+        var first = new TaskCompletionSource<RunResult>();
+        _runner.Held.Enqueue(first);
+
+        var older = page.Llm.PreviewNowCommand.ExecuteAsync(null);
+        _runner.Answer = _ => new RunResult("newer", 5, null);
+        page.Llm.SampleText = "інший текст";
+        await page.Llm.PreviewNowCommand.ExecuteAsync(null);
+        first.SetResult(new RunResult("older", 900, null));
+        await older;
+
+        Assert.Equal("newer", page.Llm.PreviewText);
+    }
+
+    [Fact]
+    public async Task APreviewFailureIsShown()
+    {
+        var (page, _) = Open();
+        _runner.Answer = text => new RunResult(text, 7, "Connection refused (127.0.0.1:11434)");
+
+        await page.Llm.PreviewNowCommand.ExecuteAsync(null);
+
+        Assert.Equal("Connection refused (127.0.0.1:11434)", page.Llm.PreviewError);
+    }
+
+    [Fact]
+    public void RestoringTheBuiltInPromptDeletesYourVersion()
+    {
+        var (page, _) = Open();
+        page.Llm.PromptText = "Fix {{text}}";
+        _timers.Fire();
+
+        page.Llm.RestorePromptCommand.Execute(null);
+
+        Assert.False(_prompts.HasFile("cleanup"));
+        Assert.NotEqual("Fix {{text}}", page.Llm.PromptText);
+        Assert.False(page.Llm.CanRestorePrompt);
+        _timers.Fire();
+        Assert.False(_prompts.HasFile("cleanup"));
+    }
+
+    [Fact]
+    public void ANewPromptCopiesTheTextAndIsChosen()
+    {
+        var (page, session) = Open();
+        page.Llm.PromptText = "Notes from {{text}}";
+
+        page.Llm.NewPromptName = "notes";
+        page.Llm.CreatePromptCommand.Execute(null);
+
+        Assert.Equal("Notes from {{text}}", _prompts.Read("notes"));
+        Assert.Equal("notes", Llm(session).Prompt);
+        Assert.Contains("notes", page.Llm.Prompts);
+        Assert.Equal("", page.Llm.NewPromptName);
+        Assert.False(_prompts.HasFile("cleanup"));
+    }
+
+    [Theory]
+    [InlineData("a/b", "SettingsLlmPromptNameInvalid")]
+    [InlineData("email", "SettingsLlmPromptNameTaken")]
+    public void ABadPromptNameIsRefused(string name, string error)
+    {
+        var (page, session) = Open();
+
+        page.Llm.NewPromptName = name;
+        page.Llm.CreatePromptCommand.Execute(null);
+
+        Assert.Equal(Strings.ResourceManager.GetString(error, Strings.Culture), page.Llm.NewPromptError);
+        Assert.Equal("cleanup", Llm(session).Prompt);
+    }
+
+    [Fact]
+    public async Task TheKeyGoesToTheStore()
+    {
+        var (page, session) = Open();
+
+        page.Llm.KeyText = "sk-llm";
+        await page.Llm.CommitKeyCommand.ExecuteAsync(null);
+
+        Assert.Equal("sk-llm", _secrets.Values["dictum-processor-cleanup"]);
+        Assert.Equal("secret:dictum-processor-cleanup", Llm(session).ApiKey);
+        Assert.Equal("", page.Llm.KeyText);
+    }
+
+    [Fact]
+    public void AddedProcessorsGetFreeIdsAndValidDefaults()
+    {
+        var (page, session) = Open();
+
+        page.AddLlmCommand.Execute(null);
+        Assert.Equal("llm", page.Selected?.Id);
+        var added = Llm(session, "llm");
+        Assert.Equal(("http://localhost:11434/v1", "qwen2.5:7b", "cleanup"), (added.BaseUrl, added.Model, added.Prompt));
+
+        page.AddRulesCommand.Execute(null);
+        Assert.Equal("rules", page.Selected?.Id);
+        Assert.True(page.IsRules);
+        Assert.False(session.HasErrors);
+    }
+
+    [Fact]
+    public void OnlyAnUnusedProcessorCanBeRemoved()
+    {
+        var (page, session) = Open();
+
+        page.Selected = page.Processors.Single(p => p.Id == "filler");
+        Assert.True(page.CanRemove);
+        page.RemoveCommand.Execute(null);
+
+        Assert.False(session.Config.Processors.ContainsKey("filler"));
+        Assert.Equal("cleanup", page.Selected?.Id);
+    }
+
+    [Fact]
+    public void LeavingThePageWritesAPendingPrompt()
+    {
+        var (page, _) = Open();
+        page.Llm.PromptText = "Fix {{text}}";
+
+        page.OnHidden();
+
+        Assert.Equal("Fix {{text}}", _prompts.Read("cleanup"));
+        Assert.Equal(0, _timers.Pending);
+    }
+}
