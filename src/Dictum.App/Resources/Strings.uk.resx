@@ -803,4 +803,10 @@
   <data name="SettingsInjectorPortal" xml:space="preserve">
     <value>Портал робочого столу</value>
   </data>
+  <data name="SettingsRulesCsvEmptyFind" xml:space="preserve">
+    <value>Рядок {0}: немає що шукати.</value>
+  </data>
+  <data name="SettingsRulesCsvQuote" xml:space="preserve">
+    <value>Рядок {0}: лапки не закрито.</value>
+  </data>
 </root>

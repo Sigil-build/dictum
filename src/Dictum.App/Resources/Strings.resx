@@ -803,4 +803,10 @@
   <data name="SettingsInjectorPortal" xml:space="preserve">
     <value>Desktop portal</value>
   </data>
+  <data name="SettingsRulesCsvEmptyFind" xml:space="preserve">
+    <value>Line {0}: nothing to find.</value>
+  </data>
+  <data name="SettingsRulesCsvQuote" xml:space="preserve">
+    <value>Line {0}: a quote is not closed.</value>
+  </data>
 </root>
