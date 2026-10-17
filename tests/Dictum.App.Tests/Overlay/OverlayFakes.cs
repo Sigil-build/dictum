@@ -1,5 +1,5 @@
 using Avalonia;
-using Avalonia.Platform;
+using Avalonia.Controls;
 using Dictum.App.Overlay;
 
 namespace Dictum.App.Tests.Overlay;
@@ -47,7 +47,7 @@ internal sealed class FakeDesktop(Func<OverlayProbe> probe) : IOverlayDesktop
 {
     public bool Slow { get; set; }
 
-    public void Prepare(IPlatformHandle handle)
+    public void Prepare(Window window)
     {
     }
 

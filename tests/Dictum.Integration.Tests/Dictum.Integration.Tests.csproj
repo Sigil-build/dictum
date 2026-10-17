@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Dictum.Host/Dictum.Host.csproj" />
+    <!-- The overlay window on Avalonia's real Win32 platform (OverlayWindowStyleTests). -->
+    <ProjectReference Include="../../src/Dictum.App/Dictum.App.csproj" />
   </ItemGroup>
 
   <ItemGroup>

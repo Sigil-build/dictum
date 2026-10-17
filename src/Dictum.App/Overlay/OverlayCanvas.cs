@@ -313,8 +313,12 @@ public sealed class OverlayCanvas : Control
         var y = Cy + OverlayTokens.CaptionOffset;
         Warning(context, ink, x, y, alpha);
         var left = Cx + OverlayTokens.ErrorTextOffsetX;
-        Text(context, message ?? "", OverlayTokens.ErrorTextSize, FontWeight.Normal, left, y, alpha, centred: false, W - OverlayTokens.ChipRight - left);
+        Text(context, OneLine(message), OverlayTokens.ErrorTextSize, FontWeight.Normal, left, y, alpha, centred: false, W - OverlayTokens.ChipRight - left);
     }
+
+    /// <summary>Provider errors carry pretty-printed JSON; the overlay has one line for them (final review I1).</summary>
+    private static string OneLine(string? text) =>
+        string.Join(' ', (text ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
     private static void Warning(DrawingContext context, OverlayInk ink, double x, double y, double alpha)
     {

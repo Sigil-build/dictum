@@ -26,7 +26,7 @@ public class OverlayWindowTests(AvaloniaFixture fx)
     [Fact]
     public Task PresentShowsTheWindowAndDrawsUntilTheSceneIsHidden() => fx.Ui(() =>
     {
-        var window = new OverlayWindow(_ => { }) { MinFrameInterval = TimeSpan.Zero };
+        var window = new OverlayWindow(_ => { });
         var scenes = new Queue<OverlayScene>([Listening, Listening, Listening]);
 
         window.Present(new PixelRect(100, 200, 480, 96), 1, 0.8, () => scenes.Count > 0 ? scenes.Dequeue() : OverlayScene.Hidden);
@@ -42,6 +42,30 @@ public class OverlayWindowTests(AvaloniaFixture fx)
 
         Assert.False(window.IsVisible);
         Assert.Equal(OverlayPhase.Hidden, window.Canvas.Scene.Phase);
+    });
+
+    // Final review I2: skipping display frames dropped a 100 Hz desktop to about 32 fps.
+    [Fact]
+    public Task TheWindowDrawsEveryDisplayFrame() => fx.Ui(() =>
+    {
+        var window = new OverlayWindow(_ => { });
+        var drawn = 0;
+        window.Present(new PixelRect(0, 0, 480, 96), 1, 1, () =>
+        {
+            drawn++;
+            return Listening;
+        });
+        var afterShow = drawn;
+
+        for (var i = 0; i < 10; i++)
+        {
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Dispatcher.UIThread.RunJobs();
+        }
+
+        // At least one scene per forced tick; the headless render timer may add its own ticks under load.
+        Assert.True(drawn - afterShow >= 10, $"{drawn - afterShow} frames for 10 ticks");
+        window.Dismiss();
     });
 
     [Fact]

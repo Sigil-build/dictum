@@ -1,5 +1,6 @@
+using System.Runtime.Versioning;
 using Avalonia;
-using Avalonia.Platform;
+using Avalonia.Controls;
 using Dictum.Core.Diagnostics;
 using Dictum.Platform.Linux;
 using Dictum.Platform.Linux.DBus;
@@ -17,8 +18,8 @@ public sealed record OverlayProbe(ScreenHint Hint, bool ReducedMotion)
 /// <summary>The overlay's OS side; a fake in tests.</summary>
 public interface IOverlayDesktop
 {
-    /// <summary>Makes the window click-through and never activated, before it is first shown.</summary>
-    void Prepare(IPlatformHandle handle);
+    /// <summary>Makes the window click-through and never activated; called before it is first shown.</summary>
+    void Prepare(Window window);
 
     /// <summary>Never throws, except when <paramref name="ct"/> was cancelled before it started.</summary>
     Task<OverlayProbe> ProbeAsync(CancellationToken ct);
@@ -49,15 +50,16 @@ public sealed class OverlayDesktop : IOverlayDesktop, IDisposable
 
     public static OverlayDesktop ForThisDesktop(ILog log) => new(log, OperatingSystem.IsLinux() ? SessionInfo.Detect() : null);
 
-    public void Prepare(IPlatformHandle handle)
+    public void Prepare(Window window)
     {
         try
         {
-            if (OperatingSystem.IsWindows() && handle.HandleDescriptor == "HWND")
+            if (OperatingSystem.IsWindows())
             {
-                OverlayWindowStyle.Apply(handle.Handle);
+                PrepareWin32(window);
             }
-            else if (OperatingSystem.IsLinux() && handle.HandleDescriptor == "XID" && !X11Overlay.Prepare((nuint)handle.Handle))
+            else if (OperatingSystem.IsLinux() && window.TryGetPlatformHandle() is { HandleDescriptor: "XID" } handle
+                && !X11Overlay.Prepare((nuint)handle.Handle))
             {
                 _log.Warn("No X display; the overlay window is not click-through");
             }
@@ -69,6 +71,23 @@ public sealed class OverlayDesktop : IOverlayDesktop, IDisposable
     }
 
     public Task<OverlayProbe> ProbeAsync(CancellationToken ct) => Task.Run(() => ProbeCoreAsync(ct), ct);
+
+    /// <summary>
+    /// Avalonia rebuilds the extended style on every Show (final review C1), so the bits go through its style callback;
+    /// the window becomes layered during the first Show, and its alpha is set once it has opened.
+    /// </summary>
+    [SupportedOSPlatform("windows")]
+    private static void PrepareWin32(Window window)
+    {
+        Win32Properties.AddWindowStylesCallback(window, static (style, exStyle) => (style, exStyle | (uint)OverlayWindowStyle.Required));
+        window.Opened += (_, _) =>
+        {
+            if (window.TryGetPlatformHandle() is { HandleDescriptor: "HWND" } handle)
+            {
+                OverlayWindowStyle.MakeOpaque(handle.Handle);
+            }
+        };
+    }
 
     public void Dispose() => _kwin?.Dispose();
 
@@ -113,7 +132,7 @@ public sealed class OverlayDesktop : IOverlayDesktop, IDisposable
 
     private sealed class Blind : IOverlayDesktop
     {
-        public void Prepare(IPlatformHandle handle)
+        public void Prepare(Window window)
         {
         }
 

@@ -115,6 +115,25 @@ public class OverlayCanvasTests(AvaloniaFixture fx)
         Assert.True(Count(pixels, Light, 182, 58, W - 16, 78) > 100);
     });
 
+    // Review focus 1, final review I1: providers answer with pretty-printed JSON, so the message has line breaks.
+    [Fact]
+    public Task AMultiLineErrorIsShownOnOneLine() => fx.Ui(() =>
+    {
+        var message = """
+            LLM 'clean' answered 401: {
+                "error": {
+                    "message": "Incorrect API key provided: sk-proj-abc",
+                    "type": "invalid_request_error"
+                }
+            }
+            """;
+
+        var pixels = Draw(Scene(OverlayPhase.Error, since: 0.5, message: message));
+
+        Assert.True(Count(pixels, Light, 400, 58, W - 16, 78) > 20, "the text runs on to the ellipsis");
+        Assert.Equal(0, Count(pixels, Any, 0, 80, W - 1, 95));
+    });
+
     [Fact]
     public Task ReducedMotionDrawsALevelBarInsteadOfWaves() => fx.Ui(() =>
     {

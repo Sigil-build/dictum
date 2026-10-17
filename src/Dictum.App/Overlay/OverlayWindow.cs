@@ -1,7 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
-using Avalonia.Platform;
 
 namespace Dictum.App.Overlay;
 
@@ -23,16 +22,15 @@ public interface IOverlaySurface
 /// <summary>
 /// The transparent, click-through, never-activated topmost window that holds the <see cref="OverlayCanvas"/>
 /// (spec 5.4). The OS part (extended styles on Windows, override-redirect on X11) arrives through <c>prepare</c>
-/// before the window is first shown. While shown, it draws on display frames, about 60 times a second at most.
+/// before the window is first shown. While shown, it draws on every display frame.
 /// </summary>
 public sealed class OverlayWindow : Window, IOverlaySurface
 {
     private Func<OverlayScene>? _next;
-    private TimeSpan? _lastFrame;
     private bool _looping;
     private double _opacity = 1;
 
-    public OverlayWindow(Action<IPlatformHandle> prepare)
+    public OverlayWindow(Action<Window> prepare)
     {
         WindowDecorations = WindowDecorations.None;
         CanResize = false;
@@ -47,11 +45,8 @@ public sealed class OverlayWindow : Window, IOverlaySurface
         Title = "Dictum";
         Content = Canvas;
 
-        // The native window exists from construction on; X11 needs override-redirect before the first map.
-        if (TryGetPlatformHandle() is { } handle)
-        {
-            prepare(handle);
-        }
+        // Before the first Show: X11 needs override-redirect before the first map, Win32 its style callback.
+        prepare(this);
 
         Screens.Changed += (_, _) => ScreensChanged?.Invoke();
     }
@@ -59,9 +54,6 @@ public sealed class OverlayWindow : Window, IOverlaySurface
     public event Action? ScreensChanged;
 
     public OverlayCanvas Canvas { get; } = new();
-
-    /// <summary>Display frames closer together than this are skipped (ruling: about 60 fps).</summary>
-    public TimeSpan MinFrameInterval { get; set; } = TimeSpan.FromMilliseconds(15);
 
     public IReadOnlyList<ScreenArea> ScreenAreas =>
         [.. Screens.All.Select(s => new ScreenArea(s.DisplayName, s.Bounds, s.WorkingArea, s.Scaling, s.IsPrimary))];
@@ -93,6 +85,10 @@ public sealed class OverlayWindow : Window, IOverlaySurface
         Hide();
     }
 
+    /// <summary>
+    /// Every display frame (final review I2): a skipped callback invalidates nothing, and Avalonia then waits for its
+    /// own ~16 ms timer (about 31 ms on Win32) instead of the next vsync.
+    /// </summary>
     private void OnFrame(TimeSpan time)
     {
         if (_next is not { } next)
@@ -101,13 +97,6 @@ public sealed class OverlayWindow : Window, IOverlaySurface
             return;
         }
 
-        if (_lastFrame is { } last && time >= last && time - last < MinFrameInterval)
-        {
-            RequestAnimationFrame(OnFrame);
-            return;
-        }
-
-        _lastFrame = time;
         var scene = next();
         if (scene.Phase is OverlayPhase.Hidden)
         {
