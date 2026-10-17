@@ -15,11 +15,13 @@ public sealed partial class SpeechProvidersPage : SettingsPage
     private readonly SettingsSession _session;
     private readonly SpeechServices _services;
     private Dictionary<string, ProviderCard> _cards = [];
+    private DateTimeOffset? _lastSave;
 
     public SpeechProvidersPage(SettingsSession session, SpeechServices services)
     {
         _session = session;
         _services = services;
+        session.Saved += () => _lastSave = services.Time.GetUtcNow();
         session.Changed += Load;
         Load();
     }
@@ -76,7 +78,7 @@ public sealed partial class SpeechProvidersPage : SettingsPage
             var kind = stt is WhisperLocalSttConfig ? ProviderKind.Local : ProviderKind.Remote;
             var card = _cards.GetValueOrDefault(id) is { } existing && existing.Kind == kind
                 ? existing
-                : new ProviderCard(id, kind, _session, _services, Remove);
+                : new ProviderCard(id, kind, _session, _services, Remove, () => _lastSave);
             card.Load(config);
             cards.Add(card);
         }

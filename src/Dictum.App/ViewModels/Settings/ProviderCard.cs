@@ -50,18 +50,22 @@ public sealed partial class ProviderCard : ObservableObject
     private readonly SettingsSession _session;
     private readonly SpeechServices _services;
     private readonly Action<ProviderCard> _remove;
+    private readonly Func<DateTimeOffset?> _lastSave;
     private readonly InputMeter _meter = new();
     private readonly DateTimeOffset _epoch;
     private bool _loading;
     private bool _timeoutEmpty;
+    private Task? _committing;
 
-    public ProviderCard(string id, ProviderKind kind, SettingsSession session, SpeechServices services, Action<ProviderCard> remove)
+    /// <param name="lastSave">When the session last wrote the file, whoever asked: the daemon reloads after any write.</param>
+    public ProviderCard(string id, ProviderKind kind, SettingsSession session, SpeechServices services, Action<ProviderCard> remove, Func<DateTimeOffset?> lastSave)
     {
         Id = id;
         Kind = kind;
         _session = session;
         _services = services;
         _remove = remove;
+        _lastSave = lastSave;
         _epoch = services.Time.GetUtcNow();
     }
 
@@ -279,15 +283,21 @@ public sealed partial class ProviderCard : ObservableObject
 
     /// <summary>Enter or leaving the key field: the typed key goes to the secret store; an empty field keeps the stored key.</summary>
     [RelayCommand]
-    private async Task CommitKeyAsync()
+    private Task CommitKeyAsync()
     {
         if (KeyText.Length == 0)
         {
-            return;
+            return _committing ?? Task.CompletedTask;
         }
 
         var typed = KeyText;
         KeyText = "";
+        _committing = StoreKeyAsync(typed);
+        return _committing;
+    }
+
+    private async Task StoreKeyAsync(string typed)
+    {
         var result = await ApiKeys.StoreAsync(_services.Secrets, SecretName, typed, CancellationToken.None);
         if (result.Error is { } error)
         {
@@ -320,6 +330,8 @@ public sealed partial class ProviderCard : ObservableObject
             return;
         }
 
+        // A typed key, or one still being stored behind a keyring prompt, is part of what the test must use (final review I1).
+        await CommitKeyAsync();
         if (_session.HasErrors)
         {
             Result = new SystemRow(Strings.SettingsProvidersTest, HealthLevel.Error, Strings.SettingsProvidersFixFirst);
@@ -332,9 +344,11 @@ public sealed partial class ProviderCard : ObservableObject
         IDisposable? tick = null;
         try
         {
-            if (_session.Flush())
+            // The daemon reloads after any write: the pending one flushed now, or a debounced one just before the click (final review I1).
+            _session.Flush();
+            if (_lastSave() is { } saved && ReloadWait - (_services.Time.GetUtcNow() - saved) is var wait && wait > TimeSpan.Zero)
             {
-                await _services.Delay(ReloadWait);
+                await _services.Delay(wait);
             }
 
             if (!sample)

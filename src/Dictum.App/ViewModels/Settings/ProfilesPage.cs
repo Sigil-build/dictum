@@ -209,10 +209,12 @@ public sealed partial class ProfilesPage : SettingsPage
 
     public override void OnLink(DaemonLink link)
     {
-        if (link.State != DaemonLinkState.Connected)
+        // The daemon can outlive a dropped event stream, still paused by us: lift the pause once it answers again
+        // (final review M3). A daemon that was restarted instead starts unpaused, and the resume does nothing.
+        if (link.State == DaemonLinkState.Connected && _pausedByUs && !IsRecording)
         {
-            // A daemon that comes back starts unpaused.
             _pausedByUs = false;
+            Send("resume-hotkeys");
         }
 
         HotkeyWarning = RegistrationWarning(link);
@@ -260,7 +262,7 @@ public sealed partial class ProfilesPage : SettingsPage
                 Send("pause-hotkeys");
             }
         }
-        else if (_pausedByUs)
+        else if (_pausedByUs && _channel.Link.State == DaemonLinkState.Connected)
         {
             _pausedByUs = false;
             Send("resume-hotkeys");

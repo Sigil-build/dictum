@@ -318,4 +318,65 @@ public sealed class SpeechProvidersPageTests : IDisposable
         Assert.Equal(Strings.SettingsProvidersNothingHeard, card.Result?.Detail);
         Assert.Equal(0, _timers.Pending);
     }
+
+
+    // Final review I1: a debounced save just before the click needs the rest of the reload time too.
+    [Fact]
+    public async Task ATestRightAfterAnAutomaticSaveWaitsTheRest()
+    {
+        var (page, _) = Open();
+        var card = Card(page, "remote");
+        card.Url = "http://gpu-box:9000/v1";
+        _timers.Fire();
+        _clock.Advance(TimeSpan.FromMilliseconds(500));
+
+        await card.TestCommand.ExecuteAsync(null);
+
+        Assert.Equal([(TimeSpan.FromSeconds(1), "http://gpu-box:9000/v1")], _waits);
+    }
+
+    [Fact]
+    public async Task ATestLongAfterTheLastSaveStartsAtOnce()
+    {
+        var (page, _) = Open();
+        var card = Card(page, "remote");
+        card.Url = "http://gpu-box:9000/v1";
+        _timers.Fire();
+        _clock.Advance(TimeSpan.FromSeconds(2));
+
+        await card.TestCommand.ExecuteAsync(null);
+
+        Assert.Empty(_waits);
+    }
+
+    // Final review I1: a key still being stored (a keyring prompt) is part of the settings the test must use.
+    [Fact]
+    public async Task ATestWaitsForAKeyStillBeingStored()
+    {
+        string? keyAtTest = null;
+        _channel.Answer = request =>
+        {
+            if (request.Command == "test-stt")
+            {
+                keyAtTest = ((OpenAiCompatibleSttConfig)Store.Load().Stt["remote"]).ApiKey;
+            }
+
+            return new IpcResponse(true);
+        };
+        var held = new TaskCompletionSource();
+        _secrets.Held = held;
+        var (page, _) = Open();
+        var card = Card(page, "remote");
+        card.KeyText = "sk-123";
+
+        var commit = card.CommitKeyCommand.ExecuteAsync(null);
+        var test = card.TestCommand.ExecuteAsync(null);
+        Assert.DoesNotContain(_channel.Commands, c => c == "test-stt");
+
+        held.SetResult();
+        await commit;
+        await test;
+
+        Assert.Equal("secret:dictum-stt-remote", keyAtTest);
+    }
 }

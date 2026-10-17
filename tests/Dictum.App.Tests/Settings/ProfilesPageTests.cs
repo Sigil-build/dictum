@@ -362,4 +362,22 @@ public sealed class ProfilesPageTests : IDisposable
         Assert.Equal("home", page.Selected?.Id);
         Assert.Equal(["Home", "Work"], page.Profiles.Select(p => p.Name));
     }
+
+
+    // Final review M3: the daemon outlives a dropped event stream, so its pause must still be lifted.
+    [Fact]
+    public void ADroppedLinkStillGetsItsResume()
+    {
+        var (page, _) = Open();
+        page.IsRecording = true;
+
+        _channel.Link = new DaemonLink(DaemonLinkState.Restarting);
+        page.OnLink(_channel.Link);
+        page.IsRecording = false;
+        Assert.Equal(["pause-hotkeys"], _channel.Commands);
+
+        _channel.Link = FakeChannel.Connected();
+        page.OnLink(_channel.Link);
+        Assert.Equal(["pause-hotkeys", "resume-hotkeys"], _channel.Commands);
+    }
 }

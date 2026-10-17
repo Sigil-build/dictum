@@ -115,17 +115,25 @@ internal sealed class FakeSecrets : ISecretStore
 
     public Exception? Fails { get; set; }
 
+    /// <summary>Holds the next store until the test completes it, as a keyring prompt would.</summary>
+    public TaskCompletionSource? Held { get; set; }
+
     public Task<string?> GetAsync(string key, CancellationToken ct) => Task.FromResult(Values.GetValueOrDefault(key));
 
-    public Task SetAsync(string key, string value, CancellationToken ct)
+    public async Task SetAsync(string key, string value, CancellationToken ct)
     {
         if (Fails is not null)
         {
-            return Task.FromException(Fails);
+            throw Fails;
+        }
+
+        if (Held is { } held)
+        {
+            Held = null;
+            await held.Task;
         }
 
         Values[key] = value;
-        return Task.CompletedTask;
     }
 
     public Task DeleteAsync(string key, CancellationToken ct)
