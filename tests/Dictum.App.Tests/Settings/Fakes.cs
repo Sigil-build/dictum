@@ -1,6 +1,7 @@
 using Dictum.App.Daemon;
 using Dictum.Audio.PortAudio;
 using Dictum.Core.Audio;
+using Dictum.Core.Configuration;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
 
@@ -103,6 +104,33 @@ internal sealed class FakeSounds : ISoundPlayer
         }
 
         Played.Add(cue);
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>An in-memory secret store; never the real Credential Manager or keyring.</summary>
+internal sealed class FakeSecrets : ISecretStore
+{
+    public Dictionary<string, string> Values { get; } = [];
+
+    public Exception? Fails { get; set; }
+
+    public Task<string?> GetAsync(string key, CancellationToken ct) => Task.FromResult(Values.GetValueOrDefault(key));
+
+    public Task SetAsync(string key, string value, CancellationToken ct)
+    {
+        if (Fails is not null)
+        {
+            return Task.FromException(Fails);
+        }
+
+        Values[key] = value;
+        return Task.CompletedTask;
+    }
+
+    public Task DeleteAsync(string key, CancellationToken ct)
+    {
+        Values.Remove(key);
         return Task.CompletedTask;
     }
 }

@@ -1,6 +1,8 @@
+using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Platform;
 using Dictum.Platform.Linux;
+using Dictum.Platform.Linux.DBus;
 using Dictum.Platform.Windows;
 
 namespace Dictum.Host;
@@ -32,4 +34,10 @@ public static class PlatformFactory
         OperatingSystem.IsWindows() ? new RunKeyAutostart()
         : OperatingSystem.IsLinux() ? new LinuxAutostart()
         : null;
+
+    /// <summary>The OS secret store, without building the rest of the platform: the desktop app needs only this.</summary>
+    public static ISecretStore CreateSecretStore(ILog log) =>
+        OperatingSystem.IsWindows() ? new CredentialManagerSecretStore()
+        : OperatingSystem.IsLinux() ? new SecretServiceStore(new Portal(log), log)
+        : new UnavailableSecretStore();
 }
