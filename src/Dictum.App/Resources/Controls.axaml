@@ -1,0 +1,118 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="using:Dictum.App.Controls">
+  <Styles.Resources>
+    <ResourceDictionary>
+      <!-- Row icons from the design (20 × 20, stroked 1.6 in text.secondary). -->
+      <StreamGeometry x:Key="icon.login">M3,5.5 L17,5.5 M3,10 L17,10 M3,14.5 L11,14.5</StreamGeometry>
+      <StreamGeometry x:Key="icon.microphone">M7,5 A3,3 0 0 1 13,5 L13,9 A3,3 0 0 1 7,9 Z M4.5,9.5 A5.5,5.5 0 0 0 15.5,9.5 M10,15 L10,18</StreamGeometry>
+      <StreamGeometry x:Key="icon.sounds">M3,8 L3,12 L6,12 L10,15 L10,5 L6,8 Z M13,7.5 A3.5,3.5 0 0 1 13,12.5 M15.5,5 A7,7 0 0 1 15.5,15</StreamGeometry>
+      <StreamGeometry x:Key="icon.history">M3,10 A7,7 0 1 0 17,10 A7,7 0 1 0 3,10 Z M10,6 L10,10 L12.5,11.5</StreamGeometry>
+      <StreamGeometry x:Key="icon.language">M3,10 A7,7 0 1 0 17,10 A7,7 0 1 0 3,10 Z M3,10 L17,10 M10,3 C12.5,5.2 12.5,14.8 10,17 M10,3 C7.5,5.2 7.5,14.8 10,17</StreamGeometry>
+      <StreamGeometry x:Key="icon.overlay">M5,4 L15,4 A2,2 0 0 1 17,6 L17,12 A2,2 0 0 1 15,14 L5,14 A2,2 0 0 1 3,12 L3,6 A2,2 0 0 1 5,4 Z M7,17 L13,17</StreamGeometry>
+
+      <ControlTheme x:Key="{x:Type controls:SettingsRow}" TargetType="controls:SettingsRow">
+        <Setter Property="Template">
+          <ControlTemplate>
+            <Border Background="{DynamicResource color.bg.layer}" BorderBrush="{DynamicResource color.border}" BorderThickness="1"
+                    CornerRadius="{DynamicResource radius.control}" Padding="16,12" MinHeight="{DynamicResource settingsRow.minHeight}">
+              <StackPanel Spacing="12" VerticalAlignment="Center">
+                <Grid ColumnDefinitions="20,16,*,16,Auto">
+                  <Path Data="{TemplateBinding Icon}" Width="20" Height="20" VerticalAlignment="Center"
+                        Stroke="{DynamicResource color.text.secondary}" StrokeThickness="1.6" StrokeLineCap="Round" StrokeJoin="Round" />
+                  <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                    <TextBlock Text="{TemplateBinding Label}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
+                    <TextBlock Text="{TemplateBinding Description}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap"
+                               Foreground="{DynamicResource color.text.secondary}"
+                               IsVisible="{TemplateBinding Description, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    <TextBlock Text="{TemplateBinding Error}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap"
+                               Foreground="{DynamicResource color.status.error.fg}"
+                               IsVisible="{TemplateBinding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                  </StackPanel>
+                  <ContentPresenter Grid.Column="4" Content="{TemplateBinding Content}" VerticalAlignment="Center" />
+                </Grid>
+                <ContentPresenter Content="{TemplateBinding Footer}" Margin="36,0,0,0"
+                                  IsVisible="{TemplateBinding Footer, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              </StackPanel>
+            </Border>
+          </ControlTemplate>
+        </Setter>
+      </ControlTheme>
+    </ResourceDictionary>
+  </Styles.Resources>
+
+  <!-- Page titles: 28/36 600 (type.title). -->
+  <Style Selector="TextBlock.title">
+    <Setter Property="FontSize" Value="{DynamicResource type.title.size}" />
+    <Setter Property="LineHeight" Value="{DynamicResource type.title.lineHeight}" />
+    <Setter Property="FontWeight" Value="{DynamicResource type.title.weight}" />
+    <Setter Property="Foreground" Value="{DynamicResource color.text.primary}" />
+  </Style>
+
+  <!-- Buttons: primary = accent fill; destructive = the error text colour; link = text only. -->
+  <Style Selector="Button.primary">
+    <Setter Property="Background" Value="{DynamicResource color.accent}" />
+    <Setter Property="Foreground" Value="{DynamicResource color.text.onAccent}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+  <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource color.accent.hover}" />
+    <Setter Property="Foreground" Value="{DynamicResource color.text.onAccent}" />
+  </Style>
+  <Style Selector="Button.destructive">
+    <Setter Property="Foreground" Value="{DynamicResource color.status.error.fg}" />
+  </Style>
+  <Style Selector="Button.link">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Foreground" Value="{DynamicResource color.text.secondary}" />
+  </Style>
+  <Style Selector="Button.link:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource color.text.primary}" />
+  </Style>
+
+  <!-- Segmented control: joined 32 px items, the selected one in accent (design). -->
+  <Style Selector="ListBox.segmented">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="ItemsPanel">
+      <ItemsPanelTemplate>
+        <StackPanel Orientation="Horizontal" />
+      </ItemsPanelTemplate>
+    </Setter>
+  </Style>
+  <Style Selector="ListBox.segmented ListBoxItem">
+    <Setter Property="MinHeight" Value="32" />
+    <Setter Property="Padding" Value="12,0" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{DynamicResource color.border}" />
+    <Setter Property="Background" Value="{DynamicResource color.bg.layer}" />
+    <Setter Property="CornerRadius" Value="0" />
+  </Style>
+  <Style Selector="ListBox.segmented ListBoxItem:nth-child(1)">
+    <Setter Property="CornerRadius" Value="4,0,0,4" />
+  </Style>
+  <Style Selector="ListBox.segmented ListBoxItem:nth-last-child(1)">
+    <Setter Property="CornerRadius" Value="0,4,4,0" />
+  </Style>
+  <Style Selector="ListBox.segmented ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource color.accent}" />
+    <Setter Property="Foreground" Value="{DynamicResource color.text.onAccent}" />
+  </Style>
+
+  <!-- Warning banner (System summary, read-only pages). -->
+  <Style Selector="Border.banner">
+    <Setter Property="Padding" Value="14,10" />
+    <Setter Property="CornerRadius" Value="{DynamicResource radius.control}" />
+    <Setter Property="Background" Value="{DynamicResource color.status.warn.bg}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource color.status.warn.fg}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Border.banner TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource color.status.warn.fg}" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+  </Style>
+</Styles>

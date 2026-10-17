@@ -18,6 +18,7 @@
   </Application.Resources>
   <Application.Styles>
     <FluentTheme />
+    <StyleInclude Source="/Resources/Controls.axaml" />
     <Style Selector="WindowDrawnDecorations:has-titlebar /template/ Panel#PART_TitleTextPanel">
       <Setter Property="IsVisible" Value="False" />
     </Style>

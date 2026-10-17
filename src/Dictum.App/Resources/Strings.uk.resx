@@ -203,4 +203,19 @@
   <data name="SettingsVersion" xml:space="preserve">
     <value>Dictum {0}</value>
   </data>
+  <data name="CommonOn" xml:space="preserve">
+    <value>Увімк.</value>
+  </data>
+  <data name="CommonOff" xml:space="preserve">
+    <value>Вимк.</value>
+  </data>
+  <data name="StatusOk" xml:space="preserve">
+    <value>Гаразд</value>
+  </data>
+  <data name="StatusWarning" xml:space="preserve">
+    <value>Попередження</value>
+  </data>
+  <data name="StatusError" xml:space="preserve">
+    <value>Помилка</value>
+  </data>
 </root>
