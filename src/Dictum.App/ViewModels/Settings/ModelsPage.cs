@@ -62,7 +62,13 @@ public sealed partial class ModelsPage : SettingsPage
                 .Where(e => e.Kind == CatalogKind.Whisper && (!e.Hidden || ModelFiles.IsInstalled(services.Paths, e)))
                 .Select(e => new ModelCard(e, this)),
         ];
-        session.Saved += () => _lastSave = services.Time.GetUtcNow();
+        session.Saved += () =>
+        {
+            _lastSave = services.Time.GetUtcNow();
+
+            // A good save raises no Changed; the file on disk is what "Used by" and Delete also follow.
+            Refresh();
+        };
         session.Changed += () => Refresh();
         Refresh();
     }
@@ -284,6 +290,7 @@ public sealed partial class ModelsPage : SettingsPage
         var paths = _services.Paths;
         var items = _services.Downloads.Items;
         var profiles = LocalProfiles(_session.Config);
+        var saved = LocalProfiles(_session.OnDisk);
         var estimates = SpeedEstimator.Estimate(_services.Catalog.Entries, _dictated, _services.Measurements.Ratios, _hardware, _services.CpuCores);
         var recommended = _hardware is { } hardware ? SetupPlanner.RecommendSpeechModel(hardware) : null;
         foreach (var card in Cards)
@@ -298,6 +305,7 @@ public sealed partial class ModelsPage : SettingsPage
                 card.Entry.Id == recommended,
                 recommended == SetupPlanner.GpuModel,
                 [.. profiles.Where(p => SamePath(paths.ResolveModel(p.Model), file))],
+                [.. saved.Where(p => SamePath(paths.ResolveModel(p.Model), file))],
                 profiles,
                 _session.CanEdit));
         }

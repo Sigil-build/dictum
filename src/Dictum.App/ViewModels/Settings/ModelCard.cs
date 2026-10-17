@@ -16,7 +16,8 @@ public sealed record LocalProfile(string Id, string Name, string Provider, strin
 /// <param name="Download">The queue's entry for the model, or null.</param>
 /// <param name="Progress">"949 MB of 1.53 GB · 18 MB/s · 32 s left" while the file is in the queue; otherwise null.</param>
 /// <param name="ForGpu">The recommendation is the GPU one.</param>
-/// <param name="UsedBy">The profiles whose provider uses this file.</param>
+/// <param name="UsedBy">The profiles whose provider uses this file in the edited copy.</param>
+/// <param name="UsedOnDisk">The same in the saved config, which the daemon runs until the next save (final review I1).</param>
 /// <param name="Profiles">Every profile with a local Whisper provider, for "Use in profile…".</param>
 /// <param name="CanEdit">The config was read, so "Used by" can be trusted.</param>
 public sealed record ModelCardState(
@@ -27,6 +28,7 @@ public sealed record ModelCardState(
     bool Recommended,
     bool ForGpu,
     IReadOnlyList<LocalProfile> UsedBy,
+    IReadOnlyList<LocalProfile> UsedOnDisk,
     IReadOnlyList<LocalProfile> Profiles,
     bool CanEdit);
 
@@ -203,7 +205,9 @@ public sealed partial class ModelCard : ObservableObject
 
         // A finished download is just an installed file.
         var download = state.Download is { State: not DownloadState.Done } item ? item : null;
-        var used = state.UsedBy.Count > 0;
+        // Used in the copy or on disk: an edit not saved yet, or one that cannot be saved, never frees the file.
+        var users = state.UsedBy.Concat(state.UsedOnDisk).DistinctBy(p => p.Id).Select(p => p.Name).ToList();
+        var used = users.Count > 0;
         IsInstalled = state.Installed && download is null;
         IsActive = download?.State is DownloadState.Queued or DownloadState.Downloading;
         IsPaused = download?.State == DownloadState.Paused;
@@ -234,9 +238,9 @@ public sealed partial class ModelCard : ObservableObject
         DownloadText = string.Format(CultureInfo.CurrentCulture,
             IsFailed ? Strings.SettingsModelsRetry : IsTooSlow ? Strings.SettingsModelsDownloadAnyway : Strings.SettingsModelsDownload,
             Units.Size(Entry.Size));
-        var users = string.Join(", ", state.UsedBy.Select(p => p.Name));
-        UsedByText = used ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsProvidersUsedBy, users) : Strings.SettingsModelsUnused;
-        DeleteNote = IsInstalled && used ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsModelsDeleteRefused, users) : null;
+        var names = string.Join(", ", users);
+        UsedByText = used ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsProvidersUsedBy, names) : Strings.SettingsModelsUnused;
+        DeleteNote = IsInstalled && used ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsModelsDeleteRefused, names) : null;
         CanDelete = IsInstalled && !used && state.CanEdit && !Busy;
         CanVerify = IsInstalled && !Busy;
         ShowMeasure = IsInstalled && used && state.CanEdit && state.Estimate?.Source != SpeedSource.Dictations;

@@ -486,4 +486,46 @@ public sealed class ModelsPageTests : IDisposable
         Assert.False(Card(page, Turbo).ShowMeasure);
         Assert.False(Card(page, Turbo).CanMeasure);
     }
+
+    // Final review I1: the daemon runs the saved config, so a file it still uses is not freed by an unsaved edit.
+    [Fact]
+    public void AModelTheSavedConfigUsesIsNotDeletedBeforeTheSave()
+    {
+        Install(TurboFile, TurboData);
+        Install(SmallFile, SmallData);
+        var (page, _) = Open();
+        var (turbo, small) = (Card(page, Turbo), Card(page, Small));
+
+        small.UseIn = small.UseInChoices[0];
+
+        Assert.Equal(("Used by: Work, Home", false), (turbo.UsedByText, turbo.CanDelete));
+        turbo.DeleteCommand.Execute(null);
+        Assert.True(File.Exists(ModelPath(TurboFile)));
+
+        _timers.Fire();
+        Assert.Equal(("Not used by any profile", true), (turbo.UsedByText, turbo.CanDelete));
+    }
+
+    // Final review I1: an edit that cannot be saved never frees the file the saved config uses.
+    [Fact]
+    public void AnEditThatCannotBeSavedKeepsTheModelInUse()
+    {
+        Install(TurboFile, TurboData);
+        Install(SmallFile, SmallData);
+        var (page, session) = Open();
+        session.Edit(c =>
+        {
+            c.Stt["remote"] = ((OpenAiCompatibleSttConfig)c.Stt["remote"]) with { TimeoutMs = 0 };
+            return c;
+        });
+        var small = Card(page, Small);
+
+        small.UseIn = small.UseInChoices[0];
+        _timers.Fire();
+
+        Assert.True(session.HasErrors);
+        Assert.False(Card(page, Turbo).CanDelete);
+        Card(page, Turbo).DeleteCommand.Execute(null);
+        Assert.True(File.Exists(ModelPath(TurboFile)));
+    }
 }
