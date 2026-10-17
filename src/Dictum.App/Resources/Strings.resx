@@ -182,4 +182,10 @@
   <data name="OverlayCancelled" xml:space="preserve">
     <value>Cancelled</value>
   </data>
+  <data name="OverlayNothingRecognised" xml:space="preserve">
+    <value>Nothing recognised</value>
+  </data>
+  <data name="OverlayFailed" xml:space="preserve">
+    <value>Dictation failed</value>
+  </data>
 </root>

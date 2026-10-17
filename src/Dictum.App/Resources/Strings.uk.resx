@@ -182,4 +182,10 @@
   <data name="OverlayCancelled" xml:space="preserve">
     <value>Скасовано</value>
   </data>
+  <data name="OverlayNothingRecognised" xml:space="preserve">
+    <value>Нічого не розпізнано</value>
+  </data>
+  <data name="OverlayFailed" xml:space="preserve">
+    <value>Диктування не вдалося</value>
+  </data>
 </root>

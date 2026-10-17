@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Threading;
 using Dictum.App.Daemon;
+using Dictum.App.Overlay;
 using Dictum.App.Shell;
 using Dictum.App.Tests.Daemon;
 using Dictum.App.Tray;
@@ -8,6 +9,7 @@ using Dictum.App.Views;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Host.Ipc;
 
 namespace Dictum.App.Tests.Shell;
 
@@ -78,6 +80,23 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         shell.Start(Application.Current!, _ => { });
 
         await WaitAsync(() => presenter.Shown.LastOrDefault()?.Tooltip == "Dictum · Not set up yet");
+    });
+
+    [Fact]
+    public Task TheDaemonsEventsReachTheOverlay() => fx.UiAsync(async () =>
+    {
+        var (shell, launcher, _) = Create();
+        shell.Start(Application.Current!, _ => { });
+        await WaitAsync(() => shell.Supervisor.Link.State == DaemonLinkState.Connected);
+
+        launcher.Current!.Events.Publish(new IpcEvent("state", State: "Recording", Profile: "dictate"));
+        await WaitAsync(() => shell.Overlay.Phase == OverlayPhase.Listening);
+
+        launcher.Current!.Events.Publish(new IpcEvent("stopping", Reason: "shutdown"));
+        await WaitAsync(() => shell.Overlay.Phase == OverlayPhase.Hidden);
+
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
     });
 
     private (DesktopShell Shell, FakeLauncher Launcher, TrayControllerTests.FakePresenter Presenter) Create(bool tray = true)

@@ -2,6 +2,7 @@ using System.Text;
 using Avalonia;
 using Avalonia.Controls;
 using Dictum.App.Daemon;
+using Dictum.App.Overlay;
 using Dictum.App.Shell;
 using Dictum.Core;
 using Dictum.Core.Configuration;
@@ -38,7 +39,8 @@ internal static class Program
         var daemonSocket = IpcEndpoint.SocketPath(paths);
         var appSocket = SingleInstance.SocketPathFor(daemonSocket);
         var shell = new DesktopShell(paths, log, store, daemonSocket, DaemonProcessLauncher.NextToApp(log),
-            (app, highContrast) => DesktopShell.CreateTrayAsync(app, highContrast, paths, log));
+            (app, highContrast) => DesktopShell.CreateTrayAsync(app, highContrast, paths, log),
+            OverlayDesktop.ForThisDesktop(log));
 
         // No synchronisation context exists yet, so blocking here cannot deadlock.
         var instance = SingleInstance.AcquireAsync(appSocket, shell.OnCommand, log, CancellationToken.None).GetAwaiter().GetResult();

@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Platform;
 using Avalonia.Threading;
 using Dictum.App.Daemon;
+using Dictum.App.Overlay;
 using Dictum.App.Tray;
 using Dictum.App.ViewModels;
 using Dictum.App.Views;
@@ -28,6 +29,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     private readonly ConfigStore _store;
     private readonly Func<Application, Func<bool>, Task<ITrayPresenter?>> _createTray;
     private readonly TrayController _tray;
+    private readonly IOverlayDesktop _overlayDesktop;
     private ITrayPresenter? _presenter;
     private ConfigWatcher? _watcher;
     private HttpClient? _http;
@@ -39,13 +41,15 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     private volatile bool _showWhenStarted;
 
     /// <param name="createTray">The OS tray; <see cref="CreateTrayAsync"/> in the app, a fake in tests.</param>
+    /// <param name="overlayDesktop">The overlay's OS side; <see cref="OverlayDesktop.None"/> when left out (tests).</param>
     public DesktopShell(
         AppPaths paths,
         DictumLog log,
         ConfigStore store,
         string daemonSocket,
         IDaemonLauncher launcher,
-        Func<Application, Func<bool>, Task<ITrayPresenter?>> createTray)
+        Func<Application, Func<bool>, Task<ITrayPresenter?>> createTray,
+        IOverlayDesktop? overlayDesktop = null)
     {
         _paths = paths;
         _log = log;
@@ -55,9 +59,13 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         Supervisor = new DaemonSupervisor(daemonSocket, () => store.Exists, launcher, log, logFile);
         Status = new StatusViewModel(store.Path, logFile, Supervisor.Restart);
         _tray = new TrayController(new TrayState(TimeProvider.System), this, TimeProvider.System);
+        _overlayDesktop = overlayDesktop ?? OverlayDesktop.None;
+        Overlay = new OverlayController(() => new OverlayWindow(_overlayDesktop.Prepare), _overlayDesktop, () => _highContrast, TimeProvider.System, log);
     }
 
     public DaemonSupervisor Supervisor { get; }
+
+    public OverlayController Overlay { get; }
 
     public StatusViewModel Status { get; }
 
@@ -113,23 +121,38 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         {
             Status.OnLink(link);
             _tray.OnLink(link);
+            Overlay.OnLink(link);
         });
         Supervisor.EventReceived += message =>
         {
-            if (message.Event != "frame")
+            // Frames come every 20 ms: the overlay keeps the newest one without a trip through the UI thread.
+            if (message.Event == "frame")
             {
-                Dispatcher.UIThread.Post(() => _tray.OnEvent(message));
+                Overlay.OnFrame(message);
+                return;
             }
+
+            Dispatcher.UIThread.Post(() =>
+            {
+                _tray.OnEvent(message);
+                Overlay.OnEvent(message);
+            });
         };
 
-        _tray.OnConfig(TryLoadConfig());
+        var config = TryLoadConfig();
+        _tray.OnConfig(config);
+        Overlay.OnConfig(config);
         try
         {
             _watcher = new ConfigWatcher(
                 _store,
-                (config, _) =>
+                (changed, _) =>
                 {
-                    Dispatcher.UIThread.Post(() => _tray.OnConfig(config));
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        _tray.OnConfig(changed);
+                        Overlay.OnConfig(changed);
+                    });
                     return Task.CompletedTask;
                 },
                 _ => Task.CompletedTask,
@@ -198,6 +221,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     {
         _tick?.Stop();
         _watcher?.Dispose();
+        (_overlayDesktop as IDisposable)?.Dispose();
         if (_presenter is not null)
         {
             await _presenter.DisposeAsync().ConfigureAwait(false);
