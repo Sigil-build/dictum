@@ -473,4 +473,37 @@
   <data name="SettingsCheckProcessor" xml:space="preserve">
     <value>Processor {0}</value>
   </data>
+  <data name="SettingsHistorySearch" xml:space="preserve">
+    <value>Search dictations</value>
+  </data>
+  <data name="SettingsHistoryCopy" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="SettingsHistoryDelete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="SettingsHistoryRaw" xml:space="preserve">
+    <value>Recognised</value>
+  </data>
+  <data name="SettingsHistoryFinal" xml:space="preserve">
+    <value>Final text</value>
+  </data>
+  <data name="SettingsHistoryOff" xml:space="preserve">
+    <value>History is off. Choose how many dictations to keep in General.</value>
+  </data>
+  <data name="SettingsHistoryNone" xml:space="preserve">
+    <value>No dictations yet.</value>
+  </data>
+  <data name="SettingsHistoryNoMatch" xml:space="preserve">
+    <value>Nothing matches “{0}”.</value>
+  </data>
+  <data name="SettingsHistorySeconds" xml:space="preserve">
+    <value>{0:0.0} s</value>
+  </data>
+  <data name="SettingsHistoryFailed" xml:space="preserve">
+    <value>Failed: {0}</value>
+  </data>
+  <data name="SettingsHistoryReadFailed" xml:space="preserve">
+    <value>The history file could not be read: {0}</value>
+  </data>
 </root>

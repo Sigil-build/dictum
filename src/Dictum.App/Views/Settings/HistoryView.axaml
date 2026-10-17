@@ -1,0 +1,71 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Dictum.App.ViewModels.Settings"
+             xmlns:res="using:Dictum.App.Resources"
+             x:Class="Dictum.App.Views.Settings.HistoryView"
+             x:DataType="vm:HistoryPage">
+  <Grid Margin="16,4,32,24" RowDefinitions="Auto,Auto,Auto,*">
+    <TextBlock Classes="title" Text="{Binding Title}" Margin="0,0,0,16" />
+    <TextBox Grid.Row="1" Text="{Binding Search}" Margin="0,0,0,12"
+             PlaceholderText="{x:Static res:Strings.SettingsHistorySearch}"
+             AutomationProperties.Name="{x:Static res:Strings.SettingsHistorySearch}" />
+    <TextBlock Grid.Row="2" Text="{Binding Error}" TextWrapping="Wrap" Margin="0,0,0,12"
+               Foreground="{DynamicResource color.status.error.fg}"
+               IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+    <Grid Grid.Row="3" ColumnDefinitions="320,16,*">
+      <Panel>
+        <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
+                 AutomationProperties.Name="{x:Static res:Strings.SettingsHistory}">
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:HistoryItem">
+              <StackPanel Spacing="2" Margin="0,4">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="{Binding When}" FontSize="12" Foreground="{DynamicResource color.text.secondary}" />
+                  <TextBlock Text="{Binding Profile}" FontSize="12" Foreground="{DynamicResource color.text.secondary}" />
+                  <Border CornerRadius="{DynamicResource radius.control}" Padding="6,0" Background="{DynamicResource color.accent.subtleBg}"
+                          IsVisible="{Binding Language, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <TextBlock Text="{Binding Language}" FontSize="11" Foreground="{DynamicResource color.accent.subtleText}" />
+                  </Border>
+                  <TextBlock Text="{Binding Duration}" FontSize="12" Foreground="{DynamicResource color.text.secondary}" />
+                </StackPanel>
+                <TextBlock Text="{Binding FirstLine}" TextTrimming="CharacterEllipsis" MaxLines="1"
+                           Foreground="{DynamicResource color.text.primary}" />
+              </StackPanel>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+        <TextBlock Text="{Binding Empty}" Margin="12" TextWrapping="Wrap" Foreground="{DynamicResource color.text.secondary}"
+                   IsVisible="{Binding Empty, Converter={x:Static ObjectConverters.IsNotNull}}" />
+      </Panel>
+
+      <DockPanel Grid.Column="2" IsVisible="{Binding Selected, Converter={x:Static ObjectConverters.IsNotNull}}">
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+          <Button Content="{x:Static res:Strings.SettingsHistoryCopy}" Command="{Binding CopyCommand}" CommandParameter="{Binding Selected}" />
+          <Button Classes="destructive" Content="{x:Static res:Strings.SettingsHistoryDelete}"
+                  Command="{Binding DeleteCommand}" CommandParameter="{Binding Selected}" />
+        </StackPanel>
+        <TextBlock DockPanel.Dock="Top" Text="{Binding Selected.Problem}" TextWrapping="Wrap" Margin="0,0,0,12"
+                   Foreground="{DynamicResource color.status.error.fg}"
+                   IsVisible="{Binding Selected.Problem, Converter={x:Static ObjectConverters.IsNotNull}}" />
+        <Grid ColumnDefinitions="*,16,*" RowDefinitions="Auto,*">
+          <TextBlock Text="{x:Static res:Strings.SettingsHistoryRaw}" FontWeight="SemiBold" Margin="0,0,0,6"
+                     Foreground="{DynamicResource color.text.secondary}" />
+          <TextBlock Grid.Column="2" Text="{x:Static res:Strings.SettingsHistoryFinal}" FontWeight="SemiBold" Margin="0,0,0,6"
+                     Foreground="{DynamicResource color.text.secondary}" />
+          <Border Grid.Row="1" Background="{DynamicResource color.bg.layer}" BorderBrush="{DynamicResource color.border}"
+                  BorderThickness="1" CornerRadius="{DynamicResource radius.control}" Padding="12">
+            <ScrollViewer>
+              <SelectableTextBlock Text="{Binding Selected.Entry.RawText}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
+            </ScrollViewer>
+          </Border>
+          <Border Grid.Row="1" Grid.Column="2" Background="{DynamicResource color.bg.layer}" BorderBrush="{DynamicResource color.border}"
+                  BorderThickness="1" CornerRadius="{DynamicResource radius.control}" Padding="12">
+            <ScrollViewer>
+              <SelectableTextBlock Text="{Binding Selected.Entry.Text}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
+            </ScrollViewer>
+          </Border>
+        </Grid>
+      </DockPanel>
+    </Grid>
+  </Grid>
+</UserControl>

@@ -15,6 +15,7 @@ public sealed class ViewLocator : IDataTemplate
         GeneralPage model => new GeneralView { DataContext = model },
         OverlayPage model => new OverlayView { DataContext = model },
         SystemPage model => new SystemView { DataContext = model },
+        HistoryPage model => new HistoryView { DataContext = model },
         StatusViewModel model => new StatusView { DataContext = model },
         null => null,
         _ => new TextBlock { Text = $"No view for {param.GetType().Name}" },
