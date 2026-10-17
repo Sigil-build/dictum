@@ -950,4 +950,10 @@
   <data name="SettingsLlmPromptShared" xml:space="preserve">
     <value>Also used by: {0}. An edit here changes their prompt too.</value>
   </data>
+  <data name="SettingsLlmPromptReadFailed" xml:space="preserve">
+    <value>The prompt could not be read: {0}</value>
+  </data>
+  <data name="SettingsLlmPromptRestoreFailed" xml:space="preserve">
+    <value>The built-in prompt could not be restored: {0}</value>
+  </data>
 </root>

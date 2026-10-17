@@ -413,4 +413,39 @@ public sealed class ProcessorsPageTests : IDisposable
         Assert.Equal("secret:dictum-processor-cleanup", Llm(session).ApiKey);
         Assert.Equal(before, Llm(session, "llm").ApiKey);
     }
+
+    // Final review M4: another program holds the prompt file open.
+    [Fact]
+    public void AnUnreadablePromptFileShowsWhyInsteadOfCrashing()
+    {
+        var (page, _) = Open();
+        _prompts.Write("cleanup", "Mine {{text}}");
+        using (File.Open(Path.Combine(_dir, "prompts", "cleanup.md"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            page.Selected = page.Processors.Single(p => p.Id == "terms");
+            page.Selected = page.Processors.Single(p => p.Id == "cleanup");
+        }
+
+        Assert.NotNull(page.Llm.PromptError);
+        Assert.Equal("Mine {{text}}", _prompts.Read("cleanup"));
+    }
+
+    // Final review M4.
+    [Fact]
+    public void RestoringALockedPromptShowsWhyInsteadOfCrashing()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Only Windows refuses to delete a file that is open");
+        var (page, _) = Open();
+        page.Llm.PromptText = "Fix {{text}}";
+        _timers.Fire();
+
+        using (File.Open(Path.Combine(_dir, "prompts", "cleanup.md"), FileMode.Open, FileAccess.Read, FileShare.Read))
+        {
+            page.Llm.RestorePromptCommand.Execute(null);
+        }
+
+        Assert.NotNull(page.Llm.PromptError);
+        Assert.Equal("Fix {{text}}", _prompts.Read("cleanup"));
+        Assert.Equal("Fix {{text}}", page.Llm.PromptText);
+    }
 }

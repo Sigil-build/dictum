@@ -233,7 +233,7 @@ public sealed partial class LlmEditor : ObservableObject
             if (_loadedPrompt != llm.Prompt)
             {
                 _loadedPrompt = llm.Prompt;
-                PromptText = _services.Prompts.Read(llm.Prompt);
+                PromptText = ReadPrompt(llm.Prompt);
             }
 
             ShowPromptState(llm.Prompt);
@@ -413,12 +413,22 @@ public sealed partial class LlmEditor : ObservableObject
             return;
         }
 
+        try
+        {
+            _services.Prompts.Delete(name);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Another program holds the file (final review M4); the edit in progress is kept.
+            PromptError = string.Format(CultureInfo.CurrentCulture, Strings.SettingsLlmPromptRestoreFailed, ex.Message);
+            return;
+        }
+
         _promptSave?.Dispose();
         _promptSave = null;
         _pendingPrompt = null;
-        _services.Prompts.Delete(name);
         _loading = true;
-        PromptText = _services.Prompts.Read(name);
+        PromptText = ReadPrompt(name);
         _loading = false;
         ShowPromptState(name);
         SchedulePreview();
@@ -515,6 +525,22 @@ public sealed partial class LlmEditor : ObservableObject
         }
 
         EditLlm(id, l => l with { ApiKey = result.Value });
+    }
+
+    /// <summary>The prompt's text; a file another program holds is shown as an error, not thrown (final review M4).</summary>
+    private string ReadPrompt(string name)
+    {
+        try
+        {
+            var text = _services.Prompts.Read(name);
+            PromptError = null;
+            return text;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            PromptError = string.Format(CultureInfo.CurrentCulture, Strings.SettingsLlmPromptReadFailed, ex.Message);
+            return "";
+        }
     }
 
     private void SavePrompt()

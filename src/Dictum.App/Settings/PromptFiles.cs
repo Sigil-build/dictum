@@ -13,9 +13,16 @@ public sealed class PromptFiles(string directory)
     public IReadOnlyList<string> Names()
     {
         var names = new SortedSet<string>(PromptTemplates.BuiltIn, StringComparer.Ordinal);
-        if (Directory.Exists(directory))
+        try
         {
-            names.UnionWith(Directory.EnumerateFiles(directory, "*.md").Select(Path.GetFileNameWithoutExtension).OfType<string>().Where(IsValidName));
+            if (Directory.Exists(directory))
+            {
+                names.UnionWith(Directory.EnumerateFiles(directory, "*.md").Select(Path.GetFileNameWithoutExtension).OfType<string>().Where(IsValidName));
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // An unlistable folder still lists the built-ins (final review M4); opening a prompt there shows the error.
         }
 
         return [.. names];
@@ -25,7 +32,7 @@ public sealed class PromptFiles(string directory)
 
     public bool HasFile(string name) => IsValidName(name) && File.Exists(PathOf(name));
 
-    /// <summary>The template the daemon would use; empty when there is none yet.</summary>
+    /// <summary>The template the daemon would use; empty when there is none yet. A file that cannot be read throws.</summary>
     public string Read(string name)
     {
         try
