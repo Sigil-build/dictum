@@ -1175,4 +1175,10 @@
   <data name="SetupSimilarLead" xml:space="preserve">
     <value>{0} і {1} — близькі мови.</value>
   </data>
+  <data name="SetupStepModel" xml:space="preserve">
+    <value>Модель мовлення</value>
+  </data>
+  <data name="SetupModelKeep" xml:space="preserve">
+    <value>модель, яку зараз використовує конфігурація</value>
+  </data>
 </root>
