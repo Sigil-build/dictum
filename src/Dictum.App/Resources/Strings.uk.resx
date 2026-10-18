@@ -1472,4 +1472,7 @@
   <data name="SetupCleanupKeyAgain" xml:space="preserve">
     <value>Введіть API-ключ ще раз: поки завантажуються файли, він не зберігається на диску.</value>
   </data>
+  <data name="SetupReadyHotkeyFailed" xml:space="preserve">
+    <value>Не вдалося зареєструвати гарячу клавішу: {0}</value>
+  </data>
 </root>

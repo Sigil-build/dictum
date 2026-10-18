@@ -22,10 +22,10 @@ public sealed class SetupReadyStepTests
         return step;
     }
 
-    private DaemonLink Connected(bool registered = true, bool? warmedUp = true, bool paused = false) =>
+    private DaemonLink Connected(bool registered = true, bool? warmedUp = true, bool paused = false, string? warning = null) =>
         new(DaemonLinkState.Connected, new DaemonStatus(
             "Idle", null, [new ProfileStatus(_config.Profiles[0].Id, _config.Profiles[0].Hotkey, "PushToTalk", registered)],
-            "hook", "paste", 4242, Paused: paused, WarmedUp: warmedUp));
+            "hook", "paste", 4242, Warning: warning, Paused: paused, WarmedUp: warmedUp));
 
     private static (string, bool, bool, bool) Line(SetupReadyStep step) => (step.DaemonText, step.IsReady, step.HasProblem, step.CanRestart);
 
@@ -140,5 +140,19 @@ public sealed class SetupReadyStepTests
         Assert.Equal("Nothing was recognised. Speak a little closer to the microphone and try again.", step.TryResult);
         step.OnEvent(new IpcEvent("finished", Outcome: DictationOutcome.Error, Message: "The microphone is busy."));
         Assert.Equal("The dictation failed: The microphone is busy.", step.TryResult);
+    }
+
+    // Final review M5: when the daemon says why the hotkey failed (no backend on this desktop, a backend error), step 8
+    // shows that reason instead of guessing at another app.
+    [Fact]
+    public void ARefusedHotkeyGivesTheDaemonsReason()
+    {
+        var step = Step();
+
+        step.OnLink(Connected(registered: false, warning: "Global shortcuts need the desktop portal. Use 'dictum toggle' instead."));
+
+        Assert.Equal(
+            ("The hotkey could not be registered: Global shortcuts need the desktop portal. Use 'dictum toggle' instead.", false, true, false),
+            Line(step));
     }
 }

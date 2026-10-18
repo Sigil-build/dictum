@@ -166,7 +166,10 @@ public sealed partial class SetupReadyStep(TrayHint tray, IDaemonChannel daemon,
 
         if (registration is { Registered: false, Hotkey: not null })
         {
-            return (Strings.SettingsProfilesNotRegistered, false, true, false);
+            // The daemon's own reason when it gives one (no hotkey backend on this desktop, a backend error); otherwise the
+            // usual guess (final review M5).
+            return (status.Warning is { Length: > 0 } reason ? Format(Strings.SetupReadyHotkeyFailed, reason) : Strings.SettingsProfilesNotRegistered,
+                false, true, false);
         }
 
         // Null: a daemon that does not say (an older build) is taken as running.

@@ -1472,4 +1472,7 @@
   <data name="SetupCleanupKeyAgain" xml:space="preserve">
     <value>Type the API key again: it is not kept on disk while files download.</value>
   </data>
+  <data name="SetupReadyHotkeyFailed" xml:space="preserve">
+    <value>The hotkey could not be registered: {0}</value>
+  </data>
 </root>
