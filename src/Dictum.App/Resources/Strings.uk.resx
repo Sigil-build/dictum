@@ -1193,4 +1193,67 @@
   <data name="SetupCleanupKeyKept" xml:space="preserve">
     <value>Залишає ключ API, збережений для цього сервера.</value>
   </data>
+  <data name="SetupStepDownloads" xml:space="preserve">
+    <value>Що завантажити</value>
+  </data>
+  <data name="SetupStepDownloading" xml:space="preserve">
+    <value>Завантаження</value>
+  </data>
+  <data name="SetupDownloadsLead" xml:space="preserve">
+    <value>Файли завантажуються один раз, перевіряються за SHA-256 і зберігаються в {0}.</value>
+  </data>
+  <data name="SetupDownloadsPresentItem" xml:space="preserve">
+    <value>{0} ({1})</value>
+  </data>
+  <data name="SetupDownloadsPresent" xml:space="preserve">
+    <value>Уже є на цьому комп'ютері й не завантажуватиметься знову: {0}.</value>
+  </data>
+  <data name="SetupPrivacyLocal" xml:space="preserve">
+    <value>Жоден звук і жоден текст не залишають ваш комп'ютер.</value>
+  </data>
+  <data name="SetupPrivacyServer" xml:space="preserve">
+    <value>Звук не залишає ваш комп'ютер; текст надсилається на {0} для чищення.</value>
+  </data>
+  <data name="SetupDownloadsNoSpace" xml:space="preserve">
+    <value>Бракує місця: потрібно {0}, вільно {1}.</value>
+  </data>
+  <data name="SetupDownloadsReplacesConfig" xml:space="preserve">
+    <value>Не вдалося прочитати config.json; завершення налаштування його замінить.</value>
+  </data>
+  <data name="SetupDownloadingTitle" xml:space="preserve">
+    <value>Завантаження…</value>
+  </data>
+  <data name="SetupDownloadPausedTitle" xml:space="preserve">
+    <value>Завантаження призупинено</value>
+  </data>
+  <data name="SetupDownloadedTitle" xml:space="preserve">
+    <value>Завантажено й перевірено</value>
+  </data>
+  <data name="SetupDownloadFailedTitle" xml:space="preserve">
+    <value>Завантаження не вдалося</value>
+  </data>
+  <data name="SetupDownloadVerified" xml:space="preserve">
+    <value>{0} · перевірено</value>
+  </data>
+  <data name="SetupDownloadTotalRate" xml:space="preserve">
+    <value>{0} з {1} · {2} · {3}</value>
+  </data>
+  <data name="SetupDownloadTotalPaused" xml:space="preserve">
+    <value>{0} з {1} · призупинено</value>
+  </data>
+  <data name="SetupDownloadAllVerified" xml:space="preserve">
+    <value>{0} · усі файли перевірено</value>
+  </data>
+  <data name="SetupDownloadNoteBusy" xml:space="preserve">
+    <value>Можна продовжити · після завантаження перевіряється SHA-256</value>
+  </data>
+  <data name="SetupDownloadNoteDone" xml:space="preserve">
+    <value>SHA-256 збігся для кожного файлу.</value>
+  </data>
+  <data name="SetupDownloadStopped" xml:space="preserve">
+    <value>Більше немає у списку завантажень.</value>
+  </data>
+  <data name="SetupDownloadRetry" xml:space="preserve">
+    <value>Спробувати ще</value>
+  </data>
 </root>

@@ -1193,4 +1193,67 @@
   <data name="SetupCleanupKeyKept" xml:space="preserve">
     <value>Keeps the API key stored for this server.</value>
   </data>
+  <data name="SetupStepDownloads" xml:space="preserve">
+    <value>Downloads</value>
+  </data>
+  <data name="SetupStepDownloading" xml:space="preserve">
+    <value>Downloading</value>
+  </data>
+  <data name="SetupDownloadsLead" xml:space="preserve">
+    <value>Files are fetched once, verified by SHA-256, and stored in {0}.</value>
+  </data>
+  <data name="SetupDownloadsPresentItem" xml:space="preserve">
+    <value>{0} ({1})</value>
+  </data>
+  <data name="SetupDownloadsPresent" xml:space="preserve">
+    <value>Already on this machine, not downloaded again: {0}.</value>
+  </data>
+  <data name="SetupPrivacyLocal" xml:space="preserve">
+    <value>No audio or text ever leaves your computer.</value>
+  </data>
+  <data name="SetupPrivacyServer" xml:space="preserve">
+    <value>No audio leaves your computer; text goes to {0} for clean-up.</value>
+  </data>
+  <data name="SetupDownloadsNoSpace" xml:space="preserve">
+    <value>Not enough free space: {0} needed, {1} free.</value>
+  </data>
+  <data name="SetupDownloadsReplacesConfig" xml:space="preserve">
+    <value>config.json could not be read; finishing the setup replaces it.</value>
+  </data>
+  <data name="SetupDownloadingTitle" xml:space="preserve">
+    <value>Downloading…</value>
+  </data>
+  <data name="SetupDownloadPausedTitle" xml:space="preserve">
+    <value>Download paused</value>
+  </data>
+  <data name="SetupDownloadedTitle" xml:space="preserve">
+    <value>Downloaded and verified</value>
+  </data>
+  <data name="SetupDownloadFailedTitle" xml:space="preserve">
+    <value>Download failed</value>
+  </data>
+  <data name="SetupDownloadVerified" xml:space="preserve">
+    <value>{0} · verified</value>
+  </data>
+  <data name="SetupDownloadTotalRate" xml:space="preserve">
+    <value>{0} of {1} · {2} · {3}</value>
+  </data>
+  <data name="SetupDownloadTotalPaused" xml:space="preserve">
+    <value>{0} of {1} · paused</value>
+  </data>
+  <data name="SetupDownloadAllVerified" xml:space="preserve">
+    <value>{0} · all files verified</value>
+  </data>
+  <data name="SetupDownloadNoteBusy" xml:space="preserve">
+    <value>Resumable · verified by SHA-256 after download</value>
+  </data>
+  <data name="SetupDownloadNoteDone" xml:space="preserve">
+    <value>SHA-256 matched for every file.</value>
+  </data>
+  <data name="SetupDownloadStopped" xml:space="preserve">
+    <value>Not in the download list any more.</value>
+  </data>
+  <data name="SetupDownloadRetry" xml:space="preserve">
+    <value>Try again</value>
+  </data>
 </root>
