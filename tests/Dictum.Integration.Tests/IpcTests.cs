@@ -192,5 +192,46 @@ public class IpcTests : IDisposable
         Assert.Contains("broken handler", response.Error);
     }
 
+    // PR 5b: the GUI subscribes to a daemon that may still be registering its hotkeys; a status published while the
+    // reply is being built must still reach it, or step 8 waits for a change it never hears about.
+    [Fact(Timeout = 10_000)]
+    public async Task AnEventPublishedWhileTheSubscribeReplyIsBuiltIsNotLost()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var hub = new IpcEventHub();
+        await using var server = new IpcServer(SocketPath, NullLog.Instance, hub);
+        await server.StartAsync((request, _) =>
+        {
+            if (request.Command == "subscribe")
+            {
+                hub.Publish(IpcEvent.ForStatus(Status("Recording")));
+            }
+
+            return Task.FromResult(IpcResponse.Success(Status("Idle")));
+        }, ct);
+
+        await using var subscription = await new IpcClient(SocketPath).SubscribeAsync(ct);
+        await foreach (var e in subscription.ReadEventsAsync(ct))
+        {
+            Assert.Equal(("status", "Recording"), (e.Event, e.Status?.State));
+            break;
+        }
+    }
+
+    // PR 5b: subscribing before the reply must not leave a subscriber behind when the reply is a refusal.
+    [Fact(Timeout = 10_000)]
+    public async Task ARefusedSubscribeLeavesNoSubscriber()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var hub = new IpcEventHub();
+        await using var server = new IpcServer(SocketPath, NullLog.Instance, hub);
+        await server.StartAsync((_, _) => Task.FromResult(IpcResponse.Failure("No.")), ct);
+
+        var response = await new IpcClient(SocketPath).SendAsync(new IpcRequest("subscribe"), ct);
+
+        Assert.False(response.Ok);
+        Assert.Equal(0, hub.SubscriberCount);
+    }
+
     private static DaemonStatus Status(string state) => new(state, null, [], "test", "test", Environment.ProcessId);
 }

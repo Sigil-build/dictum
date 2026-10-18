@@ -32,6 +32,7 @@ public sealed class DictumDaemon : IAsyncDisposable
     private CancellationTokenSource? _dictation;
     private bool _stopInProgress;
     private IReadOnlyList<ProfileStatus> _profiles = [];
+    private volatile bool _warmedUp;
     private string? _warning;
     private readonly IpcEventHub _events;
     private IReadOnlyList<ConfigIssue> _configWarnings;
@@ -142,6 +143,7 @@ public sealed class DictumDaemon : IAsyncDisposable
             previous = _engine;
             Unsubscribe(previous);
             _engine = _createEngine(config);
+            _warmedUp = false;
             Subscribe(_engine);
         }
         finally
@@ -267,7 +269,8 @@ public sealed class DictumDaemon : IAsyncDisposable
         _warning,
         Paused: _paused,
         SelectedProfile: _selectedProfile,
-        ConfigWarnings: _configWarnings.Count == 0 ? null : [.. _configWarnings.Select(w => w.ToString())]);
+        ConfigWarnings: _configWarnings.Count == 0 ? null : [.. _configWarnings.Select(w => w.ToString())],
+        WarmedUp: _warmedUp);
 
     public async ValueTask DisposeAsync()
     {
@@ -697,6 +700,14 @@ public sealed class DictumDaemon : IAsyncDisposable
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _log.Warn($"Warm-up failed: {ex.Message}");
+        }
+
+        // A failed warm-up ends "loading" too: the first dictation reports the problem. An engine a reload replaced
+        // meanwhile says nothing (PR 5b).
+        if (ReferenceEquals(engine, _engine) && !_stopping.IsCancellationRequested)
+        {
+            _warmedUp = true;
+            _events.Publish(IpcEvent.ForStatus(Status()));
         }
     }
 

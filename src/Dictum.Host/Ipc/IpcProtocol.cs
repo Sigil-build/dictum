@@ -39,6 +39,8 @@ public sealed record IpcResponse(
 /// <param name="State">Pipeline state: Idle, Recording, Transcribing, Processing or Output.</param>
 /// <param name="ActiveProfile">The profile being dictated with right now.</param>
 /// <param name="SelectedProfile">The profile chosen with <c>use-profile</c>, used when a command names none.</param>
+/// <param name="WarmedUp">The current speech models finished their warm-up (loaded, or failed and logged); false while
+/// they load after a start or a reload; null from a daemon that does not say.</param>
 public sealed record DaemonStatus(
     string State,
     string? ActiveProfile,
@@ -50,7 +52,8 @@ public sealed record DaemonStatus(
     bool Paused = false,
     string? SelectedProfile = null,
     IReadOnlyList<string>? ConfigWarnings = null,
-    int Protocol = IpcProtocol.Version);
+    int Protocol = IpcProtocol.Version,
+    bool? WarmedUp = null);
 
 /// <param name="Hotkey">Canonical hotkey, or null when the profile has none.</param>
 /// <param name="Registered">The hotkey backend accepted the binding.</param>

@@ -113,7 +113,10 @@ internal sealed class FakeEngine : IDictationEngine
     public DictationProfile ResolveProfile(string profileId) =>
         new(profileId, _stt, SttRequest.ForSetting(Config.Profiles.First(p => p.Id == profileId).Language, null)!, []);
 
-    public Task WarmUpAsync(CancellationToken ct) => Task.CompletedTask;
+    /// <summary>What the warm-up waits for: done at once unless a test holds it, or fails it.</summary>
+    public Task WarmingUp { get; init; } = Task.CompletedTask;
+
+    public Task WarmUpAsync(CancellationToken ct) => WarmingUp.WaitAsync(ct);
 
     public ITextProcessor GetProcessor(string id) => throw new ConfigException($"Unknown processor '{id}'.");
 

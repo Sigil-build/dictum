@@ -21,6 +21,7 @@ public class DictumDaemonTests
     private readonly EchoStt _stt = new("привіт світ");
     private readonly List<FakeEngine> _engines = [];
     private readonly IpcEventHub _events = new();
+    private Task _warmUp = Task.CompletedTask;
 
     [Fact]
     public async Task PushToTalkRecordsWhileHeldAndPastesOnRelease()
@@ -652,6 +653,50 @@ public class DictumDaemonTests
         Assert.Equal((false, true), (monitorKept, audio.LastKeepSamples));
     }
 
+    // PR 5b: step 8 says "loading" until the speech model is in memory.
+    [Fact]
+    public async Task TheStatusSaysWhenTheWarmUpEnded()
+    {
+        var warmUp = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _warmUp = warmUp.Task;
+        await using var daemon = await StartAsync(Config());
+        using var subscriber = _events.Subscribe();
+        Assert.False(daemon.Status().WarmedUp);
+
+        warmUp.SetResult();
+        await CollectAsync(subscriber, e => e.Any(x => x.Status?.WarmedUp == true));
+
+        Assert.True(daemon.Status().WarmedUp);
+    }
+
+    // PR 5b: a reload warms up the new engine; the status says "loading" again until it has.
+    [Fact]
+    public async Task AReloadSaysLoadingUntilTheNewEngineWarmedUp()
+    {
+        await using var daemon = await StartAsync(Config());
+        await WaitForAsync(() => daemon.Status().WarmedUp == true);
+        var warmUp = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _warmUp = warmUp.Task;
+        using var subscriber = _events.Subscribe();
+
+        await daemon.ApplyConfigAsync(Config(), _ct);
+        var reloaded = await CollectAsync(subscriber, e => e.Any(x => x.Event == "status"));
+        Assert.False(reloaded.First(e => e.Event == "status").Status!.WarmedUp);
+
+        warmUp.SetResult();
+        await CollectAsync(subscriber, e => e.Any(x => x.Status?.WarmedUp == true));
+    }
+
+    // PR 5b, review focus 2: a warm-up that failed still ends "loading"; the first dictation then reports the problem.
+    [Fact]
+    public async Task AFailedWarmUpStillEndsLoading()
+    {
+        _warmUp = Task.FromException(new InvalidOperationException("The model file is damaged."));
+        await using var daemon = await StartAsync(Config());
+
+        await WaitForAsync(() => daemon.Status().WarmedUp == true);
+    }
+
     private async Task<List<IpcEvent>> CollectAsync(IpcSubscriber subscriber, Func<List<IpcEvent>, bool> until)
     {
         var events = new List<IpcEvent>();
@@ -677,7 +722,7 @@ public class DictumDaemonTests
             _ => Task.FromResult<IReadOnlyList<PlatformCheck>>([]));
         var daemon = new DictumDaemon(config, c =>
         {
-            var engine = new FakeEngine(c, _stt);
+            var engine = new FakeEngine(c, _stt) { WarmingUp = _warmUp };
             _engines.Add(engine);
             return engine;
         }, platform, _sounds, NullLog.Instance, _events, monitorLifetime: monitorLifetime);

@@ -251,16 +251,20 @@ public sealed class IpcServer : IAsyncDisposable
     {
         using (client)
         {
+            IpcSubscriber? subscriber = null;
             try
             {
                 await using var stream = new NetworkStream(client, ownsSocket: false);
                 using var reader = new StreamReader(stream, Encoding.UTF8);
                 var line = await reader.ReadLineAsync(ct).ConfigureAwait(false);
                 IpcResponse response;
-                IpcRequest? request = null;
                 try
                 {
-                    request = line is null ? null : JsonSerializer.Deserialize(line, IpcJsonContext.Default.IpcRequest);
+                    var request = line is null ? null : JsonSerializer.Deserialize(line, IpcJsonContext.Default.IpcRequest);
+
+                    // Subscribed before the reply is built: an event published meanwhile follows the reply instead of being
+                    // lost, so a client that connects while the daemon registers its hotkeys hears about it (PR 5b).
+                    subscriber = request?.Command == "subscribe" ? _events?.Subscribe() : null;
                     response = request is null
                         ? IpcResponse.Failure("Empty request.")
                         : await handler(request, ct).ConfigureAwait(false);
@@ -275,25 +279,26 @@ public sealed class IpcServer : IAsyncDisposable
                     response = IpcResponse.Failure(ex.Message);
                 }
 
-                // Subscribing before the reply is written means nothing published after the client sees it is lost.
-                var subscriber = request?.Command == "subscribe" && response.Ok ? _events?.Subscribe() : null;
-                try
-                {
-                    var reply = JsonSerializer.Serialize(response, IpcJsonContext.Default.IpcResponse) + "\n";
-                    await stream.WriteAsync(Encoding.UTF8.GetBytes(reply), ct).ConfigureAwait(false);
-                    if (subscriber is not null)
-                    {
-                        await StreamAsync(subscriber, stream, reader, ct).ConfigureAwait(false);
-                    }
-                }
-                finally
+                if (!response.Ok)
                 {
                     subscriber?.Dispose();
+                    subscriber = null;
+                }
+
+                var reply = JsonSerializer.Serialize(response, IpcJsonContext.Default.IpcResponse) + "\n";
+                await stream.WriteAsync(Encoding.UTF8.GetBytes(reply), ct).ConfigureAwait(false);
+                if (subscriber is not null)
+                {
+                    await StreamAsync(subscriber, stream, reader, ct).ConfigureAwait(false);
                 }
             }
             catch (Exception ex) when (ex is IOException or SocketException or OperationCanceledException)
             {
                 _log.Debug($"IPC client dropped: {ex.Message}");
+            }
+            finally
+            {
+                subscriber?.Dispose();
             }
         }
     }
