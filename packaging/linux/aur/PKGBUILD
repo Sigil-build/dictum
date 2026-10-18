@@ -1,0 +1,35 @@
+# dictum-bin: Dictum's release tarball for Arch and CachyOS (phase 4 spec 3.5).
+# While the repository is private, put dictum-<version>-linux-x64.tar.gz next to this file and run makepkg -si.
+pkgname=dictum-bin
+pkgver=0.3.0
+pkgrel=1
+pkgdesc='Voice to text: dictate into any app with a hotkey, with Whisper on this machine'
+arch=('x86_64')
+url='https://github.com/shikigami12/dictum'
+license=('LicenseRef-Dictum')
+depends=('glibc>=2.38' 'portaudio' 'libx11' 'libxtst' 'libxkbcommon' 'fontconfig' 'libice' 'libsm')
+optdepends=(
+  'vulkan-icd-loader: speech recognition on the GPU'
+  'xdg-desktop-portal: global hotkeys and typing on Wayland'
+  'gnome-keyring: API keys in the Secret Service'
+  'kwallet: API keys on KDE'
+)
+provides=('dictum')
+conflicts=('dictum')
+options=('!strip' '!debug')
+source=("https://github.com/shikigami12/dictum/releases/download/v${pkgver}/dictum-${pkgver}-linux-x64.tar.gz")
+# The release job prints this sum (phase 4 PR 4d); a local makepkg against a tarball you built yourself skips it.
+sha256sums=('SKIP')
+
+package() {
+  local src="dictum-${pkgver}-linux-x64"
+  install -d "$pkgdir/opt/dictum" "$pkgdir/usr/bin"
+  cp -a "$src/." "$pkgdir/opt/dictum/"
+  rm -rf "$pkgdir/opt/dictum/install.sh" "$pkgdir/opt/dictum/uninstall.sh" "$pkgdir/opt/dictum/share"
+  ln -s /opt/dictum/dictum "$pkgdir/usr/bin/dictum"
+  ln -s /opt/dictum/dictum-gui "$pkgdir/usr/bin/dictum-gui"
+  install -d "$pkgdir/usr/share/applications"
+  sed 's|@EXEC@|/opt/dictum/dictum-gui|' "$src/share/dictum.desktop" > "$pkgdir/usr/share/applications/dictum.desktop"
+  install -Dm644 "$src/share/dictum-256.png" "$pkgdir/usr/share/icons/hicolor/256x256/apps/dictum.png"
+  install -Dm644 "$src/share/dictum.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/dictum.svg"
+}
