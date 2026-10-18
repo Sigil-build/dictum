@@ -37,6 +37,8 @@ case "$rid" in
     chmod +x "$stage/install.sh" "$stage/uninstall.sh"
     cp "$root/packaging/linux/dictum.desktop" "$root/packaging/icons/dictum.svg" "$root/packaging/icons/dictum-256.png" "$stage/share/"
     tar -C "$out/stage" -czf "$out/$name.tar.gz" "$name"
+    rm -f "${out:?}/${name:?}.AppImage"
+    "$root/packaging/linux/build-appimage.sh" "$stage" "$out/$name.AppImage"
     ;;
   *)
     echo "package.sh: no packages for $rid" >&2
@@ -45,4 +47,6 @@ case "$rid" in
 esac
 
 echo "Packages in $out:"
-ls -1 "$out" | grep "^$name\."
+for package in "$out/$name".*; do
+  echo "  $(basename "$package")"
+done

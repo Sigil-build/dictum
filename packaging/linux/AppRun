@@ -1,0 +1,9 @@
+#!/bin/sh
+# The AppImage's entry point (phase 4 spec 3.4): the desktop app, or the CLI when the first argument is "dictum"
+# (InstallLocation.AppImageCli). The runtime sets APPIMAGE and APPDIR; nothing here changes them.
+here=$(dirname "$(readlink -f "$0")")
+if [ "${1:-}" = dictum ]; then
+  shift
+  exec "$here/usr/lib/dictum/dictum" "$@"
+fi
+exec "$here/usr/lib/dictum/dictum-gui" "$@"

@@ -51,6 +51,23 @@ if [ "$rid" = linux-x64 ]; then
   pass "tarball scripts and menu entry"
 fi
 
+if [ "$rid" = linux-x64 ]; then
+  appimage="$out/$name.AppImage"
+  [ -x "$appimage" ] || fail "no executable $appimage"
+  # No FUSE in containers and on CI runners: the runtime unpacks itself and runs (it still sets APPIMAGE and APPDIR).
+  cli=$(APPIMAGE_EXTRACT_AND_RUN=1 "$appimage" dictum --version)
+  [ "${cli%%+*}" = "$version" ] || fail "the AppImage's 'dictum --version' printed $cli"
+  inside=$(cd "$(mktemp -d)" && "$appimage" --appimage-extract > /dev/null && find squashfs-root -maxdepth 3 | sort)
+  for path in squashfs-root/AppRun squashfs-root/dictum.desktop squashfs-root/dictum.png squashfs-root/usr/lib/dictum/dictum squashfs-root/usr/lib/dictum/dictum-gui; do
+    grep -qx "$path" <<< "$inside" || fail "the AppImage has no $path"
+  done
+  if grep -q "install.sh\|uninstall.sh" <<< "$inside"; then fail "the AppImage carries the tarball's scripts"; fi
+  if command -v xvfb-run > /dev/null; then
+    APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a "$appimage" --self-test > "$out/appimage-self-test.log" 2>&1 || { cat "$out/appimage-self-test.log"; fail "the AppImage's self-test"; }
+  fi
+  pass "AppImage ($appimage)"
+fi
+
 if [ "$rid" = win-x64 ]; then
   msi="$out/$name.msi"
   powershell -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$root/packaging/windows/check-msi.ps1")" -Msi "$(cygpath -w "$msi")" -Version "$version" -Stage "$(cygpath -w "$stage")" || fail "check-msi.ps1"
