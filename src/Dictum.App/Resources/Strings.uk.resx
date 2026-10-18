@@ -1142,4 +1142,31 @@
   <data name="SettingsModelsMeasureOtherModel" xml:space="preserve">
     <value>Dictum запустив {0}, а не цю модель. Спробуйте ще раз за мить.</value>
   </data>
+  <data name="SetupServerReachable" xml:space="preserve">
+    <value>Доступний · {0} мс</value>
+  </data>
+  <data name="SetupServerNoModel" xml:space="preserve">
+    <value>Сервер доступний, але моделі «{0}» на ньому немає. Є: {1}.</value>
+  </data>
+  <data name="SetupServerKeyRejected" xml:space="preserve">
+    <value>Сервер відхилив ключ API.</value>
+  </data>
+  <data name="SetupServerAnswered" xml:space="preserve">
+    <value>Сервер відповів кодом {0}.</value>
+  </data>
+  <data name="SetupServerUnreachable" xml:space="preserve">
+    <value>Не вдалося з'єднатися з {0}: {1}</value>
+  </data>
+  <data name="SetupServerTimeout" xml:space="preserve">
+    <value>Немає відповіді від {0}.</value>
+  </data>
+  <data name="SetupServerBadUrl" xml:space="preserve">
+    <value>Введіть адресу, що починається з http:// або https://, наприклад http://localhost:8080/v1.</value>
+  </data>
+  <data name="SetupServerNoModelName" xml:space="preserve">
+    <value>Введіть назву моделі на цьому сервері.</value>
+  </data>
+  <data name="SetupServerKeyUnreadable" xml:space="preserve">
+    <value>Не вдалося прочитати збережений ключ API: {0}</value>
+  </data>
 </root>

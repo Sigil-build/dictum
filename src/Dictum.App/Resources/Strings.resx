@@ -1142,4 +1142,31 @@
   <data name="SettingsModelsMeasureOtherModel" xml:space="preserve">
     <value>Dictum ran {0}, not this model. Try again in a moment.</value>
   </data>
+  <data name="SetupServerReachable" xml:space="preserve">
+    <value>Reachable · {0} ms</value>
+  </data>
+  <data name="SetupServerNoModel" xml:space="preserve">
+    <value>Reachable, but the server has no model “{0}”. It has: {1}.</value>
+  </data>
+  <data name="SetupServerKeyRejected" xml:space="preserve">
+    <value>The server rejected the API key.</value>
+  </data>
+  <data name="SetupServerAnswered" xml:space="preserve">
+    <value>The server answered {0}.</value>
+  </data>
+  <data name="SetupServerUnreachable" xml:space="preserve">
+    <value>Could not reach {0}: {1}</value>
+  </data>
+  <data name="SetupServerTimeout" xml:space="preserve">
+    <value>No answer from {0}.</value>
+  </data>
+  <data name="SetupServerBadUrl" xml:space="preserve">
+    <value>Enter a URL that starts with http:// or https://, e.g. http://localhost:8080/v1.</value>
+  </data>
+  <data name="SetupServerNoModelName" xml:space="preserve">
+    <value>Enter the model's name on that server.</value>
+  </data>
+  <data name="SetupServerKeyUnreadable" xml:space="preserve">
+    <value>The stored API key could not be read: {0}</value>
+  </data>
 </root>
