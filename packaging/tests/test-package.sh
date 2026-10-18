@@ -44,6 +44,19 @@ outside=$(echo "$entries" | tr '\\' '/' | grep -v "^$name/" | head -1 || true)
 echo "$entries" | grep -qiE '\.(pdb|dbg)$' && fail "the archive has debug symbols"
 pass "portable archive ($archive)"
 
+if [ "$rid" = win-x64 ]; then
+  # The zip as a user unpacks it, run from there (phase 4 spec 7; PR 4d final review I3).
+  unzipped=$(mktemp -d)
+  powershell -NoProfile -Command "Expand-Archive -LiteralPath '$(cygpath -w "$archive")' -DestinationPath '$(cygpath -w "$unzipped")'" \
+    || fail "the zip does not unpack"
+  cli=$("$unzipped/$name/dictum.exe" --version | tr -d '\r')
+  [ "${cli%%+*}" = "$version" ] || fail "the unzipped 'dictum --version' printed $cli"
+  DICTUM_CONFIG_DIR=$(cygpath -w "$unzipped/config") DICTUM_DATA_DIR=$(cygpath -w "$unzipped/data") DICTUM_SOCKET=dictum-package-self-test \
+    "$unzipped/$name/dictum-gui.exe" --self-test > "$out/zip-self-test.log" 2>&1 \
+    || { cat "$out/zip-self-test.log"; fail "the unzipped dictum-gui's self-test"; }
+  pass "the zip unpacks and its programs run ($unzipped)"
+fi
+
 if [ "$rid" = linux-x64 ]; then
   for file in install.sh uninstall.sh share/dictum.desktop share/dictum.svg share/dictum-256.png; do
     grep -qx "$name/$file" <<< "$entries" || fail "the tarball has no $name/$file"
@@ -66,6 +79,31 @@ if [ "$rid" = linux-x64 ]; then
     APPIMAGE_EXTRACT_AND_RUN=1 xvfb-run -a "$appimage" --self-test > "$out/appimage-self-test.log" 2>&1 || { cat "$out/appimage-self-test.log"; fail "the AppImage's self-test"; }
   fi
   pass "AppImage ($appimage)"
+fi
+
+if [ "$rid" = linux-x64 ]; then
+  # The tarball as a user installs it: its own install.sh in a throwaway HOME, the programs from ~/.local/bin, then
+  # its uninstall.sh (phase 4 spec 7; PR 4d final review I3). test-install.sh covers upgrades with stand-ins.
+  user=$(mktemp -d)
+  tar -xzf "$archive" -C "$user"
+  mkdir -p "$user/home"
+  as_user() { env -u XDG_CONFIG_HOME -u XDG_DATA_HOME HOME="$user/home" "$@"; }
+  as_user bash "$user/$name/install.sh" > "$out/install.log" 2>&1 || { cat "$out/install.log"; fail "the tarball's install.sh"; }
+  installed=$(as_user "$user/home/.local/bin/dictum" --version)
+  [ "${installed%%+*}" = "$version" ] || fail "the installed 'dictum --version' printed $installed"
+  grep -qF "\"$user/home/.local/lib/dictum/dictum-gui\"" "$user/home/.local/share/applications/dictum.desktop" \
+    || fail "the menu entry does not start the installed dictum-gui"
+  if command -v xvfb-run > /dev/null; then
+    as_user xvfb-run -a "$user/home/.local/bin/dictum-gui" --self-test > "$out/installed-self-test.log" 2>&1 \
+      || { cat "$out/installed-self-test.log"; fail "the installed dictum-gui's self-test"; }
+  fi
+  as_user bash "$user/home/.local/lib/dictum/uninstall.sh" > "$out/uninstall.log" 2>&1 \
+    || { cat "$out/uninstall.log"; fail "the installed uninstall.sh"; }
+  for path in .local/lib/dictum .local/bin/dictum .local/bin/dictum-gui .local/share/applications/dictum.desktop \
+    .local/share/icons/hicolor/256x256/apps/dictum.png .local/share/icons/hicolor/scalable/apps/dictum.svg; do
+    if [ -e "$user/home/$path" ] || [ -L "$user/home/$path" ]; then fail "uninstall.sh left $path"; fi
+  done
+  pass "the tarball installs, runs from ~/.local/bin and uninstalls"
 fi
 
 if [ "$rid" = win-x64 ]; then
