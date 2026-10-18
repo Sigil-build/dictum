@@ -1181,4 +1181,16 @@
   <data name="SetupModelKeep" xml:space="preserve">
     <value>модель, яку зараз використовує конфігурація</value>
   </data>
+  <data name="SetupStepCleanup" xml:space="preserve">
+    <value>Чищення тексту</value>
+  </data>
+  <data name="SetupStepWords" xml:space="preserve">
+    <value>Ваші слова</value>
+  </data>
+  <data name="SetupStepLogin" xml:space="preserve">
+    <value>Запуск під час входу</value>
+  </data>
+  <data name="SetupCleanupKeyKept" xml:space="preserve">
+    <value>Залишає ключ API, збережений для цього сервера.</value>
+  </data>
 </root>

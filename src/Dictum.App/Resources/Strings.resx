@@ -1181,4 +1181,16 @@
   <data name="SetupModelKeep" xml:space="preserve">
     <value>the model your config uses now</value>
   </data>
+  <data name="SetupStepCleanup" xml:space="preserve">
+    <value>Text clean-up</value>
+  </data>
+  <data name="SetupStepWords" xml:space="preserve">
+    <value>Your words</value>
+  </data>
+  <data name="SetupStepLogin" xml:space="preserve">
+    <value>Start at login</value>
+  </data>
+  <data name="SetupCleanupKeyKept" xml:space="preserve">
+    <value>Keeps the API key stored for this server.</value>
+  </data>
 </root>
