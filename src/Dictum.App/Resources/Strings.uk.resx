@@ -1442,4 +1442,31 @@
   <data name="SettingsRunSetupButton" xml:space="preserve">
     <value>Запустити ще раз</value>
   </data>
+  <data name="SetupReadyStarting" xml:space="preserve">
+    <value>Dictum запускається…</value>
+  </data>
+  <data name="SetupReadyLoading" xml:space="preserve">
+    <value>Завантажується модель розпізнавання. Диктувати можна, щойно вона буде в пам'яті.</value>
+  </data>
+  <data name="SetupReadyRunning" xml:space="preserve">
+    <value>Dictum працює. Спробуйте в полі нижче.</value>
+  </data>
+  <data name="SetupReadyPaused" xml:space="preserve">
+    <value>Гарячі клавіші призупинено. Відновіть їх у меню значка в треї.</value>
+  </data>
+  <data name="SetupReadyFailed" xml:space="preserve">
+    <value>Не вдалося запустити Dictum: {0}</value>
+  </data>
+  <data name="SetupReadyPasted" xml:space="preserve">
+    <value>Готово. Текст вставлено туди, де був курсор.</value>
+  </data>
+  <data name="SetupReadyCopied" xml:space="preserve">
+    <value>Готово. Текст у буфері обміну: цей профіль копіює, а не вставляє.</value>
+  </data>
+  <data name="SetupReadyEmpty" xml:space="preserve">
+    <value>Нічого не розпізнано. Говоріть ближче до мікрофона й спробуйте ще раз.</value>
+  </data>
+  <data name="SetupReadyDictationFailed" xml:space="preserve">
+    <value>Диктування не вдалося: {0}</value>
+  </data>
 </root>

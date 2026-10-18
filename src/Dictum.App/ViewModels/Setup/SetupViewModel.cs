@@ -1,10 +1,12 @@
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Dictum.App.Daemon;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Host.Ipc;
 using Dictum.Platform;
 using Dictum.Setup;
 
@@ -47,7 +49,7 @@ public sealed partial class SetupViewModel : ViewModelBase
         Login = new SetupLoginStep(services.Autostart is not null && services.Executable is not null, current is null || services.Autostart?.Installed is not null);
         Downloads = new SetupDownloadsStep(services);
         Downloading = new SetupDownloadingStep(services);
-        Ready = new SetupReadyStep(services.Tray);
+        Ready = new SetupReadyStep(services.Tray, services.Daemon, services.RestartDaemon);
         _steps = [Languages, Model, Cleanup, Words, Login, Downloads, Downloading, Ready];
         foreach (var step in _steps)
         {
@@ -122,6 +124,9 @@ public sealed partial class SetupViewModel : ViewModelBase
     /// <summary>The window was closed on step 7 and every file is now in place: the shell shows the walk again, to save.</summary>
     public event Action? FilesReady;
 
+    /// <summary>config.json was just written: the shell tells the supervisor, so the daemon starts at once (PR 5b).</summary>
+    public event Action? Saved;
+
     /// <summary>
     /// Whether the shell may show this walk again: not after the save (step 8, even closed with ✕), and not over a config
     /// that changed since the walk read it, unless its files are downloading (final review I1, I2).
@@ -148,6 +153,12 @@ public sealed partial class SetupViewModel : ViewModelBase
             _services.Downloads.Changed += OnFilesChanged;
         }
     }
+
+    /// <summary>The daemon link changed (UI thread): step 8 follows it.</summary>
+    public void OnLink(DaemonLink link) => Ready.OnLink(link);
+
+    /// <summary>A state or finished event (UI thread): step 8's try line follows it.</summary>
+    public void OnEvent(IpcEvent message) => Ready.OnEvent(message);
 
     partial void OnSavingChanged(bool value) => Update();
 
@@ -314,6 +325,7 @@ public sealed partial class SetupViewModel : ViewModelBase
             }
 
             _services.Store.Save(plan.Config);
+            Saved?.Invoke();
             Ready.Load(plan.Config, await ApplyLoginAsync());
             Go(ReadyIndex);
         }

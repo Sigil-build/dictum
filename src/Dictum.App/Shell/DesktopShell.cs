@@ -339,7 +339,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             _paths, _store, Catalog.BuiltIn, _modelDownloads ?? ModelDownloads.None, Hardware, () => HardwareProbe.FreeDiskBytes(_paths),
             GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, Environment.ProcessorCount, _measurements,
             new ServerProbe(_serverHttp ??= new HttpClient(), secrets, TimeProvider.System), secrets, _autostart, Environment.ProcessPath,
-            SetupTray(), UiTimers.Instance, TimeProvider.System, _log));
+            SetupTray(), Supervisor, Supervisor.Restart, UiTimers.Instance, TimeProvider.System, _log));
         setup.Finished += () =>
         {
             _setup = null;

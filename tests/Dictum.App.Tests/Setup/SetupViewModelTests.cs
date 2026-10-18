@@ -1,7 +1,9 @@
+using Dictum.App.Daemon;
 using Dictum.App.Settings;
 using Dictum.App.Tests.Settings;
 using Dictum.App.ViewModels.Setup;
 using Dictum.Core.Configuration;
+using Dictum.Host.Ipc;
 using Dictum.Platform;
 using Dictum.Setup;
 
@@ -329,5 +331,41 @@ public sealed class SetupViewModelTests : IDisposable
         Finish(ModelsPageTests.Turbo);
 
         Assert.Equal(0, asked);
+    }
+
+    // PR 5b: the save tells the shell at once, so the daemon starts without waiting for the poll.
+    [Fact]
+    public async Task TheSaveTellsTheShellAtOnce()
+    {
+        _fx.InstallAll();
+        var wizard = Open();
+        var saved = 0;
+        wizard.Saved += () =>
+        {
+            Assert.True(_fx.Store.Exists);
+            saved++;
+        };
+
+        await WalkTo(wizard, 7);
+
+        Assert.Equal(1, saved);
+    }
+
+    // PR 5b: the shell's link and events reach step 8 through the wizard.
+    [Fact]
+    public async Task StepEightFollowsTheDaemonThroughTheWizard()
+    {
+        _fx.InstallAll();
+        var wizard = Open();
+        await WalkTo(wizard, 7);
+        Assert.Equal("Starting Dictum…", wizard.Ready.DaemonText);
+        var profile = _fx.Store.Load().Profiles[0];
+
+        wizard.OnLink(new DaemonLink(DaemonLinkState.Connected, new DaemonStatus(
+            "Idle", null, [new ProfileStatus(profile.Id, profile.Hotkey, "PushToTalk", true)], "hook", "paste", 4242, WarmedUp: true)));
+        wizard.OnEvent(new IpcEvent("finished", Outcome: DictationOutcome.Copied));
+
+        Assert.Equal("Dictum is running. Try it in the box below.", wizard.Ready.DaemonText);
+        Assert.Equal("Done. The text is on the clipboard: this profile copies instead of pasting.", wizard.Ready.TryResult);
     }
 }

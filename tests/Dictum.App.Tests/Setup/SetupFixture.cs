@@ -1,3 +1,4 @@
+using Dictum.App.Daemon;
 using Dictum.App.Settings;
 using Dictum.App.Tests.Settings;
 using Dictum.App.ViewModels.Setup;
@@ -50,11 +51,17 @@ internal sealed class SetupFixture : IDisposable
 
     public int TraySettingsOpened { get; private set; }
 
+    /// <summary>The daemon as step 8 sees it; not set up until a test says otherwise.</summary>
+    public FakeChannel Daemon { get; } = new() { Link = new DaemonLink(DaemonLinkState.NotConfigured) };
+
+    public int Restarts { get; private set; }
+
     public SetupServices Services() => new(
         Paths, Store, ModelsPageTests.TestCatalog(), Downloads,
         () => Probing?.Task ?? Task.FromResult(Hardware), () => FreeDisk, ModelsPageTests.Memory, 8, Measurements, Probe, Secrets,
         HasAutostart ? Autostart : null, HasAutostart ? Executable : null,
         new TrayHint(Desktop, () => TrayHidden, Desktop == TrayDesktop.Windows ? () => TraySettingsOpened++ : null),
+        Daemon, () => Restarts++,
         Timers, Clock, NullLog.Instance);
 
     public void Install(string file, byte[] data)

@@ -167,7 +167,7 @@ public static class SelfTest
             var setup = new SetupViewModel(new SetupServices(new AppPaths(folder, folder), store, Catalog.BuiltIn, ModelDownloads.None,
                 () => Task.FromResult(new HardwareInfo(null, 0)), () => long.MaxValue, 0, 1, new SpeedMeasurements(),
                 new ServerProbe(http, new UnavailableSecretStore(), TimeProvider.System), new UnavailableSecretStore(), null, null,
-                new TrayHint(TrayDesktop.Other, () => null, null), UiTimers.Instance, TimeProvider.System, NullLog.Instance));
+                new TrayHint(TrayDesktop.Other, () => null, null), offline, () => { }, UiTimers.Instance, TimeProvider.System, NullLog.Instance));
             ViewModelBase[] models = [.. pages, setup];
             var built = models.Select(model => locator.Build(model)).Where(view => view is UserControl).ToList();
             detail = $"{built.Count} of {models.Length} views";
