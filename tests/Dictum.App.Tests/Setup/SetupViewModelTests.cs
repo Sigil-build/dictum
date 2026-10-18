@@ -480,4 +480,23 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.Equal(0, next.Index);
         Assert.Null(Kept());
     }
+
+    // Final review M1: a walk kept with a typed key resumes at step 3; closed (a re-run waits in the background), it still
+    // asks back once its files are in, or the interrupted setup never finishes.
+    [Fact]
+    public async Task AWalkResumedAtStepThreeAsksBackWhenItsFilesAreIn()
+    {
+        var wizard = Open();
+        await UseServer(wizard, key: "sk-live-123");
+        await WalkTo(wizard, 6);
+        var resumed = new SetupViewModel(_fx.Services(), Kept());
+        var asked = 0;
+        resumed.FilesReady += () => asked++;
+        resumed.OnClosed();
+
+        _fx.InstallAll();
+        Finish(ModelsPageTests.Turbo);
+
+        Assert.Equal((2, 1), (resumed.Index, asked));
+    }
 }

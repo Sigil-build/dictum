@@ -31,6 +31,9 @@ public sealed partial class SetupViewModel : ViewModelBase
     private bool _downloaded;
     private bool _waiting;
 
+    /// <summary>Step 7 started (or a kept walk resumed) and neither the save nor Back from step 7 has followed.</summary>
+    private bool _awaitingFiles;
+
     /// <param name="resume">A walk kept in setup.json, resumed at step 7 (or at step 3 when its plain key must be typed again).</param>
     public SetupViewModel(SetupServices services, SavedSetup? resume = null)
     {
@@ -159,13 +162,14 @@ public sealed partial class SetupViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// The window closed: the step on screen stops listening; the answers and the step are kept. Closed on step 7 with
-    /// files still to come, the walk waits for them and raises <see cref="FilesReady"/> (final review M6).
+    /// The window closed: the step on screen stops listening; the answers and the step are kept. Closed while its files
+    /// download (on step 7, or a kept walk resumed at step 3), the walk waits for them and raises <see cref="FilesReady"/>
+    /// (5a final review M6, 5b final review M1).
     /// </summary>
     public void OnClosed()
     {
         Current?.OnHidden();
-        if (Index == DownloadingIndex && !_waiting && !FilesInPlace())
+        if (_awaitingFiles && !_waiting && !FilesInPlace())
         {
             _waiting = true;
             _services.Downloads.Changed += OnFilesChanged;
@@ -231,6 +235,7 @@ public sealed partial class SetupViewModel : ViewModelBase
         {
             // Left step 7: a restart starts over instead of resuming downloads the user stepped back from (PR 5b).
             SavedSetupFile.Delete(_services.Paths, _services.Log);
+            _awaitingFiles = false;
         }
 
         Go(Index == ReadyIndex && !_downloaded ? DownloadsIndex : Index - 1);
@@ -244,6 +249,7 @@ public sealed partial class SetupViewModel : ViewModelBase
         Cleanup.Restore(saved.UseServer, saved.Url, saved.Model, saved.KeyReference, saved.KeyTyped);
         var files = saved.Files.Select(_services.Catalog.Find).OfType<CatalogEntry>().ToList();
         _downloaded = files.Count > 0;
+        _awaitingFiles = files.Count > 0;
         if (files.Count > 0)
         {
             Downloading.Show(files);
@@ -256,6 +262,7 @@ public sealed partial class SetupViewModel : ViewModelBase
     private void StartDownloading(IReadOnlyList<CatalogEntry> files)
     {
         _downloaded = true;
+        _awaitingFiles = true;
         Downloading.Start(files);
         Go(DownloadingIndex);
         var key = Cleanup.UseServer ? Cleanup.KeyText.Trim() : "";
@@ -380,6 +387,7 @@ public sealed partial class SetupViewModel : ViewModelBase
 
             _services.Store.Save(plan.Config);
             SavedSetupFile.Delete(_services.Paths, _services.Log);
+            _awaitingFiles = false;
             Saved?.Invoke();
             Ready.Load(plan.Config, await ApplyLoginAsync());
             Go(ReadyIndex);
