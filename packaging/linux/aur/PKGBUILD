@@ -8,7 +8,14 @@ arch=('x86_64')
 url='https://github.com/shikigami12/dictum'
 license=('LicenseRef-Dictum')
 depends=('glibc>=2.38' 'portaudio' 'libx11' 'libxtst' 'libxkbcommon' 'fontconfig' 'libice' 'libsm')
+# Pasting needs a clipboard tool: wl-clipboard on Wayland, xclip or xsel on X11 (phase 4 PR 4c final review I5).
 optdepends=(
+  'wl-clipboard: the clipboard on Wayland, needed to paste the text'
+  'xclip: the clipboard on X11, needed to paste the text (or xsel)'
+  'xsel: the clipboard on X11, instead of xclip'
+  'xorg-xprop: the focused window on X11, for the terminal paste shortcut'
+  'ydotool: typing when the RemoteDesktop portal is not available'
+  'wtype: typing on wlroots Wayland desktops'
   'vulkan-icd-loader: speech recognition on the GPU'
   'xdg-desktop-portal: global hotkeys and typing on Wayland'
   'gnome-keyring: API keys in the Secret Service'

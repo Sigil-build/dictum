@@ -37,7 +37,9 @@ sed "s|@EXEC@|$lib/dictum-gui|" "$lib/share/dictum.desktop" > "$data/application
 cp "$lib/share/dictum-256.png" "$data/icons/hicolor/256x256/apps/dictum.png"
 cp "$lib/share/dictum.svg" "$data/icons/hicolor/scalable/apps/dictum.svg"
 if command -v update-desktop-database > /dev/null; then update-desktop-database -q "$data/applications" || true; fi
-if command -v gtk-update-icon-cache > /dev/null; then gtk-update-icon-cache -q -t "$data/icons/hicolor" || true; fi
+# A newer folder time is enough for icon lookups; a per-user icon cache would hide icons other apps install later
+# (phase 4 PR 4c final review I4).
+touch "$data/icons/hicolor"
 
 echo "Dictum $("$lib/dictum" --version | cut -d+ -f1) is installed in $lib."
 echo "Start it from the menu, or run: $bin/dictum-gui"

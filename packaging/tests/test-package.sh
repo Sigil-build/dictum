@@ -57,7 +57,7 @@ if [ "$rid" = linux-x64 ]; then
   # No FUSE in containers and on CI runners: the runtime unpacks itself and runs (it still sets APPIMAGE and APPDIR).
   cli=$(APPIMAGE_EXTRACT_AND_RUN=1 "$appimage" dictum --version)
   [ "${cli%%+*}" = "$version" ] || fail "the AppImage's 'dictum --version' printed $cli"
-  inside=$(cd "$(mktemp -d)" && "$appimage" --appimage-extract > /dev/null && find squashfs-root -maxdepth 3 | sort)
+  inside=$(cd "$(mktemp -d)" && "$appimage" --appimage-extract > /dev/null && find squashfs-root -maxdepth 4 | sort)
   for path in squashfs-root/AppRun squashfs-root/dictum.desktop squashfs-root/dictum.png squashfs-root/usr/lib/dictum/dictum squashfs-root/usr/lib/dictum/dictum-gui; do
     grep -qx "$path" <<< "$inside" || fail "the AppImage has no $path"
   done

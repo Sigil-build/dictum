@@ -11,6 +11,12 @@ export HOME="$work/home"
 unset XDG_CONFIG_HOME XDG_DATA_HOME
 mkdir -p "$HOME"
 lib="$HOME/.local/lib/dictum"
+# A recording stand-in for systemctl, first on PATH: uninstall.sh must never reach the real user session, where a
+# "dictum.service" may be the user's own Dictum (phase 4 PR 4c final review I2).
+mkdir -p "$work/bin"
+printf '#!/bin/sh\necho "$*" >> "%s/systemctl.log"\n' "$work" > "$work/bin/systemctl"
+chmod +x "$work/bin/systemctl"
+export PATH="$work/bin:$PATH"
 fail() { echo "FAIL: $*" >&2; exit 1; }
 pass() { echo "PASS: $*"; }
 
@@ -73,6 +79,7 @@ for gone in "$lib" "$HOME/.local/bin/dictum" "$HOME/.local/bin/dictum-gui" \
   { [ -e "$gone" ] || [ -L "$gone" ]; } && fail "uninstall left $gone"
 done
 [ -f "$HOME/.config/dictum/config.json" ] && [ -f "$HOME/.local/share/dictum/models/m.bin" ] || fail "uninstall removed settings or models"
+grep -qx -- "--user disable --now dictum.service" "$work/systemctl.log" || fail "uninstall disabled the unit through systemctl (the stand-in)"
 pass "uninstall"
 
 # Review focus 2: a login item of another copy (a portable folder) is not ours to remove.
