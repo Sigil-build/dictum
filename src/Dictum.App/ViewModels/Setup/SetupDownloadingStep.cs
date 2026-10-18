@@ -97,6 +97,21 @@ public sealed partial class SetupDownloadingStep(SetupServices services) : Setup
     /// <summary>Shows <paramref name="entries"/> and queues those not in place (a paused queue resumes: the click asked for them).</summary>
     public void Start(IReadOnlyList<CatalogEntry> entries)
     {
+        Show(entries);
+        foreach (var file in Files.Where(f => !ModelFiles.IsInstalled(services.Paths, f.Entry)))
+        {
+            Queue(file, () => services.Downloads.Download(file.Entry));
+        }
+
+        Refresh();
+    }
+
+    /// <summary>
+    /// Shows <paramref name="entries"/> as the queue has them, without queuing: a walk resumed after a restart, whose
+    /// queue was restored on its own and may be paused on purpose (PR 5b).
+    /// </summary>
+    public void Show(IReadOnlyList<CatalogEntry> entries)
+    {
         if (!Files.Select(f => f.Entry).SequenceEqual(entries))
         {
             Files.Clear();
@@ -104,11 +119,6 @@ public sealed partial class SetupDownloadingStep(SetupServices services) : Setup
             {
                 Files.Add(new FileProgress(entry, Retry));
             }
-        }
-
-        foreach (var file in Files.Where(f => !ModelFiles.IsInstalled(services.Paths, f.Entry)))
-        {
-            Queue(file, () => services.Downloads.Download(file.Entry));
         }
 
         Refresh();

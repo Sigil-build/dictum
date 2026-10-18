@@ -1469,4 +1469,7 @@
   <data name="SetupReadyDictationFailed" xml:space="preserve">
     <value>Диктування не вдалося: {0}</value>
   </data>
+  <data name="SetupCleanupKeyAgain" xml:space="preserve">
+    <value>Введіть API-ключ ще раз: поки завантажуються файли, він не зберігається на диску.</value>
+  </data>
 </root>

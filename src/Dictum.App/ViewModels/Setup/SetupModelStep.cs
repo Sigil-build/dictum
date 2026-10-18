@@ -80,6 +80,13 @@ public sealed partial class SetupModelStep : SetupStep
         }
     }
 
+    /// <summary>Picks the model a resumed walk had (PR 5b): over the hand-placed file and the config's. Null picks the hand-placed file.</summary>
+    public void Pick(string? id)
+    {
+        _chosen = id ?? KeptKey;
+        Build();
+    }
+
     public override void OnShown()
     {
         _dictated = ReadDictations();

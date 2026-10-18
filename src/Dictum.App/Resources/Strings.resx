@@ -1469,4 +1469,7 @@
   <data name="SetupReadyDictationFailed" xml:space="preserve">
     <value>The dictation failed: {0}</value>
   </data>
+  <data name="SetupCleanupKeyAgain" xml:space="preserve">
+    <value>Type the API key again: it is not kept on disk while files download.</value>
+  </data>
 </root>

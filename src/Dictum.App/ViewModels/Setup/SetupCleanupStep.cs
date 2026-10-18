@@ -22,6 +22,7 @@ public sealed partial class SetupCleanupStep : SetupStep
     private readonly ExistingLlmServer? _current;
     private (string Url, string Model, string Key)? _tested;
     private bool _passed;
+    private bool _keyLost;
 
     public SetupCleanupStep(IServerProbe probe, ExistingLlmServer? current)
     {
@@ -86,6 +87,26 @@ public sealed partial class SetupCleanupStep : SetupStep
             : (CleanupChoice.ExistingServer, new ExistingLlmServer(url, model, secretReference), typed);
     }
 
+    /// <summary>
+    /// A walk resumed after a restart (PR 5b). Its answers passed the test before step 7, so they count as tested. A
+    /// plain key was not kept on disk: it must be typed again, and tested again.
+    /// </summary>
+    public void Restore(bool useServer, string url, string model, string? keyReference, bool keyTyped)
+    {
+        UseServer = useServer;
+        Url = url;
+        Model = model;
+        KeyText = keyReference ?? "";
+        _keyLost = keyTyped;
+        if (!keyTyped)
+        {
+            _tested = Inputs();
+            _passed = true;
+        }
+
+        Update();
+    }
+
     partial void OnUseServerChanged(bool value)
     {
         Off = !value;
@@ -144,8 +165,9 @@ public sealed partial class SetupCleanupStep : SetupStep
 
         TestOk = current && _passed;
         CanContinue = !UseServer || TestOk;
-        KeyNote = UseServer && inputs.Key.Length == 0 && SetupPlanner.CarriedApiKey(_current, inputs.Url) is not null
-            ? Strings.SetupCleanupKeyKept
+        KeyNote = !UseServer || inputs.Key.Length > 0 ? null
+            : _keyLost ? Strings.SetupCleanupKeyAgain
+            : SetupPlanner.CarriedApiKey(_current, inputs.Url) is not null ? Strings.SetupCleanupKeyKept
             : null;
     }
 }

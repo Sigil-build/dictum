@@ -20,6 +20,7 @@ namespace Dictum.App.ViewModels.Setup;
 /// </summary>
 public sealed partial class SetupViewModel : ViewModelBase
 {
+    private const int CleanupIndex = 2;
     private const int DownloadsIndex = 5;
     private const int DownloadingIndex = 6;
     private const int ReadyIndex = 7;
@@ -30,7 +31,8 @@ public sealed partial class SetupViewModel : ViewModelBase
     private bool _downloaded;
     private bool _waiting;
 
-    public SetupViewModel(SetupServices services)
+    /// <param name="resume">A walk kept in setup.json, resumed at step 7 (or at step 3 when its plain key must be typed again).</param>
+    public SetupViewModel(SetupServices services, SavedSetup? resume = null)
     {
         _services = services;
         var current = LoadConfig(services, out _);
@@ -40,13 +42,15 @@ public sealed partial class SetupViewModel : ViewModelBase
             ? services.Catalog.ForFile(whisper.Model)?.Id
             : null;
 
-        Languages = new SetupLanguagesStep(current is null
+        Languages = new SetupLanguagesStep(resume?.Language ?? (current is null
             ? LanguageList.Format([.. new[] { WhisperLanguages.Fallback(), "en" }.Distinct()])
-            : defaults.Language);
+            : defaults.Language));
         Model = new SetupModelStep(services, defaults.KeptModelFile, currentModel);
         Cleanup = new SetupCleanupStep(services.Server, defaults.Server);
-        Words = new SetupWordsStep(current?.Profiles.FirstOrDefault()?.Vocabulary ?? []);
-        Login = new SetupLoginStep(services.Autostart is not null && services.Executable is not null, current is null || services.Autostart?.Installed is not null);
+        Words = new SetupWordsStep(resume?.Words ?? current?.Profiles.FirstOrDefault()?.Vocabulary ?? []);
+        Login = new SetupLoginStep(
+            services.Autostart is not null && services.Executable is not null,
+            resume?.StartAtLogin ?? (current is null || services.Autostart?.Installed is not null));
         Downloads = new SetupDownloadsStep(services);
         Downloading = new SetupDownloadingStep(services);
         Ready = new SetupReadyStep(services.Tray, services.Daemon, services.RestartDaemon);
@@ -62,7 +66,14 @@ public sealed partial class SetupViewModel : ViewModelBase
             };
         }
 
-        Go(0);
+        if (resume is null)
+        {
+            Go(0);
+        }
+        else
+        {
+            Resume(resume);
+        }
     }
 
     public SetupLanguagesStep Languages { get; }
@@ -188,9 +199,7 @@ public sealed partial class SetupViewModel : ViewModelBase
         switch (Index)
         {
             case DownloadsIndex when Downloads.HasFiles:
-                _downloaded = true;
-                Downloading.Start(Downloads.Files);
-                Go(DownloadingIndex);
+                StartDownloading(Downloads.Files);
                 break;
             case DownloadsIndex:
                 _downloaded = false;
@@ -209,7 +218,46 @@ public sealed partial class SetupViewModel : ViewModelBase
     }
 
     [RelayCommand(CanExecute = nameof(CanBack))]
-    private void Back() => Go(Index == ReadyIndex && !_downloaded ? DownloadsIndex : Index - 1);
+    private void Back()
+    {
+        if (Index == DownloadingIndex)
+        {
+            // Left step 7: a restart starts over instead of resuming downloads the user stepped back from (PR 5b).
+            SavedSetupFile.Delete(_services.Paths, _services.Log);
+        }
+
+        Go(Index == ReadyIndex && !_downloaded ? DownloadsIndex : Index - 1);
+    }
+
+    /// <summary>Rebuilds a kept walk (PR 5b). Step 7 shows the files as the restored queue has them; nothing is queued again.</summary>
+    private void Resume(SavedSetup saved)
+    {
+        Model.Language = Languages.Setting;
+        Model.Pick(saved.SpeechModel);
+        Cleanup.Restore(saved.UseServer, saved.Url, saved.Model, saved.KeyReference, saved.KeyTyped);
+        var files = saved.Files.Select(_services.Catalog.Find).OfType<CatalogEntry>().ToList();
+        _downloaded = files.Count > 0;
+        if (files.Count > 0)
+        {
+            Downloading.Show(files);
+        }
+
+        Go(saved.KeyTyped ? CleanupIndex : files.Count > 0 ? DownloadingIndex : DownloadsIndex);
+    }
+
+    /// <summary>Queues the files, goes to step 7, and keeps the walk in setup.json so a restart returns here (PR 5b).</summary>
+    private void StartDownloading(IReadOnlyList<CatalogEntry> files)
+    {
+        _downloaded = true;
+        Downloading.Start(files);
+        Go(DownloadingIndex);
+        var key = Cleanup.UseServer ? Cleanup.KeyText.Trim() : "";
+        var reference = ConfigValueResolver.IsReference(key);
+        SavedSetupFile.Save(_services.Paths, new SavedSetup(
+            Languages.Setting, Model.SpeechModel, Cleanup.UseServer, Cleanup.Url.Trim(), Cleanup.Model.Trim(),
+            reference ? key : null, key.Length > 0 && !reference, Words.Words, Login.StartAtLogin, [.. files.Select(f => f.Id)]),
+            _services.Log);
+    }
 
     private void Go(int index)
     {
@@ -307,9 +355,7 @@ public sealed partial class SetupViewModel : ViewModelBase
             if (plan.Downloads.Count > 0)
             {
                 // A file went away after step 7 (deleted, or cancelled on Settings → Models): fetch it again first.
-                _downloaded = true;
-                Downloading.Start(plan.Downloads);
-                Go(DownloadingIndex);
+                StartDownloading(plan.Downloads);
                 Error = Strings.SetupFilesMissing;
                 return;
             }
@@ -325,6 +371,7 @@ public sealed partial class SetupViewModel : ViewModelBase
             }
 
             _services.Store.Save(plan.Config);
+            SavedSetupFile.Delete(_services.Paths, _services.Log);
             Saved?.Invoke();
             Ready.Load(plan.Config, await ApplyLoginAsync());
             Go(ReadyIndex);

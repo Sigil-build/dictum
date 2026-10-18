@@ -3,6 +3,7 @@ using Dictum.App.Settings;
 using Dictum.App.Tests.Settings;
 using Dictum.App.ViewModels.Setup;
 using Dictum.Core.Configuration;
+using Dictum.Core.Diagnostics;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
 using Dictum.Setup;
@@ -367,5 +368,85 @@ public sealed class SetupViewModelTests : IDisposable
 
         Assert.Equal("Dictum is running. Try it in the box below.", wizard.Ready.DaemonText);
         Assert.Equal("Done. The text is on the clipboard: this profile copies instead of pasting.", wizard.Ready.TryResult);
+    }
+
+    private SavedSetup? Kept() => SavedSetupFile.Load(_fx.Paths, NullLog.Instance);
+
+    // PR 5b: a walk that reached step 7 is kept on disk; a new process resumes it there with the same answers, without
+    // queuing anything again, and the save removes it.
+    [Fact]
+    public async Task AWalkAtStepSevenResumesAfterARestart()
+    {
+        var wizard = Open();
+        wizard.Languages.Rows.First(r => r.Code == "pl").IsChecked = true;
+        await UseServer(wizard);
+        await WalkTo(wizard, 3);
+        wizard.Words.Text = "Nexus5\nAvalonia";
+        await WalkTo(wizard, 6);
+        var calls = _fx.Downloads.Calls.Count;
+
+        var resumed = new SetupViewModel(_fx.Services(), Kept());
+
+        Assert.Equal(6, resumed.Index);
+        Assert.Equal((wizard.Languages.Setting, wizard.Model.SpeechModel), (resumed.Languages.Setting, resumed.Model.SpeechModel));
+        Assert.Equal((true, "http://localhost:8080/v1", "qwen2.5:7b", true),
+            (resumed.Cleanup.UseServer, resumed.Cleanup.Url, resumed.Cleanup.Model, resumed.Cleanup.CanContinue));
+        Assert.Equal(["Nexus5", "Avalonia"], resumed.Words.Words);
+        Assert.Equal(wizard.Downloading.Files.Select(f => f.Entry.Id), resumed.Downloading.Files.Select(f => f.Entry.Id));
+        Assert.Equal(calls, _fx.Downloads.Calls.Count);
+
+        _fx.InstallAll();
+        Finish(ModelsPageTests.Turbo);
+        await resumed.NextCommand.ExecuteAsync(null);
+
+        Assert.Equal(7, resumed.Index);
+        Assert.Equal(wizard.Languages.Setting, _fx.Store.Load().Profiles[0].Language);
+        Assert.Null(Kept());
+    }
+
+    // PR 5b, review focus 4: a typed key never reaches setup.json, and the resumed walk asks for it at step 3.
+    [Fact]
+    public async Task ATypedKeyIsNeverKeptAndIsAskedAgain()
+    {
+        var wizard = Open();
+        await UseServer(wizard, key: "sk-live-123");
+        await WalkTo(wizard, 6);
+        var text = File.ReadAllText(_fx.Paths.SetupFile);
+        Assert.DoesNotContain("sk-live-123", text);
+        Assert.DoesNotContain("dictum-processor", text);
+
+        var resumed = new SetupViewModel(_fx.Services(), Kept());
+
+        Assert.Equal((2, "", false), (resumed.Index, resumed.Cleanup.KeyText, resumed.CanNext));
+        Assert.Equal("Type the API key again: it is not kept on disk while files download.", resumed.Cleanup.KeyNote);
+    }
+
+    // PR 5b, review focus 5: the restored queue carries on as it was. A resumed walk sends it nothing: the real queue's
+    // Download resumes a paused queue, so even a "download" would undo the user's pause.
+    [Fact]
+    public async Task AResumedWalkKeepsAPause()
+    {
+        var wizard = Open();
+        await WalkTo(wizard, 6);
+        wizard.Downloading.PauseOrResumeCommand.Execute(null);
+        List<string> before = [.. _fx.Downloads.Calls];
+
+        _ = new SetupViewModel(_fx.Services(), Kept());
+
+        Assert.Equal(before, _fx.Downloads.Calls);
+        Assert.True(_fx.Downloads.IsPaused);
+    }
+
+    // PR 5b: Back from step 7 drops the kept walk; a restart starts over instead of resuming downloads left behind.
+    [Fact]
+    public async Task BackFromStepSevenDropsTheKeptWalk()
+    {
+        var wizard = Open();
+        await WalkTo(wizard, 6);
+        Assert.NotNull(Kept());
+
+        wizard.BackCommand.Execute(null);
+
+        Assert.Null(Kept());
     }
 }

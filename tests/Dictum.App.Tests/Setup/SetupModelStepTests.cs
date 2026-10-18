@@ -112,4 +112,15 @@ public sealed class SetupModelStepTests : IDisposable
 
         Assert.Equal(("Too slow here", true), (turbo.SpeedBadge, turbo.TooSlow));
     }
+
+    // PR 5b, review focus 5: a resumed walk's model wins over a hand-placed file and the config's model.
+    [Fact]
+    public void APickedModelWinsOverAHandPlacedFile()
+    {
+        var step = new SetupModelStep(_fx.Services(), "my-model.bin", ModelsPageTests.Small) { Language = "en" };
+
+        step.Pick(ModelsPageTests.Medium);
+
+        Assert.Equal(ModelsPageTests.Medium, step.SpeechModel);
+    }
 }
