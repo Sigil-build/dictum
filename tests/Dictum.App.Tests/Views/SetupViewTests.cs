@@ -124,4 +124,37 @@ public sealed class SetupViewTests(AvaloniaFixture fx) : IDisposable
         Assert.True(label.TextLayout.TextLines.Count > 1, $"{label.TextLayout.TextLines.Count} line(s)");
         window.Close();
     });
+
+    // Final review M1: Tab follows reading order (spec 14): the step's search, its list, the option under the list, then Next.
+    [Fact]
+    public Task TabFollowsReadingOrder() => fx.UiAsync(() =>
+    {
+        var wizard = new SetupViewModel(_setup.Services());
+        wizard.Languages.Search = "Polish";
+        var window = new SetupWindow { DataContext = wizard };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        var focus = TopLevel.GetTopLevel(window)!.FocusManager!;
+        var order = new List<string>();
+        while (order.Count < 20 && order.LastOrDefault() != "Next")
+        {
+            window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+            Dispatcher.UIThread.RunJobs();
+            order.Add(Describe(focus.GetFocusedElement()));
+        }
+
+        window.Close();
+        Assert.Equal(["search", "row en", "row pl", "detect any", "Next"], order);
+        return Task.CompletedTask;
+    });
+
+    private static string Describe(IInputElement? element) => element switch
+    {
+        TextBox => "search",
+        CheckBox { DataContext: LanguageRow row } => "row " + row.Code,
+        CheckBox { DataContext: SetupLanguagesStep } => "detect any",
+        Button { Content: string text } => text,
+        _ => element?.GetType().Name ?? "none",
+    };
 }

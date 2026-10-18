@@ -5,9 +5,10 @@
              xmlns:res="using:Dictum.App.Resources"
              x:Class="Dictum.App.Views.Setup.SetupView"
              x:DataType="setup:SetupViewModel">
-  <DockPanel>
+  <!-- Rows in reading order, so Tab reaches the step's content before Back and Next (spec 14, final review M1). -->
+  <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
     <!-- The strip: a bar per step, accent for the steps done and the current one; screen readers get the step line instead. -->
-    <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding Bars}" Margin="30,4,30,0" AutomationProperties.AccessibilityView="Raw">
+    <ItemsControl ItemsSource="{Binding Bars}" Margin="30,4,30,0" AutomationProperties.AccessibilityView="Raw">
       <ItemsControl.ItemsPanel>
         <ItemsPanelTemplate>
           <UniformGrid Rows="1" />
@@ -19,39 +20,20 @@
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
-    <TextBlock DockPanel.Dock="Top" Text="{Binding StepLine}" Classes="hint" Margin="32,10,32,0"
+    <TextBlock Grid.Row="1" Text="{Binding StepLine}" Classes="hint" Margin="32,10,32,0"
                AutomationProperties.LiveSetting="Polite" />
 
-    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,*,Auto" Margin="32,16,32,20">
-      <Button Classes="dialog" Content="{x:Static res:Strings.SetupBack}" Command="{Binding BackCommand}" />
-      <TextBlock Grid.Column="1" Text="{Binding FootNote}" Classes="hint" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="12,0" />
-      <Button Grid.Column="2" Classes="dialog primary" Content="{Binding NextText}" Command="{Binding NextCommand}" />
-    </Grid>
-    <TextBlock DockPanel.Dock="Bottom" Text="{Binding Error}" Classes="error" Margin="32,8,32,0"
-               IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
-
-    <ContentControl Content="{Binding Current}" Margin="32,12,32,0">
+    <ContentControl Grid.Row="2" Content="{Binding Current}" Margin="32,12,32,0">
       <ContentControl.DataTemplates>
         <DataTemplate DataType="setup:SetupLanguagesStep">
-          <DockPanel>
-            <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,8">
+          <Grid RowDefinitions="Auto,*,Auto">
+            <StackPanel Spacing="8" Margin="0,0,0,8">
               <TextBlock Classes="h1" Text="{x:Static res:Strings.SetupLanguagesTitle}" />
               <TextBlock Classes="lead" Text="{x:Static res:Strings.SetupLanguagesLead}" />
               <TextBox Text="{Binding Search}" PlaceholderText="{x:Static res:Strings.SetupLanguagesSearch}"
                        AutomationProperties.Name="{x:Static res:Strings.SetupLanguagesSearchLabel}" />
             </StackPanel>
-            <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="0,8,0,0">
-              <Border Classes="banner" IsVisible="{Binding BannerLead, Converter={x:Static ObjectConverters.IsNotNull}}">
-                <StackPanel Spacing="2">
-                  <TextBlock Text="{Binding BannerLead}" FontWeight="SemiBold" />
-                  <TextBlock Text="{x:Static res:Strings.SetupSimilarText}" />
-                </StackPanel>
-              </Border>
-              <CheckBox IsChecked="{Binding DetectAny}" AutomationProperties.Name="{x:Static res:Strings.SetupLanguagesAuto}">
-                  <TextBlock Text="{x:Static res:Strings.SetupLanguagesAuto}" TextWrapping="Wrap" />
-                </CheckBox>
-            </StackPanel>
-            <ScrollViewer IsEnabled="{Binding !DetectAny}">
+            <ScrollViewer Grid.Row="1" IsEnabled="{Binding !DetectAny}">
               <ItemsControl ItemsSource="{Binding Rows}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="setup:LanguageRow">
@@ -65,7 +47,18 @@
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
             </ScrollViewer>
-          </DockPanel>
+            <StackPanel Grid.Row="2" Spacing="8" Margin="0,8,0,0">
+              <Border Classes="banner" IsVisible="{Binding BannerLead, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="{Binding BannerLead}" FontWeight="SemiBold" />
+                  <TextBlock Text="{x:Static res:Strings.SetupSimilarText}" />
+                </StackPanel>
+              </Border>
+              <CheckBox IsChecked="{Binding DetectAny}" AutomationProperties.Name="{x:Static res:Strings.SetupLanguagesAuto}">
+                  <TextBlock Text="{x:Static res:Strings.SetupLanguagesAuto}" TextWrapping="Wrap" />
+                </CheckBox>
+            </StackPanel>
+          </Grid>
         </DataTemplate>
 
         <DataTemplate DataType="setup:SetupModelStep">
@@ -313,5 +306,13 @@
         </DataTemplate>
       </ContentControl.DataTemplates>
     </ContentControl>
-  </DockPanel>
+
+    <TextBlock Grid.Row="3" Text="{Binding Error}" Classes="error" Margin="32,8,32,0"
+               IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+    <Grid Grid.Row="4" ColumnDefinitions="Auto,*,Auto" Margin="32,16,32,20">
+      <Button Classes="dialog" Content="{x:Static res:Strings.SetupBack}" Command="{Binding BackCommand}" />
+      <TextBlock Grid.Column="1" Text="{Binding FootNote}" Classes="hint" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="12,0" />
+      <Button Grid.Column="2" Classes="dialog primary" Content="{Binding NextText}" Command="{Binding NextCommand}" />
+    </Grid>
+  </Grid>
 </UserControl>
