@@ -1,0 +1,2 @@
+# Shell scripts run on Linux and in CI: keep them LF on every checkout (a CR breaks `set -o pipefail`).
+*.sh text eol=lf
