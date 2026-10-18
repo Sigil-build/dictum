@@ -2,7 +2,9 @@
   <!-- Per user, no admin rights, into %LOCALAPPDATA%\Programs\Dictum (phase 4 spec 3.1). The UpgradeCode never changes. -->
   <Package Name="Dictum" Manufacturer="Dictum" Version="$(Version)" UpgradeCode="7F2C9E44-3B1A-4C6D-9E0F-5A8B2D1C4E37"
            Scope="perUser" Compressed="yes">
-    <MajorUpgrade DowngradeErrorMessage="A newer version of Dictum is already installed." />
+    <!-- AllowSameVersionUpgrades: a rebuilt MSI of the same version replaces the installed one instead of installing
+         beside it (phase 4 PR 4b final review I1); ICE61 warns about exactly that and is suppressed in the project. -->
+    <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of Dictum is already installed." />
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
     <Icon Id="dictum.ico" SourceFile="$(IconFile)" />

@@ -3,13 +3,14 @@
     The per-user MSI (phase 4 spec 3.1). Built by packaging/package.sh with StageDir = the staged files; not in Dictum.slnx,
     so dotnet build on Linux never meets it.
     ICE38, ICE64 and ICE91 fire for every per-user package that installs under the user profile (they date from roaming
-    profiles). Warnings are errors in this repo, so they are suppressed here; the CI uninstall check verifies that nothing
+    profiles); ICE61 warns about AllowSameVersionUpgrades, which Package.wxs wants. Warnings are errors in this repo,
+    so they are suppressed here; the CI uninstall check verifies that nothing
     is left behind.
   -->
   <PropertyGroup>
     <OutputName>dictum</OutputName>
     <Platform>x64</Platform>
-    <SuppressIces>ICE38;ICE64;ICE91</SuppressIces>
+    <SuppressIces>ICE38;ICE61;ICE64;ICE91</SuppressIces>
     <DefineConstants>StageDir=$(StageDir);Version=$(VersionPrefix);IconFile=$(MSBuildThisFileDirectory)..\icons\dictum.ico</DefineConstants>
   </PropertyGroup>
   <ItemGroup>
