@@ -77,4 +77,44 @@ public sealed class SingleInstanceTests : IDisposable
         await Assert.ThrowsAsync<DaemonNotRunningException>(() =>
             SingleInstance.NotifyAsync(SocketPath, SingleInstance.ShowSettings, _ct, TimeSpan.FromMilliseconds(300)));
     }
+
+    // Review focus 3: install.sh calls --quit whether or not Dictum runs.
+    [Fact]
+    public async Task QuitWithoutAnInstanceReturnsAtOnce()
+    {
+        var started = DateTime.UtcNow;
+
+        Assert.False(await SingleInstance.QuitAsync(SocketPath, _ct));
+        Assert.True(DateTime.UtcNow - started < TimeSpan.FromSeconds(2));
+    }
+
+    // Review focus 3: the call returns once the running instance has let go of its socket.
+    [Fact]
+    public async Task QuitWaitsUntilTheInstanceIsGone()
+    {
+        SingleInstance? running = null;
+        running = await SingleInstance.AcquireAsync(SocketPath, command =>
+        {
+            if (command == SingleInstance.Quit)
+            {
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(300);
+                    await running!.DisposeAsync();
+                });
+            }
+        }, NullLog.Instance, _ct);
+
+        Assert.True(await SingleInstance.QuitAsync(SocketPath, _ct));
+        Assert.False(await SingleInstance.QuitAsync(SocketPath, _ct));
+    }
+
+    // Review focus 3: an instance that never lets go does not hang the script.
+    [Fact]
+    public async Task QuitGivesUpAfterThePatience()
+    {
+        await using var running = await SingleInstance.AcquireAsync(SocketPath, _ => { }, NullLog.Instance, _ct);
+
+        await Assert.ThrowsAsync<TimeoutException>(() => SingleInstance.QuitAsync(SocketPath, _ct, TimeSpan.FromMilliseconds(500)));
+    }
 }

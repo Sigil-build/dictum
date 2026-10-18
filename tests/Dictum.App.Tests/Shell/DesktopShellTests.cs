@@ -334,6 +334,38 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
     private static SavedSetup KeptWalk() =>
         new("pl", "whisper-large-v3-turbo-q8", false, "http://localhost:8080/v1", "", null, false, [], false, ["whisper-large-v3-turbo-q8"]);
 
+    // Phase 4: --quit reaches the running app as a command; it quits as the tray's Quit does, stopping the daemon too.
+    [Fact]
+    public Task AQuitCommandStopsBoth() => fx.UiAsync(async () =>
+    {
+        var (shell, launcher, _) = Create();
+        var exitCode = -1;
+        shell.Start(Application.Current!, code => exitCode = code);
+        await WaitAsync(() => shell.Supervisor.Link.State == DaemonLinkState.Connected);
+
+        shell.OnCommand(SingleInstance.Quit);
+
+        await WaitAsync(() => exitCode == 0);
+        Assert.Contains("shutdown", launcher.Current!.Commands);
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
+    // Review focus 4: a quit sent while the app is still starting is kept until it has started.
+    [Fact]
+    public Task AQuitBeforeStartQuitsOnceStarted() => fx.UiAsync(async () =>
+    {
+        var (shell, launcher, _) = Create();
+        var exitCode = -1;
+
+        shell.OnCommand(SingleInstance.Quit);
+        shell.Start(Application.Current!, code => exitCode = code);
+
+        await WaitAsync(() => exitCode == 0);
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
     private (DesktopShell Shell, FakeLauncher Launcher, TrayControllerTests.FakePresenter Presenter) Create(bool tray = true, bool config = true)
     {
         var paths = new AppPaths(Path.Combine(_dir, "config"), Path.Combine(_dir, "data"));

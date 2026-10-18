@@ -11,6 +11,9 @@ public sealed class SingleInstance : IAsyncDisposable
 {
     public const string ShowSettings = "show-settings";
 
+    /// <summary>Quits the running app as the tray's Quit does (phase 4: install and uninstall scripts).</summary>
+    public const string Quit = "quit";
+
     private readonly IpcServer _server;
 
     private SingleInstance(IpcServer server) => _server = server;
@@ -61,6 +64,40 @@ public sealed class SingleInstance : IAsyncDisposable
                 await Task.Delay(100, ct).ConfigureAwait(false);
             }
         }
+    }
+
+    /// <summary>
+    /// Asks the running app to quit and waits until it has let go of its socket. Returns false when none answered,
+    /// true when one was running and is gone; throws <see cref="TimeoutException"/> when it is still there after
+    /// <paramref name="patience"/> (15 s by default: the shell waits up to 3 s for the daemon to stop).
+    /// </summary>
+    public static async Task<bool> QuitAsync(string socketPath, CancellationToken ct, TimeSpan? patience = null)
+    {
+        try
+        {
+            await new IpcClient(socketPath).SendAsync(new IpcRequest(Quit), ct, TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+        }
+        catch (DaemonNotRunningException)
+        {
+            return false;
+        }
+
+        var deadline = DateTime.UtcNow + (patience ?? TimeSpan.FromSeconds(15));
+        while (DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(100, ct).ConfigureAwait(false);
+            try
+            {
+                // Any command will do: the shell ignores what it does not know, and an instance that is gone answers nothing.
+                await new IpcClient(socketPath).SendAsync(new IpcRequest("ping"), ct, TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+            }
+            catch (DaemonNotRunningException)
+            {
+                return true;
+            }
+        }
+
+        throw new TimeoutException($"Dictum is still running after {(patience ?? TimeSpan.FromSeconds(15)).TotalSeconds:0} s.");
     }
 
     public ValueTask DisposeAsync() => _server.DisposeAsync();

@@ -25,6 +25,11 @@ internal static class Program
             return SelfTest.Run(output);
         }
 
+        if (args.Contains("--quit"))
+        {
+            return QuitRunning();
+        }
+
         if (OperatingSystem.IsLinux())
         {
             // Spike: Avalonia's X11 backend reported scale 1 where KDE signals the scale through Xft.dpi.
@@ -74,6 +79,25 @@ internal static class Program
             // Every await inside these disposals uses ConfigureAwait(false), so nothing waits for the stopped dispatcher.
             shell.DisposeAsync().AsTask().GetAwaiter().GetResult();
             instance.DisposeAsync().AsTask().GetAwaiter().GetResult();
+        }
+    }
+
+    /// <summary>
+    /// <c>--quit</c>: stops a running Dictum (the shell's Quit also stops the daemon) for the install and uninstall
+    /// scripts. 0 when none runs or it is gone, 1 when it is still running (phase 4 spec 5.4).
+    /// </summary>
+    private static int QuitRunning()
+    {
+        var socket = SingleInstance.SocketPathFor(IpcEndpoint.SocketPath(AppPaths.FromEnvironment()));
+        try
+        {
+            SingleInstance.QuitAsync(socket, CancellationToken.None).GetAwaiter().GetResult();
+            return 0;
+        }
+        catch (TimeoutException ex)
+        {
+            Console.Error.WriteLine(ex.Message);
+            return 1;
         }
     }
 

@@ -60,6 +60,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     private volatile bool _highContrast;
     private volatile bool _started;
     private volatile bool _showWhenStarted;
+    private volatile bool _quitWhenStarted;
 
     /// <param name="createTray">The OS tray; <see cref="CreateTrayAsync"/> in the app, a fake in tests.</param>
     /// <param name="overlayDesktop">The overlay's OS side; <see cref="OverlayDesktop.None"/> when left out (tests).</param>
@@ -120,6 +121,21 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     /// <summary>A later launch asked for Settings (from the single-instance socket, on a server thread).</summary>
     public void OnCommand(string command)
     {
+        if (command == SingleInstance.Quit)
+        {
+            // Before Start there is no shutdown callback yet: quit as soon as it exists (phase 4 --quit).
+            if (_started)
+            {
+                Quit();
+            }
+            else
+            {
+                _quitWhenStarted = true;
+            }
+
+            return;
+        }
+
         if (command != SingleInstance.ShowSettings)
         {
             return;
@@ -226,6 +242,11 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         if (_showWhenStarted || !_store.Exists)
         {
             ShowSettings(SettingsPageKey.General);
+        }
+
+        if (_quitWhenStarted)
+        {
+            Quit();
         }
     }
 
