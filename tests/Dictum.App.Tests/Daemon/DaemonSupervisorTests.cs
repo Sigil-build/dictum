@@ -328,6 +328,38 @@ public sealed class DaemonSupervisorTests : IAsyncDisposable
         Assert.Equal(DaemonLinkState.Stopped, supervisor.Link.State);
     }
 
+    // PR 5b: the wizard's save starts the daemon at once, not at the next poll.
+    [Fact]
+    public async Task ASavedConfigStartsTheDaemonWithoutWaitingForThePoll()
+    {
+        _configExists = false;
+        var supervisor = Start(Options() with { ConfigPollInterval = TimeSpan.FromHours(1) });
+        await WaitForAsync(DaemonLinkState.NotConfigured);
+
+        Volatile.Write(ref _configExists, true);
+        supervisor.ConfigSaved();
+
+        await WaitForAsync(DaemonLinkState.Connected);
+        Assert.Equal(1, _launcher.Launches);
+    }
+
+    // PR 5b: a nudge while there is still no config keeps waiting; a later save still counts.
+    [Fact]
+    public async Task ANudgeWithoutAConfigKeepsWaiting()
+    {
+        _configExists = false;
+        var supervisor = Start(Options() with { ConfigPollInterval = TimeSpan.FromHours(1) });
+        await WaitForAsync(DaemonLinkState.NotConfigured);
+
+        supervisor.ConfigSaved();
+        await Task.Delay(100, _ct);
+        Assert.Equal((DaemonLinkState.NotConfigured, 0), (supervisor.Link.State, _launcher.Launches));
+
+        Volatile.Write(ref _configExists, true);
+        supervisor.ConfigSaved();
+        await WaitForAsync(DaemonLinkState.Connected);
+    }
+
     private static SupervisorOptions Options() => new()
     {
         RetryDelay = TimeSpan.FromMilliseconds(20),

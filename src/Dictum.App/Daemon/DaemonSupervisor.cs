@@ -41,6 +41,7 @@ public sealed class DaemonSupervisor : IDaemonChannel, IAsyncDisposable
     private readonly Lock _gate = new();
     private readonly Queue<DateTimeOffset> _restarts = new();
     private TaskCompletionSource _restartRequested = Signal();
+    private TaskCompletionSource _configSaved = Signal();
     private TaskCompletionSource _stopping = Signal();
     private volatile DaemonLink _link = new(DaemonLinkState.Starting);
     private IDaemonProcess? _process;
@@ -86,6 +87,15 @@ public sealed class DaemonSupervisor : IDaemonChannel, IAsyncDisposable
         lock (_gate)
         {
             _restartRequested.TrySetResult();
+        }
+    }
+
+    /// <summary>A config file was just written (the wizard's save): stop waiting for the next poll (PR 5b).</summary>
+    public void ConfigSaved()
+    {
+        lock (_gate)
+        {
+            _configSaved.TrySetResult();
         }
     }
 
@@ -183,10 +193,22 @@ public sealed class DaemonSupervisor : IDaemonChannel, IAsyncDisposable
             await Task.Delay(Timeout.Infinite, ct).ConfigureAwait(false);
         }
 
+        // A fresh signal before the check: a save between the check and the wait still counts, and a nudge from an
+        // earlier wait does not turn this one into a busy loop.
+        Task saved;
+        lock (_gate)
+        {
+            _configSaved = Signal();
+            saved = _configSaved.Task;
+        }
+
         if (!_configExists())
         {
             SetLink(new DaemonLink(DaemonLinkState.NotConfigured));
-            await Task.Delay(_options.ConfigPollInterval, ct).ConfigureAwait(false);
+            using var poll = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            await Task.WhenAny(saved, Task.Delay(_options.ConfigPollInterval, poll.Token)).ConfigureAwait(false);
+            await poll.CancelAsync().ConfigureAwait(false);
+            ct.ThrowIfCancellationRequested();
             return;
         }
 
