@@ -36,4 +36,7 @@
   <ItemGroup Label="Tests">
     <PackageVersion Include="xunit.v3" Version="4.0.1" />
   </ItemGroup>
+  <ItemGroup Label="Packaging">
+    <PackageVersion Include="WixToolset.Util.wixext" Version="6.0.1" />
+  </ItemGroup>
 </Project>

@@ -13,7 +13,7 @@ mkdir -p "$out"
 out=$(cd "$out" && pwd)
 stage="$out/stage/$name"
 
-rm -rf "$stage"
+rm -rf "${stage:?}"
 mkdir -p "$stage"
 # Both apps in one folder: dictum-gui starts dictum from its own folder (spec 3).
 dotnet publish "$root/src/Dictum.Cli" -c Release -r "$rid" -o "$stage"
@@ -22,8 +22,12 @@ find "$stage" \( -name '*.pdb' -o -name '*.dbg' -o -name '*.dSYM' \) -prune -exe
 
 case "$rid" in
   win-*)
-    rm -f "$out/$name.zip"
+    rm -f "${out:?}/${name:?}.zip"
     powershell -NoProfile -Command "Add-Type -AssemblyName System.IO.Compression.FileSystem; [IO.Compression.ZipFile]::CreateFromDirectory('$(cygpath -w "$stage")', '$(cygpath -w "$out/$name.zip")', 'Optimal', \$true)"
+    rm -rf "${out:?}/msi" "${out:?}/${name:?}.msi"
+    dotnet build "$root/packaging/windows/Dictum.Installer.wixproj" -c Release \
+      -p:StageDir="$(cygpath -w "$stage")" -o "$(cygpath -w "$out/msi")"
+    cp "$out/msi/dictum.msi" "$out/$name.msi"
     ;;
   linux-*)
     tar -C "$out/stage" -czf "$out/$name.tar.gz" "$name"

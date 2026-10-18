@@ -43,3 +43,9 @@ outside=$(echo "$entries" | tr '\\' '/' | grep -v "^$name/" | head -1 || true)
 [ -z "$outside" ] || fail "the archive has an entry outside $name/: $outside"
 echo "$entries" | grep -qiE '\.(pdb|dbg)$' && fail "the archive has debug symbols"
 pass "portable archive ($archive)"
+
+if [ "$rid" = win-x64 ]; then
+  msi="$out/$name.msi"
+  powershell -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$root/packaging/windows/check-msi.ps1")" -Msi "$(cygpath -w "$msi")" -Version "$version" || fail "check-msi.ps1"
+  pass "MSI ($msi)"
+fi
