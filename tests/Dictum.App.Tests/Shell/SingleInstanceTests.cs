@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Net.Sockets;
 using Dictum.App.Shell;
 using Dictum.Core.Diagnostics;
 using Dictum.Host.Ipc;
@@ -116,5 +117,64 @@ public sealed class SingleInstanceTests : IDisposable
         await using var running = await SingleInstance.AcquireAsync(SocketPath, _ => { }, NullLog.Instance, _ct);
 
         await Assert.ThrowsAsync<TimeoutException>(() => SingleInstance.QuitAsync(SocketPath, _ct, TimeSpan.FromMilliseconds(500)));
+    }
+
+    // Final review I3: an instance that holds the socket but never answers (hung) must not crash --quit; it gives up.
+    [Fact]
+    public async Task QuitOfASilentInstanceGivesUpInsteadOfThrowing()
+    {
+        using var silent = Listen(SocketPath);
+
+        await Assert.ThrowsAsync<TimeoutException>(() => SingleInstance.QuitAsync(SocketPath, _ct, TimeSpan.FromMilliseconds(500)));
+    }
+
+    // Final review I3 + M3: --quit's exit codes, and it never throws: 0 when nothing runs, 1 when an instance never lets go.
+    [Fact]
+    public async Task QuitExitsZeroWithoutAnInstanceAndOneForAHungOne()
+    {
+        var error = new StringWriter();
+        Assert.Equal(0, await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, error, _ct));
+
+        using var silent = Listen(SocketPath);
+        Assert.Equal(1, await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, error, _ct, TimeSpan.FromMilliseconds(500)));
+        Assert.Contains("still running", error.ToString());
+    }
+
+    // Final review M2: the shell asks the daemon to stop and exits; --quit returns once the daemon's socket is quiet too,
+    // so an upgrade never meets dictum.exe still exiting.
+    [Fact]
+    public async Task QuitWaitsForTheDaemonToo()
+    {
+        var daemon = new IpcServer(DaemonSocket, NullLog.Instance);
+        await daemon.StartAsync((_, _) => Task.FromResult(new IpcResponse(true)), _ct);
+        SingleInstance? running = null;
+        running = await SingleInstance.AcquireAsync(SocketPath, command =>
+        {
+            if (command == SingleInstance.Quit)
+            {
+                _ = Task.Run(async () =>
+                {
+                    await running!.DisposeAsync();
+                    await Task.Delay(600);
+                    await daemon.DisposeAsync();
+                });
+            }
+        }, NullLog.Instance, _ct);
+
+        var code = await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, TextWriter.Null, _ct);
+
+        Assert.Equal(0, code);
+        await Assert.ThrowsAsync<DaemonNotRunningException>(() => new IpcClient(DaemonSocket).SendAsync(new IpcRequest("status"), _ct));
+    }
+
+    private string DaemonSocket => Path.Combine(_dir, "dictum.sock");
+
+    /// <summary>A socket that takes connections and never answers: a hung instance.</summary>
+    private static Socket Listen(string path)
+    {
+        var socket = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
+        socket.Bind(new UnixDomainSocketEndPoint(path));
+        socket.Listen();
+        return socket;
     }
 }

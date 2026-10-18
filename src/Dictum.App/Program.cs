@@ -88,17 +88,9 @@ internal static class Program
     /// </summary>
     private static int QuitRunning()
     {
-        var socket = SingleInstance.SocketPathFor(IpcEndpoint.SocketPath(AppPaths.FromEnvironment()));
-        try
-        {
-            SingleInstance.QuitAsync(socket, CancellationToken.None).GetAwaiter().GetResult();
-            return 0;
-        }
-        catch (TimeoutException ex)
-        {
-            Console.Error.WriteLine(ex.Message);
-            return 1;
-        }
+        var daemonSocket = IpcEndpoint.SocketPath(AppPaths.FromEnvironment());
+        return SingleInstance.QuitCommandAsync(SingleInstance.SocketPathFor(daemonSocket), daemonSocket, Console.Error, CancellationToken.None)
+            .GetAwaiter().GetResult();
     }
 
     /// <summary><c>--overlay-demo</c>: no daemon, no tray, no single-instance lock. Messages stay English, like --self-test.</summary>

@@ -1,3 +1,5 @@
+using System.Net.Sockets;
+using System.Text.Json;
 using Dictum.Core.Diagnostics;
 using Dictum.Host.Ipc;
 
@@ -13,6 +15,8 @@ public sealed class SingleInstance : IAsyncDisposable
 
     /// <summary>Quits the running app as the tray's Quit does (phase 4: install and uninstall scripts).</summary>
     public const string Quit = "quit";
+
+    private static readonly TimeSpan DefaultQuitPatience = TimeSpan.FromSeconds(15);
 
     private readonly IpcServer _server;
 
@@ -69,35 +73,101 @@ public sealed class SingleInstance : IAsyncDisposable
     /// <summary>
     /// Asks the running app to quit and waits until it has let go of its socket. Returns false when none answered,
     /// true when one was running and is gone; throws <see cref="TimeoutException"/> when it is still there after
-    /// <paramref name="patience"/> (15 s by default: the shell waits up to 3 s for the daemon to stop).
+    /// <paramref name="patience"/> (15 s by default: the shell waits up to 3 s for the daemon to stop). An instance that
+    /// holds the socket but never answers counts as still there, never as an error (phase 4 final review I3).
     /// </summary>
     public static async Task<bool> QuitAsync(string socketPath, CancellationToken ct, TimeSpan? patience = null)
     {
-        try
-        {
-            await new IpcClient(socketPath).SendAsync(new IpcRequest(Quit), ct, TimeSpan.FromSeconds(2)).ConfigureAwait(false);
-        }
-        catch (DaemonNotRunningException)
+        var wait = patience ?? DefaultQuitPatience;
+        var deadline = DateTime.UtcNow + wait;
+        if (await TryAsync(socketPath, Quit, ct, TimeSpan.FromSeconds(2)).ConfigureAwait(false) == Reply.Gone)
         {
             return false;
         }
 
-        var deadline = DateTime.UtcNow + (patience ?? TimeSpan.FromSeconds(15));
         while (DateTime.UtcNow < deadline)
         {
             await Task.Delay(100, ct).ConfigureAwait(false);
-            try
-            {
-                // Any command will do: the shell ignores what it does not know, and an instance that is gone answers nothing.
-                await new IpcClient(socketPath).SendAsync(new IpcRequest("ping"), ct, TimeSpan.FromSeconds(1)).ConfigureAwait(false);
-            }
-            catch (DaemonNotRunningException)
+
+            // Any command will do: the shell ignores what it does not know, and an instance that is gone answers nothing.
+            if (await TryAsync(socketPath, "ping", ct, TimeSpan.FromSeconds(1)).ConfigureAwait(false) == Reply.Gone)
             {
                 return true;
             }
         }
 
-        throw new TimeoutException($"Dictum is still running after {(patience ?? TimeSpan.FromSeconds(15)).TotalSeconds:0} s.");
+        throw new TimeoutException($"Dictum is still running after {wait.TotalSeconds:0.#} s.");
+    }
+
+    /// <summary>
+    /// <c>dictum-gui --quit</c> for the install scripts and the MSI (phase 4 spec 5.4): quits a running Dictum, then waits
+    /// until the daemon's socket is quiet too, since its process may still be exiting and holding its files (final review
+    /// M2). 0 when nothing ran or everything stopped, 1 when something still runs after <paramref name="patience"/>.
+    /// Never throws (commands never throw).
+    /// </summary>
+    public static async Task<int> QuitCommandAsync(string appSocket, string daemonSocket, TextWriter error, CancellationToken ct, TimeSpan? patience = null)
+    {
+        var wait = patience ?? DefaultQuitPatience;
+        var deadline = DateTime.UtcNow + wait;
+        try
+        {
+            if (!await QuitAsync(appSocket, ct, wait).ConfigureAwait(false))
+            {
+                return 0;
+            }
+
+            while (DateTime.UtcNow < deadline)
+            {
+                if (await TryAsync(daemonSocket, "status", ct, TimeSpan.FromSeconds(1)).ConfigureAwait(false) == Reply.Gone)
+                {
+                    return 0;
+                }
+
+                await Task.Delay(100, ct).ConfigureAwait(false);
+            }
+
+            error.WriteLine($"The Dictum daemon is still running after {wait.TotalSeconds:0.#} s.");
+            return 1;
+        }
+        catch (TimeoutException ex)
+        {
+            error.WriteLine(ex.Message);
+            return 1;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            error.WriteLine($"Could not quit Dictum: {ex.Message}");
+            return 1;
+        }
+    }
+
+    private enum Reply
+    {
+        Answered,
+        Gone,
+        Silent,
+    }
+
+    /// <summary>One command: answered, gone (nobody listens), or silent (no answer in time, or the connection broke).</summary>
+    private static async Task<Reply> TryAsync(string socketPath, string command, CancellationToken ct, TimeSpan timeout)
+    {
+        try
+        {
+            await new IpcClient(socketPath).SendAsync(new IpcRequest(command), ct, timeout).ConfigureAwait(false);
+            return Reply.Answered;
+        }
+        catch (DaemonNotRunningException)
+        {
+            return Reply.Gone;
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return Reply.Silent;
+        }
+        catch (Exception ex) when (ex is IOException or SocketException or JsonException or InvalidOperationException)
+        {
+            return Reply.Silent;
+        }
     }
 
     public ValueTask DisposeAsync() => _server.DisposeAsync();
