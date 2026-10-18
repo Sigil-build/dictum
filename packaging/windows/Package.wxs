@@ -29,7 +29,9 @@
     </Component>
 
     <!-- Before files are checked, replaced or removed, the installed copy quits a running Dictum (the GUI and its daemon).
-         util:CloseApplication runs after RemoveFiles, too late for an uninstall. A first install has no file: ignored. -->
+         util:CloseApplication runs after RemoveFiles, too late for an uninstall. A first install has no file: ignored.
+         Every later MSI runs the INSTALLED copy's switch, so dictum-gui --quit is a compatibility contract: never rename or
+         remove it. It also stops a daemon from the same folder and waits until the processes have exited. -->
     <CustomAction Id="QuitDictum" Directory="INSTALLFOLDER" ExeCommand="&quot;[INSTALLFOLDER]dictum-gui.exe&quot; --quit"
                   Return="ignore" Impersonate="yes" />
 

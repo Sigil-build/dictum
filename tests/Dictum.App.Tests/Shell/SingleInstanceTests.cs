@@ -140,13 +140,14 @@ public sealed class SingleInstanceTests : IDisposable
         Assert.Contains("still running", error.ToString());
     }
 
-    // Final review M2: the shell asks the daemon to stop and exits; --quit returns once the daemon's socket is quiet too,
-    // so an upgrade never meets dictum.exe still exiting.
+    // 4a final review M2, 4b final review I2: the shell asks its daemon to stop and exits; --quit returns only once no
+    // Dictum process from this folder runs, so an upgrade never meets dictum.exe still exiting.
     [Fact]
     public async Task QuitWaitsForTheDaemonToo()
     {
-        var daemon = new IpcServer(DaemonSocket, NullLog.Instance);
-        await daemon.StartAsync((_, _) => Task.FromResult(new IpcResponse(true)), _ct);
+        var processes = new FakeProcesses(4242);
+        await using var daemon = new FakeDaemon(processes, 4242, exitsOnShutdown: false);
+        await daemon.StartAsync(DaemonSocket, _ct);
         SingleInstance? running = null;
         running = await SingleInstance.AcquireAsync(SocketPath, command =>
         {
@@ -156,15 +157,56 @@ public sealed class SingleInstanceTests : IDisposable
                 {
                     await running!.DisposeAsync();
                     await Task.Delay(600);
-                    await daemon.DisposeAsync();
+                    processes.Exit(4242);
                 });
             }
         }, NullLog.Instance, _ct);
 
-        var code = await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, TextWriter.Null, _ct);
+        var code = await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, _dir, processes, TextWriter.Null, _ct);
 
-        Assert.Equal(0, code);
-        await Assert.ThrowsAsync<DaemonNotRunningException>(() => new IpcClient(DaemonSocket).SendAsync(new IpcRequest("status"), _ct));
+        Assert.Equal((0, false), (code, processes.IsRunning(4242)));
+    }
+
+    // 4b final review I2: a daemon from this folder that runs without the desktop app (a login item, a terminal) is
+    // stopped too, or the installer meets its files in use.
+    [Fact]
+    public async Task QuitStopsALoneDaemonFromThisFolder()
+    {
+        var processes = new FakeProcesses(4242);
+        await using var daemon = new FakeDaemon(processes, 4242, exitsOnShutdown: true);
+        await daemon.StartAsync(DaemonSocket, _ct);
+
+        var code = await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, _dir, processes, TextWriter.Null, _ct);
+
+        Assert.Equal((0, true, false), (code, daemon.ShutdownAsked, processes.IsRunning(4242)));
+    }
+
+    // 4b final review I2: a daemon from another copy (a portable folder) answers on the same socket; it is not ours to stop.
+    [Fact]
+    public async Task QuitLeavesADaemonFromAnotherFolderAlone()
+    {
+        var processes = new FakeProcesses();
+        await using var daemon = new FakeDaemon(processes, 999, exitsOnShutdown: true);
+        await daemon.StartAsync(DaemonSocket, _ct);
+
+        var code = await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, _dir, processes, TextWriter.Null, _ct);
+
+        Assert.Equal((0, false), (code, daemon.ShutdownAsked));
+    }
+
+    // 4b final review I2: a Dictum process from this folder that does not exit is reported, never waited for forever.
+    [Fact]
+    public async Task QuitReportsAProcessThatDoesNotExit()
+    {
+        var processes = new FakeProcesses(4242);
+        await using var daemon = new FakeDaemon(processes, 4242, exitsOnShutdown: false);
+        await daemon.StartAsync(DaemonSocket, _ct);
+        var error = new StringWriter();
+
+        var code = await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, _dir, processes, error, _ct, TimeSpan.FromMilliseconds(500));
+
+        Assert.Equal(1, code);
+        Assert.Contains("still running", error.ToString());
     }
 
     private string DaemonSocket => Path.Combine(_dir, "dictum.sock");
@@ -176,5 +218,45 @@ public sealed class SingleInstanceTests : IDisposable
         socket.Bind(new UnixDomainSocketEndPoint(path));
         socket.Listen();
         return socket;
+    }
+
+    /// <summary>The Dictum processes of the test's install folder, as --quit sees them.</summary>
+    private sealed class FakeProcesses(params int[] running) : IDictumProcesses
+    {
+        private readonly ConcurrentDictionary<int, bool> _running = new(running.Select(pid => KeyValuePair.Create(pid, true)));
+
+        public IReadOnlyList<int> RunningFrom(string folder) => [.. _running.Keys];
+
+        public bool IsRunning(int pid) => _running.ContainsKey(pid);
+
+        public void Exit(int pid) => _running.TryRemove(pid, out _);
+    }
+
+    /// <summary>A daemon socket that reports <paramref name="pid"/> and records a shutdown request.</summary>
+    private sealed class FakeDaemon(FakeProcesses processes, int pid, bool exitsOnShutdown) : IAsyncDisposable
+    {
+        private IpcServer? _server;
+
+        public bool ShutdownAsked { get; private set; }
+
+        public async Task StartAsync(string socket, CancellationToken ct)
+        {
+            _server = new IpcServer(socket, NullLog.Instance);
+            await _server.StartAsync((request, _) =>
+            {
+                if (request.Command == "shutdown")
+                {
+                    ShutdownAsked = true;
+                    if (exitsOnShutdown)
+                    {
+                        processes.Exit(pid);
+                    }
+                }
+
+                return Task.FromResult(IpcResponse.Success(new DaemonStatus("Idle", null, [], "hook", "paste", pid)));
+            }, ct);
+        }
+
+        public ValueTask DisposeAsync() => _server?.DisposeAsync() ?? ValueTask.CompletedTask;
     }
 }

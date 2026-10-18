@@ -99,35 +99,44 @@ public sealed class SingleInstance : IAsyncDisposable
         throw new TimeoutException($"Dictum is still running after {wait.TotalSeconds:0.#} s.");
     }
 
+    /// <summary><c>dictum-gui --quit</c> for this install: the folder of the running executable, the real processes.</summary>
+    public static Task<int> QuitCommandAsync(string appSocket, string daemonSocket, TextWriter error, CancellationToken ct, TimeSpan? patience = null) =>
+        QuitCommandAsync(appSocket, daemonSocket, AppContext.BaseDirectory, SystemDictumProcesses.Instance, error, ct, patience);
+
     /// <summary>
-    /// <c>dictum-gui --quit</c> for the install scripts and the MSI (phase 4 spec 5.4): quits a running Dictum, then waits
-    /// until the daemon's socket is quiet too, since its process may still be exiting and holding its files (final review
-    /// M2). 0 when nothing ran or everything stopped, 1 when something still runs after <paramref name="patience"/>.
-    /// Never throws (commands never throw).
+    /// <c>dictum-gui --quit</c> for the install scripts and the MSI (phase 4 spec 5.4). Quits a running Dictum desktop app,
+    /// asks a daemon that runs from <paramref name="folder"/> to shut down too (the app's own, or one started without it:
+    /// a login item, a terminal), then waits until no Dictum process from that folder runs, so an installer never meets
+    /// its files in use (4a final review M2, 4b final review I2). A daemon from another copy is left alone. 0 when nothing
+    /// of this folder runs any more, 1 when something still runs after <paramref name="patience"/>. Never throws.
     /// </summary>
-    public static async Task<int> QuitCommandAsync(string appSocket, string daemonSocket, TextWriter error, CancellationToken ct, TimeSpan? patience = null)
+    public static async Task<int> QuitCommandAsync(
+        string appSocket, string daemonSocket, string folder, IDictumProcesses processes, TextWriter error, CancellationToken ct, TimeSpan? patience = null)
     {
         var wait = patience ?? DefaultQuitPatience;
         var deadline = DateTime.UtcNow + wait;
         try
         {
-            if (!await QuitAsync(appSocket, ct, wait).ConfigureAwait(false))
+            await QuitAsync(appSocket, ct, wait).ConfigureAwait(false);
+            if (processes.RunningFrom(folder) is { Count: > 0 } running
+                && await DaemonProcessAsync(daemonSocket, ct).ConfigureAwait(false) is { } daemon
+                && running.Contains(daemon))
             {
-                return 0;
+                await TryAsync(daemonSocket, "shutdown", ct, TimeSpan.FromSeconds(2)).ConfigureAwait(false);
             }
 
-            while (DateTime.UtcNow < deadline)
+            while (processes.RunningFrom(folder).Count > 0)
             {
-                if (await TryAsync(daemonSocket, "status", ct, TimeSpan.FromSeconds(1)).ConfigureAwait(false) == Reply.Gone)
+                if (DateTime.UtcNow >= deadline)
                 {
-                    return 0;
+                    error.WriteLine($"Dictum is still running from {folder} after {wait.TotalSeconds:0.#} s.");
+                    return 1;
                 }
 
                 await Task.Delay(100, ct).ConfigureAwait(false);
             }
 
-            error.WriteLine($"The Dictum daemon is still running after {wait.TotalSeconds:0.#} s.");
-            return 1;
+            return 0;
         }
         catch (TimeoutException ex)
         {
@@ -138,6 +147,28 @@ public sealed class SingleInstance : IAsyncDisposable
         {
             error.WriteLine($"Could not quit Dictum: {ex.Message}");
             return 1;
+        }
+    }
+
+    /// <summary>The process id the daemon on <paramref name="socket"/> reports, or null when none answers.</summary>
+    private static async Task<int?> DaemonProcessAsync(string socket, CancellationToken ct)
+    {
+        try
+        {
+            var response = await new IpcClient(socket).SendAsync(new IpcRequest("status"), ct, TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+            return response.Status?.ProcessId;
+        }
+        catch (DaemonNotRunningException)
+        {
+            return null;
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return null;
+        }
+        catch (Exception ex) when (ex is IOException or SocketException or JsonException or InvalidOperationException)
+        {
+            return null;
         }
     }
 
