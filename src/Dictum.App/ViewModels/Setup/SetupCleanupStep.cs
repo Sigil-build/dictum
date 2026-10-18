@@ -1,3 +1,4 @@
+using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Resources;
@@ -112,6 +113,13 @@ public sealed partial class SetupCleanupStep : SetupStep
             _tested = inputs;
             _passed = check.Ok;
             TestResult = check.Message;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Commands never throw (4a I3): an error the probe did not expect is a failed test (final review M2).
+            _tested = inputs;
+            _passed = false;
+            TestResult = string.Format(CultureInfo.CurrentCulture, Strings.SetupServerUnreachable, inputs.Url, ex.Message);
         }
         finally
         {

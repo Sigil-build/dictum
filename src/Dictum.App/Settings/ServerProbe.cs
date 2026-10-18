@@ -44,8 +44,9 @@ public sealed class ServerProbe(HttpClient http, ISecretStore secrets, TimeProvi
         {
             key = await new ConfigValueResolver(secrets).ResolveAsync(apiKey, ct);
         }
-        catch (ConfigException ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            // A missing secret is a ConfigException; Credential Manager and the portal throw their own (final review M2).
             return new ServerCheck(false, Format(Strings.SetupServerKeyUnreadable, ex.Message));
         }
 

@@ -133,4 +133,25 @@ public sealed class ServerProbeTests
             return Answer(request);
         }
     }
+
+    // Final review M2: Windows Credential Manager and the Linux portal throw their own errors, not ConfigException.
+    [Fact]
+    public async Task AKeyringThatFailsSaysSo()
+    {
+        var probe = new ServerProbe(new HttpClient(_server), new BrokenSecrets(), TimeProvider.System);
+
+        var check = await probe.CheckAsync(Url, "qwen2.5:7b", "secret:dictum-processor-cleanup", _ct);
+
+        Assert.Equal(new ServerCheck(false, "The stored API key could not be read: No session bus."), check);
+        Assert.Empty(_server.Requests);
+    }
+
+    private sealed class BrokenSecrets : Dictum.Core.Configuration.ISecretStore
+    {
+        public Task<string?> GetAsync(string key, CancellationToken ct) => throw new InvalidOperationException("No session bus.");
+
+        public Task SetAsync(string key, string value, CancellationToken ct) => throw new InvalidOperationException("No session bus.");
+
+        public Task DeleteAsync(string key, CancellationToken ct) => throw new InvalidOperationException("No session bus.");
+    }
 }

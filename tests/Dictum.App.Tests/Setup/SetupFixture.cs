@@ -93,9 +93,17 @@ internal sealed class FakeProbe : IServerProbe
 
     public Queue<TaskCompletionSource<ServerCheck>> Held { get; } = new();
 
+    /// <summary>Thrown by the next checks, as a keyring or socket error the probe did not expect.</summary>
+    public Exception? Throws { get; set; }
+
     public Task<ServerCheck> CheckAsync(string baseUrl, string model, string? apiKey, CancellationToken ct)
     {
         Calls.Add((baseUrl, model, apiKey));
+        if (Throws is not null)
+        {
+            return Task.FromException<ServerCheck>(Throws);
+        }
+
         return Held.TryDequeue(out var held) ? held.Task : Task.FromResult(Answer);
     }
 }

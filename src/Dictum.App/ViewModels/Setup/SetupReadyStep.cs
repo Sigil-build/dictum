@@ -63,6 +63,17 @@ public sealed partial class SetupReadyStep(TrayHint tray) : SetupStep
         CanOpenTraySettings = tray.OpenSettings is not null;
     }
 
+    /// <summary>Opens the OS page; a shell that cannot open it leaves the advice on screen (final review M2).</summary>
     [RelayCommand]
-    private void OpenTraySettings() => tray.OpenSettings?.Invoke();
+    private void OpenTraySettings()
+    {
+        try
+        {
+            tray.OpenSettings?.Invoke();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            CanOpenTraySettings = false;
+        }
+    }
 }

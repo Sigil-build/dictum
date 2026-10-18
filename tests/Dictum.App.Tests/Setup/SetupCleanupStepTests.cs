@@ -120,4 +120,16 @@ public sealed class SetupCleanupStepTests
         Assert.False(step.UseServer);
         Assert.True(step.CanContinue);
     }
+
+    // Final review M2: commands never throw (4a I3); an unexpected error is a failed test.
+    [Fact]
+    public async Task AProbeThatThrowsShowsAFailedTest()
+    {
+        var step = Server();
+        _probe.Throws = new InvalidOperationException("No session bus.");
+
+        await step.TestCommand.ExecuteAsync(null);
+
+        Assert.Equal(("Could not reach http://localhost:8080/v1: No session bus.", false, false), (step.TestResult, step.TestOk, step.Testing));
+    }
 }
