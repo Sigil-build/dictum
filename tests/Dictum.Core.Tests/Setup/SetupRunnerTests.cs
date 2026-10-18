@@ -152,4 +152,16 @@ public class SetupRunnerTests : IDisposable
         Data.Length,
         new CatalogLicence("MIT", "https://example.com"),
         ["*"]);
+
+    // PR 5: the wizard checks the space for the whole set before anything starts.
+    [Fact]
+    public void TheNeededSpaceCountsOnlyMissingFiles()
+    {
+        Assert.Equal((long)(Data.Length * 1.1) + SetupRunner.SpareBytes, SetupRunner.NeededBytes(Paths, [Entry()]));
+
+        Directory.CreateDirectory(Paths.ModelsDirectory);
+        File.WriteAllBytes(Paths.ResolveModel("test.bin"), Data);
+
+        Assert.Equal(0, SetupRunner.NeededBytes(Paths, [Entry()]));
+    }
 }

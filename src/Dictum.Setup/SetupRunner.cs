@@ -20,10 +20,17 @@ public sealed class SetupRunner(FileDownloader downloader, AppPaths paths)
     /// <summary>Kept free beyond the downloads themselves, so the system never runs out of disk because of Dictum.</summary>
     public const long SpareBytes = 200_000_000;
 
+    /// <summary>Space the missing files need: their size and a tenth more, with <see cref="SpareBytes"/> left over; 0 when none is missing.</summary>
+    public static long NeededBytes(AppPaths paths, IEnumerable<CatalogEntry> entries)
+    {
+        var missing = entries.Where(e => !ModelFiles.IsInstalled(paths, e)).ToList();
+        return missing.Count == 0 ? 0 : (long)(missing.Sum(e => e.Size) * 1.1) + SpareBytes;
+    }
+
     public async Task DownloadAsync(IReadOnlyList<CatalogEntry> entries, long freeDiskBytes, IProgress<SetupEvent>? progress, CancellationToken ct)
     {
         var missing = entries.Where(e => !ModelFiles.IsInstalled(paths, e)).ToList();
-        var needed = (long)(missing.Sum(e => e.Size) * 1.1) + SpareBytes;
+        var needed = NeededBytes(paths, missing);
         if (missing.Count > 0 && freeDiskBytes < needed)
         {
             throw new DownloadException(

@@ -22,13 +22,15 @@ public sealed record ExistingLlmServer(string BaseUrl, string Model, string? Api
 /// <param name="SpeechModel">Catalog id of the Whisper model, or null to keep the current one.</param>
 /// <param name="Vocabulary">Words to add to the first profile's list.</param>
 /// <param name="ForceCpu">Use the CPU runtime even when a GPU is present.</param>
+/// <param name="ReplaceVocabulary">The words replace the first profile's list (the wizard shows the list); otherwise they are added (init).</param>
 public sealed record SetupAnswers(
     string Language,
     string? SpeechModel,
     CleanupChoice Cleanup,
     ExistingLlmServer? Server,
     IReadOnlyList<string> Vocabulary,
-    bool ForceCpu = false);
+    bool ForceCpu = false,
+    bool ReplaceVocabulary = false);
 
 /// <summary>What <c>dictum init</c> offers first: the current config's choices, or recommendations on a fresh machine.</summary>
 /// <param name="SpeechModel">Catalog id to offer first, or null to keep <paramref name="KeptModelFile"/>.</param>
@@ -200,7 +202,9 @@ public static class SetupPlanner
         {
             Stt = sttId,
             Language = LanguageList.Parse(answers.Language) is { } codes ? LanguageList.Format(codes) : answers.Language,
-            Vocabulary = VocabularyList.Merge(first.Vocabulary, answers.Vocabulary),
+            Vocabulary = answers.ReplaceVocabulary
+                ? VocabularyList.Normalize(answers.Vocabulary)
+                : VocabularyList.Merge(first.Vocabulary, answers.Vocabulary),
             Pipeline = pipeline,
         };
 

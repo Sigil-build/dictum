@@ -288,4 +288,16 @@ public class SetupPlannerTests
         ExistingLlmServer? server = null,
         string[]? vocabulary = null) =>
         new(language, speechModel, cleanup, server, vocabulary ?? []);
+
+    // PR 5: the wizard shows the current words and saves what is left in the box.
+    [Fact]
+    public void ReplacingWordsDropsTheOnesTheUserRemoved()
+    {
+        var current = DefaultConfig.Create();
+        current.Profiles[0] = current.Profiles[0] with { Vocabulary = ["Nexus5", "Avalonia"] };
+
+        var plan = SetupPlanner.Plan(current, Answers(vocabulary: ["Nexus5", "nexus5", " SoftServe "]) with { ReplaceVocabulary = true }, Catalog, _ => true);
+
+        Assert.Equal(["Nexus5", "SoftServe"], plan.Config.Profiles[0].Vocabulary);
+    }
 }
