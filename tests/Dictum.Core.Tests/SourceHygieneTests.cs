@@ -11,7 +11,7 @@ public class SourceHygieneTests
     [Fact]
     public void SourceFilesContainNoInvisibleCharacters()
     {
-        var root = RepositoryRoot();
+        var root = Repository.Root;
         var offenders = new List<string>();
         foreach (var folder in new[] { "src", "tests", "fixtures" })
         {
@@ -38,17 +38,4 @@ public class SourceHygieneTests
 
     private static bool IsBuildOutput(string file) =>
         file.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Any(part => part is "bin" or "obj");
-
-    private static string RepositoryRoot()
-    {
-        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
-        {
-            if (File.Exists(Path.Combine(dir.FullName, "Dictum.slnx")))
-            {
-                return dir.FullName;
-            }
-        }
-
-        throw new InvalidOperationException("Dictum.slnx not found above " + AppContext.BaseDirectory);
-    }
 }

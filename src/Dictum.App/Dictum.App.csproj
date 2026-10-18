@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <ApplicationIcon>$(MSBuildThisFileDirectory)..\..\packaging\icons\dictum.ico</ApplicationIcon>
     <OutputType>WinExe</OutputType>
     <AssemblyName>dictum-gui</AssemblyName>
     <RootNamespace>Dictum.App</RootNamespace>

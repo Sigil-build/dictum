@@ -8,7 +8,7 @@
     <!-- Covers trim/AOT analyzer warnings (IL2xxx / IL3xxx) as well. -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <MSBuildTreatWarningsAsErrors>true</MSBuildTreatWarningsAsErrors>
-    <VersionPrefix>0.1.0</VersionPrefix>
+    <VersionPrefix>0.3.0</VersionPrefix>
     <Product>Dictum</Product>
   </PropertyGroup>
 </Project>
