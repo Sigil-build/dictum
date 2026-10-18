@@ -70,6 +70,14 @@ On a machine without a desktop, run `dictum init` in a terminal instead. It asks
 
 In the AppImage, put `dictum` after the file name: `./dictum-<version>-linux-x64.AppImage dictum doctor`.
 
+On Windows, `dictum.exe` sits next to `dictum-gui.exe` and is not on PATH. After the MSI, run it by its full path in PowerShell:
+
+```powershell
+& "$env:LOCALAPPDATA\Programs\Dictum\dictum.exe" doctor
+```
+
+To type plain `dictum`, add `%LOCALAPPDATA%\Programs\Dictum` (or the folder you unzipped into) to `Path` under "Edit environment variables for your account" in the Start menu.
+
 ## Start at login
 
 Turn it on in the setup window or in Settings → General. Dictum then starts its tray app at login, and the tray app starts the daemon. To run only the daemon (no desktop), use `dictum daemon --install-autostart`.
@@ -98,7 +106,7 @@ API keys go to the system keyring: Windows Credential Manager, or the Secret Ser
 
 ## Troubleshooting
 
-- **First step:** `dictum doctor`.
+- **First step:** `dictum doctor` (on Windows, by its full path: see "The command line").
 - **Logs:** in the `logs` folder under the models-and-history folder above. `dictum daemon --verbose` prints more.
 - **Hotkey does nothing:**
   - Wayland: check that the portal permission was granted (KDE: System Settings → Shortcuts → Dictum);
