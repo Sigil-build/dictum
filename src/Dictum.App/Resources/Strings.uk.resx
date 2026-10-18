@@ -1169,4 +1169,10 @@
   <data name="SetupServerKeyUnreadable" xml:space="preserve">
     <value>Не вдалося прочитати збережений ключ API: {0}</value>
   </data>
+  <data name="SetupStepLanguages" xml:space="preserve">
+    <value>Мови</value>
+  </data>
+  <data name="SetupSimilarLead" xml:space="preserve">
+    <value>{0} і {1} — близькі мови.</value>
+  </data>
 </root>

@@ -1169,4 +1169,10 @@
   <data name="SetupServerKeyUnreadable" xml:space="preserve">
     <value>The stored API key could not be read: {0}</value>
   </data>
+  <data name="SetupStepLanguages" xml:space="preserve">
+    <value>Languages</value>
+  </data>
+  <data name="SetupSimilarLead" xml:space="preserve">
+    <value>{0} and {1} are closely related.</value>
+  </data>
 </root>
