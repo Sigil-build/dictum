@@ -1,3 +1,4 @@
+using Dictum.Platform;
 using Dictum.Platform.Linux;
 
 namespace Dictum.Core.Tests.Linux;
@@ -56,7 +57,7 @@ public class LinuxPlatformTests
     [Fact]
     public void UnitFileStartsTheDaemonWithTheGraphicalSession()
     {
-        var unit = SystemdAutostart.UnitFile("/home/me/bin/dictum");
+        var unit = SystemdAutostart.UnitFile(new LoginItem(LoginApp.Daemon, "/home/me/bin/dictum"));
 
         Assert.Contains("ExecStart=\"/home/me/bin/dictum\" daemon", unit);
         Assert.Contains("WantedBy=graphical-session.target", unit);
@@ -67,6 +68,13 @@ public class LinuxPlatformTests
     public void DesktopEntryIsHiddenAndNamedAfterTheAppId()
     {
         Assert.EndsWith("dev.dictum.Dictum.desktop", DesktopEntry.EntryPath);
-        Assert.Contains("NoDisplay=true", DesktopEntry.Content("/opt/dictum/dictum"));
+        Assert.Contains("NoDisplay=true", DesktopEntry.Content(new LoginItem(LoginApp.Daemon, "/opt/dictum/dictum")));
     }
+
+    // Review focus 1: the portal's entry must still start the daemon after the AppImage moves its mount.
+    [Fact]
+    public void ThePortalEntryRunsTheDaemonThroughTheAppImage() =>
+        Assert.Contains(
+            "Exec=\"/home/me/Apps/dictum.AppImage\" dictum daemon",
+            DesktopEntry.Content(InstallLocation.Daemon("/tmp/.mount_x/usr/bin/dictum", "/home/me/Apps/dictum.AppImage")));
 }

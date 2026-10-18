@@ -113,7 +113,7 @@ internal static class DaemonCommand
         if (install)
         {
             var executable = Environment.ProcessPath ?? throw new InvalidOperationException("Cannot determine the dictum executable path.");
-            await autostart.InstallAsync(new LoginItem(LoginApp.Daemon, executable), ct).ConfigureAwait(false);
+            await autostart.InstallAsync(InstallLocation.Daemon(executable, InstallLocation.AppImage), ct).ConfigureAwait(false);
             context.Out.WriteLine(autostart.Location(LoginApp.Daemon));
             context.Error.WriteLine("The daemon will start at your next login.");
         }

@@ -18,12 +18,12 @@ public sealed class LinuxAutostart(SystemdAutostart daemon, string configHome) :
 
     public string Location(LoginApp app) => app == LoginApp.DesktopApp ? AutostartFile : daemon.UnitPath;
 
-    public static string AutostartEntry(string executable) => $"""
+    public static string AutostartEntry(LoginItem item) => $"""
         [Desktop Entry]
         Type=Application
         Name=Dictum
         Comment=Voice to text
-        Exec="{executable}"
+        Exec={item.CommandLine}
         Icon=audio-input-microphone
         Terminal=false
         X-GNOME-Autostart-enabled=true
@@ -35,12 +35,12 @@ public sealed class LinuxAutostart(SystemdAutostart daemon, string configHome) :
         if (item.App == LoginApp.DesktopApp)
         {
             Directory.CreateDirectory(Path.GetDirectoryName(AutostartFile)!);
-            await File.WriteAllTextAsync(AutostartFile, AutostartEntry(item.Executable), ct).ConfigureAwait(false);
+            await File.WriteAllTextAsync(AutostartFile, AutostartEntry(item), ct).ConfigureAwait(false);
             await daemon.UninstallAsync(ct).ConfigureAwait(false);
         }
         else
         {
-            await daemon.InstallAsync(item.Executable, ct).ConfigureAwait(false);
+            await daemon.InstallAsync(item, ct).ConfigureAwait(false);
             RemoveEntry();
         }
     }

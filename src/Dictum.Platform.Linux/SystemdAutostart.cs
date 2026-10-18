@@ -25,10 +25,10 @@ public sealed class SystemdAutostart(string configHome, Func<IReadOnlyList<strin
 
     public bool IsInstalled => File.Exists(UnitPath);
 
-    public async Task InstallAsync(string executable, CancellationToken ct)
+    public async Task InstallAsync(LoginItem item, CancellationToken ct)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(UnitPath)!);
-        await File.WriteAllTextAsync(UnitPath, UnitFile(executable), ct).ConfigureAwait(false);
+        await File.WriteAllTextAsync(UnitPath, UnitFile(item), ct).ConfigureAwait(false);
         await systemctl(["daemon-reload"], ct).ConfigureAwait(false);
         await systemctl(["enable", UnitName], ct).ConfigureAwait(false);
     }
@@ -43,14 +43,14 @@ public sealed class SystemdAutostart(string configHome, Func<IReadOnlyList<strin
         }
     }
 
-    public static string UnitFile(string executable) => $"""
+    public static string UnitFile(LoginItem item) => $"""
         [Unit]
         Description=Dictum voice-to-text daemon
         PartOf=graphical-session.target
         After=graphical-session.target
 
         [Service]
-        ExecStart="{executable}" daemon
+        ExecStart={item.CommandLine}
         Restart=on-failure
         RestartSec=3
 
@@ -80,12 +80,12 @@ public static class DesktopEntry
             "applications",
             $"{DBus.Portal.AppId}.desktop");
 
-    public static string Content(string executable) => $"""
+    public static string Content(LoginItem daemon) => $"""
         [Desktop Entry]
         Type=Application
         Name=Dictum
         Comment=Voice to text
-        Exec="{executable}" daemon
+        Exec={daemon.CommandLine}
         Icon=audio-input-microphone
         Terminal=false
         NoDisplay=true
@@ -94,9 +94,9 @@ public static class DesktopEntry
         """;
 
     /// <summary>Writes the entry if it is missing or points at another executable.</summary>
-    public static async Task WriteAsync(string executable, CancellationToken ct)
+    public static async Task WriteAsync(LoginItem daemon, CancellationToken ct)
     {
-        var content = Content(executable);
+        var content = Content(daemon);
         if (File.Exists(EntryPath) && await File.ReadAllTextAsync(EntryPath, ct).ConfigureAwait(false) == content)
         {
             return;

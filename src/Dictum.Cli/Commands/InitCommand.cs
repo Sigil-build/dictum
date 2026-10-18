@@ -301,7 +301,7 @@ internal static class InitCommand
         }
 
         var executable = Environment.ProcessPath ?? throw new InvalidOperationException("Cannot determine the dictum executable path.");
-        var item = LoginItem.NextTo(executable);
+        var item = LoginItem.NextTo(executable, InstallLocation.AppImage);
         if (await autostart.ApplyAsync(on, item, ct).ConfigureAwait(false))
         {
             context.Error.WriteLine(on ? $"Dictum will start at login ({autostart.Location(item.App)})." : "Dictum will no longer start at login.");

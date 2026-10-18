@@ -23,9 +23,6 @@ public sealed class RunKeyAutostart(string keyPath = @"Software\Microsoft\Window
 
     public string Location(LoginApp app) => $@"HKCU\{keyPath}\{ValueName}";
 
-    /// <summary>The quoted executable, then the arguments.</summary>
-    public static string CommandLine(LoginItem item) => string.Join(' ', [$"\"{item.Executable}\"", .. item.Arguments]);
-
     /// <summary>An entry ending in <c>daemon</c> is the daemon alone; entries from v0.1 and v0.2 read that way too.</summary>
     public static LoginApp Parse(string command) =>
         command.TrimEnd().EndsWith(" daemon", StringComparison.Ordinal) ? LoginApp.Daemon : LoginApp.DesktopApp;
@@ -33,7 +30,7 @@ public sealed class RunKeyAutostart(string keyPath = @"Software\Microsoft\Window
     public Task InstallAsync(LoginItem item, CancellationToken ct)
     {
         using var key = Registry.CurrentUser.CreateSubKey(keyPath);
-        key.SetValue(ValueName, CommandLine(item));
+        key.SetValue(ValueName, item.CommandLine);
         return Task.CompletedTask;
     }
 

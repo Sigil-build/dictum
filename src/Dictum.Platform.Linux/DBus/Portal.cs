@@ -62,7 +62,7 @@ public sealed class Portal
         // The portal looks up <AppId>.desktop, so it must exist before registering.
         if (Environment.ProcessPath is { } executable)
         {
-            await DesktopEntry.WriteAsync(executable, ct).ConfigureAwait(false);
+            await DesktopEntry.WriteAsync(InstallLocation.Daemon(executable, InstallLocation.AppImage), ct).ConfigureAwait(false);
         }
 
         var connection = await ConnectAsync(ct).ConfigureAwait(false);

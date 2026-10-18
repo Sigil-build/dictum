@@ -266,7 +266,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         var session = new SettingsSession(_store, UiTimers.Instance, _log);
         session.Load();
         var general = new GeneralPage(session, new GeneralServices(
-            Supervisor, Frames, UiTimers.Instance, _autostart, Environment.ProcessPath, _sounds, TimeProvider.System, _log));
+            Supervisor, Frames, UiTimers.Instance, _autostart, InstallLocation.AppImage ?? Environment.ProcessPath, _sounds, TimeProvider.System, _log));
         general.SetupRequested += ShowSetup;
         var profiles = new ProfilesPage(session, Supervisor, _log);
         var providers = new SpeechProvidersPage(session, new SpeechServices(
@@ -348,7 +348,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         var setup = new SetupViewModel(new SetupServices(
             _paths, _store, Catalog.BuiltIn, _modelDownloads ?? ModelDownloads.None, Hardware, () => HardwareProbe.FreeDiskBytes(_paths),
             GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, Environment.ProcessorCount, _measurements,
-            new ServerProbe(_serverHttp ??= new HttpClient(), secrets, TimeProvider.System), secrets, _autostart, Environment.ProcessPath,
+            new ServerProbe(_serverHttp ??= new HttpClient(), secrets, TimeProvider.System), secrets, _autostart, InstallLocation.AppImage ?? Environment.ProcessPath,
             SetupTray(), Supervisor, Supervisor.Restart, UiTimers.Instance, TimeProvider.System, _log),
             SavedSetupFile.Load(_paths, _log));
         setup.Finished += () =>

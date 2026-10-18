@@ -34,18 +34,34 @@ public enum LoginApp
     DesktopApp,
 }
 
-/// <param name="Executable">Full path of <c>dictum</c> for <see cref="LoginApp.Daemon"/>, of <c>dictum-gui</c> otherwise.</param>
-public sealed record LoginItem(LoginApp App, string Executable)
+/// <param name="Executable">Full path of <c>dictum</c> for <see cref="LoginApp.Daemon"/>, of <c>dictum-gui</c> otherwise;
+/// inside an AppImage, the AppImage file.</param>
+/// <param name="AppImage">The item runs through an AppImage, whose AppRun starts the CLI when the first argument is
+/// <see cref="InstallLocation.AppImageCli"/> (phase 4 spec 3.4).</param>
+public sealed record LoginItem(LoginApp App, string Executable, bool AppImage = false)
 {
     public const string DesktopAppName = "dictum-gui";
 
     public static string DesktopAppFile => OperatingSystem.IsWindows() ? DesktopAppName + ".exe" : DesktopAppName;
 
-    public IReadOnlyList<string> Arguments => App == LoginApp.Daemon ? ["daemon"] : [];
+    public IReadOnlyList<string> Arguments => App == LoginApp.Daemon
+        ? AppImage ? [InstallLocation.AppImageCli, "daemon"] : ["daemon"]
+        : [];
 
-    /// <summary>The desktop app when it sits next to <paramref name="dictum"/>; the daemon alone otherwise.</summary>
-    public static LoginItem NextTo(string dictum)
+    /// <summary>The quoted executable, then the arguments: the Run key value, the unit's ExecStart, an entry's Exec.</summary>
+    public string CommandLine => string.Join(' ', [$"\"{Executable}\"", .. Arguments]);
+
+    /// <summary>
+    /// The desktop app when it sits next to <paramref name="dictum"/>, the daemon alone otherwise. Inside an AppImage
+    /// (<paramref name="appImage"/>) the desktop app is always bundled, and the AppImage file is what lasts.
+    /// </summary>
+    public static LoginItem NextTo(string dictum, string? appImage = null)
     {
+        if (appImage is not null)
+        {
+            return InstallLocation.DesktopApp(dictum, appImage);
+        }
+
         var app = Path.Combine(Path.GetDirectoryName(dictum) ?? ".", DesktopAppFile);
         return File.Exists(app) ? new LoginItem(LoginApp.DesktopApp, app) : new LoginItem(LoginApp.Daemon, dictum);
     }

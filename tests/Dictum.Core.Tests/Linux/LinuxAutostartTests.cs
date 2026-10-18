@@ -45,7 +45,7 @@ public sealed class LinuxAutostartTests : IDisposable
         var autostart = Autostart();
         await autostart.InstallAsync(new LoginItem(LoginApp.Daemon, "/opt/dictum/dictum"), _ct);
         Directory.CreateDirectory(Path.Combine(_home.Path, "autostart"));
-        File.WriteAllText(autostart.AutostartFile, LinuxAutostart.AutostartEntry("/opt/dictum/dictum-gui"));
+        File.WriteAllText(autostart.AutostartFile, LinuxAutostart.AutostartEntry(new LoginItem(LoginApp.DesktopApp, "/opt/dictum/dictum-gui")));
 
         await autostart.UninstallAsync(_ct);
 
@@ -56,11 +56,22 @@ public sealed class LinuxAutostartTests : IDisposable
     [Fact]
     public void TheAutostartEntryStartsTheDesktopApp()
     {
-        var entry = LinuxAutostart.AutostartEntry("/home/me/Dictum/dictum-gui");
+        var entry = LinuxAutostart.AutostartEntry(new LoginItem(LoginApp.DesktopApp, "/home/me/Dictum/dictum-gui"));
 
         Assert.Contains("Exec=\"/home/me/Dictum/dictum-gui\"", entry);
         Assert.Contains("Type=Application", entry);
         Assert.DoesNotContain(" daemon", entry);
+    }
+
+    // Review focus 1: the daemon's unit runs it through the AppImage.
+    [Fact]
+    public async Task TheDaemonUnitRunsThroughTheAppImage()
+    {
+        var autostart = Autostart();
+
+        await autostart.InstallAsync(InstallLocation.Daemon("/tmp/.mount_x/usr/bin/dictum", "/home/me/Apps/dictum.AppImage"), _ct);
+
+        Assert.Contains("ExecStart=\"/home/me/Apps/dictum.AppImage\" dictum daemon", File.ReadAllText(Path.Combine(_home.Path, "systemd", "user", "dictum.service")));
     }
 
     private LinuxAutostart Autostart()

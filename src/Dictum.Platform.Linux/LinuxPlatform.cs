@@ -96,7 +96,7 @@ public static class LinuxPlatform
             {
                 if (Environment.ProcessPath is { } executable)
                 {
-                    await DesktopEntry.WriteAsync(executable, ct).ConfigureAwait(false);
+                    await DesktopEntry.WriteAsync(InstallLocation.Daemon(executable, InstallLocation.AppImage), ct).ConfigureAwait(false);
                 }
 
                 await keystrokes.PrepareAsync(ct).ConfigureAwait(false);
