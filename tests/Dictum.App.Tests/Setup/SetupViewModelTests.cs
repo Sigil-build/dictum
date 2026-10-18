@@ -464,4 +464,20 @@ public sealed class SetupViewModelTests : IDisposable
 
         Assert.Null(wizard.Ready.TryResult);
     }
+
+    // Final review I2: a kept walk that is not downloading (a typed key sends it back to step 3) resumes only over the
+    // config it was kept on; over another one it starts over, and the kept walk goes.
+    [Fact]
+    public async Task AKeptWalkAtStepThreeDoesNotResumeOverAnotherConfig()
+    {
+        var wizard = Open();
+        await UseServer(wizard, key: "sk-live-123");
+        await WalkTo(wizard, 6);
+        _fx.Store.Save(ProfilesPageTests.Sample());
+
+        var next = new SetupViewModel(_fx.Services(), Kept());
+
+        Assert.Equal(0, next.Index);
+        Assert.Null(Kept());
+    }
 }

@@ -301,6 +301,34 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         await launcher.DisposeAsync();
     });
 
+    // Final review I2: Run setup again after Settings edits shows the edits, even when a walk kept at step 3 was resumed
+    // before them; the stale walk is gone for good.
+    [Fact]
+    public Task AKeptWalkDoesNotOutliveSettingsEdits() => fx.UiAsync(async () =>
+    {
+        var (shell, launcher, _) = Create();
+        var store = new ConfigStore(Paths().ConfigFile, NullLog.Instance);
+        var config = DefaultConfig.Create();
+        store.Save(config);
+        SavedSetupFile.Save(Paths(), KeptWalk() with { KeyTyped = true, BasedOn = SavedSetupFile.Fingerprint(config) }, NullLog.Instance);
+        shell.Start(Application.Current!, _ => { });
+        shell.ShowSetup();
+        var kept = (SetupViewModel)SetupWindow.Open[0].DataContext!;
+        Assert.Equal((2, "pl"), (kept.Index, kept.Languages.Setting));
+        CloseSetup();
+        config.Profiles[0] = config.Profiles[0] with { Language = "de" };
+        store.Save(config);
+
+        shell.ShowSetup();
+
+        var fresh = (SetupViewModel)SetupWindow.Open[0].DataContext!;
+        Assert.Equal((0, "de"), (fresh.Index, fresh.Languages.Setting));
+        Assert.False(File.Exists(Paths().SetupFile));
+        CloseSetup();
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
     private AppPaths Paths() => new(Path.Combine(_dir, "config"), Path.Combine(_dir, "data"));
 
     private static SavedSetup KeptWalk() =>

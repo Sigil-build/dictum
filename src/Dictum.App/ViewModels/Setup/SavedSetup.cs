@@ -1,6 +1,9 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Dictum.Core;
+using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 
 namespace Dictum.App.ViewModels.Setup;
@@ -13,6 +16,8 @@ namespace Dictum.App.ViewModels.Setup;
 /// <param name="SpeechModel">The catalog id; null keeps the hand-placed file.</param>
 /// <param name="KeyReference">An <c>env:</c> or <c>secret:</c> reference the user typed; never a plain key.</param>
 /// <param name="Files">The catalog ids step 7 downloads.</param>
+/// <param name="BasedOn">The <see cref="SavedSetupFile.Fingerprint"/> of the config the walk was kept over; a walk that is
+/// not downloading resumes only over the same config (final review I2).</param>
 public sealed record SavedSetup(
     string Language,
     string? SpeechModel,
@@ -24,6 +29,7 @@ public sealed record SavedSetup(
     IReadOnlyList<string> Words,
     bool StartAtLogin,
     IReadOnlyList<string> Files,
+    string? BasedOn = null,
     int Version = 1);
 
 /// <summary>Reads, writes and removes <c>setup.json</c>; a disk or format problem is logged, never thrown (4a I3).</summary>
@@ -60,6 +66,10 @@ public static class SavedSetupFile
         Delete(paths, log);
         return null;
     }
+
+    /// <summary>A fingerprint of a config, or of none: a kept walk records the config it was made on (final review I2).</summary>
+    public static string Fingerprint(DictumConfig? config) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(config is null ? "" : ConfigStore.Serialize(config))));
 
     public static void Save(AppPaths paths, SavedSetup saved, ILog log)
     {

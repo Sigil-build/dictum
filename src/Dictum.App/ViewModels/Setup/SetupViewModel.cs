@@ -36,6 +36,13 @@ public sealed partial class SetupViewModel : ViewModelBase
     {
         _services = services;
         var current = LoadConfig(services, out _);
+        if (resume is not null && !MayResume(resume, current, services.Catalog))
+        {
+            // Not downloading, and kept over another config: the answers are stale (final review I2).
+            SavedSetupFile.Delete(services.Paths, services.Log);
+            resume = null;
+        }
+
         _loaded = Snapshot(current);
         var defaults = SetupPlanner.Defaults(current, new HardwareInfo(null, 0), services.Catalog, m => File.Exists(services.Paths.ResolveModel(m)));
         var currentModel = current is not null && current.Stt.GetValueOrDefault(SetupPlanner.SpeechProviderId(current)) is WhisperLocalSttConfig whisper
@@ -255,7 +262,8 @@ public sealed partial class SetupViewModel : ViewModelBase
         var reference = ConfigValueResolver.IsReference(key);
         SavedSetupFile.Save(_services.Paths, new SavedSetup(
             Languages.Setting, Model.SpeechModel, Cleanup.UseServer, Cleanup.Url.Trim(), Cleanup.Model.Trim(),
-            reference ? key : null, key.Length > 0 && !reference, Words.Words, Login.StartAtLogin, [.. files.Select(f => f.Id)]),
+            reference ? key : null, key.Length > 0 && !reference, Words.Words, Login.StartAtLogin, [.. files.Select(f => f.Id)],
+            SavedSetupFile.Fingerprint(LoadConfig(_services, out _))),
             _services.Log);
     }
 
@@ -430,6 +438,14 @@ public sealed partial class SetupViewModel : ViewModelBase
             return null;
         }
     }
+
+    /// <summary>
+    /// A kept walk whose files are downloading resumes at step 7 over any config, as within one process (5a I2); one that
+    /// would resume elsewhere (a typed key, files the catalog no longer knows) only over the config it was kept on.
+    /// </summary>
+    private static bool MayResume(SavedSetup saved, DictumConfig? current, Catalog catalog) =>
+        (!saved.KeyTyped && saved.Files.Any(id => catalog.Find(id) is not null))
+        || saved.BasedOn == SavedSetupFile.Fingerprint(current);
 
     private static string Snapshot(DictumConfig? config) => config is null ? "" : ConfigStore.Serialize(config);
 
