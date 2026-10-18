@@ -84,6 +84,8 @@ public sealed partial class SetupReadyStep(TrayHint tray, IDaemonChannel daemon,
         }
 
         _profile = first;
+        // The try starts at the save: a dictation made earlier in the walk is not step 8's (final review I1).
+        TryResult = null;
         Keys = parts;
         HowTo = first.Mode == HotkeyMode.Toggle ? Strings.SetupReadyToggle : Strings.SetupReadyHold;
         Palette = config.General.Overlay.Palette;

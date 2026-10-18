@@ -449,4 +449,19 @@ public sealed class SetupViewModelTests : IDisposable
 
         Assert.Null(Kept());
     }
+
+    // Final review I1: on a re-run the daemon already runs; a dictation made earlier in the walk (into step 4's box, say)
+    // is not step 8's try, so step 8 must not say "Done" before the user tried.
+    [Fact]
+    public async Task ATryBeforeStepEightIsNotShown()
+    {
+        _fx.InstallAll();
+        var wizard = Open();
+        await WalkTo(wizard, 3);
+        wizard.OnEvent(new IpcEvent("finished", Outcome: DictationOutcome.Pasted));
+
+        await WalkTo(wizard, 7);
+
+        Assert.Null(wizard.Ready.TryResult);
+    }
 }
