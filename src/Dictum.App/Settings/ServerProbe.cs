@@ -18,8 +18,9 @@ public interface IServerProbe
 
 /// <summary>
 /// Tests an OpenAI-compatible server as clean-up will use it (spec 8, step 3): <c>GET {url}/models</c> with the key,
-/// within 5 s, timed. When the server lists its models, the chosen one must be there, so a typo does not make clean-up
-/// fail later in silence; a server that lists none (some proxies) passes.
+/// within 5 s, timed. When the server lists several models, the chosen one must be there, so a typo does not make
+/// clean-up fail later in silence. A server that lists none (some proxies) or one (llama-server serves its model under any
+/// name) passes, and an Ollama name without its tag matches the <c>:latest</c> one (final review M3).
 /// </summary>
 public sealed class ServerProbe(HttpClient http, ISecretStore secrets, TimeProvider time, TimeSpan? timeout = null) : IServerProbe
 {
@@ -74,7 +75,7 @@ public sealed class ServerProbe(HttpClient http, ISecretStore secrets, TimeProvi
             }
 
             var models = await ModelIdsAsync(response, limit.Token);
-            return models.Count > 0 && !models.Contains(name, StringComparer.Ordinal)
+            return models.Count > 1 && !models.Contains(name, StringComparer.Ordinal) && !models.Contains(name + ":latest", StringComparer.Ordinal)
                 ? new ServerCheck(false, Format(Strings.SetupServerNoModel, name, string.Join(", ", models.Take(8))))
                 : new ServerCheck(true, Format(Strings.SetupServerReachable, milliseconds));
         }

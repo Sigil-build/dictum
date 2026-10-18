@@ -114,6 +114,24 @@ public sealed class ServerProbeTests
         Assert.Empty(_server.Requests);
     }
 
+    // Final review M3: llama-server, the default URL's server, lists one model and serves it under any name.
+    [Fact]
+    public async Task AServerWithOneModelServesAnyName()
+    {
+        _server.Answer = _ => Json("""{ "data": [ { "id": "/models/qwen2.5-7b-instruct-q4_k_m.gguf" } ] }""");
+
+        Assert.True((await Probe().CheckAsync(Url, "qwen", null, _ct)).Ok);
+    }
+
+    // Final review M3: Ollama lists "qwen2.5:latest" for a model pulled as "qwen2.5".
+    [Fact]
+    public async Task AnOllamaNameWithoutItsTagPasses()
+    {
+        _server.Answer = _ => Json("""{ "data": [ { "id": "qwen2.5:latest" }, { "id": "llama3.1:8b" } ] }""");
+
+        Assert.True((await Probe().CheckAsync(Url, "qwen2.5", null, _ct)).Ok);
+    }
+
     private sealed class Stub : HttpMessageHandler
     {
         public List<(string Uri, string? Authorization)> Requests { get; } = [];
