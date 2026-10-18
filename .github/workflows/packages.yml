@@ -40,6 +40,10 @@ jobs:
           dotnet build packaging/windows/Dictum.Installer.wixproj -c Release --no-incremental -p:StageDir="$stage" -p:VersionPrefix=99.0.0 -o "$(cygpath -w "$RUNNER_TEMP/upgrade")"
           echo "DICTUM_VERSION=$version" >> "$GITHUB_ENV"
 
+      - name: The smoke's helpers (installed products, msiexec arguments, the MSI log)
+        shell: pwsh
+        run: ./packaging/windows/test-msi-smoke.ps1
+
       - name: Install, upgrade over a running daemon, uninstall (this runner's user)
         shell: pwsh
         run: >
@@ -48,6 +52,14 @@ jobs:
           -RebuiltMsi "$env:RUNNER_TEMP\rebuilt\dictum.msi"
           -UpgradeMsi "$env:RUNNER_TEMP\upgrade\dictum.msi"
           -Version $env:DICTUM_VERSION
+
+      # The MSI logs, the daemon's and dictum init's output, and Dictum's own logs (phase 4 PR 4d final review I2).
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: windows-smoke-logs
+          path: ${{ runner.temp }}/dictum-logs
+          if-no-files-found: ignore
 
       - uses: actions/upload-artifact@v7
         with:
