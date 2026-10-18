@@ -1313,4 +1313,124 @@
   <data name="SetupTrayKde" xml:space="preserve">
     <value>Plasma may keep new icons among the System Tray's hidden entries, so you would not see the recording state. System Tray settings → Entries → Dictum: Shown.</value>
   </data>
+  <data name="SetupWindowTitle" xml:space="preserve">
+    <value>Set up Dictum</value>
+  </data>
+  <data name="SetupLanguagesTitle" xml:space="preserve">
+    <value>Which languages do you dictate in?</value>
+  </data>
+  <data name="SetupLanguagesLead" xml:space="preserve">
+    <value>Pick all that apply. Dictum picks the language for each dictation, so you can switch between them.</value>
+  </data>
+  <data name="SetupLanguagesSearch" xml:space="preserve">
+    <value>Find a language…</value>
+  </data>
+  <data name="SetupLanguagesSearchLabel" xml:space="preserve">
+    <value>Find a language</value>
+  </data>
+  <data name="SetupLanguagesAuto" xml:space="preserve">
+    <value>Or let Whisper detect any language (slower, less accurate for mixed speech)</value>
+  </data>
+  <data name="SetupSimilarText" xml:space="preserve">
+    <value>Whisper often picks the wrong one of the two, and the text comes out in the other alphabet or spelling. Keep the one you use most here, and put the other in a separate profile with its own hotkey.</value>
+  </data>
+  <data name="SetupModelTitle" xml:space="preserve">
+    <value>Speech model</value>
+  </data>
+  <data name="SetupModelRecommended" xml:space="preserve">
+    <value>Recommended</value>
+  </data>
+  <data name="SetupModelInstalled" xml:space="preserve">
+    <value>Already on this machine</value>
+  </data>
+  <data name="SetupModelNote" xml:space="preserve">
+    <value>Nothing is downloaded yet. You'll see the full list with sizes and licences before anything starts.</value>
+  </data>
+  <data name="SetupCleanupTitle" xml:space="preserve">
+    <value>Text clean-up</value>
+  </data>
+  <data name="SetupCleanupLead" xml:space="preserve">
+    <value>Optional. A language model fixes punctuation and typos after recognition. Adds 0.3–3 s.</value>
+  </data>
+  <data name="SetupCleanupOff" xml:space="preserve">
+    <value>Off — paste exactly what was recognised</value>
+  </data>
+  <data name="SetupCleanupServer" xml:space="preserve">
+    <value>Use a server I already run (llama-server, llama-swap, Ollama or any OpenAI-compatible API)</value>
+  </data>
+  <data name="SetupCleanupTest" xml:space="preserve">
+    <value>Test connection</value>
+  </data>
+  <data name="SetupCleanupManaged" xml:space="preserve">
+    <value>Managed local model — coming in a later version</value>
+  </data>
+  <data name="SetupWordsTitle" xml:space="preserve">
+    <value>Your words</value>
+  </data>
+  <data name="SetupWordsLead" xml:space="preserve">
+    <value>Names, apps and terms the recogniser tends to get wrong. Dictum nudges it toward these spellings. For example, Nexus5 instead of “nexus five”, or Avalonia instead of “a valonia”.</value>
+  </data>
+  <data name="SetupWordsLabel" xml:space="preserve">
+    <value>One per line, or paste a comma-separated list</value>
+  </data>
+  <data name="SetupWordsNote" xml:space="preserve">
+    <value>Skip this if you like — you can add words at any time in Settings → Profiles → Your words.</value>
+  </data>
+  <data name="SetupLoginTitle" xml:space="preserve">
+    <value>Start Dictum at login?</value>
+  </data>
+  <data name="SetupLoginLead" xml:space="preserve">
+    <value>It runs in the system tray and uses no GPU until you hold the hotkey. The model loads in the background so the first dictation is not slower.</value>
+  </data>
+  <data name="SetupLoginYes" xml:space="preserve">
+    <value>Yes, start at login</value>
+  </data>
+  <data name="SetupLoginRecommended" xml:space="preserve">
+    <value>recommended</value>
+  </data>
+  <data name="SetupLoginNo" xml:space="preserve">
+    <value>No, I'll start it myself</value>
+  </data>
+  <data name="SetupLoginUnavailable" xml:space="preserve">
+    <value>Starting at login is not available on this system.</value>
+  </data>
+  <data name="SetupDownloadsTitle" xml:space="preserve">
+    <value>What will be downloaded</value>
+  </data>
+  <data name="SetupDownloadsFile" xml:space="preserve">
+    <value>File</value>
+  </data>
+  <data name="SetupDownloadsSize" xml:space="preserve">
+    <value>Size</value>
+  </data>
+  <data name="SetupDownloadsLicence" xml:space="preserve">
+    <value>Licence</value>
+  </data>
+  <data name="SetupDownloadsSource" xml:space="preserve">
+    <value>Source</value>
+  </data>
+  <data name="SetupDownloadsTotal" xml:space="preserve">
+    <value>Total</value>
+  </data>
+  <data name="SetupDownloadsNothing" xml:space="preserve">
+    <value>Nothing to download</value>
+  </data>
+  <data name="SetupDownloadsConsent" xml:space="preserve">
+    <value>Download these files now</value>
+  </data>
+  <data name="SetupDownloadingLead" xml:space="preserve">
+    <value>You can close this window; the download continues and resumes after a restart.</value>
+  </data>
+  <data name="SetupReadyTry" xml:space="preserve">
+    <value>Try it here: use the hotkey and say something…</value>
+  </data>
+  <data name="SetupReadyTryLabel" xml:space="preserve">
+    <value>Try dictation</value>
+  </data>
+  <data name="SetupTrayLead" xml:space="preserve">
+    <value>Keep the Dictum icon visible.</value>
+  </data>
+  <data name="SetupTrayOpen" xml:space="preserve">
+    <value>Open taskbar settings</value>
+  </data>
 </root>

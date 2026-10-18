@@ -1,0 +1,301 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:setup="using:Dictum.App.ViewModels.Setup"
+             xmlns:controls="using:Dictum.App.Controls"
+             xmlns:res="using:Dictum.App.Resources"
+             x:Class="Dictum.App.Views.Setup.SetupView"
+             x:DataType="setup:SetupViewModel">
+  <DockPanel>
+    <!-- The strip: a bar per step, accent for the steps done and the current one; screen readers get the step line instead. -->
+    <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding Bars}" Margin="30,4,30,0" AutomationProperties.AccessibilityView="Raw">
+      <ItemsControl.ItemsPanel>
+        <ItemsPanelTemplate>
+          <UniformGrid Rows="1" />
+        </ItemsPanelTemplate>
+      </ItemsControl.ItemsPanel>
+      <ItemsControl.ItemTemplate>
+        <DataTemplate x:DataType="x:Boolean">
+          <Border Classes="stripBar" Classes.on="{Binding}" Margin="2,0" />
+        </DataTemplate>
+      </ItemsControl.ItemTemplate>
+    </ItemsControl>
+    <TextBlock DockPanel.Dock="Top" Text="{Binding StepLine}" Classes="hint" Margin="32,10,32,0"
+               AutomationProperties.LiveSetting="Polite" />
+
+    <Grid DockPanel.Dock="Bottom" ColumnDefinitions="Auto,*,Auto" Margin="32,16,32,20">
+      <Button Classes="dialog" Content="{x:Static res:Strings.SetupBack}" Command="{Binding BackCommand}" />
+      <TextBlock Grid.Column="1" Text="{Binding FootNote}" Classes="hint" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="12,0" />
+      <Button Grid.Column="2" Classes="dialog primary" Content="{Binding NextText}" Command="{Binding NextCommand}" />
+    </Grid>
+    <TextBlock DockPanel.Dock="Bottom" Text="{Binding Error}" Classes="error" Margin="32,8,32,0"
+               IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+    <ContentControl Content="{Binding Current}" Margin="32,12,32,0">
+      <ContentControl.DataTemplates>
+        <DataTemplate DataType="setup:SetupLanguagesStep">
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,8">
+              <TextBlock Classes="h1" Text="{x:Static res:Strings.SetupLanguagesTitle}" />
+              <TextBlock Classes="lead" Text="{x:Static res:Strings.SetupLanguagesLead}" />
+              <TextBox Text="{Binding Search}" PlaceholderText="{x:Static res:Strings.SetupLanguagesSearch}"
+                       AutomationProperties.Name="{x:Static res:Strings.SetupLanguagesSearchLabel}" />
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="0,8,0,0">
+              <Border Classes="banner" IsVisible="{Binding BannerLead, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <StackPanel Spacing="2">
+                  <TextBlock Text="{Binding BannerLead}" FontWeight="SemiBold" />
+                  <TextBlock Text="{x:Static res:Strings.SetupSimilarText}" />
+                </StackPanel>
+              </Border>
+              <CheckBox IsChecked="{Binding DetectAny}" Content="{x:Static res:Strings.SetupLanguagesAuto}" />
+            </StackPanel>
+            <ScrollViewer IsEnabled="{Binding !DetectAny}">
+              <ItemsControl ItemsSource="{Binding Rows}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="setup:LanguageRow">
+                    <Border Classes="pickRow" Classes.on="{Binding IsChecked}" IsVisible="{Binding IsShown}" Margin="0,0,0,6">
+                      <Grid ColumnDefinitions="*,Auto">
+                        <CheckBox IsChecked="{Binding IsChecked}" Content="{Binding Name}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="{Binding Code}" Classes="hint" VerticalAlignment="Center" />
+                      </Grid>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </DockPanel>
+        </DataTemplate>
+
+        <DataTemplate DataType="setup:SetupModelStep">
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Top" Spacing="8" Margin="0,0,0,8">
+              <TextBlock Classes="h1" Text="{x:Static res:Strings.SetupModelTitle}" />
+              <TextBlock Classes="lead" Text="{Binding HardwareText}" />
+            </StackPanel>
+            <TextBlock DockPanel.Dock="Bottom" Classes="hint" Text="{x:Static res:Strings.SetupModelNote}" Margin="0,8,0,0" />
+            <ListBox Classes="radioCards" ItemsSource="{Binding Choices}" SelectedItem="{Binding Selected}"
+                     AutomationProperties.Name="{x:Static res:Strings.SetupModelTitle}">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="setup:ModelChoice">
+                  <Grid ColumnDefinitions="Auto,12,*,12,Auto">
+                    <Ellipse Classes="radio" VerticalAlignment="Top" Margin="0,2,0,0" />
+                    <StackPanel Grid.Column="2" Spacing="2">
+                      <WrapPanel>
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Margin="0,0,10,0" VerticalAlignment="Center" />
+                        <Border Classes="badge info" IsVisible="{Binding Recommended}">
+                          <TextBlock Text="{x:Static res:Strings.SetupModelRecommended}" />
+                        </Border>
+                        <Border Classes="badge ok" IsVisible="{Binding Installed}">
+                          <TextBlock Text="{x:Static res:Strings.SetupModelInstalled}" />
+                        </Border>
+                      </WrapPanel>
+                      <TextBlock Text="{Binding Note}" Classes="hint" />
+                      <TextBlock Text="{Binding Speed}" Classes="hint" IsVisible="{Binding Speed, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    </StackPanel>
+                    <TextBlock Grid.Column="4" Text="{Binding Size}" VerticalAlignment="Top" />
+                  </Grid>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </DockPanel>
+        </DataTemplate>
+
+        <DataTemplate DataType="setup:SetupCleanupStep">
+          <ScrollViewer>
+            <StackPanel Spacing="8">
+              <TextBlock Classes="h1" Text="{x:Static res:Strings.SetupCleanupTitle}" />
+              <TextBlock Classes="lead" Text="{x:Static res:Strings.SetupCleanupLead}" />
+              <Border Classes="pickRow" Classes.on="{Binding Off}">
+                <RadioButton GroupName="setupCleanup" IsChecked="{Binding Off}" Content="{x:Static res:Strings.SetupCleanupOff}" VerticalAlignment="Center" />
+              </Border>
+              <Border Classes="pickRow card" Classes.on="{Binding UseServer}">
+                <StackPanel Spacing="10">
+                  <RadioButton GroupName="setupCleanup" IsChecked="{Binding UseServer}" Content="{x:Static res:Strings.SetupCleanupServer}" />
+                  <Grid ColumnDefinitions="*,8,*" RowDefinitions="Auto,8,Auto" Margin="30,0,0,0" IsEnabled="{Binding UseServer}">
+                    <StackPanel Spacing="4">
+                      <TextBlock Text="{x:Static res:Strings.SettingsProvidersUrl}" Classes="hint" />
+                      <TextBox Text="{Binding Url}" AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersUrl}" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Spacing="4">
+                      <TextBlock Text="{x:Static res:Strings.SettingsProvidersModel}" Classes="hint" />
+                      <TextBox Text="{Binding Model}" AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersModel}" />
+                    </StackPanel>
+                    <StackPanel Grid.Row="2" Spacing="4">
+                      <TextBlock Text="{x:Static res:Strings.SettingsProvidersApiKey}" Classes="hint" />
+                      <TextBox Text="{Binding KeyText}" PasswordChar="•" PlaceholderText="{x:Static res:Strings.SettingsProvidersApiKeyPlaceholder}"
+                               AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersApiKey}" />
+                      <TextBlock Text="{Binding KeyNote}" Classes="hint" IsVisible="{Binding KeyNote, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    </StackPanel>
+                    <StackPanel Grid.Row="2" Grid.Column="2" Spacing="6" VerticalAlignment="Bottom">
+                      <Button Content="{x:Static res:Strings.SetupCleanupTest}" Command="{Binding TestCommand}" />
+                      <TextBlock Text="{Binding TestResult}" Classes.ok="{Binding TestOk}" Classes.error="{Binding !TestOk}"
+                                 IsVisible="{Binding TestResult, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                      <ProgressBar IsIndeterminate="True" Height="2" IsVisible="{Binding Testing}" />
+                    </StackPanel>
+                  </Grid>
+                </StackPanel>
+              </Border>
+              <Border Classes="pickRow disabled">
+                <TextBlock Text="{x:Static res:Strings.SetupCleanupManaged}" Classes="hint" VerticalAlignment="Center" Margin="30,0,0,0" />
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+        </DataTemplate>
+
+        <DataTemplate DataType="setup:SetupWordsStep">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="h1" Text="{x:Static res:Strings.SetupWordsTitle}" />
+            <TextBlock Classes="lead" Text="{x:Static res:Strings.SetupWordsLead}" />
+            <TextBlock Classes="hint" Text="{x:Static res:Strings.SetupWordsLabel}" />
+            <TextBox Text="{Binding Text}" AcceptsReturn="True" TextWrapping="Wrap" Height="160"
+                     AutomationProperties.Name="{x:Static res:Strings.SetupWordsLabel}" />
+            <TextBlock Classes="hint" Text="{x:Static res:Strings.SetupWordsNote}" />
+          </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate DataType="setup:SetupLoginStep">
+          <StackPanel Spacing="8">
+            <TextBlock Classes="h1" Text="{x:Static res:Strings.SetupLoginTitle}" />
+            <TextBlock Classes="lead" Text="{x:Static res:Strings.SetupLoginLead}" />
+            <Border Classes="pickRow" Classes.on="{Binding StartAtLogin}" IsEnabled="{Binding IsAvailable}">
+              <Grid ColumnDefinitions="*,Auto">
+                <RadioButton GroupName="setupLogin" IsChecked="{Binding StartAtLogin}" Content="{x:Static res:Strings.SetupLoginYes}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Classes="hint" Text="{x:Static res:Strings.SetupLoginRecommended}" VerticalAlignment="Center" />
+              </Grid>
+            </Border>
+            <Border Classes="pickRow" Classes.on="{Binding StartManually}" IsEnabled="{Binding IsAvailable}">
+              <RadioButton GroupName="setupLogin" IsChecked="{Binding StartManually}" Content="{x:Static res:Strings.SetupLoginNo}" VerticalAlignment="Center" />
+            </Border>
+            <TextBlock Classes="hint" Text="{x:Static res:Strings.SetupLoginUnavailable}" IsVisible="{Binding !IsAvailable}" />
+          </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate DataType="setup:SetupDownloadsStep">
+          <ScrollViewer>
+            <StackPanel Spacing="10">
+              <TextBlock Classes="h1" Text="{x:Static res:Strings.SetupDownloadsTitle}" />
+              <TextBlock Classes="lead" Text="{Binding FolderText}" />
+              <Border Classes="table" IsVisible="{Binding HasFiles}">
+                <StackPanel>
+                  <Border Classes="tableHead">
+                    <Grid ColumnDefinitions="*,8,80,8,80,8,170">
+                      <TextBlock Text="{x:Static res:Strings.SetupDownloadsFile}" />
+                      <TextBlock Grid.Column="2" Text="{x:Static res:Strings.SetupDownloadsSize}" TextAlignment="Right" />
+                      <TextBlock Grid.Column="4" Text="{x:Static res:Strings.SetupDownloadsLicence}" />
+                      <TextBlock Grid.Column="6" Text="{x:Static res:Strings.SetupDownloadsSource}" />
+                    </Grid>
+                  </Border>
+                  <ItemsControl ItemsSource="{Binding Rows}">
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="setup:DownloadRow">
+                        <Border Classes="tableRow">
+                          <Grid ColumnDefinitions="*,8,80,8,80,8,170">
+                            <TextBlock Text="{Binding File}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Grid.Column="2" Text="{Binding Size}" TextAlignment="Right" />
+                            <TextBlock Grid.Column="4" Text="{Binding Licence}" />
+                            <TextBlock Grid.Column="6" Text="{Binding Source}" Classes="hint" TextTrimming="CharacterEllipsis" />
+                          </Grid>
+                        </Border>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                  <Border Classes="tableRow">
+                    <Grid ColumnDefinitions="*,8,80,8,80,8,170">
+                      <TextBlock Text="{x:Static res:Strings.SetupDownloadsTotal}" FontWeight="SemiBold" />
+                      <TextBlock Grid.Column="2" Text="{Binding TotalText}" FontWeight="SemiBold" TextAlignment="Right" />
+                    </Grid>
+                  </Border>
+                </StackPanel>
+              </Border>
+              <TextBlock Text="{x:Static res:Strings.SetupDownloadsNothing}" FontWeight="SemiBold" IsVisible="{Binding !HasFiles}" />
+              <TextBlock Text="{Binding PresentNote}" Classes="hint" IsVisible="{Binding PresentNote, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <TextBlock Text="{Binding PrivacyText}" Classes="hint" />
+              <TextBlock Text="{Binding ConfigNote}" Classes="warning" IsVisible="{Binding ConfigNote, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <TextBlock Text="{Binding SpaceError}" Classes="error" IsVisible="{Binding SpaceError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <TextBlock Text="{Binding Error}" Classes="error" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <CheckBox IsChecked="{Binding Consent}" Content="{x:Static res:Strings.SetupDownloadsConsent}" IsVisible="{Binding HasFiles}" />
+            </StackPanel>
+          </ScrollViewer>
+        </DataTemplate>
+
+        <DataTemplate DataType="setup:SetupDownloadingStep">
+          <ScrollViewer>
+            <StackPanel Spacing="10">
+              <TextBlock Classes="h1" Text="{Binding Title}" />
+              <TextBlock Classes="lead" Text="{x:Static res:Strings.SetupDownloadingLead}" />
+              <ItemsControl ItemsSource="{Binding Files}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="setup:FileProgress">
+                    <StackPanel Spacing="6" Margin="0,0,0,12">
+                      <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Text="{Binding Name}" />
+                        <TextBlock Grid.Column="1" Text="{Binding Text}" Classes="hint" />
+                      </Grid>
+                      <ProgressBar Classes="download" Minimum="0" Maximum="100" Value="{Binding Progress}" AutomationProperties.Name="{Binding Name}" />
+                      <TextBlock Text="{Binding Error}" Classes="error" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                      <Button Content="{x:Static res:Strings.SetupDownloadRetry}" Command="{Binding RetryCommand}" IsVisible="{Binding CanRetry}" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Border Classes="totalRow">
+                <StackPanel Spacing="6">
+                  <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="{x:Static res:Strings.SetupDownloadsTotal}" FontWeight="SemiBold" />
+                    <TextBlock Grid.Column="1" Text="{Binding TotalText}" FontWeight="SemiBold" />
+                  </Grid>
+                  <ProgressBar Classes="total" Minimum="0" Maximum="100" Value="{Binding TotalProgress}"
+                               AutomationProperties.Name="{x:Static res:Strings.SetupDownloadsTotal}" />
+                </StackPanel>
+              </Border>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="{Binding PauseText}" Command="{Binding PauseOrResumeCommand}" IsVisible="{Binding ShowPause}" />
+                <TextBlock Text="{Binding Note}" Classes="hint" VerticalAlignment="Center" />
+              </StackPanel>
+            </StackPanel>
+          </ScrollViewer>
+        </DataTemplate>
+
+        <DataTemplate DataType="setup:SetupReadyStep">
+          <ScrollViewer>
+            <StackPanel Spacing="10">
+              <TextBlock Classes="h1" Text="{x:Static res:Strings.SetupStepReady}" />
+              <ItemsControl ItemsSource="{Binding Keys}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="6" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="setup:KeyPart">
+                    <Panel>
+                      <Border Classes="keycap" IsVisible="{Binding IsKey}">
+                        <TextBlock Text="{Binding Text}" />
+                      </Border>
+                      <TextBlock Classes="keycapPlus" Text="{Binding Text}" IsVisible="{Binding !IsKey}" VerticalAlignment="Center" />
+                    </Panel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Classes="lead" Text="{Binding HowTo}" />
+              <controls:OverlayPreview Palette="{Binding Palette}" />
+              <TextBox AcceptsReturn="True" TextWrapping="Wrap" Height="56" PlaceholderText="{x:Static res:Strings.SetupReadyTry}"
+                       AutomationProperties.Name="{x:Static res:Strings.SetupReadyTryLabel}" />
+              <TextBlock Text="{Binding LoginError}" Classes="warning" IsVisible="{Binding LoginError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <Border Classes="pickRow card" IsVisible="{Binding ShowTrayRow}">
+                <Grid ColumnDefinitions="*,12,Auto">
+                  <StackPanel Spacing="2">
+                    <TextBlock Text="{x:Static res:Strings.SetupTrayLead}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding TrayText}" Classes="hint" />
+                  </StackPanel>
+                  <Button Grid.Column="2" Content="{x:Static res:Strings.SetupTrayOpen}" Command="{Binding OpenTraySettingsCommand}"
+                          IsVisible="{Binding CanOpenTraySettings}" VerticalAlignment="Center" />
+                </Grid>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+        </DataTemplate>
+      </ContentControl.DataTemplates>
+    </ContentControl>
+  </DockPanel>
+</UserControl>

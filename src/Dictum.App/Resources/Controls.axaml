@@ -274,4 +274,111 @@
     <Setter Property="Foreground" Value="{DynamicResource color.accent}" />
     <Setter Property="Background" Value="{DynamicResource color.border}" />
   </Style>
+  <!-- Setup wizard (design Wizard): headings and leads, 36 px dialog buttons, the strip, pick rows and radio cards, the table, the 8 px total bar. -->
+  <Style Selector="TextBlock.h1">
+    <Setter Property="FontSize" Value="24" />
+    <Setter Property="LineHeight" Value="32" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="Foreground" Value="{DynamicResource color.text.primary}" />
+  </Style>
+  <Style Selector="TextBlock.lead">
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="Foreground" Value="{DynamicResource color.text.secondary}" />
+  </Style>
+  <Style Selector="TextBlock.ok">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="Foreground" Value="{DynamicResource color.status.ok.fg}" />
+  </Style>
+  <Style Selector="Button.dialog">
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Padding" Value="18,0" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+  </Style>
+  <Style Selector="Border.stripBar">
+    <Setter Property="Height" Value="3" />
+    <Setter Property="CornerRadius" Value="2" />
+    <Setter Property="Background" Value="{DynamicResource color.border}" />
+  </Style>
+  <Style Selector="Border.stripBar.on">
+    <Setter Property="Background" Value="{DynamicResource color.accent}" />
+  </Style>
+  <Style Selector="Border.pickRow">
+    <Setter Property="MinHeight" Value="44" />
+    <Setter Property="Padding" Value="14,0" />
+    <Setter Property="CornerRadius" Value="{DynamicResource radius.control}" />
+    <Setter Property="Background" Value="{DynamicResource color.bg.layer}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource color.border}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Border.pickRow.card">
+    <Setter Property="Padding" Value="14,12" />
+  </Style>
+  <Style Selector="Border.pickRow.on">
+    <Setter Property="BorderBrush" Value="{DynamicResource color.accent}" />
+  </Style>
+  <Style Selector="Border.pickRow.disabled">
+    <Setter Property="Background" Value="{DynamicResource color.bg.layerAlt}" />
+  </Style>
+  <Style Selector="ListBox.radioCards">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+  </Style>
+  <Style Selector="ListBox.radioCards ListBoxItem">
+    <Setter Property="Margin" Value="0,0,0,6" />
+    <Setter Property="Padding" Value="14,12" />
+    <Setter Property="CornerRadius" Value="{DynamicResource radius.control}" />
+    <Setter Property="Background" Value="{DynamicResource color.bg.layer}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource color.border}" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="ListBox.radioCards ListBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource color.bg.controlHover}" />
+  </Style>
+  <Style Selector="ListBox.radioCards ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource color.bg.layer}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource color.accent}" />
+  </Style>
+  <Style Selector="Ellipse.radio">
+    <Setter Property="Width" Value="18" />
+    <Setter Property="Height" Value="18" />
+    <Setter Property="Stroke" Value="{DynamicResource color.text.secondary}" />
+    <Setter Property="StrokeThickness" Value="1.5" />
+  </Style>
+  <Style Selector="ListBox.radioCards ListBoxItem:selected Ellipse.radio">
+    <Setter Property="Stroke" Value="{DynamicResource color.accent}" />
+    <Setter Property="StrokeThickness" Value="5" />
+  </Style>
+  <Style Selector="Border.table">
+    <Setter Property="CornerRadius" Value="{DynamicResource radius.control}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource color.border}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="ClipToBounds" Value="True" />
+  </Style>
+  <Style Selector="Border.tableHead">
+    <Setter Property="Padding" Value="12,8" />
+    <Setter Property="Background" Value="{DynamicResource color.bg.layer}" />
+  </Style>
+  <Style Selector="Border.tableHead TextBlock">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{DynamicResource color.text.secondary}" />
+  </Style>
+  <Style Selector="Border.tableRow">
+    <Setter Property="Padding" Value="12,10" />
+    <Setter Property="BorderBrush" Value="{DynamicResource color.border}" />
+    <Setter Property="BorderThickness" Value="0,1,0,0" />
+  </Style>
+  <Style Selector="Border.totalRow">
+    <Setter Property="Padding" Value="0,10,0,0" />
+    <Setter Property="BorderBrush" Value="{DynamicResource color.border}" />
+    <Setter Property="BorderThickness" Value="0,1,0,0" />
+  </Style>
+  <Style Selector="ProgressBar.total">
+    <Setter Property="Height" Value="8" />
+    <Setter Property="MinHeight" Value="8" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Foreground" Value="{DynamicResource color.accent}" />
+    <Setter Property="Background" Value="{DynamicResource color.border}" />
+  </Style>
 </Styles>

@@ -1,0 +1,32 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:setup="using:Dictum.App.ViewModels.Setup"
+        xmlns:views="using:Dictum.App.Views.Setup"
+        xmlns:res="using:Dictum.App.Resources"
+        x:Class="Dictum.App.Views.Setup.SetupWindow"
+        x:DataType="setup:SetupViewModel"
+        Title="{x:Static res:Strings.SetupWindowTitle}"
+        Width="640" Height="600" CanResize="False"
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True" ExtendClientAreaTitleBarHeightHint="40"
+        Background="{DynamicResource color.bg.base}">
+  <DockPanel>
+    <!-- The Settings title bar, only where the window really extends into its decorations (Windows). -->
+    <Border DockPanel.Dock="Top" Height="40" Background="Transparent"
+            IsVisible="{Binding $parent[Window].IsExtendedIntoWindowDecorations}"
+            WindowDecorationProperties.ElementRole="TitleBar">
+      <StackPanel Orientation="Horizontal" Spacing="10" Margin="14,0,0,0">
+        <Viewbox Width="18" Height="18" VerticalAlignment="Center">
+          <Canvas Width="32" Height="32">
+            <Ellipse Canvas.Left="3" Canvas.Top="3" Width="26" Height="26" StrokeThickness="3" Stroke="{DynamicResource color.tray.brand}" />
+            <Path Data="M7 16 C 10 16 10.5 9 13 9 C 15.5 9 16.5 23 19 23 C 21.5 23 22 16 25 16"
+                  StrokeThickness="3" StrokeLineCap="Round" Stroke="{DynamicResource color.tray.brand}" />
+          </Canvas>
+        </Viewbox>
+        <TextBlock Text="{x:Static res:Strings.SetupWindowTitle}" FontSize="12" VerticalAlignment="Center"
+                   Foreground="{DynamicResource color.text.primary}" />
+      </StackPanel>
+    </Border>
+    <views:SetupView />
+  </DockPanel>
+</Window>

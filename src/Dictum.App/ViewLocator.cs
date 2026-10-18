@@ -2,8 +2,10 @@ using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using Dictum.App.ViewModels;
 using Dictum.App.ViewModels.Settings;
+using Dictum.App.ViewModels.Setup;
 using Dictum.App.Views;
 using Dictum.App.Views.Settings;
+using Dictum.App.Views.Setup;
 
 namespace Dictum.App;
 
@@ -21,6 +23,7 @@ public sealed class ViewLocator : IDataTemplate
         SpeechProvidersPage model => new SpeechProvidersView { DataContext = model },
         SystemPage model => new SystemView { DataContext = model },
         HistoryPage model => new HistoryView { DataContext = model },
+        SetupViewModel model => new SetupView { DataContext = model },
         StatusViewModel model => new StatusView { DataContext = model },
         null => null,
         _ => new TextBlock { Text = $"No view for {param.GetType().Name}" },

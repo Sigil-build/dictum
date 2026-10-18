@@ -1313,4 +1313,124 @@
   <data name="SetupTrayKde" xml:space="preserve">
     <value>Plasma може ховати нові значки серед прихованих записів системного лотка, тож ви не бачитимете стану запису. Параметри системного лотка → Записи → Dictum: Показано.</value>
   </data>
+  <data name="SetupWindowTitle" xml:space="preserve">
+    <value>Налаштування Dictum</value>
+  </data>
+  <data name="SetupLanguagesTitle" xml:space="preserve">
+    <value>Якими мовами ви диктуєте?</value>
+  </data>
+  <data name="SetupLanguagesLead" xml:space="preserve">
+    <value>Позначте всі потрібні. Dictum вибирає мову для кожного диктування, тож між ними можна перемикатися.</value>
+  </data>
+  <data name="SetupLanguagesSearch" xml:space="preserve">
+    <value>Знайти мову…</value>
+  </data>
+  <data name="SetupLanguagesSearchLabel" xml:space="preserve">
+    <value>Знайти мову</value>
+  </data>
+  <data name="SetupLanguagesAuto" xml:space="preserve">
+    <value>Або нехай Whisper визначає будь-яку мову (повільніше, менш точно для змішаного мовлення)</value>
+  </data>
+  <data name="SetupSimilarText" xml:space="preserve">
+    <value>Whisper часто плутає їх, і текст виходить іншою абеткою чи правописом. Залиште тут ту, якою користуєтеся найчастіше, а іншу винесіть в окремий профіль зі своєю гарячою клавішею.</value>
+  </data>
+  <data name="SetupModelTitle" xml:space="preserve">
+    <value>Модель мовлення</value>
+  </data>
+  <data name="SetupModelRecommended" xml:space="preserve">
+    <value>Рекомендовано</value>
+  </data>
+  <data name="SetupModelInstalled" xml:space="preserve">
+    <value>Уже є на цьому комп'ютері</value>
+  </data>
+  <data name="SetupModelNote" xml:space="preserve">
+    <value>Поки що нічого не завантажується. Перед початком ви побачите повний список із розмірами й ліцензіями.</value>
+  </data>
+  <data name="SetupCleanupTitle" xml:space="preserve">
+    <value>Чищення тексту</value>
+  </data>
+  <data name="SetupCleanupLead" xml:space="preserve">
+    <value>Необов'язково. Мовна модель виправляє пунктуацію й описки після розпізнавання. Додає 0,3–3 с.</value>
+  </data>
+  <data name="SetupCleanupOff" xml:space="preserve">
+    <value>Вимкнено — вставляти саме те, що розпізнано</value>
+  </data>
+  <data name="SetupCleanupServer" xml:space="preserve">
+    <value>Сервер, який я вже запускаю (llama-server, llama-swap, Ollama або будь-який OpenAI-сумісний API)</value>
+  </data>
+  <data name="SetupCleanupTest" xml:space="preserve">
+    <value>Перевірити з'єднання</value>
+  </data>
+  <data name="SetupCleanupManaged" xml:space="preserve">
+    <value>Керована локальна модель — з'явиться в одній із наступних версій</value>
+  </data>
+  <data name="SetupWordsTitle" xml:space="preserve">
+    <value>Ваші слова</value>
+  </data>
+  <data name="SetupWordsLead" xml:space="preserve">
+    <value>Імена, назви програм і терміни, які розпізнавач часто пише неправильно. Dictum підказує йому саме таке написання. Наприклад, Nexus5 замість «нексус файв» чи Avalonia замість «авалонія».</value>
+  </data>
+  <data name="SetupWordsLabel" xml:space="preserve">
+    <value>По одному в рядку, або вставте список через кому</value>
+  </data>
+  <data name="SetupWordsNote" xml:space="preserve">
+    <value>Цей крок можна пропустити — слова можна додати будь-коли в Налаштуваннях → Профілі → Ваші слова.</value>
+  </data>
+  <data name="SetupLoginTitle" xml:space="preserve">
+    <value>Запускати Dictum під час входу?</value>
+  </data>
+  <data name="SetupLoginLead" xml:space="preserve">
+    <value>Dictum працює в системному треї й не навантажує GPU, доки ви не натиснете гарячу клавішу. Модель завантажується у фоні, тож перше диктування не повільніше.</value>
+  </data>
+  <data name="SetupLoginYes" xml:space="preserve">
+    <value>Так, запускати під час входу</value>
+  </data>
+  <data name="SetupLoginRecommended" xml:space="preserve">
+    <value>рекомендовано</value>
+  </data>
+  <data name="SetupLoginNo" xml:space="preserve">
+    <value>Ні, я запускатиму його вручну</value>
+  </data>
+  <data name="SetupLoginUnavailable" xml:space="preserve">
+    <value>Запуск під час входу недоступний у цій системі.</value>
+  </data>
+  <data name="SetupDownloadsTitle" xml:space="preserve">
+    <value>Що буде завантажено</value>
+  </data>
+  <data name="SetupDownloadsFile" xml:space="preserve">
+    <value>Файл</value>
+  </data>
+  <data name="SetupDownloadsSize" xml:space="preserve">
+    <value>Розмір</value>
+  </data>
+  <data name="SetupDownloadsLicence" xml:space="preserve">
+    <value>Ліцензія</value>
+  </data>
+  <data name="SetupDownloadsSource" xml:space="preserve">
+    <value>Джерело</value>
+  </data>
+  <data name="SetupDownloadsTotal" xml:space="preserve">
+    <value>Разом</value>
+  </data>
+  <data name="SetupDownloadsNothing" xml:space="preserve">
+    <value>Нічого не потрібно завантажувати</value>
+  </data>
+  <data name="SetupDownloadsConsent" xml:space="preserve">
+    <value>Завантажити ці файли зараз</value>
+  </data>
+  <data name="SetupDownloadingLead" xml:space="preserve">
+    <value>Це вікно можна закрити; завантаження триватиме й продовжиться після перезапуску.</value>
+  </data>
+  <data name="SetupReadyTry" xml:space="preserve">
+    <value>Спробуйте тут: скористайтеся гарячою клавішею й скажіть щось…</value>
+  </data>
+  <data name="SetupReadyTryLabel" xml:space="preserve">
+    <value>Спробувати диктування</value>
+  </data>
+  <data name="SetupTrayLead" xml:space="preserve">
+    <value>Тримайте значок Dictum на виду.</value>
+  </data>
+  <data name="SetupTrayOpen" xml:space="preserve">
+    <value>Відкрити параметри панелі завдань</value>
+  </data>
 </root>
