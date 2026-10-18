@@ -214,6 +214,14 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         Supervisor.Start();
         _started = true;
 
+        // A walk kept on disk mid-download (PR 5b): with no config it opens below; over a config it waits in the
+        // background and comes back when its files are in (FilesReady), or when the user runs the setup again.
+        if (_store.Exists && File.Exists(_paths.SetupFile))
+        {
+            _setup = CreateSetup();
+            _setup.OnClosed();
+        }
+
         // No config yet: the wizard opens on its own (spec 3.2); ShowSettings sends every Settings entry there too.
         if (_showWhenStarted || !_store.Exists)
         {
@@ -341,7 +349,8 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             _paths, _store, Catalog.BuiltIn, _modelDownloads ?? ModelDownloads.None, Hardware, () => HardwareProbe.FreeDiskBytes(_paths),
             GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, Environment.ProcessorCount, _measurements,
             new ServerProbe(_serverHttp ??= new HttpClient(), secrets, TimeProvider.System), secrets, _autostart, Environment.ProcessPath,
-            SetupTray(), Supervisor, Supervisor.Restart, UiTimers.Instance, TimeProvider.System, _log));
+            SetupTray(), Supervisor, Supervisor.Restart, UiTimers.Instance, TimeProvider.System, _log),
+            SavedSetupFile.Load(_paths, _log));
         setup.Finished += () =>
         {
             _setup = null;

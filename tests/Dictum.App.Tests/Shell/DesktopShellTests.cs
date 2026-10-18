@@ -266,6 +266,46 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         await launcher.DisposeAsync();
     });
 
+    // PR 5b: a GUI restarted in the middle of step 7 opens the wizard where it was, and queues nothing.
+    [Fact]
+    public Task AFirstStartResumesAWalkKeptOnDisk() => fx.UiAsync(async () =>
+    {
+        var (shell, launcher, _) = Create(config: false);
+        SavedSetupFile.Save(Paths(), KeptWalk(), NullLog.Instance);
+
+        shell.Start(Application.Current!, _ => { });
+
+        await WaitAsync(() => SetupWindow.Open.Count == 1);
+        var wizard = (SetupViewModel)SetupWindow.Open[0].DataContext!;
+        Assert.Equal((6, "pl"), (wizard.Index, wizard.Languages.Setting));
+        CloseSetup();
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
+    // PR 5b: over a config the kept walk does not open on its own; Run setup again returns to it.
+    [Fact]
+    public Task AKeptWalkOverAConfigWaitsUntilAsked() => fx.UiAsync(async () =>
+    {
+        var (shell, launcher, _) = Create();
+        SavedSetupFile.Save(Paths(), KeptWalk(), NullLog.Instance);
+
+        shell.Start(Application.Current!, _ => { });
+        Assert.Empty(SetupWindow.Open);
+
+        shell.ShowSetup();
+
+        Assert.Equal(6, ((SetupViewModel)SetupWindow.Open[0].DataContext!).Index);
+        CloseSetup();
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
+    private AppPaths Paths() => new(Path.Combine(_dir, "config"), Path.Combine(_dir, "data"));
+
+    private static SavedSetup KeptWalk() =>
+        new("pl", "whisper-large-v3-turbo-q8", false, "http://localhost:8080/v1", "", null, false, [], false, ["whisper-large-v3-turbo-q8"]);
+
     private (DesktopShell Shell, FakeLauncher Launcher, TrayControllerTests.FakePresenter Presenter) Create(bool tray = true, bool config = true)
     {
         var paths = new AppPaths(Path.Combine(_dir, "config"), Path.Combine(_dir, "data"));
