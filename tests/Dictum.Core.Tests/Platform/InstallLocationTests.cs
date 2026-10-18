@@ -29,4 +29,15 @@ public class InstallLocationTests
         Assert.Equal(new LoginItem(LoginApp.DesktopApp, "/opt/dictum/dictum-gui"), InstallLocation.DesktopApp("/opt/dictum/dictum-gui", null));
         Assert.Equal(new LoginItem(LoginApp.Daemon, "/opt/dictum/dictum"), InstallLocation.Daemon("/opt/dictum/dictum", null));
     }
+
+    // Final review I1: a terminal inside another AppImage (an editor) passes its APPIMAGE and APPDIR on to whatever it
+    // starts; Dictum installed from the tar.gz must not record that program. Only an AppImage Dictum runs from counts.
+    [Theory]
+    [InlineData("/home/me/Apps/dictum.AppImage", "/tmp/.mount_dict1", "/tmp/.mount_dict1/usr/bin/dictum", "/home/me/Apps/dictum.AppImage")]
+    [InlineData("/home/me/Apps/Cursor.AppImage", "/tmp/.mount_curs1", "/home/me/.local/lib/dictum/dictum", null)]
+    [InlineData("/home/me/Apps/Cursor.AppImage", null, "/home/me/.local/lib/dictum/dictum", null)]
+    [InlineData(null, null, "/opt/dictum/dictum", null)]
+    [InlineData("/home/me/Apps/dictum.AppImage", "/tmp/.mount_dict1", "/tmp/.mount_dict10/usr/bin/dictum", null)]
+    public void OnlyTheAppImageDictumRunsFromCounts(string? appImage, string? appDir, string processPath, string? expected) =>
+        Assert.Equal(expected, InstallLocation.AppImageOf(appImage, appDir, processPath));
 }
