@@ -40,4 +40,12 @@ public class InstallLocationTests
     [InlineData("/home/me/Apps/dictum.AppImage", "/tmp/.mount_dict1", "/tmp/.mount_dict10/usr/bin/dictum", null)]
     public void OnlyTheAppImageDictumRunsFromCounts(string? appImage, string? appDir, string processPath, string? expected) =>
         Assert.Equal(expected, InstallLocation.AppImageOf(appImage, appDir, processPath));
+
+    // Final review I2: what outlives this run decides init's warning about a temporary folder, not the AppImage's mount.
+    [Fact]
+    public void TheLastingPathIsTheAppImageInsideOne()
+    {
+        Assert.Equal(AppImage, InstallLocation.Lasting("/tmp/.mount_x/usr/bin/dictum", AppImage));
+        Assert.Equal("/opt/dictum/dictum", InstallLocation.Lasting("/opt/dictum/dictum", null));
+    }
 }

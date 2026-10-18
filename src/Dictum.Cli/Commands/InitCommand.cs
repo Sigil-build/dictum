@@ -349,13 +349,18 @@ internal static class InitCommand
                 : "Done. Start dictation with 'dictum daemon'.");
     }
 
-    /// <summary>Login start records the executable path, so it breaks when Dictum runs from a folder that gets cleaned up.</summary>
+    /// <summary>
+    /// Login start records the executable path, so it breaks when Dictum runs from a folder that gets cleaned up. Inside an
+    /// AppImage that is the AppImage file, not its temporary mount (phase 4 final review I2).
+    /// </summary>
     private static string? PathWarning()
     {
-        if (Environment.ProcessPath is not { } executable)
+        if (Environment.ProcessPath is not { } running)
         {
             return null;
         }
+
+        var executable = InstallLocation.Lasting(running, InstallLocation.AppImage);
 
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
         var downloads = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");

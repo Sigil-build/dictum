@@ -27,8 +27,11 @@ public static class InstallLocation
             ? appImage
             : null;
 
+    /// <summary>The path that outlives this run: the AppImage file inside one, <paramref name="processPath"/> otherwise.</summary>
+    public static string Lasting(string processPath, string? appImage) => appImage ?? processPath;
+
     /// <summary>The login item for the desktop app <paramref name="gui"/>, or for the AppImage it runs from.</summary>
-    public static LoginItem DesktopApp(string gui, string? appImage) => new(LoginApp.DesktopApp, appImage ?? gui);
+    public static LoginItem DesktopApp(string gui, string? appImage) => new(LoginApp.DesktopApp, Lasting(gui, appImage));
 
     /// <summary>The item that runs <c>dictum daemon</c>: <paramref name="dictum"/>, or the AppImage with its CLI word.</summary>
     public static LoginItem Daemon(string dictum, string? appImage) =>
