@@ -3,6 +3,7 @@ using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Dictum.App.Resources;
 using Dictum.App.Tests.Setup;
 using Dictum.App.ViewModels.Setup;
 using Dictum.App.Views.Setup;
@@ -105,6 +106,22 @@ public sealed class SetupViewTests(AvaloniaFixture fx) : IDisposable
         Dispatcher.UIThread.RunJobs();
 
         Assert.Equal(1, wizard.Index);
+        window.Close();
+    });
+
+    // Final review I4: a long choice label wraps in the 640 px dialog instead of being cut off.
+    [Fact]
+    public Task LongChoiceLabelsWrap() => fx.UiAsync(async () =>
+    {
+        var wizard = new SetupViewModel(_setup.Services());
+        var window = Show(wizard);
+        await wizard.NextCommand.ExecuteAsync(null);
+        await wizard.NextCommand.ExecuteAsync(null);
+        Dispatcher.UIThread.RunJobs();
+
+        var label = window.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == Strings.SetupCleanupServer);
+
+        Assert.True(label.TextLayout.TextLines.Count > 1, $"{label.TextLayout.TextLines.Count} line(s)");
         window.Close();
     });
 }
