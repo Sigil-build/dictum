@@ -260,4 +260,37 @@ public sealed class SetupViewModelTests : IDisposable
         wizard.Ready.OpenTraySettingsCommand.Execute(null);
         Assert.Equal(1, _fx.TraySettingsOpened);
     }
+
+    // Final review I2: after the save the walk is over, even when the window was closed with ✕ on step 8.
+    [Fact]
+    public async Task AWalkPastTheSaveCannotResume()
+    {
+        _fx.InstallAll();
+        var wizard = Open();
+        Assert.True(wizard.CanResume);
+
+        await WalkTo(wizard, 7);
+
+        Assert.False(wizard.CanResume);
+    }
+
+    // Final review I1: a re-run must show the config as it is now; only a walk with files downloading carries on.
+    [Fact]
+    public async Task AWalkCannotResumeOverConfigEditsUnlessItIsDownloading()
+    {
+        _fx.Store.Save(ProfilesPageTests.Sample());
+        var wizard = Open();
+        var edited = ProfilesPageTests.Sample();
+        edited.Profiles[0] = edited.Profiles[0] with { Vocabulary = ["Nexus5", "Avalonia", "Kubernetes"] };
+        _fx.Store.Save(edited);
+        Assert.False(wizard.CanResume);
+
+        var downloading = Open();
+        await WalkTo(downloading, 2);
+        await downloading.Cleanup.TestCommand.ExecuteAsync(null);
+        await WalkTo(downloading, 6);
+        _fx.Store.Save(ProfilesPageTests.Sample());
+
+        Assert.True(downloading.CanResume);
+    }
 }

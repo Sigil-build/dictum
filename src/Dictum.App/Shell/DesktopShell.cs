@@ -315,6 +315,11 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
 
         // An open Settings window reloads from the file the wizard writes; its pending edits are saved first.
         _settings?.Session.Flush();
+        if (_setup is { CanResume: false })
+        {
+            _setup = null;
+        }
+
         var setup = _setup ??= CreateSetup();
         var window = new SetupWindow { DataContext = setup };
         window.Closed += (_, _) =>

@@ -225,6 +225,29 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         await launcher.DisposeAsync();
     });
 
+    // Final review I1: Run setup again after Settings edits shows the edits, not the walk read before them.
+    [Fact]
+    public Task ARerunAfterSettingsEditsShowsTheEdits() => fx.UiAsync(async () =>
+    {
+        var (shell, launcher, _) = Create();
+        shell.Start(Application.Current!, _ => { });
+        shell.ShowSetup();
+        var first = (SetupViewModel)SetupWindow.Open[0].DataContext!;
+        CloseSetup();
+        var config = DefaultConfig.Create();
+        config.Profiles[0] = config.Profiles[0] with { Language = "pl" };
+        new ConfigStore(new AppPaths(Path.Combine(_dir, "config"), Path.Combine(_dir, "data")).ConfigFile, NullLog.Instance).Save(config);
+
+        shell.ShowSetup();
+
+        var second = (SetupViewModel)SetupWindow.Open[0].DataContext!;
+        Assert.NotSame(first, second);
+        Assert.Equal("pl", second.Languages.Setting);
+        CloseSetup();
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
     private (DesktopShell Shell, FakeLauncher Launcher, TrayControllerTests.FakePresenter Presenter) Create(bool tray = true, bool config = true)
     {
         var paths = new AppPaths(Path.Combine(_dir, "config"), Path.Combine(_dir, "data"));

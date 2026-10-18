@@ -24,12 +24,14 @@ public sealed partial class SetupViewModel : ViewModelBase
 
     private readonly SetupServices _services;
     private readonly SetupStep[] _steps;
+    private readonly string _loaded;
     private bool _downloaded;
 
     public SetupViewModel(SetupServices services)
     {
         _services = services;
         var current = LoadConfig(services, out _);
+        _loaded = Snapshot(current);
         var defaults = SetupPlanner.Defaults(current, new HardwareInfo(null, 0), services.Catalog, m => File.Exists(services.Paths.ResolveModel(m)));
         var currentModel = current is not null && current.Stt.GetValueOrDefault(SetupPlanner.SpeechProviderId(current)) is WhisperLocalSttConfig whisper
             ? services.Catalog.ForFile(whisper.Model)?.Id
@@ -115,6 +117,12 @@ public sealed partial class SetupViewModel : ViewModelBase
 
     /// <summary>Finish on step 8: the shell closes the window and forgets this walk.</summary>
     public event Action? Finished;
+
+    /// <summary>
+    /// Whether the shell may show this walk again: not after the save (step 8, even closed with ✕), and not over a config
+    /// that changed since the walk read it, unless its files are downloading (final review I1, I2).
+    /// </summary>
+    public bool CanResume => Index != ReadyIndex && (Index == DownloadingIndex || Snapshot(LoadConfig(_services, out _)) == _loaded);
 
     /// <summary>The window opened, or opened again: the step on screen listens again.</summary>
     public void OnOpened() => Current?.OnShown();
@@ -324,6 +332,8 @@ public sealed partial class SetupViewModel : ViewModelBase
             return null;
         }
     }
+
+    private static string Snapshot(DictumConfig? config) => config is null ? "" : ConfigStore.Serialize(config);
 
     /// <summary>The secret the clean-up key goes to: the Settings name, so Settings can replace or remove it (code map G5).</summary>
     private static string SecretName(DictumConfig? current) =>
