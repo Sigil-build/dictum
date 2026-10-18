@@ -345,6 +345,15 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             _setup = null;
             _setupWindow?.Close();
         };
+
+        // Closed on step 7: when the files are in, the walk comes back to save (final review M6).
+        setup.FilesReady += () =>
+        {
+            if (ReferenceEquals(_setup, setup))
+            {
+                ShowSetup();
+            }
+        };
         return setup;
     }
 

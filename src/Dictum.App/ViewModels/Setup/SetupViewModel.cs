@@ -26,6 +26,7 @@ public sealed partial class SetupViewModel : ViewModelBase
     private readonly SetupStep[] _steps;
     private readonly string _loaded;
     private bool _downloaded;
+    private bool _waiting;
 
     public SetupViewModel(SetupServices services)
     {
@@ -118,6 +119,9 @@ public sealed partial class SetupViewModel : ViewModelBase
     /// <summary>Finish on step 8: the shell closes the window and forgets this walk.</summary>
     public event Action? Finished;
 
+    /// <summary>The window was closed on step 7 and every file is now in place: the shell shows the walk again, to save.</summary>
+    public event Action? FilesReady;
+
     /// <summary>
     /// Whether the shell may show this walk again: not after the save (step 8, even closed with ✕), and not over a config
     /// that changed since the walk read it, unless its files are downloading (final review I1, I2).
@@ -125,12 +129,47 @@ public sealed partial class SetupViewModel : ViewModelBase
     public bool CanResume => Index != ReadyIndex && (Index == DownloadingIndex || Snapshot(LoadConfig(_services, out _)) == _loaded);
 
     /// <summary>The window opened, or opened again: the step on screen listens again.</summary>
-    public void OnOpened() => Current?.OnShown();
+    public void OnOpened()
+    {
+        StopWaiting();
+        Current?.OnShown();
+    }
 
-    /// <summary>The window closed: the step on screen stops listening; the answers and the step are kept.</summary>
-    public void OnClosed() => Current?.OnHidden();
+    /// <summary>
+    /// The window closed: the step on screen stops listening; the answers and the step are kept. Closed on step 7 with
+    /// files still to come, the walk waits for them and raises <see cref="FilesReady"/> (final review M6).
+    /// </summary>
+    public void OnClosed()
+    {
+        Current?.OnHidden();
+        if (Index == DownloadingIndex && !_waiting && !FilesInPlace())
+        {
+            _waiting = true;
+            _services.Downloads.Changed += OnFilesChanged;
+        }
+    }
 
     partial void OnSavingChanged(bool value) => Update();
+
+    private void OnFilesChanged()
+    {
+        if (FilesInPlace())
+        {
+            StopWaiting();
+            FilesReady?.Invoke();
+        }
+    }
+
+    private void StopWaiting()
+    {
+        if (_waiting)
+        {
+            _waiting = false;
+            _services.Downloads.Changed -= OnFilesChanged;
+        }
+    }
+
+    private bool FilesInPlace() => Downloading.Files.All(f => ModelFiles.IsInstalled(_services.Paths, f.Entry));
 
     [RelayCommand(CanExecute = nameof(CanNext))]
     private async Task NextAsync()

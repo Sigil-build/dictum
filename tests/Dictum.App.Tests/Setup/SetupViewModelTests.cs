@@ -293,4 +293,41 @@ public sealed class SetupViewModelTests : IDisposable
 
         Assert.True(downloading.CanResume);
     }
+
+    // Final review M6: a wizard closed while its files download asks to come back once they are all in place, to save.
+    [Fact]
+    public async Task AWizardClosedWhileDownloadingAsksBackWhenTheFilesAreIn()
+    {
+        var wizard = Open();
+        await WalkTo(wizard, 6);
+        var asked = 0;
+        wizard.FilesReady += () => asked++;
+        wizard.OnClosed();
+
+        Finish(ModelsPageTests.Turbo);
+        Assert.Equal(0, asked);
+
+        _fx.InstallAll();
+        Finish(ModelsPageTests.Turbo);
+        Finish(ModelsPageTests.Turbo);
+
+        Assert.Equal(1, asked);
+    }
+
+    // Final review M6: on screen, step 7 itself shows the files are in; nothing asks to reopen.
+    [Fact]
+    public async Task AWizardOnScreenDoesNotAskBack()
+    {
+        var wizard = Open();
+        await WalkTo(wizard, 6);
+        var asked = 0;
+        wizard.FilesReady += () => asked++;
+        wizard.OnClosed();
+        wizard.OnOpened();
+
+        _fx.InstallAll();
+        Finish(ModelsPageTests.Turbo);
+
+        Assert.Equal(0, asked);
+    }
 }
