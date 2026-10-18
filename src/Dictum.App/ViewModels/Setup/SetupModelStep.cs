@@ -9,7 +9,11 @@ namespace Dictum.App.ViewModels.Setup;
 
 /// <summary>A card on step 2: a catalog model, or (<see cref="Id"/> null) the hand-placed file the config uses now.</summary>
 /// <param name="Speed">"~6 s for 5 s of speech (estimate)", or null before anything is known.</param>
-public sealed record ModelChoice(string? Id, string Name, string Note, string? Speed, string Size, bool Recommended, bool Installed);
+public sealed record ModelChoice(string? Id, string Name, string Note, string? Speed, string Size, bool Recommended, bool Installed)
+{
+    /// <summary>What a screen reader says for the card (final review I5).</summary>
+    public override string ToString() => Name;
+}
 
 /// <summary>
 /// Step 2 (spec 8): the GPU and memory line and a card per speech model that understands step 1's languages. The

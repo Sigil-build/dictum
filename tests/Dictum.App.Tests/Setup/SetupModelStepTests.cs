@@ -96,4 +96,8 @@ public sealed class SetupModelStepTests : IDisposable
         Assert.Equal(kept, step.Selected);
         Assert.Null(step.SpeechModel);
     }
+
+    // Final review I5: a screen reader reads a card by its model's name, not as a record.
+    [Fact]
+    public void ACardReadsAsItsModelsName() => Assert.Equal("Whisper large-v3-turbo, 8-bit", Show().Choices[0].ToString());
 }
