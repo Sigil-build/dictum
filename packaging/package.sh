@@ -32,6 +32,10 @@ case "$rid" in
     cp "$out/msi/dictum.msi" "$out/$name.msi"
     ;;
   linux-*)
+    mkdir -p "$stage/share"
+    cp "$root/packaging/linux/install.sh" "$root/packaging/linux/uninstall.sh" "$stage/"
+    chmod +x "$stage/install.sh" "$stage/uninstall.sh"
+    cp "$root/packaging/linux/dictum.desktop" "$root/packaging/icons/dictum.svg" "$root/packaging/icons/dictum-256.png" "$stage/share/"
     tar -C "$out/stage" -czf "$out/$name.tar.gz" "$name"
     ;;
   *)

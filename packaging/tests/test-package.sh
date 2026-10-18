@@ -44,6 +44,13 @@ outside=$(echo "$entries" | tr '\\' '/' | grep -v "^$name/" | head -1 || true)
 echo "$entries" | grep -qiE '\.(pdb|dbg)$' && fail "the archive has debug symbols"
 pass "portable archive ($archive)"
 
+if [ "$rid" = linux-x64 ]; then
+  for file in install.sh uninstall.sh share/dictum.desktop share/dictum.svg share/dictum-256.png; do
+    grep -qx "$name/$file" <<< "$entries" || fail "the tarball has no $name/$file"
+  done
+  pass "tarball scripts and menu entry"
+fi
+
 if [ "$rid" = win-x64 ]; then
   msi="$out/$name.msi"
   powershell -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$root/packaging/windows/check-msi.ps1")" -Msi "$(cygpath -w "$msi")" -Version "$version" -Stage "$(cygpath -w "$stage")" || fail "check-msi.ps1"

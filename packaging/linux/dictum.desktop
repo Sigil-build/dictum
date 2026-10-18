@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Dictum
+GenericName=Voice to text
+Comment=Dictate into any app with a hotkey
+Exec="@EXEC@"
+Icon=dictum
+Terminal=false
+Categories=Utility;Accessibility;
+Keywords=dictation;speech;voice;transcription;whisper;
+StartupNotify=false
