@@ -1,0 +1,88 @@
+# Builds and checks Dictum's packages on their own OS (Native AOT cannot cross-compile; phase 4 spec 7).
+# Called by ci.yml on every push and by release.yml on a tag.
+name: Packages
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Build the packages
+        shell: bash
+        run: bash packaging/package.sh win-x64 "$RUNNER_TEMP/packages"
+
+      - name: Check the packages (zip, MSI tables, files byte for byte)
+        shell: bash
+        run: DICTUM_PACKAGE_OUT="$RUNNER_TEMP/packages" bash packaging/tests/test-package.sh
+
+      - name: Build a rebuilt and an upgrade MSI from the same files
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(dotnet msbuild src/Dictum.Cli/Dictum.Cli.csproj -getProperty:VersionPrefix)
+          stage=$(cygpath -w "$RUNNER_TEMP/packages/stage/dictum-$version-win-x64")
+          dotnet build packaging/windows/Dictum.Installer.wixproj -c Release --no-incremental -p:StageDir="$stage" -o "$(cygpath -w "$RUNNER_TEMP/rebuilt")"
+          dotnet build packaging/windows/Dictum.Installer.wixproj -c Release --no-incremental -p:StageDir="$stage" -p:VersionPrefix=99.0.0 -o "$(cygpath -w "$RUNNER_TEMP/upgrade")"
+          echo "DICTUM_VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Install, upgrade over a running daemon, uninstall (this runner's user)
+        shell: pwsh
+        run: >
+          ./packaging/windows/test-msi-install.ps1
+          -Msi "$env:RUNNER_TEMP\packages\dictum-$env:DICTUM_VERSION-win-x64.msi"
+          -RebuiltMsi "$env:RUNNER_TEMP\rebuilt\dictum.msi"
+          -UpgradeMsi "$env:RUNNER_TEMP\upgrade\dictum.msi"
+          -Version $env:DICTUM_VERSION
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: packages-windows
+          path: |
+            ${{ runner.temp }}/packages/dictum-*-win-x64.zip
+            ${{ runner.temp }}/packages/dictum-*-win-x64.msi
+
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Install the native toolchain and the self-test's libraries
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev xvfb xauth libportaudio2 libice6 libsm6 libfontconfig1 libxext6
+
+      - name: install.sh and uninstall.sh (stand-in programs, a throwaway HOME)
+        run: bash packaging/linux/test-install.sh
+
+      - name: Build the packages
+        run: bash packaging/package.sh linux-x64 "$RUNNER_TEMP/packages"
+
+      - name: Check the packages (tarball, AppImage, its self-test)
+        run: DICTUM_PACKAGE_OUT="$RUNNER_TEMP/packages" bash packaging/tests/test-package.sh
+
+      - name: Build and install the PKGBUILD in an Arch container
+        run: bash packaging/linux/aur/test-pkgbuild.sh "$RUNNER_TEMP"/packages/dictum-*-linux-x64.tar.gz
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: packages-linux
+          path: |
+            ${{ runner.temp }}/packages/dictum-*-linux-x64.tar.gz
+            ${{ runner.temp }}/packages/dictum-*-linux-x64.AppImage

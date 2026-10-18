@@ -1,0 +1,64 @@
+# A tag v<version> builds the packages and opens a DRAFT release with them (phase 4 spec 7); publishing it is a person's call.
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: The tag names the version the packages are built with
+        id: version
+        run: echo "version=$(bash packaging/check-version.sh "$GITHUB_REF_NAME")" >> "$GITHUB_OUTPUT"
+
+  packages:
+    needs: check
+    uses: ./.github/workflows/packages.yml
+
+  release:
+    needs: [check, packages]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: packages-*
+          merge-multiple: true
+          path: release
+
+      - name: Checksums and the PKGBUILD with the tarball's sum
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          set -euo pipefail
+          cd release
+          sha256sum dictum-* > SHA256SUMS
+          sum=$(sha256sum "dictum-$VERSION-linux-x64.tar.gz" | cut -d' ' -f1)
+          sed -e "s/^pkgver=.*/pkgver=$VERSION/" -e "s/^sha256sums=.*/sha256sums=('$sum')/" ../packaging/linux/aur/PKGBUILD > PKGBUILD
+          cat SHA256SUMS
+
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
+        run: >
+          gh release create "$GITHUB_REF_NAME" --draft --title "Dictum $VERSION"
+          --notes "Dictum $VERSION. Windows: the MSI (per user, no admin rights) or the portable zip. Linux: the AppImage, the tarball with install.sh, or the PKGBUILD (Arch, CachyOS). SHA-256 sums in SHA256SUMS."
+          release/*

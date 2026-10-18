@@ -34,6 +34,10 @@ jobs:
           DICTUM_CHECK_CATALOG: 1
         run: dotnet test -c Release --no-build --project tests/Dictum.Integration.Tests/Dictum.Integration.Tests.csproj --filter-class Dictum.Integration.Tests.CatalogUrlTests
 
+  packages:
+    needs: build-test
+    uses: ./.github/workflows/packages.yml
+
   publish:
     needs: build-test
     strategy:
@@ -76,7 +80,7 @@ jobs:
 
       - name: Overlay demo (X11 through xvfb, Native AOT)
         if: runner.os == 'Linux'
-        run: xvfb-run -a ./out/dictum-gui --overlay-demo fixtures/frames-silence.json --state done
+        run: xvfb-run -a ./out/dictum-gui --overlay-demo fixtures/frames-silence.json --state 'done'
 
       - name: Smoke test published binary
         shell: bash
