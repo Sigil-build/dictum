@@ -155,6 +155,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             _tray.OnLink(link);
             Overlay.OnLink(link);
             _settings?.OnLink(link);
+            _setup?.OnLink(link);
         });
         Supervisor.EventReceived += message =>
         {
@@ -170,6 +171,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             {
                 _tray.OnEvent(message);
                 Overlay.OnEvent(message);
+                _setup?.OnEvent(message);
             });
         };
 
@@ -354,6 +356,9 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
                 ShowSetup();
             }
         };
+
+        // The daemon starts at once after the save, not at the supervisor's next poll (PR 5b).
+        setup.Saved += Supervisor.ConfigSaved;
         return setup;
     }
 

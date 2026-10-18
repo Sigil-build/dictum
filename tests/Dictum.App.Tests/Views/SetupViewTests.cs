@@ -3,10 +3,12 @@ using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Dictum.App.Daemon;
 using Dictum.App.Resources;
 using Dictum.App.Tests.Setup;
 using Dictum.App.ViewModels.Setup;
 using Dictum.App.Views.Setup;
+using Dictum.Host.Ipc;
 
 namespace Dictum.App.Tests.Views;
 
@@ -157,4 +159,49 @@ public sealed class SetupViewTests(AvaloniaFixture fx) : IDisposable
         Button { Content: string text } => text,
         _ => element?.GetType().Name ?? "none",
     };
+
+    // PR 5b: step 8 gives its try-it box the focus, so the first dictation lands there, and shows the daemon's line.
+    [Fact]
+    public Task StepEightFocusesTheTryBoxAndShowsTheDaemon() => fx.UiAsync(async () =>
+    {
+        _setup.InstallAll();
+        var wizard = new SetupViewModel(_setup.Services());
+        var window = Show(wizard);
+        while (wizard.Index < 7)
+        {
+            await wizard.NextCommand.ExecuteAsync(null);
+        }
+
+        var profile = _setup.Store.Load().Profiles[0];
+        wizard.OnLink(new DaemonLink(DaemonLinkState.Connected, new DaemonStatus(
+            "Idle", null, [new ProfileStatus(profile.Id, profile.Hotkey, "PushToTalk", true)], "hook", "paste", 4242, WarmedUp: true)));
+        Dispatcher.UIThread.RunJobs();
+
+        var focused = TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement();
+        Assert.Equal("TryBox", Assert.IsType<TextBox>(focused).Name);
+        Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(),
+            t => t.IsEffectivelyVisible && t.Text == "Dictum is running. Try it in the box below.");
+        window.Close();
+    });
+
+    // PR 5b: a failed start shows Restart, which reaches the supervisor.
+    [Fact]
+    public Task StepEightOffersRestartWhenTheDaemonFailed() => fx.UiAsync(async () =>
+    {
+        _setup.InstallAll();
+        var wizard = new SetupViewModel(_setup.Services());
+        var window = Show(wizard);
+        while (wizard.Index < 7)
+        {
+            await wizard.NextCommand.ExecuteAsync(null);
+        }
+
+        wizard.OnLink(new DaemonLink(DaemonLinkState.Failed, Problem: "The daemon exited while starting (code 1)."));
+        Dispatcher.UIThread.RunJobs();
+        var restart = window.GetVisualDescendants().OfType<Button>().Single(b => b.IsEffectivelyVisible && Equals(b.Content, "Restart daemon"));
+        restart.Command!.Execute(null);
+
+        Assert.Equal(1, _setup.Restarts);
+        window.Close();
+    });
 }

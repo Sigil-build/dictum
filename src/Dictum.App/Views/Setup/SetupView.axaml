@@ -288,8 +288,16 @@
               </ItemsControl>
               <TextBlock Classes="lead" Text="{Binding HowTo}" />
               <controls:OverlayPreview Palette="{Binding Palette}" />
-              <TextBox AcceptsReturn="True" TextWrapping="Wrap" Height="56" PlaceholderText="{x:Static res:Strings.SetupReadyTry}"
-                       AutomationProperties.Name="{x:Static res:Strings.SetupReadyTryLabel}" />
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Text="{Binding DaemonText}" Classes.ok="{Binding IsReady}" Classes.warning="{Binding HasProblem}"
+                           TextWrapping="Wrap" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
+                <Button Grid.Column="1" Margin="12,0,0,0" Content="{x:Static res:Strings.StatusRestartButton}"
+                        Command="{Binding RestartCommand}" IsVisible="{Binding CanRestart}" />
+              </Grid>
+              <TextBox x:Name="TryBox" AcceptsReturn="True" TextWrapping="Wrap" Height="56" PlaceholderText="{x:Static res:Strings.SetupReadyTry}"
+                       AutomationProperties.Name="{x:Static res:Strings.SetupReadyTryLabel}" AttachedToVisualTree="FocusTryBox" />
+              <TextBlock Text="{Binding TryResult}" Classes="hint" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"
+                         IsVisible="{Binding TryResult, Converter={x:Static ObjectConverters.IsNotNull}}" />
               <TextBlock Text="{Binding LoginError}" Classes="warning" IsVisible="{Binding LoginError, Converter={x:Static ObjectConverters.IsNotNull}}" />
               <Border Classes="pickRow card" IsVisible="{Binding ShowTrayRow}">
                 <Grid ColumnDefinitions="*,12,Auto">

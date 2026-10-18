@@ -248,6 +248,24 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         await launcher.DisposeAsync();
     });
 
+    // PR 5b: the daemon's events reach the wizard, for step 8's try line.
+    [Fact]
+    public Task TheDaemonsEventsReachTheWizard() => fx.UiAsync(async () =>
+    {
+        var (shell, launcher, _) = Create();
+        shell.Start(Application.Current!, _ => { });
+        await WaitAsync(() => shell.Supervisor.Link.State == DaemonLinkState.Connected);
+        shell.ShowSetup();
+        var wizard = (SetupViewModel)SetupWindow.Open[0].DataContext!;
+
+        launcher.Current!.Events.Publish(new IpcEvent("finished", Outcome: DictationOutcome.Empty));
+
+        await WaitAsync(() => wizard.Ready.TryResult == "Nothing was recognised. Speak a little closer to the microphone and try again.");
+        CloseSetup();
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
     private (DesktopShell Shell, FakeLauncher Launcher, TrayControllerTests.FakePresenter Presenter) Create(bool tray = true, bool config = true)
     {
         var paths = new AppPaths(Path.Combine(_dir, "config"), Path.Combine(_dir, "data"));
