@@ -100,4 +100,16 @@ public sealed class SetupModelStepTests : IDisposable
     // Final review I5: a screen reader reads a card by its model's name, not as a record.
     [Fact]
     public void ACardReadsAsItsModelsName() => Assert.Equal("Whisper large-v3-turbo, 8-bit", Show().Choices[0].ToString());
+
+    // Final review M9: step 2 shows the speed class (spec 8 step 2, 10.2), as Settings → Models does.
+    [Fact]
+    public void EachCardShowsItsSpeedClass()
+    {
+        Assert.Equal(["Usable", "Usable", "Fast"], Show().Choices.Select(c => c.SpeedBadge));
+
+        _fx.Hardware = new HardwareInfo(null, 0);
+        var turbo = Show().Choices[0];
+
+        Assert.Equal(("Too slow here", true), (turbo.SpeedBadge, turbo.TooSlow));
+    }
 }

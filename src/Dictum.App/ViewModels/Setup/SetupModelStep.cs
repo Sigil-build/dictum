@@ -9,7 +9,17 @@ namespace Dictum.App.ViewModels.Setup;
 
 /// <summary>A card on step 2: a catalog model, or (<see cref="Id"/> null) the hand-placed file the config uses now.</summary>
 /// <param name="Speed">"~6 s for 5 s of speech (estimate)", or null before anything is known.</param>
-public sealed record ModelChoice(string? Id, string Name, string Note, string? Speed, string Size, bool Recommended, bool Installed)
+/// <param name="SpeedBadge">Fast, Usable or "Too slow here" (spec 10.2), or null with no estimate.</param>
+public sealed record ModelChoice(
+    string? Id,
+    string Name,
+    string Note,
+    string? Speed,
+    string Size,
+    bool Recommended,
+    bool Installed,
+    string? SpeedBadge = null,
+    bool TooSlow = false)
 {
     /// <summary>What a screen reader says for the card (final review I5).</summary>
     public override string ToString() => Name;
@@ -119,14 +129,23 @@ public sealed partial class SetupModelStep : SetupStep
 
         foreach (var entry in _services.Catalog.Entries.Where(e => e is { Kind: CatalogKind.Whisper, Hidden: false } && e.Understands(_language)))
         {
+            var estimate = estimates.GetValueOrDefault(entry.Id);
             choices.Add(new ModelChoice(
                 entry.Id,
                 ModelText.Name(entry),
                 ModelText.Note(entry),
-                estimates.GetValueOrDefault(entry.Id) is { } estimate ? ModelText.Speed(estimate) : null,
+                estimate is null ? null : ModelText.Speed(estimate),
                 Units.Size(entry.Size),
                 entry.Id == recommended,
-                ModelFiles.IsInstalled(_services.Paths, entry)));
+                ModelFiles.IsInstalled(_services.Paths, entry),
+                estimate?.Class switch
+                {
+                    SpeedClass.Fast => Strings.SettingsModelsFast,
+                    SpeedClass.Usable => Strings.SettingsModelsUsable,
+                    SpeedClass.TooSlow => Strings.SettingsModelsTooSlow,
+                    _ => null,
+                },
+                estimate?.Class == SpeedClass.TooSlow));
         }
 
         var wanted = _chosen ?? (_keptFile is not null ? KeptKey : _currentId ?? recommended);

@@ -90,6 +90,10 @@
                         <Border Classes="badge ok" IsVisible="{Binding Installed}">
                           <TextBlock Text="{x:Static res:Strings.SetupModelInstalled}" />
                         </Border>
+                        <Border Classes="badge" Classes.warn="{Binding TooSlow}"
+                                IsVisible="{Binding SpeedBadge, Converter={x:Static ObjectConverters.IsNotNull}}">
+                          <TextBlock Text="{Binding SpeedBadge}" />
+                        </Border>
                       </WrapPanel>
                       <TextBlock Text="{Binding Note}" Classes="hint" />
                       <TextBlock Text="{Binding Speed}" Classes="hint" IsVisible="{Binding Speed, Converter={x:Static ObjectConverters.IsNotNull}}" />
