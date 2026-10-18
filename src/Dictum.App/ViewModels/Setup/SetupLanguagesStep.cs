@@ -14,6 +14,9 @@ public sealed partial class LanguageRow(string code) : ObservableObject
 
     public string Name { get; } = WhisperLanguages.Name(code);
 
+    /// <summary>What the search matches: the language's own name, the English one and the UI language's (final review I3).</summary>
+    public IReadOnlyList<string> Names { get; } = WhisperLanguages.Names(code);
+
     [ObservableProperty]
     public partial bool IsChecked { get; set; }
 
@@ -99,7 +102,7 @@ public sealed partial class SetupLanguagesStep : SetupStep
         {
             row.IsShown = search.Length == 0
                 || row.IsChecked
-                || row.Name.Contains(search, StringComparison.CurrentCultureIgnoreCase)
+                || row.Names.Any(name => name.Contains(search, StringComparison.CurrentCultureIgnoreCase))
                 || row.Code.StartsWith(search, StringComparison.OrdinalIgnoreCase);
         }
     }

@@ -32,6 +32,20 @@ public static class WhisperLanguages
         }
     }
 
+    /// <summary>The names a search may use: the language's own, English, and the UI language's when the OS has it.</summary>
+    public static IReadOnlyList<string> Names(string code)
+    {
+        try
+        {
+            var culture = CultureInfo.GetCultureInfo(code, predefinedOnly: true);
+            return [.. new[] { culture.NativeName, culture.EnglishName, culture.DisplayName }.Where(n => n.Length > 0).Distinct()];
+        }
+        catch (CultureNotFoundException)
+        {
+            return [code];
+        }
+    }
+
     /// <summary>The first language for a profile that had none: the UI language when Whisper knows it, else English.</summary>
     public static string Fallback()
     {

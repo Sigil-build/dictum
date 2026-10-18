@@ -80,4 +80,16 @@ public sealed class SetupLanguagesStepTests
         step.DetectAny = true;
         Assert.Null(step.BannerLead);
     }
+
+    // Final review I3: people search in the language they read, not only by each language's own name.
+    [Theory]
+    [InlineData("ukrainian", "uk")]
+    [InlineData("German", "de")]
+    [InlineData("japan", "ja")]
+    public void TheSearchFindsEnglishNamesToo(string search, string code)
+    {
+        var step = new SetupLanguagesStep("en") { Search = search };
+
+        Assert.Contains(code, step.Rows.Where(r => r.IsShown).Select(r => r.Code));
+    }
 }
