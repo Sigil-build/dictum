@@ -46,7 +46,7 @@ public sealed class GeneralViewTests(AvaloniaFixture fx) : IDisposable
         var labels = window.GetVisualDescendants().OfType<SettingsRow>().Select(r => r.Label).ToList();
         Assert.Equal(
             [Strings.SettingsStartAtLogin, Strings.SettingsMicrophone, Strings.SettingsSounds, Strings.SettingsHistory,
-             Strings.SettingsUiLanguage, Strings.SettingsOverlay, Strings.SettingsPasting],
+             Strings.SettingsUiLanguage, Strings.SettingsOverlay, Strings.SettingsPasting, Strings.SettingsRunSetup],
             labels);
         Assert.Single(window.GetVisualDescendants().OfType<LevelMeterBar>());
         Assert.Single(window.GetVisualDescendants().OfType<NumericUpDown>());

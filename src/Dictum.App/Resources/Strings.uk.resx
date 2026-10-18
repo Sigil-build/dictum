@@ -141,7 +141,7 @@
     <value>Запущений демон — з іншої версії Dictum</value>
   </data>
   <data name="StatusNotConfigured" xml:space="preserve">
-    <value>Dictum ще не налаштовано. Виконайте «dictum init» у терміналі; вікно налаштування з'явиться в одній із наступних версій.</value>
+    <value>Dictum ще не налаштовано. Вікно налаштування проведе вас крок за кроком.</value>
   </data>
   <data name="StatusStopped" xml:space="preserve">
     <value>Зупинено</value>
@@ -183,7 +183,7 @@
     <value>Диктування не вдалося</value>
   </data>
   <data name="SettingsNoConfig" xml:space="preserve">
-    <value>Dictum ще не налаштовано. Запустіть 'dictum init' у терміналі й знову відкрийте налаштування.</value>
+    <value>Dictum ще не налаштовано. Відкрийте налаштування з трея, щоб запустити майстер.</value>
   </data>
   <data name="SettingsSaveFailed" xml:space="preserve">
     <value>Зміни не збережено: {0}</value>
@@ -1432,5 +1432,14 @@
   </data>
   <data name="SetupTrayOpen" xml:space="preserve">
     <value>Відкрити параметри панелі завдань</value>
+  </data>
+  <data name="SettingsRunSetup" xml:space="preserve">
+    <value>Майстер налаштування</value>
+  </data>
+  <data name="SettingsRunSetupHint" xml:space="preserve">
+    <value>Мови, модель мовлення, чищення тексту, ваші слова й запуск під час входу — крок за кроком.</value>
+  </data>
+  <data name="SettingsRunSetupButton" xml:space="preserve">
+    <value>Запустити ще раз</value>
   </data>
 </root>

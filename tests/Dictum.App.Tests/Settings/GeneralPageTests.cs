@@ -387,4 +387,17 @@ public sealed class GeneralPageTests : IDisposable
         Assert.Equal("Old USB mic", page.Microphones[^1].Label);
         Assert.Equal("Old USB mic", page.Microphone?.Value);
     }
+
+    // Spec 7: General → "Run setup again".
+    [Fact]
+    public void RunSetupAgainAsksTheShell()
+    {
+        var (page, _, _) = Open();
+        var asked = 0;
+        page.SetupRequested += () => asked++;
+
+        page.RunSetupCommand.Execute(null);
+
+        Assert.Equal(1, asked);
+    }
 }

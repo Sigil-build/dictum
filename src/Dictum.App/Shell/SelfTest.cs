@@ -12,6 +12,7 @@ using Dictum.App.Settings;
 using Dictum.App.Tray;
 using Dictum.App.ViewModels;
 using Dictum.App.ViewModels.Settings;
+using Dictum.App.ViewModels.Setup;
 using Dictum.Audio.PortAudio;
 using Dictum.Core;
 using Dictum.Core.Configuration;
@@ -162,9 +163,15 @@ public static class SelfTest
                 new HistoryPage(session, Path.Combine(folder, "history.jsonl"), new WindowClipboard(() => null), runner, NullLog.Instance),
             ];
             var locator = new ViewLocator();
-            var built = pages.Select(page => locator.Build(page)).Where(view => view is UserControl).ToList();
-            detail = $"{built.Count} of {pages.Length} views";
-            return built.Count == pages.Length;
+            using var http = new HttpClient();
+            var setup = new SetupViewModel(new SetupServices(new AppPaths(folder, folder), store, Catalog.BuiltIn, ModelDownloads.None,
+                () => Task.FromResult(new HardwareInfo(null, 0)), () => long.MaxValue, 0, 1, new SpeedMeasurements(),
+                new ServerProbe(http, new UnavailableSecretStore(), TimeProvider.System), new UnavailableSecretStore(), null, null,
+                new TrayHint(TrayDesktop.Other, () => null, null), UiTimers.Instance, TimeProvider.System, NullLog.Instance));
+            ViewModelBase[] models = [.. pages, setup];
+            var built = models.Select(model => locator.Build(model)).Where(view => view is UserControl).ToList();
+            detail = $"{built.Count} of {models.Length} views";
+            return built.Count == models.Length;
         }
         catch (Exception ex)
         {

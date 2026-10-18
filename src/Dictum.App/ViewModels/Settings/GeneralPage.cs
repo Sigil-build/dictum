@@ -376,4 +376,10 @@ public sealed partial class GeneralPage : SettingsPage
         MeterLevel = _meter.Level;
         MeterText = InputMeter.Readout(_meter.Db);
     }
+
+    /// <summary>General → "Run setup again" (spec 7): the shell opens the wizard with the current values.</summary>
+    public event Action? SetupRequested;
+
+    [RelayCommand]
+    private void RunSetup() => SetupRequested?.Invoke();
 }

@@ -7,7 +7,9 @@ using Dictum.App.Shell;
 using Dictum.App.Tests.Daemon;
 using Dictum.App.Tray;
 using Dictum.App.ViewModels.Settings;
+using Dictum.App.ViewModels.Setup;
 using Dictum.App.Views.Settings;
+using Dictum.App.Views.Setup;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
@@ -132,6 +134,7 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         shell.Start(Application.Current!, _ => { });
 
         await WaitAsync(() => presenter.Shown.LastOrDefault()?.Tooltip == "Dictum · Not set up yet");
+        CloseSetup();
     });
 
     [Fact]
@@ -151,18 +154,101 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         await launcher.DisposeAsync();
     });
 
-    private (DesktopShell Shell, FakeLauncher Launcher, TrayControllerTests.FakePresenter Presenter) Create(bool tray = true)
+    // Spec 3.2.
+    [Fact]
+    public Task AFirstStartWithoutAConfigOpensTheWizard() => fx.UiAsync(async () =>
+    {
+        var (shell, launcher, _) = Create(config: false);
+
+        shell.Start(Application.Current!, _ => { });
+
+        var wizard = Assert.IsType<SetupViewModel>(Assert.Single(SetupWindow.Open).DataContext);
+        Assert.Equal("Step 1 of 8 · Languages", wizard.StepLine);
+        Assert.Empty(SettingsWindow.Open);
+        CloseSetup();
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
+    [Fact]
+    public Task WithoutAConfigEverySettingsEntryOpensTheWizard() => fx.UiAsync(async () =>
+    {
+        var (shell, launcher, _) = Create(config: false);
+        shell.Start(Application.Current!, _ => { });
+        CloseSetup();
+
+        shell.ShowHistory();
+
+        Assert.Single(SetupWindow.Open);
+        Assert.Empty(SettingsWindow.Open);
+        CloseSetup();
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
+    // Review focus 4.
+    [Fact]
+    public Task ClosingAndReopeningReturnsToTheSameStep() => fx.UiAsync(async () =>
+    {
+        var (shell, launcher, _) = Create(config: false);
+        shell.Start(Application.Current!, _ => { });
+        var wizard = (SetupViewModel)SetupWindow.Open[0].DataContext!;
+        await wizard.NextCommand.ExecuteAsync(null);
+        await wizard.Model.ProbeAsync();
+        wizard.Model.Selected = wizard.Model.Choices[^1];
+        CloseSetup();
+
+        shell.ShowSettings();
+
+        Assert.Same(wizard, SetupWindow.Open[0].DataContext);
+        Assert.Equal((1, wizard.Model.Choices[^1].Id), (wizard.Index, wizard.Model.SpeechModel));
+        CloseSetup();
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
+    // Spec 7.
+    [Fact]
+    public Task RunSetupAgainOpensTheWizardOverSettings() => fx.UiAsync(async () =>
+    {
+        var (shell, launcher, _) = Create();
+        shell.Start(Application.Current!, _ => { });
+        shell.ShowSettings(SettingsPageKey.General);
+        var general = Assert.IsType<GeneralPage>(((SettingsViewModel)SettingsWindow.Open[0].DataContext!).Current);
+
+        general.RunSetupCommand.Execute(null);
+
+        Assert.Single(SetupWindow.Open);
+        CloseSetup();
+        CloseSettings();
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
+    private (DesktopShell Shell, FakeLauncher Launcher, TrayControllerTests.FakePresenter Presenter) Create(bool tray = true, bool config = true)
     {
         var paths = new AppPaths(Path.Combine(_dir, "config"), Path.Combine(_dir, "data"));
         var log = new DictumLog(LogLevel.Error, includeText: false, console: null, logsDirectory: null);
         var store = new ConfigStore(paths.ConfigFile, log);
-        store.Save(new DictumConfig());
+        if (config)
+        {
+            store.Save(new DictumConfig());
+        }
+
         var socket = Path.Combine(_dir, "d.sock");
         var launcher = new FakeLauncher(socket);
         var presenter = new TrayControllerTests.FakePresenter();
         var shell = new DesktopShell(paths, log, store, socket, launcher, (_, _) => Task.FromResult<ITrayPresenter?>(tray ? presenter : null),
             probeHardware: () => new HardwareInfo("Test GPU", 0, 4L * 1024 * 1024 * 1024));
         return (shell, launcher, presenter);
+    }
+
+    private static void CloseSetup()
+    {
+        foreach (var window in SetupWindow.Open.ToList())
+        {
+            window.Close();
+        }
     }
 
     private static void CloseSettings()

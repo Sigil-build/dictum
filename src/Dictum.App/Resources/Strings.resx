@@ -141,7 +141,7 @@
     <value>The daemon that is running comes from another version of Dictum</value>
   </data>
   <data name="StatusNotConfigured" xml:space="preserve">
-    <value>Dictum is not set up yet. Run "dictum init" in a terminal; a setup window comes in a later version.</value>
+    <value>Dictum is not set up yet. The setup window walks you through it.</value>
   </data>
   <data name="StatusStopped" xml:space="preserve">
     <value>Stopped</value>
@@ -183,7 +183,7 @@
     <value>Dictation failed</value>
   </data>
   <data name="SettingsNoConfig" xml:space="preserve">
-    <value>Dictum is not set up yet. Run 'dictum init' in a terminal, then open Settings again.</value>
+    <value>Dictum is not set up yet. Open Settings from the tray to run the setup.</value>
   </data>
   <data name="SettingsSaveFailed" xml:space="preserve">
     <value>Changes could not be saved: {0}</value>
@@ -1432,5 +1432,14 @@
   </data>
   <data name="SetupTrayOpen" xml:space="preserve">
     <value>Open taskbar settings</value>
+  </data>
+  <data name="SettingsRunSetup" xml:space="preserve">
+    <value>Setup wizard</value>
+  </data>
+  <data name="SettingsRunSetupHint" xml:space="preserve">
+    <value>Languages, speech model, clean-up, your words and start at login, step by step.</value>
+  </data>
+  <data name="SettingsRunSetupButton" xml:space="preserve">
+    <value>Run setup again</value>
   </data>
 </root>

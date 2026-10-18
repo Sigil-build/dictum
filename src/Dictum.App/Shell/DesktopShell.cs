@@ -8,7 +8,9 @@ using Dictum.App.Settings;
 using Dictum.App.Tray;
 using Dictum.App.ViewModels;
 using Dictum.App.ViewModels.Settings;
+using Dictum.App.ViewModels.Setup;
 using Dictum.App.Views.Settings;
+using Dictum.App.Views.Setup;
 using Dictum.Audio.PortAudio;
 using Dictum.Core;
 using Dictum.Core.Configuration;
@@ -50,6 +52,9 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     private DownloadQueue? _downloads;
     private IModelDownloads? _modelDownloads;
     private Task<HardwareInfo>? _hardware;
+    private SetupViewModel? _setup;
+    private SetupWindow? _setupWindow;
+    private HttpClient? _serverHttp;
     private DispatcherTimer? _tick;
     private Action<int>? _shutdown;
     private volatile bool _highContrast;
@@ -206,7 +211,9 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         _ = StartTrayAsync(app);
         Supervisor.Start();
         _started = true;
-        if (_showWhenStarted)
+
+        // No config yet: the wizard opens on its own (spec 3.2); ShowSettings sends every Settings entry there too.
+        if (_showWhenStarted || !_store.Exists)
         {
             ShowSettings(SettingsPageKey.General);
         }
@@ -233,6 +240,12 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             return;
         }
 
+        if (!_store.Exists)
+        {
+            ShowSetup();
+            return;
+        }
+
         if (_settings is not null && _settingsWindow is not null)
         {
             _settings.Open(page);
@@ -244,6 +257,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         session.Load();
         var general = new GeneralPage(session, new GeneralServices(
             Supervisor, Frames, UiTimers.Instance, _autostart, Environment.ProcessPath, _sounds, TimeProvider.System, _log));
+        general.SetupRequested += ShowSetup;
         var profiles = new ProfilesPage(session, Supervisor, _log);
         var providers = new SpeechProvidersPage(session, new SpeechServices(
             Supervisor, Frames, UiTimers.Instance, _secrets ??= PlatformFactory.CreateSecretStore(_log),
@@ -255,7 +269,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         var processors = new ProcessorsPage(session, new ProcessorsServices(runner, _secrets, new PromptFiles(_paths.PromptsDirectory), UiTimers.Instance, _log));
         var models = new ModelsPage(session, new ModelsServices(
             _paths, Catalog.BuiltIn, _modelDownloads ?? ModelDownloads.None,
-            () => _hardware ??= Task.Run(_probeHardware), () => HardwareProbe.FreeDiskBytes(_paths),
+            Hardware, () => HardwareProbe.FreeDiskBytes(_paths),
             GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, Environment.ProcessorCount, _measurements, Supervisor, UiTimers.Instance,
             wait => Task.Delay(wait), TimeProvider.System, _log));
         var history = new HistoryPage(session, _paths.HistoryFile, new WindowClipboard(() => _settingsWindow), runner, _log);
@@ -279,6 +293,66 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         _settingsWindow = window;
         settings.Open(page);
         window.Show();
+    }
+
+    /// <summary>
+    /// Opens the setup wizard (spec 8), or brings it forward. One walk lives as long as the app: a closed wizard reopens
+    /// at the same step with the same answers, and Finish ends the walk.
+    /// </summary>
+    public void ShowSetup()
+    {
+        if (!Dispatcher.UIThread.CheckAccess())
+        {
+            Dispatcher.UIThread.Post(ShowSetup);
+            return;
+        }
+
+        if (_setupWindow is not null)
+        {
+            _setupWindow.Activate();
+            return;
+        }
+
+        // An open Settings window reloads from the file the wizard writes; its pending edits are saved first.
+        _settings?.Session.Flush();
+        var setup = _setup ??= CreateSetup();
+        var window = new SetupWindow { DataContext = setup };
+        window.Closed += (_, _) =>
+        {
+            _setupWindow = null;
+            setup.OnClosed();
+        };
+        _setupWindow = window;
+        window.Show();
+        setup.OnOpened();
+    }
+
+    private SetupViewModel CreateSetup()
+    {
+        var secrets = _secrets ??= PlatformFactory.CreateSecretStore(_log);
+        var setup = new SetupViewModel(new SetupServices(
+            _paths, _store, Catalog.BuiltIn, _modelDownloads ?? ModelDownloads.None, Hardware, () => HardwareProbe.FreeDiskBytes(_paths),
+            GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, Environment.ProcessorCount, _measurements,
+            new ServerProbe(_serverHttp ??= new HttpClient(), secrets, TimeProvider.System), secrets, _autostart, Environment.ProcessPath,
+            SetupTray(), UiTimers.Instance, TimeProvider.System, _log));
+        setup.Finished += () =>
+        {
+            _setup = null;
+            _setupWindow?.Close();
+        };
+        return setup;
+    }
+
+    /// <summary>The one GPU probe, run once off the UI thread; Settings → Models and the wizard share it (SPEC:147).</summary>
+    private Task<HardwareInfo> Hardware() => _hardware ??= Task.Run(_probeHardware);
+
+    private TrayHint SetupTray()
+    {
+        var desktop = TrayVisibility.ThisDesktop();
+        return new TrayHint(
+            desktop,
+            () => _presenter?.IsAvailable == true ? TrayVisibility.Hidden(desktop, Environment.ProcessPath, _log) : null,
+            desktop == TrayDesktop.Windows ? TrayVisibility.OpenTaskbarSettings : null);
     }
 
     public void Quit() => Dispatcher.UIThread.Post(async () =>
@@ -311,6 +385,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         }
 
         _http?.Dispose();
+        _serverHttp?.Dispose();
         _runner?.Dispose();
         await Supervisor.DisposeAsync().ConfigureAwait(false);
     }

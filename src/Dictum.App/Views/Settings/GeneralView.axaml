@@ -76,6 +76,11 @@
           <Button Content="{x:Static res:Strings.SettingsPastingOpen}" Command="{Binding OpenPastingCommand}" />
         </controls:SettingsRow>
       </StackPanel>
+      <controls:SettingsRow Icon="{DynamicResource icon.setup}"
+                            Label="{x:Static res:Strings.SettingsRunSetup}"
+                            Description="{x:Static res:Strings.SettingsRunSetupHint}">
+        <Button Content="{x:Static res:Strings.SettingsRunSetupButton}" Command="{Binding RunSetupCommand}" />
+      </controls:SettingsRow>
     </StackPanel>
   </ScrollViewer>
 </UserControl>
