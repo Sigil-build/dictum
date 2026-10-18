@@ -25,7 +25,9 @@ case "$rid" in
     rm -f "${out:?}/${name:?}.zip"
     powershell -NoProfile -Command "Add-Type -AssemblyName System.IO.Compression.FileSystem; [IO.Compression.ZipFile]::CreateFromDirectory('$(cygpath -w "$stage")', '$(cygpath -w "$out/$name.zip")', 'Optimal', \$true)"
     rm -rf "${out:?}/msi" "${out:?}/${name:?}.msi"
-    dotnet build "$root/packaging/windows/Dictum.Installer.wixproj" -c Release \
+    # --no-incremental: WiX's incremental build ignores the staged files, so a re-run would keep the old binaries
+    # (phase 4 PR 4b final review C1).
+    dotnet build "$root/packaging/windows/Dictum.Installer.wixproj" -c Release --no-incremental \
       -p:StageDir="$(cygpath -w "$stage")" -o "$(cygpath -w "$out/msi")"
     cp "$out/msi/dictum.msi" "$out/$name.msi"
     ;;

@@ -5,7 +5,8 @@
 #>
 param(
     [Parameter(Mandatory)] [string] $Msi,
-    [Parameter(Mandatory)] [string] $Version
+    [Parameter(Mandatory)] [string] $Version,
+    [Parameter(Mandatory)] [string] $Stage
 )
 $ErrorActionPreference = 'Stop'
 $failed = $false
@@ -15,6 +16,7 @@ function Check([bool] $ok, [string] $what) {
 
 if (-not (Test-Path $Msi)) { Write-Output "FAIL: no MSI at $Msi"; exit 1 }
 $Msi = (Resolve-Path $Msi).Path
+$Stage = (Resolve-Path $Stage).Path
 $installer = New-Object -ComObject WindowsInstaller.Installer
 function Call($target, [string] $name, [object[]] $arguments) { $target.GetType().InvokeMember($name, 'InvokeMethod', $null, $target, $arguments) }
 function Get($target, [string] $name, [object[]] $arguments) { $target.GetType().InvokeMember($name, 'GetProperty', $null, $target, $arguments) }
@@ -63,6 +65,20 @@ try {
         Check (Test-Path (Join-Path $folder $file)) "the MSI installs $file under %LOCALAPPDATA%\Programs\Dictum"
     }
     Check (-not (Get-ChildItem -Recurse $folder -Include '*.pdb', '*.dbg')) 'no debug symbols in the MSI'
+
+    # The MSI holds exactly the staged files, byte for byte: a stale incremental build or a missing file fails here
+    # (phase 4 PR 4b final review C1, I3).
+    function Hashes([string] $root) {
+        $map = @{}
+        Get-ChildItem -Recurse -File $root | ForEach-Object { $map[$_.FullName.Substring($root.Length).TrimStart([char]92)] = (Get-FileHash $_.FullName -Algorithm SHA256).Hash }
+        return $map
+    }
+    $want = Hashes $Stage
+    $got = Hashes $folder
+    $missing = @($want.Keys | Where-Object { -not $got.ContainsKey($_) })
+    $extra = @($got.Keys | Where-Object { -not $want.ContainsKey($_) })
+    $different = @($want.Keys | Where-Object { $got.ContainsKey($_) -and $got[$_] -ne $want[$_] })
+    Check ($missing.Count -eq 0 -and $extra.Count -eq 0 -and $different.Count -eq 0) "the MSI holds exactly the $($want.Count) staged files, byte for byte (missing: $($missing -join ', '); extra: $($extra -join ', '); different: $($different -join ', '))"
 }
 finally {
     if (Test-Path $target) { Remove-Item -Recurse -Force $target }

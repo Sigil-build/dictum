@@ -46,6 +46,6 @@ pass "portable archive ($archive)"
 
 if [ "$rid" = win-x64 ]; then
   msi="$out/$name.msi"
-  powershell -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$root/packaging/windows/check-msi.ps1")" -Msi "$(cygpath -w "$msi")" -Version "$version" || fail "check-msi.ps1"
+  powershell -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$root/packaging/windows/check-msi.ps1")" -Msi "$(cygpath -w "$msi")" -Version "$version" -Stage "$(cygpath -w "$stage")" || fail "check-msi.ps1"
   pass "MSI ($msi)"
 fi
