@@ -2,7 +2,7 @@ using Dictum.Core.Configuration;
 using Dictum.Core.Pipeline;
 using Dictum.Platform.Injection;
 
-namespace Dictum.Host.Daemon;
+namespace Dictum.Host;
 
 /// <summary>Sends the pipeline result to the platform injector with a profile's output settings.</summary>
 public sealed class InjectorOutput(ITextInjector injector, InjectionOptions options) : ITextOutput

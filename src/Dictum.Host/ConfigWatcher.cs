@@ -1,7 +1,7 @@
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 
-namespace Dictum.Host.Daemon;
+namespace Dictum.Host;
 
 /// <summary>
 /// Reloads config.json when it changes on disk. An invalid file is reported and ignored, so the

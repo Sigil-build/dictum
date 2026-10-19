@@ -16,7 +16,6 @@ using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Host;
-using Dictum.Host.Daemon;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
 using Dictum.Platform.Linux;
