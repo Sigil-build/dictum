@@ -28,6 +28,10 @@ public partial class CatalogTests
     }
 
     [Fact]
+    public void TheConfigsDefaultVadModelIsTheCatalogsVadFile() =>
+        Assert.Equal(SetupPlanner.VadId, BuiltIn.ForFile(WhisperLocalSttConfig.DefaultVadModel)?.Id);
+
+    [Fact]
     public void IdsAndFilesAreUnique()
     {
         Assert.Equal(BuiltIn.Entries.Count, BuiltIn.Entries.Select(e => e.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count());

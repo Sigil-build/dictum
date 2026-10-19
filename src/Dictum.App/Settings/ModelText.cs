@@ -10,9 +10,6 @@ public static class ModelText
     private const string MediumModel = "whisper-medium-q8";
     private const string TinyEnglishModel = "whisper-tiny-en";
 
-    /// <summary>The catalog's language entry for a multilingual model.</summary>
-    private const string AnyLanguage = "*";
-
     /// <summary>The source shows the URL's host, then its owner and repository.</summary>
     private const int RepositorySegments = 2;
 
@@ -40,7 +37,7 @@ public static class ModelText
 
     /// <summary>"99 languages" for a multilingual model, otherwise the languages' own names.</summary>
     public static string Languages(CatalogEntry entry) =>
-        entry.Languages.Contains(AnyLanguage) ? Strings.SettingsModelsAllLanguages : string.Join(", ", entry.Languages.Select(WhisperLanguages.Name));
+        entry.Languages.Contains(CatalogEntry.AnyLanguage) ? Strings.SettingsModelsAllLanguages : string.Join(", ", entry.Languages.Select(WhisperLanguages.Name));
 
     /// <summary>"874 MB · MIT licence · huggingface.co/ggerganov/whisper.cpp · 99 languages".</summary>
     public static string Meta(CatalogEntry entry) =>
