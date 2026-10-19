@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Platform;
 using Avalonia.Threading;
@@ -8,26 +7,22 @@ using Dictum.App.Settings;
 using Dictum.App.Tray;
 using Dictum.App.ViewModels;
 using Dictum.App.ViewModels.Settings;
-using Dictum.App.ViewModels.Setup;
 using Dictum.App.Views.Settings;
-using Dictum.App.Views.Setup;
 using Dictum.Audio;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
-using Dictum.Core.Http;
 using Dictum.Host;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
-using Dictum.Platform.Linux;
-using Dictum.Processing;
 using Dictum.Setup;
 
 namespace Dictum.App.Shell;
 
 /// <summary>
 /// The composition root of dictum-gui: the daemon supervisor, the tray, the overlay, the config watch, the download
-/// queue and the Settings window, wired by hand. <see cref="Start"/> runs on the UI thread; supervisor and tray events are posted to it.
+/// queue, the Settings window and the setup wizard, wired by hand. <see cref="Start"/> runs on the UI thread; supervisor
+/// and tray events are posted to it.
 /// </summary>
 public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
 {
@@ -39,26 +34,22 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     private readonly AppPaths _paths;
     private readonly DictumLog _log;
     private readonly ConfigStore _store;
-    private readonly Func<Application, Func<bool>, Task<ITrayPresenter?>> _createTray;
     private readonly TrayController _tray;
     private readonly IOverlayDesktop _overlayDesktop;
-    private readonly IAutostart? _autostart;
+    private readonly DesktopIntegration _desktop;
     private readonly ISoundPlayer _sounds;
     private readonly Func<HardwareInfo> _probeHardware;
-    private readonly SpeedMeasurements _measurements = new();
+    private readonly Lazy<ISecretStore> _secrets;
+    private readonly Lazy<ProcessorRunner> _runner;
+    private readonly ShellServices _services;
+    private readonly SetupCoordinator _setup;
     private SettingsViewModel? _settings;
     private SettingsWindow? _settingsWindow;
-    private ISecretStore? _secrets;
-    private ProcessorRunner? _runner;
-    private ITrayPresenter? _presenter;
     private ConfigWatcher? _watcher;
     private HttpClient? _http;
     private ModelDownloads? _downloads;
     private IModelDownloads? _modelDownloads;
     private Task<HardwareInfo>? _hardware;
-    private SetupViewModel? _setup;
-    private SetupWindow? _setupWindow;
-    private HttpClient? _serverHttp;
     private DispatcherTimer? _tick;
     private Action<int>? _shutdown;
     private volatile bool _highContrast;
@@ -66,7 +57,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     private volatile bool _showWhenStarted;
     private volatile bool _quitWhenStarted;
 
-    /// <param name="createTray">The OS tray; <see cref="CreateTrayAsync"/> in the app, a fake in tests.</param>
+    /// <param name="createTray">The OS tray; <see cref="DesktopIntegration.CreateTrayAsync"/> in the app, a fake in tests.</param>
     /// <param name="overlayDesktop">The overlay's OS side; <see cref="OverlayDesktop.None"/> when left out (tests).</param>
     /// <param name="autostart">The OS login item for Settings → General; none when left out, so tests never reach the real one.</param>
     /// <param name="probeHardware">The GPU probe for Settings → Models; the real Vulkan one when left out.</param>
@@ -84,17 +75,23 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         _paths = paths;
         _log = log;
         _store = store;
-        _createTray = createTray;
         var logFile = log.FilePath ?? Path.Combine(paths.LogsDirectory, AppPaths.GuiLogName);
         Supervisor = new DaemonSupervisor(daemonSocket, () => store.Exists, launcher, log, logFile);
         Status = new StatusViewModel(store.Path, logFile, Supervisor.Restart);
         _tray = new TrayController(new TrayState(TimeProvider.System), this, TimeProvider.System);
         _overlayDesktop = overlayDesktop ?? OverlayDesktop.None;
         Overlay = new OverlayController(() => new OverlayWindow(_overlayDesktop.Prepare), _overlayDesktop, () => _highContrast, TimeProvider.System, log);
-        _autostart = autostart;
+        _desktop = new DesktopIntegration(createTray, log);
         _probeHardware = probeHardware ?? (() => HardwareProbe.Detect(paths));
         _sounds = DictumHost.CreateSoundPlayer(log);
         Frames = new FrameHub(TimeProvider.System);
+        _secrets = new Lazy<ISecretStore>(() => PlatformFactory.CreateSecretStore(log));
+        _runner = new Lazy<ProcessorRunner>(() => new ProcessorRunner(paths, _secrets.Value, log));
+        _services = new ShellServices(
+            paths, Catalog.BuiltIn, Supervisor, Status, Frames, UiTimers.Instance, autostart, OwnExecutable(), _sounds,
+            () => _secrets.Value, () => _runner.Value, () => _modelDownloads ?? IModelDownloads.None, Hardware, FreeDiskBytes,
+            new SpeedMeasurements(), _desktop, wait => Task.Delay(wait), TimeProvider.System, log);
+        _setup = new SetupCoordinator(_services, store, Supervisor.Restart, Supervisor.ConfigSaved, () => _settings?.Session.Flush());
     }
 
     public DaemonSupervisor Supervisor { get; }
@@ -105,22 +102,6 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
 
     /// <summary>The daemon's newest frame, for the Settings meter; the overlay keeps its own.</summary>
     public FrameHub Frames { get; }
-
-    /// <summary>The tray for this OS: Avalonia's on Windows, our StatusNotifierItem on Linux, none elsewhere.</summary>
-    public static async Task<ITrayPresenter?> CreateTrayAsync(Application app, Func<bool> highContrast, AppPaths paths, ILog log)
-    {
-        if (OperatingSystem.IsWindows())
-        {
-            return new WindowsTrayPresenter(app, highContrast);
-        }
-
-        if (OperatingSystem.IsLinux())
-        {
-            return await SniTrayPresenter.TryStartAsync(paths.TrayIconsDirectory, highContrast, log);
-        }
-
-        return null;
-    }
 
     /// <summary>A later launch asked for Settings (from the single-instance socket, on a server thread).</summary>
     public void OnCommand(string command)
@@ -173,14 +154,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         _ = StartTrayAsync(app);
         Supervisor.Start();
         _started = true;
-
-        // A walk kept on disk mid-download: with no config it opens below; over a config it waits in the background
-        // and comes back when its files are in (FilesReady), or when the setup is opened again.
-        if (_store.Exists && File.Exists(_paths.SetupFile))
-        {
-            _setup = CreateSetup();
-            _setup.OnClosed();
-        }
+        _setup.ResumeKept();
 
         // No config yet: the wizard opens on its own; ShowSettings sends every Settings entry there too.
         if (_showWhenStarted || !_store.Exists)
@@ -202,7 +176,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             settings.ColorValuesChanged += (_, _) => Dispatcher.UIThread.Post(() =>
             {
                 _highContrast = IsHighContrast(app);
-                _presenter?.Refresh();
+                _desktop.Tray?.Refresh();
             });
         }
     }
@@ -216,7 +190,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             _tray.OnLink(link);
             Overlay.OnLink(link);
             _settings?.OnLink(link);
-            _setup?.OnLink(link);
+            _setup.Walk?.OnLink(link);
         });
         Supervisor.EventReceived += message =>
         {
@@ -232,7 +206,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             {
                 _tray.OnEvent(message);
                 Overlay.OnEvent(message);
-                _setup?.OnEvent(message);
+                _setup.Walk?.OnEvent(message);
             });
         };
     }
@@ -301,12 +275,15 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             return;
         }
 
-        var settings = CreateSettings();
+        var session = new SettingsSession(_store, UiTimers.Instance, _log);
+        session.Load();
+        var settings = new SettingsViewModel(session, SettingsPages.Create(session, _services, new WindowClipboard(() => _settingsWindow), ShowSetup));
         var window = new SettingsWindow { DataContext = settings };
         window.Closed += (_, _) =>
         {
             _settings = null;
             _settingsWindow = null;
+            settings.Dispose();
         };
         _settings = settings;
         _settingsWindow = window;
@@ -314,109 +291,11 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         window.Show();
     }
 
-    /// <summary>The Settings pages over a fresh session of the config file.</summary>
-    private SettingsViewModel CreateSettings()
-    {
-        var session = new SettingsSession(_store, UiTimers.Instance, _log);
-        session.Load();
-        var general = new GeneralPage(session, new GeneralServices(
-            Supervisor, Frames, UiTimers.Instance, _autostart, OwnExecutable(), _sounds, TimeProvider.System, _log));
-        general.SetupRequested += ShowSetup;
-        var profiles = new ProfilesPage(session, Supervisor);
-        var providers = new SpeechProvidersPage(session, new SpeechServices(
-            Supervisor, Frames, UiTimers.Instance, Secrets,
-            current => WhisperModels.Choices(_paths, Catalog.BuiltIn, current), model => WhisperModels.IsPresent(_paths, model),
-            wait => Task.Delay(wait), TimeProvider.System, _log));
-        var system = new SystemPage(new SystemServices(
-            Supervisor, Status, () => OverlayRow(session), TrayRow, UiTimers.Instance, TimeProvider.System, DesktopName()));
-        var runner = _runner ??= new ProcessorRunner(_paths, Secrets, _log);
-        var processors = new ProcessorsPage(session, new ProcessorsServices(runner, Secrets, new PromptLibrary(_paths.PromptsDirectory), UiTimers.Instance, _log));
-        var models = new ModelsPage(session, new ModelsServices(
-            _paths, Catalog.BuiltIn, _modelDownloads ?? IModelDownloads.None,
-            Hardware, FreeDiskBytes,
-            GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, Environment.ProcessorCount, _measurements, Supervisor, UiTimers.Instance,
-            wait => Task.Delay(wait), TimeProvider.System, _log));
-        var history = new HistoryPage(session, _paths.HistoryFile, new WindowClipboard(() => _settingsWindow), runner, _log);
-        return new SettingsViewModel(session,
-        [
-            (SettingsPageKey.General, general),
-            (SettingsPageKey.Profiles, profiles),
-            (SettingsPageKey.SpeechProviders, providers),
-            (SettingsPageKey.Processors, processors),
-            (SettingsPageKey.Models, models),
-            (SettingsPageKey.System, system),
-            (SettingsPageKey.History, history),
-        ]);
-    }
-
     /// <summary>
     /// Opens the setup wizard, or brings it forward. One walk lives as long as the app: a closed wizard reopens
     /// at the same step with the same answers, and Finish ends the walk.
     /// </summary>
-    public void ShowSetup()
-    {
-        if (!Dispatcher.UIThread.CheckAccess())
-        {
-            Dispatcher.UIThread.Post(ShowSetup);
-            return;
-        }
-
-        if (_setupWindow is not null)
-        {
-            _setupWindow.Activate();
-            return;
-        }
-
-        // An open Settings window reloads from the file the wizard writes; its pending edits are saved first.
-        _settings?.Session.Flush();
-        if (_setup is { CanResume: false })
-        {
-            _setup = null;
-        }
-
-        var setup = _setup ??= CreateSetup();
-        var window = new SetupWindow { DataContext = setup };
-        window.Closed += (_, _) =>
-        {
-            _setupWindow = null;
-            setup.OnClosed();
-        };
-        _setupWindow = window;
-        window.Show();
-        setup.OnOpened();
-    }
-
-    private SetupViewModel CreateSetup()
-    {
-        var secrets = Secrets;
-        var setup = new SetupViewModel(new SetupServices(
-            _paths, _store, Catalog.BuiltIn, _modelDownloads ?? IModelDownloads.None, Hardware, FreeDiskBytes,
-            GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, Environment.ProcessorCount, _measurements,
-            new ServerProbe(_serverHttp ??= ProviderHttp.CreateClient(), secrets, TimeProvider.System), secrets, _autostart, OwnExecutable(),
-            SetupTray(), Supervisor, Supervisor.Restart, UiTimers.Instance, TimeProvider.System, _log),
-            SavedSetupFile.Load(_paths, _log));
-        setup.Finished += () =>
-        {
-            _setup = null;
-            _setupWindow?.Close();
-        };
-
-        // Closed on step 7: when the files are in, the walk comes back to save.
-        setup.FilesReady += () =>
-        {
-            if (ReferenceEquals(_setup, setup))
-            {
-                ShowSetup();
-            }
-        };
-
-        // The daemon starts at once after the save, not at the supervisor's next poll.
-        setup.Saved += Supervisor.ConfigSaved;
-        return setup;
-    }
-
-    /// <summary>The OS secret store, opened when first needed.</summary>
-    private ISecretStore Secrets => _secrets ??= PlatformFactory.CreateSecretStore(_log);
+    public void ShowSetup() => _setup.Show();
 
     /// <summary>The one GPU probe, run once off the UI thread; Settings → Models and the wizard share it.</summary>
     private Task<HardwareInfo> Hardware() => _hardware ??= Task.Run(_probeHardware);
@@ -425,15 +304,6 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
 
     /// <summary>What a login item starts: the AppImage when Dictum runs from one, this executable otherwise.</summary>
     private static string? OwnExecutable() => InstallLocation.AppImage ?? Environment.ProcessPath;
-
-    private TrayHint SetupTray()
-    {
-        var desktop = TrayVisibility.ThisDesktop();
-        return new TrayHint(
-            desktop,
-            () => _presenter?.IsAvailable == true ? TrayVisibility.Hidden(desktop, Environment.ProcessPath, _log) : null,
-            desktop == TrayDesktop.Windows ? TrayVisibility.OpenTaskbarSettings : null);
-    }
 
     public void Quit() => Dispatcher.UIThread.Post(async () =>
     {
@@ -454,52 +324,40 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     {
         _tick?.Stop();
         _watcher?.Dispose();
+        _settings?.Dispose();
         (_overlayDesktop as IDisposable)?.Dispose();
-        if (_presenter is not null)
-        {
-            await _presenter.DisposeAsync().ConfigureAwait(false);
-        }
-
+        await _desktop.DisposeAsync().ConfigureAwait(false);
         if (_downloads is not null)
         {
             await _downloads.DisposeAsync().ConfigureAwait(false);
         }
 
         _http?.Dispose();
-        _serverHttp?.Dispose();
-        _runner?.Dispose();
+        _setup.Dispose();
+        if (_runner.IsValueCreated)
+        {
+            _runner.Value.Dispose();
+        }
+
+        (_sounds as IDisposable)?.Dispose();
         await Supervisor.DisposeAsync().ConfigureAwait(false);
     }
 
     internal static bool IsHighContrast(Application app) =>
         app.PlatformSettings?.GetColorValues().ContrastPreference == ColorContrastPreference.High;
 
-    private static SystemRow OverlayRow(SettingsSession session) =>
-        OverlayAvailability.Row(OverlayAvailability.ThisDesktop(Environment.GetEnvironmentVariable), session.Config.General.Overlay.Enabled);
-
-    private SystemRow TrayRow()
-    {
-        var desktop = TrayVisibility.ThisDesktop();
-        var available = _presenter?.IsAvailable == true;
-        var hidden = available ? TrayVisibility.Hidden(desktop, Environment.ProcessPath, _log) : null;
-        return TrayVisibility.Row(desktop, available, hidden, OperatingSystem.IsWindows() ? TrayVisibility.OpenTaskbarSettings : null);
-    }
-
-    private static string DesktopName() => OperatingSystem.IsLinux() ? SessionInfo.Detect().ToString() : RuntimeInformation.OSDescription;
-
     private async Task StartTrayAsync(Application app)
     {
         try
         {
             // Stays on the UI thread: the presenter is attached and shown from here.
-            var presenter = await _createTray(app, () => _highContrast);
+            var presenter = await _desktop.StartTrayAsync(app, () => _highContrast);
             if (presenter is null)
             {
                 NoTray();
                 return;
             }
 
-            _presenter = presenter;
             presenter.AvailabilityChanged += () => Dispatcher.UIThread.Post(() =>
             {
                 if (presenter.IsAvailable)

@@ -20,9 +20,10 @@ public enum SettingsPageKey
 
 /// <summary>
 /// The Settings window: the rail's pages and the page on screen (a sub-page keeps its parent selected in the rail),
-/// and a banner when the pages cannot edit or a save failed. Closing hides the page and saves pending edits.
+/// and a banner when the pages cannot edit or a save failed. Closing hides the page and saves pending edits; disposing
+/// ends the pages' timers and runs.
 /// </summary>
-public sealed partial class SettingsViewModel : ViewModelBase
+public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
 {
     /// <summary>The informational version ends in "+commit"; the window shows the version before it.</summary>
     private const char BuildMetadataSeparator = '+';
@@ -79,6 +80,15 @@ public sealed partial class SettingsViewModel : ViewModelBase
     {
         Show(null);
         Session.Flush();
+    }
+
+    /// <summary>The window is gone: the pages that own a timer or a run in flight end them.</summary>
+    public void Dispose()
+    {
+        foreach (var page in Pages.OfType<IDisposable>())
+        {
+            page.Dispose();
+        }
     }
 
     public void OnLink(DaemonLink link)

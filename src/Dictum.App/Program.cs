@@ -53,7 +53,7 @@ internal static class Program
         var daemonSocket = IpcEndpoint.SocketPath(paths);
         var appSocket = SingleInstance.SocketPathFor(daemonSocket);
         var shell = new DesktopShell(paths, log, store, daemonSocket, DaemonProcessLauncher.NextToApp(log),
-            (app, highContrast) => DesktopShell.CreateTrayAsync(app, highContrast, paths, log),
+            (app, highContrast) => DesktopIntegration.CreateTrayAsync(app, highContrast, paths, log),
             OverlayDesktop.ForThisDesktop(log), PlatformFactory.CreateAutostart());
 
         // No synchronisation context exists yet, so blocking here cannot deadlock.

@@ -179,6 +179,30 @@ public sealed class SettingsViewModelTests : IDisposable
         Assert.Same(link, child.Last);
     }
 
+    private sealed class OwningPage : SettingsPage, IDisposable
+    {
+        public override string Title => "History";
+
+        public bool Disposed { get; private set; }
+
+        public void Dispose() => Disposed = true;
+    }
+
+    [Fact]
+    public void DisposingTheWindowsModelDisposesThePagesThatOwnSomething()
+    {
+        var store = new ConfigStore(Path.Combine(_dir, "config.json"), NullLog.Instance);
+        store.Save(new DictumConfig());
+        var session = new SettingsSession(store, _timers, NullLog.Instance);
+        session.Load();
+        var history = new OwningPage();
+        var model = new SettingsViewModel(session, [(SettingsPageKey.General, new Page("General")), (SettingsPageKey.History, history)]);
+
+        model.Dispose();
+
+        Assert.True(history.Disposed);
+    }
+
     private sealed class LinkPage : SettingsPage
     {
         public override string Title => "Overlay";

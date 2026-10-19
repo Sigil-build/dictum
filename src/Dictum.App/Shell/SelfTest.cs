@@ -12,14 +12,11 @@ using Dictum.App.Settings;
 using Dictum.App.Tray;
 using Dictum.App.ViewModels;
 using Dictum.App.ViewModels.Settings;
-using Dictum.App.ViewModels.Setup;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
-using Dictum.Core.Http;
 using Dictum.Host;
 using Dictum.Host.Ipc;
-using Dictum.Processing;
 using Dictum.Setup;
 
 namespace Dictum.App.Shell;
@@ -170,7 +167,10 @@ public static class SelfTest
         checks.Add("overlay", blank.Count == 0, blank.Count == 0 ? $"{scenes} scenes" : $"blank: {string.Join(", ", blank)}");
     }
 
-    /// <summary>Builds each Settings page's view from compiled XAML; a trimmed type or binding throws here.</summary>
+    /// <summary>
+    /// Builds each Settings page's view, and the wizard's, from compiled XAML, with the pages wired as the shell wires
+    /// them; a trimmed type or binding throws here.
+    /// </summary>
     private static bool SettingsViews(out string detail)
     {
         var folder = Path.Combine(Path.GetTempPath(), $"dictum-self-test-settings-{Environment.ProcessId}");
@@ -182,34 +182,21 @@ public static class SelfTest
             var session = new SettingsSession(store, UiTimers.Instance, NullLog.Instance);
             session.Load();
             var offline = new Offline();
-            using var runner = new ProcessorRunner(paths, new UnavailableSecretStore(), NullLog.Instance);
-            var general = new GeneralPage(session, new GeneralServices(offline, new FrameHub(TimeProvider.System), UiTimers.Instance,
-                null, null, DictumHost.CreateSoundPlayer(NullLog.Instance), TimeProvider.System, NullLog.Instance));
-            SettingsPage[] pages =
-            [
-                general,
-                general.Overlay,
-                general.Pasting,
-                new ProfilesPage(session, offline),
-                new SpeechProvidersPage(session, new SpeechServices(offline, new FrameHub(TimeProvider.System), UiTimers.Instance,
-                    new UnavailableSecretStore(), _ => [], _ => false, _ => Task.CompletedTask, TimeProvider.System, NullLog.Instance)),
-                new ProcessorsPage(session, new ProcessorsServices(runner, new UnavailableSecretStore(), new PromptLibrary(paths.PromptsDirectory),
-                    UiTimers.Instance, NullLog.Instance)),
-                new ModelsPage(session, new ModelsServices(paths, Catalog.BuiltIn, IModelDownloads.None,
-                    () => Task.FromResult(new HardwareInfo(null, 0)), () => long.MaxValue, 0, 1, new SpeedMeasurements(), offline, UiTimers.Instance,
-                    _ => Task.CompletedTask, TimeProvider.System, NullLog.Instance)),
-                new SystemPage(new SystemServices(offline, new StatusViewModel(paths.ConfigFile, AppPaths.GuiLogName, () => { }),
-                    () => OverlayAvailability.Row(OverlayHost.Windows, true), () => TrayVisibility.Row(TrayDesktop.Other, true, null, null),
-                    UiTimers.Instance, TimeProvider.System, "self-test")),
-                new HistoryPage(session, paths.HistoryFile, new WindowClipboard(() => null), runner, NullLog.Instance),
-            ];
+            var secrets = new UnavailableSecretStore();
+            using var runner = new ProcessorRunner(paths, secrets, NullLog.Instance);
+            var sounds = DictumHost.CreateSoundPlayer(NullLog.Instance);
+            using var ownedSounds = sounds as IDisposable;
+            var services = new ShellServices(
+                paths, Catalog.BuiltIn, offline, new StatusViewModel(paths.ConfigFile, AppPaths.GuiLogName, () => { }), new FrameHub(TimeProvider.System),
+                UiTimers.Instance, null, null, sounds, () => secrets, () => runner, () => IModelDownloads.None,
+                () => Task.FromResult(new HardwareInfo(null, 0)), () => long.MaxValue, new SpeedMeasurements(),
+                new DesktopIntegration((_, _) => Task.FromResult<ITrayPresenter?>(null), NullLog.Instance),
+                _ => Task.CompletedTask, TimeProvider.System, NullLog.Instance);
+            using var settings = new SettingsViewModel(session, SettingsPages.Create(session, services, new WindowClipboard(() => null), () => { }));
+            var general = settings.Pages.OfType<GeneralPage>().Single();
+            using var setup = new SetupCoordinator(services, store, () => { }, () => { }, () => { });
+            ViewModelBase[] models = [.. settings.Pages, general.Overlay, general.Pasting, setup.Create()];
             var locator = new ViewLocator();
-            using var http = ProviderHttp.CreateClient();
-            var setup = new SetupViewModel(new SetupServices(paths, store, Catalog.BuiltIn, IModelDownloads.None,
-                () => Task.FromResult(new HardwareInfo(null, 0)), () => long.MaxValue, 0, 1, new SpeedMeasurements(),
-                new ServerProbe(http, new UnavailableSecretStore(), TimeProvider.System), new UnavailableSecretStore(), null, null,
-                new TrayHint(TrayDesktop.Other, () => null, null), offline, () => { }, UiTimers.Instance, TimeProvider.System, NullLog.Instance));
-            ViewModelBase[] models = [.. pages, setup];
             var built = models.Select(model => locator.Build(model)).Where(view => view is UserControl).ToList();
             detail = $"{built.Count} of {models.Length} views";
             return built.Count == models.Length;

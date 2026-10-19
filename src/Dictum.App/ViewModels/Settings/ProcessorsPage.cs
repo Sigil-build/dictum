@@ -22,7 +22,7 @@ public sealed record ProcessorItem(string Id, string Caption)
 /// <see cref="LlmEditor"/>; replace rules open <see cref="RulesEditor"/>. A processor can be removed once no profile's
 /// chain uses it, together with its stored key.
 /// </summary>
-public sealed partial class ProcessorsPage : SettingsPage
+public sealed partial class ProcessorsPage : SettingsPage, IDisposable
 {
     /// <summary>llama-server answers to any model name.</summary>
     private const string DefaultModel = "local";
@@ -76,6 +76,8 @@ public sealed partial class ProcessorsPage : SettingsPage
     public override void OnShown() => Llm.OnShown();
 
     public override void OnHidden() => Llm.OnHidden();
+
+    public void Dispose() => Llm.Dispose();
 
     partial void OnSelectedChanged(ProcessorItem? value)
     {
