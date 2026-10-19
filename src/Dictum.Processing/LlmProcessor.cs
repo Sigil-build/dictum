@@ -50,6 +50,8 @@ public sealed partial class LlmProcessor(
 
     public string Id => id;
 
+    private bool PreservesText => config.PreserveText ?? config.Prompt == "cleanup";
+
     public async Task<string> ProcessAsync(string text, ProcessingContext context, CancellationToken ct)
     {
         try
@@ -75,8 +77,6 @@ public sealed partial class LlmProcessor(
     /// <summary>Room for an answer up to <see cref="MaxGrowthFactor"/> times the input, at about 3 characters per token.</summary>
     public static int MaxTokensFor(string input) =>
         Math.Min(MaxScaledTokens, (int)Math.Ceiling(input.Length / CharsPerToken) * MaxGrowthFactor + TokenHeadroom);
-
-    private bool PreservesText => config.PreserveText ?? config.Prompt == "cleanup";
 
     /// <summary>Why the answer cannot replace the input, or null when it can.</summary>
     private string? Rejection(string input, string answer, string? finishReason)

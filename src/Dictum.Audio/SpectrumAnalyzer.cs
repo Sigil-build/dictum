@@ -14,7 +14,6 @@ public sealed class SpectrumAnalyzer
     /// <summary>Magnitudes at or below this are read as <see cref="FloorDb"/>, which also avoids log10(0).</summary>
     private const double MinMagnitude = 1e-9;
 
-    private readonly int _sampleRate;
     private readonly int _bandCount;
     private readonly int _fftSize;
     private readonly float[] _window;
@@ -23,7 +22,6 @@ public sealed class SpectrumAnalyzer
 
     public SpectrumAnalyzer(int sampleRate, int blockSize, int bandCount = 24)
     {
-        _sampleRate = sampleRate;
         _bandCount = bandCount;
         _fftSize = (int)BitOperations.RoundUpToPowerOf2((uint)Math.Max(blockSize, MinFftSize));
         _buffer = new Complex[_fftSize];
@@ -42,8 +40,6 @@ public sealed class SpectrumAnalyzer
             _bandEdges[b] = Math.Clamp((int)MathF.Round(frequency * _fftSize / sampleRate), 1, _fftSize / 2);
         }
     }
-
-    public int SampleRate => _sampleRate;
 
     public float[] Analyze(ReadOnlySpan<float> block)
     {

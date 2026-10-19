@@ -20,26 +20,7 @@ public static class ConfigValidator
     public static IReadOnlyList<ConfigIssue> Validate(DictumConfig config)
     {
         var issues = new List<ConfigIssue>();
-
-        if (config.General.HistorySize < 0)
-        {
-            Error(issues, "general.historySize", "must be zero or positive");
-        }
-
-        if (config.General.PasteDelayMs is < 0 or > MaxPasteDelayMs)
-        {
-            Error(issues, "general.pasteDelayMs", $"must be between 0 and {MaxPasteDelayMs}");
-        }
-
-        if (config.General.Overlay.Opacity is < MinOverlayOpacity or > MaxOverlayOpacity)
-        {
-            Error(issues, "general.overlay.opacity", string.Create(CultureInfo.InvariantCulture, $"must be between {MinOverlayOpacity} and {MaxOverlayOpacity:0.0}"));
-        }
-
-        if (config.General.UiLanguage is not (null or "en" or "uk"))
-        {
-            Error(issues, "general.uiLanguage", $"'{config.General.UiLanguage}' is not a UI language; use \"en\" or \"uk\", or leave it out to follow the system");
-        }
+        ValidateGeneral(issues, config.General);
 
         foreach (var (id, stt) in config.Stt)
         {
@@ -51,61 +32,11 @@ public static class ConfigValidator
             ValidateProcessor(issues, $"processors.{id}", processor);
         }
 
-        var seen = new HashSet<string>(StringComparer.Ordinal);
-        var hotkeys = new HashSet<Hotkey>();
+        var seenIds = new HashSet<string>(StringComparer.Ordinal);
+        var takenHotkeys = new HashSet<Hotkey>();
         for (var i = 0; i < config.Profiles.Count; i++)
         {
-            var profile = config.Profiles[i];
-            var path = $"profiles[{i}]";
-            if (string.IsNullOrWhiteSpace(profile.Id))
-            {
-                Error(issues, $"{path}.id", "must not be empty");
-            }
-            else if (!seen.Add(profile.Id))
-            {
-                Error(issues, $"{path}.id", $"duplicate profile id '{profile.Id}'");
-            }
-
-            if (!config.Stt.ContainsKey(profile.Stt))
-            {
-                Error(issues, $"{path}.stt", $"unknown STT provider '{profile.Stt}'");
-            }
-
-            foreach (var step in profile.Pipeline.Where(step => !config.Processors.ContainsKey(step)))
-            {
-                Error(issues, $"{path}.pipeline", $"unknown processor '{step}'");
-            }
-
-            if (LanguageList.Parse(profile.Language) is not { } languages)
-            {
-                Error(issues, $"{path}.language", $"'{profile.Language}' is not an ISO 639-1 code, a comma-separated list of codes, or 'auto'");
-            }
-            else
-            {
-                if (languages.Count > 1 && config.Stt.GetValueOrDefault(profile.Stt) is OpenAiCompatibleSttConfig)
-                {
-                    Warning(issues, $"{path}.language", $"'{profile.Stt}' takes a single language, so with a list the server detects any language");
-                }
-
-                if (LanguageList.SimilarWarning(languages) is { } similar)
-                {
-                    Warning(issues, $"{path}.language", similar);
-                }
-            }
-
-            ValidateVocabulary(issues, path, profile);
-
-            if (profile.Hotkey is not null)
-            {
-                if (!Hotkey.TryParse(profile.Hotkey, out var hotkey, out var hotkeyError))
-                {
-                    Error(issues, $"{path}.hotkey", hotkeyError);
-                }
-                else if (!hotkeys.Add(hotkey))
-                {
-                    Error(issues, $"{path}.hotkey", $"{hotkey} is already used by another profile");
-                }
-            }
+            ValidateProfile(issues, $"profiles[{i}]", config.Profiles[i], config, seenIds, takenHotkeys);
         }
 
         return issues;
@@ -113,6 +44,94 @@ public static class ConfigValidator
 
     /// <summary>Null, <c>auto</c>, one language code or a list of codes; see <see cref="LanguageList.Parse"/>.</summary>
     public static bool IsValidLanguage(string? language) => LanguageList.Parse(language) is not null;
+
+    public static bool IsHttpUrl(string? url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
+
+    private static void ValidateGeneral(List<ConfigIssue> issues, GeneralSettings general)
+    {
+        if (general.HistorySize < 0)
+        {
+            Error(issues, "general.historySize", "must be zero or positive");
+        }
+
+        if (general.PasteDelayMs is < 0 or > MaxPasteDelayMs)
+        {
+            Error(issues, "general.pasteDelayMs", $"must be between 0 and {MaxPasteDelayMs}");
+        }
+
+        if (general.Overlay.Opacity is < MinOverlayOpacity or > MaxOverlayOpacity)
+        {
+            Error(issues, "general.overlay.opacity", string.Create(CultureInfo.InvariantCulture, $"must be between {MinOverlayOpacity} and {MaxOverlayOpacity:0.0}"));
+        }
+
+        if (general.UiLanguage is not (null or "en" or "uk"))
+        {
+            Error(issues, "general.uiLanguage", $"'{general.UiLanguage}' is not a UI language; use \"en\" or \"uk\", or leave it out to follow the system");
+        }
+    }
+
+    private static void ValidateProfile(
+        List<ConfigIssue> issues,
+        string path,
+        ProfileConfig profile,
+        DictumConfig config,
+        HashSet<string> seenIds,
+        HashSet<Hotkey> takenHotkeys)
+    {
+        if (string.IsNullOrWhiteSpace(profile.Id))
+        {
+            Error(issues, $"{path}.id", "must not be empty");
+        }
+        else if (!seenIds.Add(profile.Id))
+        {
+            Error(issues, $"{path}.id", $"duplicate profile id '{profile.Id}'");
+        }
+
+        if (!config.Stt.ContainsKey(profile.Stt))
+        {
+            Error(issues, $"{path}.stt", $"unknown STT provider '{profile.Stt}'");
+        }
+
+        foreach (var step in profile.Pipeline.Where(step => !config.Processors.ContainsKey(step)))
+        {
+            Error(issues, $"{path}.pipeline", $"unknown processor '{step}'");
+        }
+
+        ValidateLanguage(issues, path, profile, config.Stt.GetValueOrDefault(profile.Stt));
+        ValidateVocabulary(issues, path, profile);
+
+        if (profile.Hotkey is not null)
+        {
+            if (!Hotkey.TryParse(profile.Hotkey, out var hotkey, out var hotkeyError))
+            {
+                Error(issues, $"{path}.hotkey", hotkeyError);
+            }
+            else if (!takenHotkeys.Add(hotkey))
+            {
+                Error(issues, $"{path}.hotkey", $"{hotkey} is already used by another profile");
+            }
+        }
+    }
+
+    private static void ValidateLanguage(List<ConfigIssue> issues, string path, ProfileConfig profile, SttConfig? stt)
+    {
+        if (LanguageList.Parse(profile.Language) is not { } languages)
+        {
+            Error(issues, $"{path}.language", $"'{profile.Language}' is not an ISO 639-1 code, a comma-separated list of codes, or 'auto'");
+            return;
+        }
+
+        if (languages.Count > 1 && stt is OpenAiCompatibleSttConfig)
+        {
+            Warning(issues, $"{path}.language", $"'{profile.Stt}' takes a single language, so with a list the server detects any language");
+        }
+
+        if (LanguageList.SimilarWarning(languages) is { } similar)
+        {
+            Warning(issues, $"{path}.language", similar);
+        }
+    }
 
     private static void ValidateStt(List<ConfigIssue> issues, string path, SttConfig stt)
     {
@@ -188,10 +207,7 @@ public static class ConfigValidator
         {
             if (rule.Pattern!.Contains('\b', StringComparison.Ordinal))
             {
-                issues.Add(new ConfigIssue(
-                    ConfigIssueSeverity.Warning,
-                    $"{path}.pattern",
-                    @"contains a backspace character: in JSON, ""\b"" is a backspace; write ""\\b"" for a regex word boundary"));
+                Warning(issues, $"{path}.pattern", @"contains a backspace character: in JSON, ""\b"" is a backspace; write ""\\b"" for a regex word boundary");
             }
 
             try
@@ -233,9 +249,6 @@ public static class ConfigValidator
         }
     }
 
-    public static bool IsHttpUrl(string? url) =>
-        Uri.TryCreate(url, UriKind.Absolute, out var uri) && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
-
     private static void ValidateUrl(List<ConfigIssue> issues, string path, string? url)
     {
         if (!IsHttpUrl(url))
@@ -248,10 +261,7 @@ public static class ConfigValidator
     {
         if (!string.IsNullOrEmpty(apiKey) && !ConfigValueResolver.IsReference(apiKey))
         {
-            issues.Add(new ConfigIssue(
-                ConfigIssueSeverity.Warning,
-                path,
-                "API key is stored in plain text; use 'env:VAR' or 'secret:name' instead"));
+            Warning(issues, path, "API key is stored in plain text; use 'env:VAR' or 'secret:name' instead");
         }
     }
 

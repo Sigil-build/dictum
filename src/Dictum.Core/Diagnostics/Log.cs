@@ -141,12 +141,9 @@ public sealed class DictumLog : ILog, IDisposable
 
             _file.WriteLine(line.ToString());
         }
-        catch (IOException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // Logging must never break dictation.
-        }
-        catch (UnauthorizedAccessException)
-        {
         }
     }
 

@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Dictum.Core.Diagnostics;
@@ -79,7 +78,7 @@ public sealed class ConfigStore
     public void Save(DictumConfig config)
     {
         Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path)!);
-        WriteAtomically(Path, Serialize(config));
+        AtomicFile.WriteAllText(Path, Serialize(config));
     }
 
     public static string Serialize(DictumConfig config) =>
@@ -141,7 +140,7 @@ public sealed class ConfigStore
         }
 
         var migrated = root.ToJsonString(MigratedWriteOptions) + "\n";
-        WriteAtomically(Path, migrated);
+        AtomicFile.WriteAllText(Path, migrated);
         _log.Info($"Migrated config to schema version {version}; backup saved to {backup}");
         return migrated;
     }
@@ -162,12 +161,5 @@ public sealed class ConfigStore
     {
         var cut = message.IndexOf(" Path: ", StringComparison.Ordinal);
         return cut > 0 ? message[..cut] : message;
-    }
-
-    private static void WriteAtomically(string path, string content)
-    {
-        var temp = path + ".tmp";
-        File.WriteAllText(temp, content, new UTF8Encoding(false));
-        File.Move(temp, path, overwrite: true);
     }
 }

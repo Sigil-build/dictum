@@ -9,11 +9,17 @@ public static class LanguageList
     /// <summary>The setting that lets the recognizer detect any language.</summary>
     public const string Auto = "auto";
 
-    /// <returns>
+    /// <summary>Languages Whisper often confuses with each other; with two of them in one list it may pick the wrong one.</summary>
+    private static readonly string[][] SimilarGroups =
+    [
+        ["uk", "be", "ru"], ["pl", "cs", "sk"], ["es", "pt", "gl"], ["no", "nn", "da", "sv"], ["hr", "sr", "bs"], ["id", "ms"], ["hi", "ur"],
+    ];
+
+    /// <summary>
     /// No codes for <c>auto</c> (or no setting), one for a fixed language, several to pick from; null when the setting is
     /// not valid. A single code and <c>auto</c> are written exactly; only list entries may have spaces around them, and a
     /// list has no empty entries, no repeats and no <c>auto</c>.
-    /// </returns>
+    /// </summary>
     public static IReadOnlyList<string>? Parse(string? setting)
     {
         if (setting is null or Auto)
@@ -32,12 +38,6 @@ public static class LanguageList
 
     /// <summary>The setting as Dictum writes it: <c>auto</c>, <c>uk</c> or <c>uk, en</c>.</summary>
     public static string Format(IReadOnlyList<string> codes) => codes.Count == 0 ? Auto : string.Join(", ", codes);
-
-    /// <summary>Languages Whisper often confuses with each other; with two of them in one list it may pick the wrong one.</summary>
-    private static readonly string[][] SimilarGroups =
-    [
-        ["uk", "be", "ru"], ["pl", "cs", "sk"], ["es", "pt", "gl"], ["no", "nn", "da", "sv"], ["hr", "sr", "bs"], ["id", "ms"], ["hi", "ur"],
-    ];
 
     /// <summary>Pairs from <paramref name="codes"/> that sound alike to Whisper, in list order.</summary>
     public static IReadOnlyList<(string First, string Second)> SimilarPairs(IReadOnlyList<string> codes)

@@ -11,17 +11,13 @@ internal static unsafe partial class PortAudioNative
     public const int InputOverflowed = -9981;
     public const ulong Float32 = 0x00000001;
 
-    public const int HostApiDirectSound = 1;
-    public const int HostApiMme = 2;
+    // PaHostApiTypeId values.
     public const int HostApiCoreAudio = 5;
     public const int HostApiAlsa = 8;
     public const int HostApiWasapi = 13;
 
     [LibraryImport(Library)]
     public static partial int Pa_Initialize();
-
-    [LibraryImport(Library)]
-    public static partial int Pa_Terminate();
 
     [LibraryImport(Library)]
     public static partial nint Pa_GetErrorText(int errorCode);

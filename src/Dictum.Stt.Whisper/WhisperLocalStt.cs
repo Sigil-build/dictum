@@ -27,6 +27,15 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
     /// <summary>Kept around each speech segment VAD finds, so word edges are not clipped.</summary>
     private static readonly TimeSpan VadSpeechPadding = TimeSpan.FromMilliseconds(200);
 
+    private static readonly Lazy<HashSet<string>> Supported = new(() => [.. WhisperFactory.GetSupportedLanguages()]);
+
+    /// <summary>Country codes people type for a language, with the language code Whisper expects.</summary>
+    private static readonly Dictionary<string, string> CommonSlips = new(StringComparer.Ordinal)
+    {
+        ["ua"] = "uk", ["by"] = "be", ["cz"] = "cs", ["dk"] = "da", ["se"] = "sv", ["gr"] = "el",
+        ["jp"] = "ja", ["kr"] = "ko", ["cn"] = "zh", ["ee"] = "et", ["rs"] = "sr", ["ir"] = "fa",
+    };
+
     private static readonly Lock RuntimeGate = new();
     private static WhisperRuntime? _configuredRuntime;
 
@@ -116,24 +125,13 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
             }
         }
 
-        var builder = Factory().CreateBuilder()
-            .WithThreads(config.Threads > 0 ? config.Threads : Math.Clamp(Environment.ProcessorCount, 1, MaxDefaultThreads));
-        var candidates = !IsEnglishOnly(config.Model) && request is { Language: null, Candidates.Count: > 1 } ? request.Candidates : null;
-        if (candidates is not null && UnknownCandidate(candidates, Supported.Value) is { } unknown)
-        {
-            // Whisper skips a code it does not know, so "ua, en" would silently turn Ukrainian speech into English.
-            throw new ProviderUnavailableException(unknown);
-        }
+        var factory = Factory();
+        var candidates = LanguageCandidates(request);
         var language = IsEnglishOnly(config.Model) ? EnglishCode : request.Language ?? candidates?[0];
-        builder = language is null or LanguageList.Auto ? builder.WithLanguageDetection() : builder.WithLanguage(language);
-        if (!string.IsNullOrWhiteSpace(request.Prompt))
-        {
-            builder = builder.WithPrompt(request.Prompt);
-        }
-
         var text = new StringBuilder();
         string? detected = null;
-        await using (var processor = builder.Build())
+        var processor = CreateBuilder(factory, language, request.Prompt).Build();
+        await using (processor.ConfigureAwait(false))
         {
             if (candidates is not null)
             {
@@ -155,14 +153,26 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
         return new Transcript(text.ToString().Trim(), language is null or LanguageList.Auto ? detected : language, watch.Elapsed, LoadedRuntime, Path.GetFileName(config.Model));
     }
 
-    private static readonly Lazy<HashSet<string>> Supported = new(() => [.. WhisperFactory.GetSupportedLanguages()]);
-
-    /// <summary>Country codes people type for a language, with the language code Whisper expects.</summary>
-    private static readonly Dictionary<string, string> CommonSlips = new(StringComparer.Ordinal)
+    /// <summary>The profile's language list when Whisper is to pick from it, otherwise null.</summary>
+    private IReadOnlyList<string>? LanguageCandidates(SttRequest request)
     {
-        ["ua"] = "uk", ["by"] = "be", ["cz"] = "cs", ["dk"] = "da", ["se"] = "sv", ["gr"] = "el",
-        ["jp"] = "ja", ["kr"] = "ko", ["cn"] = "zh", ["ee"] = "et", ["rs"] = "sr", ["ir"] = "fa",
-    };
+        var candidates = !IsEnglishOnly(config.Model) && request is { Language: null, Candidates.Count: > 1 } ? request.Candidates : null;
+        if (candidates is not null && UnknownCandidate(candidates, Supported.Value) is { } unknown)
+        {
+            // Whisper skips a code it does not know, so "ua, en" would silently turn Ukrainian speech into English.
+            throw new ProviderUnavailableException(unknown);
+        }
+
+        return candidates;
+    }
+
+    private WhisperProcessorBuilder CreateBuilder(WhisperFactory factory, string? language, string? prompt)
+    {
+        var builder = factory.CreateBuilder()
+            .WithThreads(config.Threads > 0 ? config.Threads : Math.Clamp(Environment.ProcessorCount, 1, MaxDefaultThreads));
+        builder = language is null or LanguageList.Auto ? builder.WithLanguageDetection() : builder.WithLanguage(language);
+        return string.IsNullOrWhiteSpace(prompt) ? builder : builder.WithPrompt(prompt);
+    }
 
     /// <summary>A message naming the first candidate Whisper does not know, or null when it knows them all.</summary>
     public static string? UnknownCandidate(IReadOnlyList<string> candidates, IReadOnlyCollection<string> supported)

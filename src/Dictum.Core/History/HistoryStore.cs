@@ -43,9 +43,7 @@ public sealed class HistoryStore(string path, int maxEntries)
             var lines = File.ReadAllLines(Path, Utf8);
             if (lines.Length > maxEntries)
             {
-                var temp = Path + ".tmp";
-                File.WriteAllLines(temp, lines[^maxEntries..], Utf8);
-                File.Move(temp, Path, overwrite: true);
+                AtomicFile.WriteAllLines(Path, lines[^maxEntries..]);
             }
         }
     }
@@ -68,9 +66,7 @@ public sealed class HistoryStore(string path, int maxEntries)
                 return false;
             }
 
-            var temp = Path + ".tmp";
-            File.WriteAllLines(temp, kept, Utf8);
-            File.Move(temp, Path, overwrite: true);
+            AtomicFile.WriteAllLines(Path, kept);
             return true;
         }
     }

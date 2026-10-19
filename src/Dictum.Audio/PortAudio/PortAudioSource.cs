@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.InteropServices;
 using Dictum.Core.Audio;
 using Dictum.Core.Diagnostics;
@@ -27,10 +28,10 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
     private List<float>[] _channels = [];
     private int _sampleRate;
 
-    public event Action<AudioFrame>? FrameCaptured;
-
     /// <summary>False while a level meter runs: frames only, nothing buffered.</summary>
     private volatile bool _keepSamples = true;
+
+    public event Action<AudioFrame>? FrameCaptured;
 
     /// <summary>Input devices of the preferred host API (WASAPI, ALSA or Core Audio), default first.</summary>
     public unsafe IReadOnlyList<AudioDevice> ListDevices()
@@ -49,7 +50,7 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
             }
 
             devices.Add(new AudioDevice(
-                Id: i.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                Id: i.ToString(CultureInfo.InvariantCulture),
                 Name: Marshal.PtrToStringUTF8((nint)info->Name) ?? $"Device {i}",
                 HostApi: HostApiName(info->HostApi),
                 MaxInputChannels: info->MaxInputChannels,
@@ -72,18 +73,14 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
 
             PortAudioLibrary.EnsureInitialized();
             var device = FindDevice(deviceId);
-            var index = int.Parse(device.Id, System.Globalization.CultureInfo.InvariantCulture);
+            var index = int.Parse(device.Id, CultureInfo.InvariantCulture);
             var info = Pa_GetDeviceInfo(index);
             _sampleRate = (int)device.DefaultSampleRate;
+
             // Dictation does not need low latency; a larger buffer avoids dropped chunks on a blocking read.
-            var channels = ChooseChannelCount(index, info->MaxInputChannels, info->DefaultHighInputLatency);
-            var parameters = new StreamParameters
-            {
-                Device = index,
-                ChannelCount = channels,
-                SampleFormat = new CULong((nuint)Float32),
-                SuggestedLatency = info->DefaultHighInputLatency,
-            };
+            var latency = info->DefaultHighInputLatency;
+            var channels = ChooseChannelCount(index, info->MaxInputChannels, latency);
+            var parameters = InputParameters(index, channels, latency);
 
             var framesPerBuffer = _sampleRate / FramesPerSecond;
             nint stream;
@@ -200,28 +197,7 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
                     throw new AudioDeviceException(ErrorText(error));
                 }
 
-                // Channels are kept apart: averaging them can halve the level (voice in one channel only) or cancel it
-                // (phase-inverted second channel on some headsets and microphone arrays).
-                var loudest = -1f;
-                for (var c = 0; c < channels; c++)
-                {
-                    for (var f = 0; f < framesPerBuffer; f++)
-                    {
-                        channel[f] = buffer[(f * channels) + c];
-                    }
-
-                    if (_keepSamples)
-                    {
-                        _channels[c].AddRange(channel);
-                    }
-                    var rms = Levels.Rms(channel);
-                    if (rms > loudest)
-                    {
-                        loudest = rms;
-                        channel.CopyTo(mono, 0);
-                    }
-                }
-
+                SplitChannels(buffer, channels, channel, mono);
                 captured += framesPerBuffer;
                 FrameCaptured?.Invoke(new AudioFrame(
                     Levels.Rms(mono),
@@ -231,6 +207,7 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
         }
         catch (Exception ex)
         {
+            // Nothing above this thread would catch it; StopAsync reports the error to the caller instead.
             log.Error($"Audio capture stopped: {ex.Message}", ex);
             _captureError = ex;
         }
@@ -239,6 +216,35 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
             if (overflows > 0)
             {
                 log.Warn($"Audio input overflowed {overflows} time(s); parts of the recording were lost");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Appends each channel of an interleaved buffer to its own recording and copies the loudest one into
+    /// <paramref name="mono"/>. Channels are kept apart: averaging them can halve the level (voice in one channel only)
+    /// or cancel it (phase-inverted second channel on some headsets and microphone arrays).
+    /// </summary>
+    private void SplitChannels(float[] buffer, int channels, float[] channel, float[] mono)
+    {
+        var loudest = -1f;
+        for (var c = 0; c < channels; c++)
+        {
+            for (var f = 0; f < channel.Length; f++)
+            {
+                channel[f] = buffer[(f * channels) + c];
+            }
+
+            if (_keepSamples)
+            {
+                _channels[c].AddRange(channel);
+            }
+
+            var rms = Levels.Rms(channel);
+            if (rms > loudest)
+            {
+                loudest = rms;
+                channel.CopyTo(mono, 0);
             }
         }
     }
@@ -298,13 +304,7 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
     {
         foreach (var channels in new[] { Math.Min(MaxCaptureChannels, maxChannels), 1, maxChannels })
         {
-            var parameters = new StreamParameters
-            {
-                Device = device,
-                ChannelCount = channels,
-                SampleFormat = new CULong((nuint)Float32),
-                SuggestedLatency = latency,
-            };
+            var parameters = InputParameters(device, channels, latency);
             if (Pa_IsFormatSupported(&parameters, null, _sampleRate) == NoError)
             {
                 return channels;
@@ -313,6 +313,14 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
 
         throw new AudioDeviceException($"The microphone does not support 32-bit float capture at {_sampleRate} Hz.");
     }
+
+    private static StreamParameters InputParameters(int device, int channels, double latency) => new()
+    {
+        Device = device,
+        ChannelCount = channels,
+        SampleFormat = new CULong((nuint)Float32),
+        SuggestedLatency = latency,
+    };
 
     private static int PreferredHostApi()
     {

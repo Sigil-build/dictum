@@ -4,6 +4,7 @@ using Dictum.Core.Audio;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.History;
 using Dictum.Core.Processing;
+using Dictum.Core.Stt;
 using Dictum.Core.Text;
 using Dictum.Core.Vocabulary;
 
@@ -16,8 +17,25 @@ namespace Dictum.Core.Pipeline;
 /// <param name="clipFilter">Applied to every clip before transcription, e.g. silence trimming.</param>
 public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? history, ILog log, Func<AudioClip, AudioClip>? clipFilter = null)
 {
+    /// <summary>A hint shorter than this may well be exactly what was said, so it is never treated as an echo.</summary>
+    public const int MinHintEchoWords = 4;
+
+    /// <summary>Fewer consecutive vocabulary terms can be real speech, so they are never treated as an echo.</summary>
+    private const int MinEchoTerms = 3;
+
     /// <summary>Whisper tends to hallucinate on very short clips, so they are skipped.</summary>
     public static readonly TimeSpan MinimumClip = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>
+    /// Phrases Whisper emits for silence or noise (learned from video subtitles). Only a transcript that is
+    /// nothing but one of these is dropped; real speech containing them is kept.
+    /// </summary>
+    private static readonly HashSet<string> Hallucinations = new(StringComparer.Ordinal)
+    {
+        "дякую за перегляд", "дякуємо за перегляд", "субтитри створено спільнотою",
+        "спасибо за просмотр", "продолжение следует", "субтитры сделал dimatorzok", "субтитры создавал dimatorzok",
+        "thank you for watching", "thanks for watching", "you",
+    };
 
     private readonly Lock _gate = new();
     private readonly Stopwatch _recording = new();
@@ -106,14 +124,12 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
         TimeSpan? recordElapsed,
         CancellationToken ct)
     {
-        var stages = new List<StageTiming>();
+        var progress = new RunProgress();
         if (recordElapsed is { } recorded)
         {
-            stages.Add(new StageTiming(StageTiming.Record, recorded));
+            progress.Stages.Add(new StageTiming(StageTiming.Record, recorded));
         }
 
-        string? rawText = null;
-        var stage = StageTiming.Transcribe;
         try
         {
             ClipRecorded?.Invoke(clip);
@@ -125,64 +141,29 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
             if (clip.Duration < MinimumClip)
             {
                 log.Info($"Clip of {clip.Duration.TotalMilliseconds:F0} ms is too short; skipped");
-                return new DictationResult(profile.Id, profile.Stt.Id, "", "", null, clip.Duration, stages, Skipped: true);
+                return new DictationResult(profile.Id, profile.Stt.Id, "", "", null, clip.Duration, progress.Stages, Skipped: true);
             }
 
-            SetState(PipelineState.Transcribing);
-            var watch = Stopwatch.StartNew();
-            var transcript = await profile.Stt.TranscribeAsync(clip, profile.Request, ct).ConfigureAwait(false);
-            stages.Add(new StageTiming(stage, watch.Elapsed));
-            rawText = NormalizeWhitespace(transcript.Text);
-            if (IsKnownHallucination(rawText))
-            {
-                log.Info($"Dropped a typical silence hallucination: {log.Redact(rawText)}");
-                rawText = string.Empty;
-            }
-            else if (IsHintEcho(rawText, profile.Request.Prompt, profile.Vocabulary))
-            {
-                log.Info($"Dropped an echo of the vocabulary hint: {log.Redact(rawText)}");
-                rawText = string.Empty;
-            }
-            log.Info($"Transcribed {clip.Duration.TotalSeconds:F1} s with {profile.Stt.Id} in {watch.ElapsedMilliseconds} ms: {log.Redact(rawText)}");
-
-            var text = rawText;
+            var (transcript, rawText) = await TranscribeAsync(clip, profile, progress, ct).ConfigureAwait(false);
             var language = transcript.Language ?? profile.Request.Language;
-            if (text.Length > 0 && profile.Processors.Count > 0)
-            {
-                SetState(PipelineState.Processing);
-                var context = new ProcessingContext(profile.Id, language, ActiveApp: null, VocabularyList.Render(profile.Vocabulary));
-                foreach (var processor in profile.Processors)
-                {
-                    stage = StageTiming.Process(processor.Id);
-                    watch.Restart();
-                    text = TextChecks.StripInvisible(await processor.ProcessAsync(text, context, ct).ConfigureAwait(false)).Trim();
-                    stages.Add(new StageTiming(stage, watch.Elapsed));
-                }
-            }
-
+            var text = await RunProcessorsAsync(rawText, language, profile, progress, ct).ConfigureAwait(false);
             if (output is not null && text.Length > 0)
             {
-                stage = StageTiming.Output;
-                SetState(PipelineState.Output);
-                watch.Restart();
-                await output.WriteAsync(text, ct).ConfigureAwait(false);
-                stages.Add(new StageTiming(stage, watch.Elapsed));
+                await WriteOutputAsync(output, text, progress, ct).ConfigureAwait(false);
             }
 
-            var result = new DictationResult(profile.Id, profile.Stt.Id, rawText, text, language, clip.Duration, stages, transcript.Backend, Model: transcript.Model);
+            var result = new DictationResult(profile.Id, profile.Stt.Id, rawText, text, language, clip.Duration, progress.Stages, transcript.Backend, Model: transcript.Model);
             if (text.Length > 0)
             {
-                history?.Append(new HistoryEntry(
-                    DateTimeOffset.Now, profile.Id, profile.Stt.Id, rawText, text, language, clip.Duration.TotalSeconds,
-                    Model: transcript.Model,
-                    Backend: transcript.Backend,
-                    TranscribeMs: (long?)stages.FirstOrDefault(s => s.Stage == StageTiming.Transcribe)?.Elapsed.TotalMilliseconds));
+                history?.Append(ToHistoryEntry(result));
             }
 
             return result;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            var (stage, rawText) = (progress.Stage, progress.RawText);
+
             // The caller reports the failure; keep the details in the log file only.
             log.Write(LogLevel.Debug, $"Dictation failed at {stage}: {ex.Message}", ex);
             if (!string.IsNullOrEmpty(rawText))
@@ -198,6 +179,83 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
         }
     }
 
+    /// <summary>The transcript, and its text with whitespace collapsed and silence hallucinations or hint echoes dropped.</summary>
+    private async Task<(Transcript Transcript, string RawText)> TranscribeAsync(
+        AudioClip clip,
+        DictationProfile profile,
+        RunProgress progress,
+        CancellationToken ct)
+    {
+        SetState(PipelineState.Transcribing);
+        var watch = Stopwatch.StartNew();
+        var transcript = await profile.Stt.TranscribeAsync(clip, profile.Request, ct).ConfigureAwait(false);
+        progress.Stages.Add(new StageTiming(StageTiming.Transcribe, watch.Elapsed));
+        progress.RawText = NormalizeWhitespace(transcript.Text);
+        progress.RawText = DropNoise(progress.RawText, profile);
+        log.Info($"Transcribed {clip.Duration.TotalSeconds:F1} s with {profile.Stt.Id} in {watch.ElapsedMilliseconds} ms: {log.Redact(progress.RawText)}");
+        return (transcript, progress.RawText);
+    }
+
+    /// <summary>The text, or empty when it is only a typical silence hallucination or an echo of the hint.</summary>
+    private string DropNoise(string text, DictationProfile profile)
+    {
+        if (IsKnownHallucination(text))
+        {
+            log.Info($"Dropped a typical silence hallucination: {log.Redact(text)}");
+            return string.Empty;
+        }
+
+        if (IsHintEcho(text, profile.Request.Prompt, profile.Vocabulary))
+        {
+            log.Info($"Dropped an echo of the vocabulary hint: {log.Redact(text)}");
+            return string.Empty;
+        }
+
+        return text;
+    }
+
+    private async Task<string> RunProcessorsAsync(
+        string text,
+        string? language,
+        DictationProfile profile,
+        RunProgress progress,
+        CancellationToken ct)
+    {
+        if (text.Length == 0 || profile.Processors.Count == 0)
+        {
+            return text;
+        }
+
+        SetState(PipelineState.Processing);
+        var context = new ProcessingContext(profile.Id, language, ActiveApp: null, VocabularyList.Render(profile.Vocabulary));
+        var watch = new Stopwatch();
+        foreach (var processor in profile.Processors)
+        {
+            progress.Stage = StageTiming.Process(processor.Id);
+            watch.Restart();
+            text = TextChecks.StripInvisible(await processor.ProcessAsync(text, context, ct).ConfigureAwait(false)).Trim();
+            progress.Stages.Add(new StageTiming(progress.Stage, watch.Elapsed));
+        }
+
+        return text;
+    }
+
+    private async Task WriteOutputAsync(ITextOutput output, string text, RunProgress progress, CancellationToken ct)
+    {
+        progress.Stage = StageTiming.Output;
+        SetState(PipelineState.Output);
+        var watch = Stopwatch.StartNew();
+        await output.WriteAsync(text, ct).ConfigureAwait(false);
+        progress.Stages.Add(new StageTiming(progress.Stage, watch.Elapsed));
+    }
+
+    private static HistoryEntry ToHistoryEntry(DictationResult result) =>
+        new(
+            DateTimeOffset.Now, result.ProfileId, result.Provider, result.RawText, result.Text, result.Language, result.AudioDuration.TotalSeconds,
+            Model: result.Model,
+            Backend: result.Backend,
+            TranscribeMs: (long?)result.Stages.FirstOrDefault(s => s.Stage == StageTiming.Transcribe)?.Elapsed.TotalMilliseconds);
+
     /// <summary>
     /// STT segments may be joined with line breaks; pasted into a terminal a line break is Enter, so the raw
     /// transcript is collapsed to single spaces. Processors (e.g. an email template) may still add line breaks.
@@ -207,25 +265,7 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
     [GeneratedRegex(@"\s+")]
     private static partial Regex WhitespaceRun();
 
-    /// <summary>
-    /// Phrases Whisper emits for silence or noise (learned from video subtitles). Only a transcript that is
-    /// nothing but one of these is dropped; real speech containing them is kept.
-    /// </summary>
-    private static readonly HashSet<string> Hallucinations = new(StringComparer.Ordinal)
-    {
-        "дякую за перегляд", "дякуємо за перегляд", "субтитри створено спільнотою",
-        "спасибо за просмотр", "продолжение следует", "субтитры сделал dimatorzok", "субтитры создавал dimatorzok",
-        "thank you for watching", "thanks for watching", "you",
-    };
-
-    public static bool IsKnownHallucination(string text) =>
-        Hallucinations.Contains(NonLetters().Replace(text.ToLowerInvariant(), " ").Trim());
-
-    /// <summary>A hint shorter than this may well be exactly what was said, so it is never treated as an echo.</summary>
-    public const int MinHintEchoWords = 4;
-
-    /// <summary>Fewer consecutive vocabulary terms can be real speech, so they are never treated as an echo.</summary>
-    private const int MinEchoTerms = 3;
+    public static bool IsKnownHallucination(string text) => Hallucinations.Contains(Words(text));
 
     /// <summary>
     /// With a vocabulary hint, Whisper may echo the hint on near-silence. A transcript that is the hint itself (when the
@@ -298,5 +338,15 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
         }
 
         StateChanged?.Invoke(state);
+    }
+
+    /// <summary>How far one run got, so a failure names its stage and keeps the STT text.</summary>
+    private sealed class RunProgress
+    {
+        public string Stage { get; set; } = StageTiming.Transcribe;
+
+        public string? RawText { get; set; }
+
+        public List<StageTiming> Stages { get; } = [];
     }
 }

@@ -97,8 +97,6 @@ public sealed class SilenceDetector(TimeSpan silence, float speechAboveFloorDb =
     private bool _heardSpeech;
     private TimeSpan _quietFor;
 
-    public bool HeardSpeech => _heardSpeech;
-
     /// <summary>Feeds one frame; returns true when the speaker has stopped.</summary>
     public bool Push(float rms, TimeSpan frameDuration)
     {
