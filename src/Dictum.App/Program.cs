@@ -144,7 +144,7 @@ internal static class Program
     }
 
     private static DictumLog OpenLog(AppPaths paths) =>
-        new(LogLevel.Warning, includeText: false, console: null, paths.LogsDirectory, AppNames.GuiLogFile);
+        new(LogLevel.Warning, includeText: false, console: null, paths.LogsDirectory, AppPaths.GuiLogName);
 
     // Also used by the XAML previewer.
     public static AppBuilder BuildAvaloniaApp() =>

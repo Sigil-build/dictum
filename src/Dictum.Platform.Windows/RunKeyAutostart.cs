@@ -25,7 +25,7 @@ public sealed class RunKeyAutostart(string keyPath = @"Software\Microsoft\Window
 
     /// <summary>An entry ending in <c>daemon</c> is the daemon alone; entries from v0.1 and v0.2 read that way too.</summary>
     public static LoginApp Parse(string command) =>
-        command.TrimEnd().EndsWith(" " + LoginItem.DaemonArgument, StringComparison.Ordinal) ? LoginApp.Daemon : LoginApp.DesktopApp;
+        command.TrimEnd().EndsWith(" " + DictumExecutables.DaemonVerb, StringComparison.Ordinal) ? LoginApp.Daemon : LoginApp.DesktopApp;
 
     public Task InstallAsync(LoginItem item, CancellationToken ct)
     {

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using Dictum.App.Daemon;
+using Dictum.Core;
 using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 
@@ -372,7 +373,7 @@ public sealed class DaemonSupervisorTests : IAsyncDisposable
     private DaemonSupervisor Start(SupervisorOptions? options = null)
     {
         _supervisor = new DaemonSupervisor(
-            SocketPath, () => Volatile.Read(ref _configExists), _launcher, _log, "dictum-gui.log", _clock, options ?? Options());
+            SocketPath, () => Volatile.Read(ref _configExists), _launcher, _log, AppPaths.GuiLogName, _clock, options ?? Options());
         _supervisor.LinkChanged += _links.Enqueue;
         _supervisor.Start();
         return _supervisor;

@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Globalization;
 using Dictum.App.Resources;
 using Dictum.Core.Diagnostics;
+using Dictum.Platform;
 
 namespace Dictum.App.Daemon;
 
@@ -35,9 +36,9 @@ public sealed class DaemonProcessLauncher(
     string executable, IReadOnlyList<string> arguments, ILog log, IReadOnlyDictionary<string, string>? environment = null) : IDaemonLauncher
 {
     /// <summary><c>dictum</c> next to <c>dictum-gui</c>: both ship in one folder.</summary>
-    public static string DefaultExecutable => Path.Combine(AppContext.BaseDirectory, AppNames.CliFile);
+    public static string DefaultExecutable => Path.Combine(AppContext.BaseDirectory, DictumExecutables.FileName(DictumExecutables.Cli));
 
-    public static DaemonProcessLauncher NextToApp(ILog log) => new(DefaultExecutable, ["daemon"], log);
+    public static DaemonProcessLauncher NextToApp(ILog log) => new(DefaultExecutable, [DictumExecutables.DaemonVerb], log);
 
     public IDaemonProcess Launch()
     {
@@ -135,7 +136,7 @@ public sealed class DaemonProcessLauncher(
         try
         {
             // Exactly "dictum": the test runner is "Dictum.App.Tests", and dictum-gui must never end itself.
-            return string.Equals(process.ProcessName, AppNames.Cli, StringComparison.OrdinalIgnoreCase);
+            return string.Equals(process.ProcessName, DictumExecutables.Cli, StringComparison.OrdinalIgnoreCase);
         }
         catch (InvalidOperationException)
         {

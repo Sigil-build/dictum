@@ -40,15 +40,8 @@ public enum LoginApp
 /// <see cref="InstallLocation.AppImageCli"/>.</param>
 public sealed record LoginItem(LoginApp App, string Executable, bool AppImage = false)
 {
-    public const string DesktopAppName = "dictum-gui";
-
-    /// <summary>The CLI command that runs the daemon.</summary>
-    public const string DaemonArgument = "daemon";
-
-    public static string DesktopAppFile => OperatingSystem.IsWindows() ? DesktopAppName + ".exe" : DesktopAppName;
-
     public IReadOnlyList<string> Arguments => App == LoginApp.Daemon
-        ? AppImage ? [InstallLocation.AppImageCli, DaemonArgument] : [DaemonArgument]
+        ? AppImage ? [InstallLocation.AppImageCli, DictumExecutables.DaemonVerb] : [DictumExecutables.DaemonVerb]
         : [];
 
     /// <summary>The quoted executable, then the arguments: the Run key value, the unit's ExecStart, an entry's Exec.</summary>
@@ -65,7 +58,7 @@ public sealed record LoginItem(LoginApp App, string Executable, bool AppImage = 
             return InstallLocation.DesktopApp(dictum, appImage);
         }
 
-        var app = Path.Combine(Path.GetDirectoryName(dictum) ?? ".", DesktopAppFile);
+        var app = Path.Combine(Path.GetDirectoryName(dictum) ?? ".", DictumExecutables.FileName(DictumExecutables.DesktopApp));
         return File.Exists(app) ? new LoginItem(LoginApp.DesktopApp, app) : new LoginItem(LoginApp.Daemon, dictum);
     }
 }

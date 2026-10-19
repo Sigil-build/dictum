@@ -10,9 +10,9 @@ public class LoginItemTests
         using var dir = new TempDirectory();
         var dictum = dir.File(OperatingSystem.IsWindows() ? "dictum.exe" : "dictum");
         File.WriteAllText(dictum, "");
-        File.WriteAllText(dir.File(LoginItem.DesktopAppFile), "");
+        File.WriteAllText(dir.File(DictumExecutables.FileName(DictumExecutables.DesktopApp)), "");
 
-        Assert.Equal(new LoginItem(LoginApp.DesktopApp, dir.File(LoginItem.DesktopAppFile)), LoginItem.NextTo(dictum));
+        Assert.Equal(new LoginItem(LoginApp.DesktopApp, dir.File(DictumExecutables.FileName(DictumExecutables.DesktopApp))), LoginItem.NextTo(dictum));
     }
 
     [Fact]

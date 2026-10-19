@@ -84,7 +84,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         _log = log;
         _store = store;
         _createTray = createTray;
-        var logFile = log.FilePath ?? Path.Combine(paths.LogsDirectory, AppNames.GuiLogFile);
+        var logFile = log.FilePath ?? Path.Combine(paths.LogsDirectory, AppPaths.GuiLogName);
         Supervisor = new DaemonSupervisor(daemonSocket, () => store.Exists, launcher, log, logFile);
         Status = new StatusViewModel(store.Path, logFile, Supervisor.Restart);
         _tray = new TrayController(new TrayState(TimeProvider.System), this, TimeProvider.System);
@@ -535,7 +535,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     /// <summary>Downloads a previous run left unfinished continue in the background; the tooltip shows the total.</summary>
     private void StartDownloads()
     {
-        _http = FileDownloader.CreateHttpClient(LoginItem.DesktopAppName);
+        _http = FileDownloader.CreateHttpClient(DictumExecutables.DesktopApp);
         _downloads = new ModelDownloads(new FileDownloader(_http), _paths, Catalog.BuiltIn, FreeDiskBytes);
         var queue = _downloads;
         _modelDownloads = new QueueDownloads(queue, action => Dispatcher.UIThread.Post(action));

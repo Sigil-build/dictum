@@ -13,6 +13,12 @@ public sealed class AppPaths
 
     private const string MacApplicationSupport = "Application Support";
 
+    /// <summary>The log of the CLI and the daemon it runs, in <see cref="LogsDirectory"/>.</summary>
+    public const string DaemonLogName = "dictum.log";
+
+    /// <summary>The desktop app's log, which also takes the output of a daemon the app started.</summary>
+    public const string GuiLogName = "dictum-gui.log";
+
     public AppPaths(string configDirectory, string dataDirectory)
     {
         ConfigDirectory = configDirectory;

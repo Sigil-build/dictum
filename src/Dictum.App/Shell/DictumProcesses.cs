@@ -14,7 +14,7 @@ public interface IDictumProcesses
 /// <summary>The real processes, by name and executable path.</summary>
 public sealed class SystemDictumProcesses : IDictumProcesses
 {
-    private static readonly string[] Names = [AppNames.Cli, LoginItem.DesktopAppName];
+    private static readonly string[] Names = [DictumExecutables.Cli, DictumExecutables.DesktopApp];
 
     public static readonly SystemDictumProcesses Instance = new();
 

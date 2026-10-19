@@ -4,6 +4,7 @@ using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
+using Dictum.Platform;
 
 namespace Dictum.App.Tests.Daemon;
 
@@ -51,7 +52,7 @@ public sealed class RealDaemonTests : IAsyncDisposable
             Profiles = [new ProfileConfig { Id = "test", Stt = "local", Language = "en", Output = OutputMode.Clipboard }],
         });
         var log = new ListLog();
-        var launcher = new DaemonProcessLauncher(CliExecutable(), ["daemon"], log, new Dictionary<string, string>
+        var launcher = new DaemonProcessLauncher(CliExecutable(), [DictumExecutables.DaemonVerb], log, new Dictionary<string, string>
         {
             [DictumEnvironment.ConfigDirectory] = config,
             [DictumEnvironment.DataDirectory] = Path.Combine(_dir, "data"),
@@ -59,7 +60,7 @@ public sealed class RealDaemonTests : IAsyncDisposable
             [DictumEnvironment.AudioFile] = Path.Combine(AppContext.BaseDirectory, "fixtures", "en.wav"),
         });
         var events = new List<IpcEvent>();
-        _supervisor = new DaemonSupervisor(socket, () => true, launcher, log, "dictum-gui.log");
+        _supervisor = new DaemonSupervisor(socket, () => true, launcher, log, AppPaths.GuiLogName);
         _supervisor.EventReceived += e =>
         {
             lock (events)
@@ -98,7 +99,6 @@ public sealed class RealDaemonTests : IAsyncDisposable
         }
 
         var configuration = new DirectoryInfo(AppContext.BaseDirectory).Parent!.Name;
-        var name = OperatingSystem.IsWindows() ? "dictum.exe" : "dictum";
-        return Path.Combine(root!.FullName, "src", "Dictum.Cli", "bin", configuration, "net10.0", name);
+        return Path.Combine(root!.FullName, "src", "Dictum.Cli", "bin", configuration, "net10.0", DictumExecutables.FileName(DictumExecutables.Cli));
     }
 }
