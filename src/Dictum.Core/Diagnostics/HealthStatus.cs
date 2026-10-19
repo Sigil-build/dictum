@@ -20,5 +20,8 @@ public sealed record HealthStatus(HealthLevel Level, string Detail, string? Hint
 /// <summary>Optional self-check for providers and processors that talk to something external.</summary>
 public interface IHealthCheck
 {
+    /// <summary>How long a check waits for the server it asks.</summary>
+    static TimeSpan ServerTimeout { get; } = TimeSpan.FromSeconds(5);
+
     Task<HealthStatus> CheckAsync(CancellationToken ct);
 }

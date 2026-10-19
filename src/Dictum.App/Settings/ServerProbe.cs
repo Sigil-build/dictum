@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using Dictum.App.Resources;
 using Dictum.Core.Configuration;
+using Dictum.Core.Diagnostics;
 
 namespace Dictum.App.Settings;
 
@@ -18,7 +19,7 @@ public interface IServerProbe
 
 /// <summary>
 /// Tests an OpenAI-compatible server as clean-up will use it: <c>GET {url}/models</c> with the key, timed, within
-/// <see cref="DefaultTimeout"/> unless the caller gives another limit.
+/// <see cref="IHealthCheck.ServerTimeout"/> unless the caller gives another limit.
 /// When the server lists several models, the chosen one must be there, so a typo does not make clean-up fail later in
 /// silence. A server that lists none (some proxies) or one (llama-server serves its model under any name) passes, and
 /// an Ollama name without its tag matches the <c>:latest</c> one.
@@ -35,8 +36,6 @@ public sealed class ServerProbe(HttpClient http, ISecretStore secrets, TimeProvi
 
     private const string DataProperty = "data";
     private const string IdProperty = "id";
-
-    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(5);
 
     public async Task<ServerCheck> CheckAsync(string baseUrl, string model, string? apiKey, CancellationToken ct)
     {
@@ -70,7 +69,7 @@ public sealed class ServerProbe(HttpClient http, ISecretStore secrets, TimeProvi
         }
 
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        limit.CancelAfter(timeout ?? DefaultTimeout);
+        limit.CancelAfter(timeout ?? IHealthCheck.ServerTimeout);
         var started = time.GetTimestamp();
         try
         {

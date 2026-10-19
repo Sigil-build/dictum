@@ -28,8 +28,6 @@ public sealed class OpenAiCompatibleStt(
     /// <summary>Half a second of silence, the clip the health check sends to a server without <c>/models</c>.</summary>
     private const int ProbeClipSamples = AudioClip.WhisperSampleRate / 2;
 
-    private static readonly TimeSpan HealthCheckTimeout = TimeSpan.FromSeconds(5);
-
     public string Id => id;
 
     public SttCapabilities Capabilities { get; } = new(LanguageDetection: true, Prompt: true, Streaming: false);
@@ -68,7 +66,7 @@ public sealed class OpenAiCompatibleStt(
             using var message = new HttpRequestMessage(HttpMethod.Get, Endpoint("models"));
             await AuthorizeAsync(message, ct).ConfigureAwait(false);
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeout.CancelAfter(HealthCheckTimeout);
+            timeout.CancelAfter(IHealthCheck.ServerTimeout);
             using var response = await http.SendAsync(message, timeout.Token).ConfigureAwait(false);
 
             if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)

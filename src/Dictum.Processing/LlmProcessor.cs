@@ -46,8 +46,6 @@ public sealed partial class LlmProcessor(
 
     private const int SnippetLength = 300;
 
-    private static readonly TimeSpan HealthCheckTimeout = TimeSpan.FromSeconds(5);
-
     public string Id => id;
 
     private bool PreservesText => config.PreserveText ?? config.Prompt == LlmProcessorConfig.CleanupPrompt;
@@ -128,7 +126,7 @@ public sealed partial class LlmProcessor(
             using var message = new HttpRequestMessage(HttpMethod.Get, Endpoint("models"));
             await AuthorizeAsync(message, ct).ConfigureAwait(false);
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeout.CancelAfter(HealthCheckTimeout);
+            timeout.CancelAfter(IHealthCheck.ServerTimeout);
             using var response = await http.SendAsync(message, timeout.Token).ConfigureAwait(false);
             return response.StatusCode switch
             {
