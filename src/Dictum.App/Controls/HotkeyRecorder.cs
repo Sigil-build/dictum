@@ -160,7 +160,7 @@ public sealed class HotkeyRecorder : Button
         }
 
         var keys = new StackPanel { Orientation = Orientation.Horizontal, Spacing = PartSpacing };
-        var parts = Hotkey.Split('+');
+        var parts = Hotkey.Split(Dictum.Core.Hotkeys.Hotkey.Separator);
         for (var i = 0; i < parts.Length; i++)
         {
             if (i > 0)

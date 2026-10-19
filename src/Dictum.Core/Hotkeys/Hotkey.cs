@@ -28,6 +28,9 @@ public enum HotkeyKey
 /// <summary>A key combination such as <c>Ctrl+Alt+Space</c>.</summary>
 public sealed record Hotkey(HotkeyModifiers Modifiers, HotkeyKey Key)
 {
+    /// <summary>Joins the parts of a hotkey's text, as in <c>Ctrl+Alt+Space</c>; so it cannot itself be a key.</summary>
+    public const char Separator = '+';
+
     private static readonly Dictionary<string, HotkeyModifiers> ModifierNames = new(StringComparer.OrdinalIgnoreCase)
     {
         ["ctrl"] = HotkeyModifiers.Ctrl,
@@ -146,7 +149,7 @@ public sealed record Hotkey(HotkeyModifiers Modifiers, HotkeyKey Key)
             HotkeyKey.Grave => "`",
             _ => Key.ToString(),
         });
-        return string.Join('+', parts);
+        return string.Join(Separator, parts);
     }
 
     private static bool TryParseKey(string part, out HotkeyKey key)
@@ -165,7 +168,6 @@ public sealed record Hotkey(HotkeyModifiers Modifiers, HotkeyKey Key)
         return Enum.TryParse(part, ignoreCase: true, out key) && !int.TryParse(part, out _);
     }
 
-    /// <summary>"+" separates parts, so it cannot itself be a key.</summary>
     private static string[] SplitParts(string text) =>
-        text.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        text.Split(Separator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 }

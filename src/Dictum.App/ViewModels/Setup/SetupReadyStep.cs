@@ -73,7 +73,7 @@ public sealed partial class SetupReadyStep(TrayHint tray, IDaemonChannel daemon,
     {
         var first = config.Profiles[0];
         var parts = new List<KeyPart>();
-        foreach (var key in (first.Hotkey ?? "").Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        foreach (var key in (first.Hotkey ?? "").Split(Dictum.Core.Hotkeys.Hotkey.Separator, StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
         {
             if (parts.Count > 0)
             {

@@ -77,5 +77,5 @@ public static class HotkeyKeys
         key is >= HotkeyKey.F13 and <= HotkeyKey.F24 or HotkeyKey.Pause or HotkeyKey.ScrollLock;
 
     /// <summary>"Ctrl+Alt+Space" as "Ctrl + Alt + Space", so a screen reader says each key.</summary>
-    public static string Spoken(string? hotkey) => hotkey is null ? "" : string.Join(" + ", hotkey.Split('+'));
+    public static string Spoken(string? hotkey) => hotkey is null ? "" : string.Join(" + ", hotkey.Split(Hotkey.Separator));
 }
