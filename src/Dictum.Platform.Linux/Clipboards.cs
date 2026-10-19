@@ -73,6 +73,7 @@ public sealed class XpropActiveApp : IActiveAppProvider
 {
     public string? GetActiveApp()
     {
+        // IActiveAppProvider is synchronous; each xprop call is bounded by its timeout.
         try
         {
             var root = Tools.RunAsync("xprop", ["-root", "_NET_ACTIVE_WINDOW"], null, CancellationToken.None, 1000).GetAwaiter().GetResult();

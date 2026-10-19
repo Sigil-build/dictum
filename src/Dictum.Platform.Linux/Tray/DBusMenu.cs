@@ -95,7 +95,7 @@ public sealed class DBusMenu(DBusConnection connection) : IPathMethodHandler
     {
         var byId = new Dictionary<int, MenuNode>();
         Index(root, byId);
-        var revision = Volatile.Read(ref _layout).Revision + 1; // single writer (UI thread)
+        var revision = Volatile.Read(ref _layout).Revision + 1; // only the UI thread writes, so this needs no lock
         Volatile.Write(ref _layout, new Snapshot(revision, root, byId));
 
         var writer = connection.GetMessageWriter();
@@ -123,6 +123,7 @@ public sealed class DBusMenu(DBusConnection connection) : IPathMethodHandler
 
     public ValueTask HandleMethodAsync(MethodContext context)
     {
+        // Tmds.DBus closes the whole connection when an exception escapes HandleMethodAsync, so catch everything.
         try
         {
             Handle(context);
@@ -352,7 +353,7 @@ public sealed class DBusMenu(DBusConnection connection) : IPathMethodHandler
         writer.WriteArrayEnd(children);
     }
 
-    /// <summary>a{sv}; an empty <paramref name="names"/> means all. Only non-default values are sent (spec).</summary>
+    /// <summary>a{sv}; an empty <paramref name="names"/> means all. Only non-default values are sent, as dbusmenu expects.</summary>
     private static void WriteProperties(ref MessageWriter writer, MenuNode node, string[] names)
     {
         var dict = writer.WriteDictionaryStart();

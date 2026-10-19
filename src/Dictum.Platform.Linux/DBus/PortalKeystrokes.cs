@@ -128,6 +128,8 @@ public sealed class PortalKeystrokes(Portal portal, string restoreTokenFile, ILo
     {
         Directory.CreateDirectory(Path.GetDirectoryName(restoreTokenFile)!);
         await File.WriteAllTextAsync(restoreTokenFile, token, ct).ConfigureAwait(false);
+
+        // The token restores keyboard control without the dialog, so only its owner may read it.
         if (!OperatingSystem.IsWindows())
         {
             File.SetUnixFileMode(restoreTokenFile, UnixFileMode.UserRead | UnixFileMode.UserWrite);

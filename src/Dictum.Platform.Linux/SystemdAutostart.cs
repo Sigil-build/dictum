@@ -2,11 +2,9 @@ namespace Dictum.Platform.Linux;
 
 /// <summary>
 /// The daemon alone at login: a systemd user unit bound to the graphical session. Plasma 6 and GNOME export
-/// WAYLAND_DISPLAY/DISPLAY to systemd, so the unit sees the session. Used by <see cref="LinuxAutostart"/>. The
-/// portal's .desktop file is the daemon's own business (<see cref="DesktopEntry"/>, written before it registers).
+/// WAYLAND_DISPLAY and DISPLAY to systemd, so the unit sees the session. <paramref name="systemctl"/> runs
+/// <c>systemctl --user</c> with the given arguments.
 /// </summary>
-/// <param name="configHome">XDG_CONFIG_HOME; tests pass a temp folder.</param>
-/// <param name="systemctl">Runs <c>systemctl --user</c> with the given arguments; tests record them.</param>
 public sealed class SystemdAutostart(string configHome, Func<IReadOnlyList<string>, CancellationToken, Task> systemctl)
 {
     public const string UnitName = "dictum.service";
@@ -69,7 +67,10 @@ public sealed class SystemdAutostart(string configHome, Func<IReadOnlyList<strin
     }
 }
 
-/// <summary>~/.local/share/applications/dev.dictum.Dictum.desktop, hidden from menus.</summary>
+/// <summary>
+/// ~/.local/share/applications/dev.dictum.Dictum.desktop, hidden from menus. The portal looks Dictum's app id up
+/// there, so the daemon writes it before it registers.
+/// </summary>
 public static class DesktopEntry
 {
     public static string EntryPath =>

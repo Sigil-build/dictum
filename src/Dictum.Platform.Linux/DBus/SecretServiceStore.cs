@@ -104,7 +104,7 @@ public sealed class SecretServiceStore(Portal portal, ILog log) : ISecretStore
         return prompt == NoPrompt || !await PromptAsync(connection, prompt, ct).ConfigureAwait(false) ? unlocked : items;
     }
 
-    /// <summary>Shows the keyring's own dialog (e.g. to unlock the wallet); returns false when dismissed.</summary>
+    /// <summary>Shows the keyring's own dialog (e.g. to unlock the wallet); throws when it is dismissed.</summary>
     private static async Task<bool> PromptAsync(DBusConnection connection, string prompt, CancellationToken ct)
     {
         if (prompt == NoPrompt)

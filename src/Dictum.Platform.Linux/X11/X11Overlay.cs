@@ -3,9 +3,9 @@ using System.Runtime.InteropServices;
 namespace Dictum.Platform.Linux.X11;
 
 /// <summary>
-/// The listening overlay's X11 side, the same under XWayland (spec 5.4; KDE spike 2026-10-16): override-redirect, a
-/// notification window type and an empty input region, all set before the window is first mapped; the pointer on an
-/// X11 session; and the X resource database, for Xft.dpi. One display connection serves the process and stays open.
+/// The listening overlay's X11 side, the same under XWayland: override-redirect, a notification window type and an
+/// empty input region, all set before the window is first mapped; the pointer on an X11 session; and the X resource
+/// database, for Xft.dpi. One display connection serves the process and stays open.
 /// </summary>
 public static unsafe partial class X11Overlay
 {
@@ -20,7 +20,7 @@ public static unsafe partial class X11Overlay
     private static readonly Lazy<nint> Display = new(() =>
         Environment.GetEnvironmentVariable("DISPLAY") is { Length: > 0 } ? XOpenDisplay(0) : 0);
 
-    /// <returns>False without an X display.</returns>
+    /// <summary>Makes <paramref name="window"/> a click-through notification; false without an X display.</summary>
     public static bool Prepare(nuint window)
     {
         var display = Display.Value;
@@ -40,7 +40,7 @@ public static unsafe partial class X11Overlay
         return true;
     }
 
-    /// <summary>The pointer in root-window pixels. Under XWayland it only moves over X11 windows (spike), so KDE Wayland asks KWin.</summary>
+    /// <summary>The pointer in root-window pixels. Under XWayland it only moves over X11 windows, so KDE Wayland asks KWin.</summary>
     public static (int X, int Y)? Pointer()
     {
         var display = Display.Value;

@@ -1,7 +1,7 @@
 namespace Dictum.Platform.Linux;
 
 /// <summary>
-/// Plasma's system tray settings (spec 6). The tray is a containment of its own,
+/// Plasma's system tray settings. The tray is a containment of its own,
 /// <c>plugin=org.kde.plasma.private.systemtray</c>, in <c>plasma-org.kde.plasma.desktop-appletsrc</c>. Its
 /// <c>[General]</c> group lists <c>hiddenItems</c> by StatusNotifierItem id, unless <c>showAllItems=true</c>.
 /// </summary>

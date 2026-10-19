@@ -6,7 +6,7 @@ namespace Dictum.Platform.Linux.DBus;
 
 /// <summary>
 /// Global hotkeys on Wayland through org.freedesktop.portal.GlobalShortcuts (KDE Plasma 6, GNOME 48+,
-/// Hyprland). The desktop asks the user once per new shortcut id; Activated / Deactivated signals give
+/// Hyprland). The desktop asks once per new shortcut id; Activated / Deactivated signals give
 /// press and release, so push-to-talk works.
 /// </summary>
 public sealed class PortalGlobalShortcuts(Portal portal, ILog log) : IHotkeyService

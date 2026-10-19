@@ -45,13 +45,13 @@ public sealed class StatusNotifierHost : IAsyncDisposable
         }
 
         // A dedicated connection: AddMethodHandler and RequestNameAsync throw on AutoConnect connections, and a handler
-        // failure must not take down the portal connection the hotkey and paste sessions live on (research 0.1).
+        // failure must not take down the portal connection the hotkey and paste sessions live on.
         var connection = new DBusConnection(address);
         try
         {
             await connection.ConnectAsync().ConfigureAwait(false);
 
-            // Own the name before exporting: a host that scans the bus would otherwise show a second item (research 4.2).
+            // Own the name before exporting: a host that scans the bus would otherwise show a second item.
             var busName = $"org.kde.StatusNotifierItem-{Environment.ProcessId}-1";
             await connection.RequestNameAsync(busName, RequestNameOptions.None).ConfigureAwait(false);
             var host = new StatusNotifierHost(connection, busName, log);

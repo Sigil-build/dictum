@@ -76,7 +76,7 @@ public sealed class StatusNotifierItem(DBusConnection connection, string menuPat
         var previous = Interlocked.Exchange(ref _state, next);
 
         // Plasma reloads icons only on the New* signals, through GetAll; NewStatus only copies the status, so the
-        // icons must be known before the status changes (research 4.1).
+        // icons must be known before the status changes.
         if (previous.Title != next.Title)
         {
             EmitSignal("NewTitle");
@@ -105,8 +105,7 @@ public sealed class StatusNotifierItem(DBusConnection connection, string menuPat
 
     public ValueTask HandleMethodAsync(MethodContext context)
     {
-        // An exception that escapes HandleMethodAsync disconnects the whole connection by default
-        // (InnerConnection.HandleMessages -> HandleException(..., closeConnection: true)), so catch everything.
+        // Tmds.DBus closes the whole connection when an exception escapes HandleMethodAsync, so catch everything.
         try
         {
             Handle(context);
@@ -243,7 +242,7 @@ public sealed class StatusNotifierItem(DBusConnection connection, string menuPat
         switch (name)
         {
             case "Category": writer.WriteVariantString("ApplicationStatus"); break;
-            case "Id": writer.WriteVariantString(PlasmaTray.ItemId); break; // stable: Plasma keys per-item visibility on it
+            case "Id": writer.WriteVariantString(PlasmaTray.ItemId); break;
             case "Title": writer.WriteVariantString(state.Title); break;
             case "Status": writer.WriteVariantString(state.Status); break;
             case "WindowId": writer.WriteVariantInt32(0); break;
@@ -256,7 +255,7 @@ public sealed class StatusNotifierItem(DBusConnection connection, string menuPat
             case "AttentionMovieName": writer.WriteVariantString(""); break;
             case "IconPixmap" or "OverlayIconPixmap" or "AttentionIconPixmap":
                 writer.WriteSignature("a(iiay)");
-                WritePixmaps(ref writer, []); // empty a(iiay); fill with ARGB32 big-endian frames for a fallback
+                WritePixmaps(ref writer, []); // none: hosts load IconName from IconThemePath
                 break;
             case "ToolTip":
                 writer.WriteSignature("(sa(iiay)ss)");

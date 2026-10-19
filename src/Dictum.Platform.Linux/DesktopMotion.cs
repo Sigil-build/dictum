@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace Dictum.Platform.Linux;
 
-/// <summary>The desktop's reduced-motion setting (spec 5.5): KDE's animation speed at "instant", GNOME's animations off.</summary>
+/// <summary>The desktop's reduced-motion setting: KDE's animation speed at "instant", GNOME's animations off.</summary>
 public static class DesktopMotion
 {
     /// <summary>KDE: <c>AnimationDurationFactor=0</c> in the <c>[KDE]</c> group of <c>kdeglobals</c>.</summary>

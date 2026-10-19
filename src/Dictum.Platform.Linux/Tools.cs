@@ -3,7 +3,7 @@ using System.Text;
 
 namespace Dictum.Platform.Linux;
 
-/// <summary>Runs small helper programs (wl-copy, xclip, xprop, wtype, systemctl) with a timeout.</summary>
+/// <summary>Runs small helper programs such as wl-copy, xprop or systemctl, with a timeout.</summary>
 internal static class Tools
 {
     public sealed record Result(int ExitCode, string Output, string Error);

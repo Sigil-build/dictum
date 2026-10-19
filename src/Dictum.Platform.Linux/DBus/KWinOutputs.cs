@@ -4,14 +4,14 @@ namespace Dictum.Platform.Linux.DBus;
 
 /// <summary>
 /// The output KWin calls active, which follows the pointer by default. An X11 window under XWayland cannot ask the X
-/// server instead: it only sees the pointer over X11 windows (spike 2026-10-16). KWin's names match Avalonia's.
+/// server instead: XWayland sees the pointer only while it is over X11 windows. KWin's output names match Avalonia's.
 /// </summary>
 public sealed class KWinOutputs : IDisposable
 {
     private readonly SemaphoreSlim _connect = new(1, 1);
     private DBusConnection? _connection;
 
-    /// <returns>The output's name, such as "DP-2"; null without a session bus, without KWin, or when <paramref name="ct"/> ends first.</returns>
+    /// <summary>The output's name, such as "DP-2"; null without a session bus or KWin, or when <paramref name="ct"/> ends first.</summary>
     public async Task<string?> ActiveOutputAsync(CancellationToken ct)
     {
         try

@@ -50,7 +50,7 @@ public sealed class Portal
 
     /// <summary>
     /// Tells the portal which app this non-sandboxed process is, so KDE keeps our shortcuts and
-    /// permissions under a stable id. Needs xdg-desktop-portal 1.19.3+; older versions are ignored.
+    /// permissions under a stable id. Needs xdg-desktop-portal 1.19.3+; older versions refuse, which is logged.
     /// </summary>
     public async Task RegisterHostAppAsync(CancellationToken ct)
     {
@@ -97,9 +97,9 @@ public sealed class Portal
 
     /// <summary>
     /// Calls a portal method that answers through an org.freedesktop.portal.Request object: subscribes
-    /// to its Response signal first, then makes the call, then waits for the user (dialogs can take a while).
+    /// to its Response signal first, then makes the call, then waits for the answer (a dialog can take a while).
+    /// The response code is 0 for success, 1 when the dialog was cancelled and 2 for any other error.
     /// </summary>
-    /// <returns>Response code (0 ok, 1 cancelled by the user, 2 other error) and the results.</returns>
     public async Task<(uint Code, Dictionary<string, VariantValue> Results)> RequestAsync(
         string token,
         Func<DBusConnection, MessageBuffer> build,
