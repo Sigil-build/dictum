@@ -1,5 +1,4 @@
 using Dictum.Core.Diagnostics;
-using Dictum.Platform.Linux;
 using Dictum.Platform.Linux.Tray;
 
 namespace Dictum.App.Tray;
@@ -14,7 +13,7 @@ public sealed class SniTrayPresenter : ITrayPresenter
     private readonly StatusNotifierHost _host;
     private readonly string _iconDirectory;
     private readonly Func<bool> _highContrast;
-    private readonly bool _plasma = (Environment.GetEnvironmentVariable(LinuxEnvironment.CurrentDesktop) ?? "").Contains("KDE", StringComparison.OrdinalIgnoreCase);
+    private readonly bool _plasma;
     private readonly Lock _gate = new();
     private readonly Timer _animation;
     private TrayView? _view;
@@ -23,11 +22,12 @@ public sealed class SniTrayPresenter : ITrayPresenter
     private int _generation;
     private int _frame;
 
-    private SniTrayPresenter(StatusNotifierHost host, string iconDirectory, Func<bool> highContrast)
+    private SniTrayPresenter(StatusNotifierHost host, string iconDirectory, Func<bool> highContrast, bool plasma)
     {
         _host = host;
         _iconDirectory = iconDirectory;
         _highContrast = highContrast;
+        _plasma = plasma;
         _animation = new Timer(_ => NextFrame(), null, Timeout.Infinite, Timeout.Infinite);
         host.Item.Activated += (_, _) => Activated?.Invoke();
         host.Menu.Clicked += id =>
@@ -49,11 +49,12 @@ public sealed class SniTrayPresenter : ITrayPresenter
     /// <summary>False once the bus says no StatusNotifierWatcher runs (GNOME without the AppIndicator extension).</summary>
     public bool IsAvailable => _host.Availability is not (TrayAvailability.NoWatcher or TrayAvailability.Failed);
 
-    public static async Task<SniTrayPresenter?> TryStartAsync(string iconDirectory, Func<bool> highContrast, ILog log)
+    /// <param name="plasma">The session is KDE Plasma, whose menus show a tab-separated detail in a right-aligned column.</param>
+    public static async Task<SniTrayPresenter?> TryStartAsync(string iconDirectory, Func<bool> highContrast, bool plasma, ILog log)
     {
         TraySvgIcons.WriteAll(iconDirectory);
         var host = await StatusNotifierHost.TryStartAsync(log).ConfigureAwait(false);
-        return host is null ? null : new SniTrayPresenter(host, iconDirectory, highContrast);
+        return host is null ? null : new SniTrayPresenter(host, iconDirectory, highContrast, plasma);
     }
 
     public void Show(TrayView view)

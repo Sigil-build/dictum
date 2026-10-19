@@ -36,7 +36,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     private readonly ConfigStore _store;
     private readonly TrayController _tray;
     private readonly IOverlayDesktop _overlayDesktop;
-    private readonly DesktopIntegration _desktop;
+    private readonly DesktopIntegration _integration;
     private readonly ISoundPlayer _sounds;
     private readonly Func<HardwareInfo> _probeHardware;
     private readonly Lazy<ISecretStore> _secrets;
@@ -61,6 +61,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     /// <param name="overlayDesktop">The overlay's OS side; <see cref="OverlayDesktop.None"/> when left out (tests).</param>
     /// <param name="autostart">The OS login item for Settings → General; none when left out, so tests never reach the real one.</param>
     /// <param name="probeHardware">The GPU probe for Settings → Models; the real Vulkan one when left out.</param>
+    /// <param name="desktop">The desktop, read once at start; this one when left out.</param>
     public DesktopShell(
         AppPaths paths,
         DictumLog log,
@@ -70,8 +71,10 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         Func<Application, Func<bool>, Task<ITrayPresenter?>> createTray,
         IOverlayDesktop? overlayDesktop = null,
         IAutostart? autostart = null,
-        Func<HardwareInfo>? probeHardware = null)
+        Func<HardwareInfo>? probeHardware = null,
+        DesktopEnvironment? desktop = null)
     {
+        desktop ??= DesktopEnvironment.Detect();
         _paths = paths;
         _log = log;
         _store = store;
@@ -81,7 +84,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         _tray = new TrayController(new TrayState(TimeProvider.System), this, TimeProvider.System);
         _overlayDesktop = overlayDesktop ?? OverlayDesktop.None;
         Overlay = new OverlayController(() => new OverlayWindow(_overlayDesktop.Prepare), _overlayDesktop, () => _highContrast, TimeProvider.System, log);
-        _desktop = new DesktopIntegration(createTray, log);
+        _integration = new DesktopIntegration(desktop, createTray, log);
         _probeHardware = probeHardware ?? (() => HardwareProbe.Detect(paths));
         _sounds = DictumHost.CreateSoundPlayer(log);
         Frames = new FrameHub(TimeProvider.System);
@@ -90,7 +93,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         _services = new ShellServices(
             paths, Catalog.BuiltIn, Supervisor, Status, Frames, UiTimers.Instance, autostart, OwnExecutable(), _sounds,
             () => _secrets.Value, () => _runner.Value, () => _modelDownloads ?? IModelDownloads.None, Hardware, FreeDiskBytes,
-            new SpeedMeasurements(), _desktop, wait => Task.Delay(wait), TimeProvider.System, log);
+            new SpeedMeasurements(), desktop, _integration, wait => Task.Delay(wait), TimeProvider.System, log);
         _setup = new SetupCoordinator(_services, store, Supervisor.Restart, Supervisor.ConfigSaved, () => _settings?.Session.Flush());
     }
 
@@ -176,7 +179,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             settings.ColorValuesChanged += (_, _) => Dispatcher.UIThread.Post(() =>
             {
                 _highContrast = IsHighContrast(app);
-                _desktop.Tray?.Refresh();
+                _integration.Tray?.Refresh();
             });
         }
     }
@@ -326,7 +329,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         _watcher?.Dispose();
         _settings?.Dispose();
         (_overlayDesktop as IDisposable)?.Dispose();
-        await _desktop.DisposeAsync().ConfigureAwait(false);
+        await _integration.DisposeAsync().ConfigureAwait(false);
         if (_downloads is not null)
         {
             await _downloads.DisposeAsync().ConfigureAwait(false);
@@ -351,7 +354,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         try
         {
             // Stays on the UI thread: the presenter is attached and shown from here.
-            var presenter = await _desktop.StartTrayAsync(app, () => _highContrast);
+            var presenter = await _integration.StartTrayAsync(app, () => _highContrast);
             if (presenter is null)
             {
                 NoTray();

@@ -183,6 +183,7 @@ public static class SelfTest
             session.Load();
             var offline = new Offline();
             var secrets = new UnavailableSecretStore();
+            var desktop = DesktopEnvironment.Detect();
             using var runner = new ProcessorRunner(paths, secrets, NullLog.Instance);
             var sounds = DictumHost.CreateSoundPlayer(NullLog.Instance);
             using var ownedSounds = sounds as IDisposable;
@@ -190,7 +191,7 @@ public static class SelfTest
                 paths, Catalog.BuiltIn, offline, new StatusViewModel(paths.ConfigFile, AppPaths.GuiLogName, () => { }), new FrameHub(TimeProvider.System),
                 UiTimers.Instance, null, null, sounds, () => secrets, () => runner, () => IModelDownloads.None,
                 () => Task.FromResult(new HardwareInfo(null, 0)), () => long.MaxValue, new SpeedMeasurements(),
-                new DesktopIntegration((_, _) => Task.FromResult<ITrayPresenter?>(null), NullLog.Instance),
+                desktop, new DesktopIntegration(desktop, (_, _) => Task.FromResult<ITrayPresenter?>(null), NullLog.Instance),
                 _ => Task.CompletedTask, TimeProvider.System, NullLog.Instance);
             using var settings = new SettingsViewModel(session, SettingsPages.Create(session, services, new WindowClipboard(() => null), () => { }));
             var general = settings.Pages.OfType<GeneralPage>().Single();

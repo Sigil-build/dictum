@@ -16,6 +16,7 @@ namespace Dictum.App.ViewModels.Settings;
 /// <summary>What the General page uses besides the config; fakes in tests.</summary>
 /// <param name="Autostart">Null where Dictum has no login item (macOS).</param>
 /// <param name="Executable">dictum-gui's path for the login item; null when unknown.</param>
+/// <param name="IsLinux">Pasting offers the choice of how a paste reaches Wayland apps.</param>
 public sealed record GeneralServices(
     IDaemonChannel Channel,
     FrameHub Frames,
@@ -24,7 +25,8 @@ public sealed record GeneralServices(
     string? Executable,
     ISoundPlayer Sounds,
     TimeProvider Time,
-    ILog Log);
+    ILog Log,
+    bool IsLinux);
 
 /// <summary>
 /// Settings → General:
@@ -81,7 +83,7 @@ public sealed partial class GeneralPage : SettingsPage
         Load();
         ReadLoginItem();
         Overlay = new OverlayPage(session, Strings.SettingsGeneral);
-        Pasting = new PastingPage(session, Strings.SettingsGeneral, OperatingSystem.IsLinux());
+        Pasting = new PastingPage(session, Strings.SettingsGeneral, services.IsLinux);
     }
 
     public override string Title => Strings.SettingsGeneral;

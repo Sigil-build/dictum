@@ -35,7 +35,7 @@ public sealed class GeneralViewTests(AvaloniaFixture fx) : IDisposable
         var session = new SettingsSession(store, new ManualTimers(), NullLog.Instance);
         session.Load();
         var services = new GeneralServices(new FakeChannel(), new FrameHub(TimeProvider.System), new ManualTimers(),
-            new FakeAutostart(), "dictum-gui", new FakeSounds(), TimeProvider.System, NullLog.Instance);
+            new FakeAutostart(), "dictum-gui", new FakeSounds(), TimeProvider.System, NullLog.Instance, IsLinux: false);
         var page = new GeneralPage(session, services);
 
         var view = new ViewLocator().Build(page);

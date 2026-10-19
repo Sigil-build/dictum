@@ -17,11 +17,6 @@ public enum TrayDesktop
 /// <summary>The hidden-tray-icon row of Settings → System. Windows gets a button to its taskbar settings; KDE gets the path.</summary>
 public static class TrayVisibility
 {
-    public static TrayDesktop ThisDesktop() =>
-        OperatingSystem.IsWindows() ? TrayDesktop.Windows
-        : OperatingSystem.IsLinux() && SessionInfo.Detect().Desktop == Desktop.Kde ? TrayDesktop.Kde
-        : TrayDesktop.Other;
-
     /// <param name="available">The tray host took the icon.</param>
     /// <param name="hidden">The OS keeps the icon in an overflow area; null when unknown.</param>
     public static SystemRow Row(TrayDesktop desktop, bool available, bool? hidden, Action? openSettings)

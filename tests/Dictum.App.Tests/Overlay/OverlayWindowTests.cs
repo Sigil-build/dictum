@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Threading;
 using Dictum.App.Overlay;
+using Dictum.App.Shell;
 
 namespace Dictum.App.Tests.Overlay;
 
@@ -86,7 +87,7 @@ public class OverlayWindowTests(AvaloniaFixture fx)
     [Fact]
     public Task ThisDesktopAnswersWithoutThrowing() => fx.UiAsync(async () =>
     {
-        using var desktop = OverlayDesktop.ForThisDesktop(new ListLog());
+        using var desktop = OverlayDesktop.ForThisDesktop(DesktopEnvironment.Detect(), new ListLog());
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
 
         var probe = await desktop.ProbeAsync(timeout.Token);

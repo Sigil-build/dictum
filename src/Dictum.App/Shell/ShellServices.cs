@@ -35,7 +35,8 @@ internal sealed record ShellServices(
     Func<Task<HardwareInfo>> Hardware,
     Func<long> FreeDiskBytes,
     SpeedMeasurements Measurements,
-    DesktopIntegration Desktop,
+    DesktopEnvironment Desktop,
+    DesktopIntegration Integration,
     Func<TimeSpan, Task> Delay,
     TimeProvider Time,
     ILog Log);

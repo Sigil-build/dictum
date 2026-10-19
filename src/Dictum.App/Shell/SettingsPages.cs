@@ -13,7 +13,8 @@ internal static class SettingsPages
         SettingsSession session, ShellServices services, ITextClipboard clipboard, Action runSetup)
     {
         var general = new GeneralPage(session, new GeneralServices(
-            services.Daemon, services.Frames, services.Timers, services.Autostart, services.Executable, services.Sounds, services.Time, services.Log));
+            services.Daemon, services.Frames, services.Timers, services.Autostart, services.Executable, services.Sounds, services.Time, services.Log,
+            services.Desktop.IsLinux));
         general.SetupRequested += runSetup;
         var profiles = new ProfilesPage(session, services.Daemon);
         var secrets = services.Secrets();
@@ -22,8 +23,8 @@ internal static class SettingsPages
             current => WhisperModels.Choices(services.Paths, services.Catalog, current), model => WhisperModels.IsPresent(services.Paths, model),
             services.Delay, services.Time, services.Log));
         var system = new SystemPage(new SystemServices(
-            services.Daemon, services.Status, () => DesktopIntegration.OverlayRow(session.Config.General.Overlay.Enabled), services.Desktop.TrayRow,
-            services.Timers, services.Time, services.Desktop.Name));
+            services.Daemon, services.Status, () => services.Integration.OverlayRow(session.Config.General.Overlay.Enabled), services.Integration.TrayRow,
+            services.Timers, services.Time, services.Integration.Name));
         var runner = services.Runner();
         var processors = new ProcessorsPage(session, new ProcessorsServices(
             runner, secrets, new PromptLibrary(services.Paths.PromptsDirectory), services.Timers, services.Log));

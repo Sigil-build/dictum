@@ -65,31 +65,18 @@ public sealed class SystemRowsTests
     [InlineData(":0", null, OverlayHost.X11)]
     [InlineData(":0", "wayland-0", OverlayHost.XWayland)]
     [InlineData(null, "wayland-0", OverlayHost.NoX)]
-    public void LinuxNeedsAnXDisplay(string? display, string? wayland, OverlayHost expected)
-    {
-        if (!OperatingSystem.IsLinux())
-        {
-            Assert.Skip("The host comes from the OS first; Linux only");
-            return;
-        }
-
-        Assert.Equal(expected, OverlayAvailability.ThisDesktop(name => name switch
+    public void LinuxNeedsAnXDisplay(string? display, string? wayland, OverlayHost expected) =>
+        Assert.Equal(expected, OverlayAvailability.ThisDesktop(windows: false, linux: true, name => name switch
         {
             "DISPLAY" => display,
             "WAYLAND_DISPLAY" => wayland,
             _ => null,
         }));
-    }
 
     [Fact]
-    public void WindowsAlwaysHasTheOverlay()
+    public void WindowsAlwaysHasTheOverlayAndOtherSystemsNone()
     {
-        if (!OperatingSystem.IsWindows())
-        {
-            Assert.Skip("Windows only");
-            return;
-        }
-
-        Assert.Equal(OverlayHost.Windows, OverlayAvailability.ThisDesktop(_ => null));
+        Assert.Equal(OverlayHost.Windows, OverlayAvailability.ThisDesktop(windows: true, linux: false, _ => null));
+        Assert.Equal(OverlayHost.Unsupported, OverlayAvailability.ThisDesktop(windows: false, linux: false, _ => ":0"));
     }
 }

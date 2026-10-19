@@ -19,9 +19,10 @@ public enum OverlayHost
 /// </summary>
 public static class OverlayAvailability
 {
-    public static OverlayHost ThisDesktop(Func<string, string?> env) =>
-        OperatingSystem.IsWindows() ? OverlayHost.Windows
-        : !OperatingSystem.IsLinux() ? OverlayHost.Unsupported
+    /// <param name="env">The session's environment variables.</param>
+    public static OverlayHost ThisDesktop(bool windows, bool linux, Func<string, string?> env) =>
+        windows ? OverlayHost.Windows
+        : !linux ? OverlayHost.Unsupported
         : string.IsNullOrEmpty(env(LinuxEnvironment.Display)) ? OverlayHost.NoX
         : string.IsNullOrEmpty(env(LinuxEnvironment.WaylandDisplay)) ? OverlayHost.X11
         : OverlayHost.XWayland;

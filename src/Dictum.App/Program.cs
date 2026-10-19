@@ -34,7 +34,8 @@ internal static class Program
             return QuitRunning();
         }
 
-        if (OperatingSystem.IsLinux())
+        var desktop = DesktopEnvironment.Detect();
+        if (desktop.IsLinux)
         {
             // Avalonia's X11 backend reports scale 1 where KDE sets the scale through Xft.dpi.
             DisplayScale.Apply();
@@ -42,7 +43,7 @@ internal static class Program
 
         if (args.Contains(OverlayDemo.Flag))
         {
-            return RunOverlayDemo(args);
+            return RunOverlayDemo(args, desktop);
         }
 
         var paths = AppPaths.FromEnvironment();
@@ -53,8 +54,8 @@ internal static class Program
         var daemonSocket = IpcEndpoint.SocketPath(paths);
         var appSocket = SingleInstance.SocketPathFor(daemonSocket);
         var shell = new DesktopShell(paths, log, store, daemonSocket, DaemonProcessLauncher.NextToApp(log),
-            (app, highContrast) => DesktopIntegration.CreateTrayAsync(app, highContrast, paths, log),
-            OverlayDesktop.ForThisDesktop(log), PlatformFactory.CreateAutostart());
+            (app, highContrast) => DesktopIntegration.CreateTrayAsync(desktop, app, highContrast, paths, log),
+            OverlayDesktop.ForThisDesktop(desktop, log), PlatformFactory.CreateAutostart(), desktop: desktop);
 
         // No synchronisation context exists yet, so blocking here cannot deadlock.
         var instance = SingleInstance.AcquireAsync(appSocket, shell.OnCommand, log).GetAwaiter().GetResult();
@@ -97,7 +98,7 @@ internal static class Program
     }
 
     /// <summary><c>--overlay-demo</c>: no daemon, no tray, no single-instance lock. Messages stay English, like --self-test.</summary>
-    private static int RunOverlayDemo(string[] args)
+    private static int RunOverlayDemo(string[] args, DesktopEnvironment desktop)
     {
         if (OverlayDemo.Parse(args, Console.Error) is not { } options)
         {
@@ -129,12 +130,12 @@ internal static class Program
             // An unreadable config: the demo shows the default look.
         }
 
-        using var desktop = OverlayDesktop.ForThisDesktop(log);
+        using var overlay = OverlayDesktop.ForThisDesktop(desktop, log);
         App.Demo = exit =>
         {
             var controller = new OverlayController(
-                () => new OverlayWindow(desktop.Prepare),
-                desktop,
+                () => new OverlayWindow(overlay.Prepare),
+                overlay,
                 () => Application.Current is { } app && DesktopShell.IsHighContrast(app),
                 TimeProvider.System,
                 log);

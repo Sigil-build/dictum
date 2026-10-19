@@ -44,7 +44,7 @@ public sealed class GeneralPageTests : IDisposable
         var session = new SettingsSession(Store, _timers, NullLog.Instance);
         session.Load();
         var frames = new FrameHub(_clock);
-        var services = new GeneralServices(_channel, frames, _timers, _autostart, "/opt/dictum/dictum-gui", _sounds, _clock, NullLog.Instance);
+        var services = new GeneralServices(_channel, frames, _timers, _autostart, "/opt/dictum/dictum-gui", _sounds, _clock, NullLog.Instance, IsLinux: false);
         return (new GeneralPage(session, services), session, frames);
     }
 

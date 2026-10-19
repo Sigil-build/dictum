@@ -119,7 +119,7 @@ public sealed class OverlayPageTests : IDisposable
     {
         var (_, session) = Open();
         var services = new GeneralServices(new FakeChannel(), new FrameHub(TimeProvider.System), _timers, null, null,
-            new FakeSounds(), TimeProvider.System, NullLog.Instance);
+            new FakeSounds(), TimeProvider.System, NullLog.Instance, IsLinux: false);
         var general = new GeneralPage(session, services);
         SettingsPage? opened = null;
         general.NavigateRequested += page => opened = page;

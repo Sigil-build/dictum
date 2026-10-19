@@ -1,6 +1,7 @@
 using System.Runtime.Versioning;
 using Avalonia;
 using Dictum.App.Overlay;
+using Dictum.App.Shell;
 using Dictum.Core.Diagnostics;
 using Dictum.Platform.Windows;
 
@@ -38,7 +39,7 @@ public class OverlayWindowStyleTests
             try
             {
                 AppBuilder.Configure<Application>().UsePlatformDetect().SetupWithoutStarting();
-                using var desktop = OverlayDesktop.ForThisDesktop(NullLog.Instance);
+                using var desktop = OverlayDesktop.ForThisDesktop(DesktopEnvironment.Detect(), NullLog.Instance);
                 var window = new OverlayWindow(desktop.Prepare);
                 var handle = window.TryGetPlatformHandle()!.Handle;
                 window.Show();

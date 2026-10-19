@@ -1,6 +1,7 @@
 using System.Runtime.Versioning;
 using Avalonia;
 using Avalonia.Controls;
+using Dictum.App.Shell;
 using Dictum.Core.Diagnostics;
 using Dictum.Platform.Linux;
 using Dictum.Platform.Linux.DBus;
@@ -35,30 +36,30 @@ public interface IOverlayDesktop
 public sealed class OverlayDesktop : IOverlayDesktop, IDisposable
 {
     private readonly ILog _log;
-    private readonly SessionInfo? _session;
+    private readonly DesktopEnvironment _desktop;
     private readonly KWinOutputs? _kwin;
 
-    private OverlayDesktop(ILog log, SessionInfo? session)
+    private OverlayDesktop(ILog log, DesktopEnvironment desktop)
     {
         _log = log;
-        _session = session;
-        _kwin = session is { Type: SessionType.Wayland, Desktop: Desktop.Kde } ? new KWinOutputs() : null;
+        _desktop = desktop;
+        _kwin = desktop.Session is { Type: SessionType.Wayland, Desktop: Desktop.Kde } ? new KWinOutputs() : null;
     }
 
     /// <summary>Knows nothing and changes nothing: tests, and desktops without an overlay path.</summary>
     public static IOverlayDesktop None { get; } = new Blind();
 
-    public static OverlayDesktop ForThisDesktop(ILog log) => new(log, OperatingSystem.IsLinux() ? SessionInfo.Detect() : null);
+    public static OverlayDesktop ForThisDesktop(DesktopEnvironment desktop, ILog log) => new(log, desktop);
 
     public void Prepare(Window window)
     {
         try
         {
-            if (OperatingSystem.IsWindows())
+            if (_desktop.IsWindows)
             {
                 PrepareWin32(window);
             }
-            else if (OperatingSystem.IsLinux() && window.TryGetPlatformHandle() is { HandleDescriptor: "XID" } handle
+            else if (_desktop.IsLinux && window.TryGetPlatformHandle() is { HandleDescriptor: "XID" } handle
                 && !X11Overlay.Prepare((nuint)handle.Handle))
             {
                 _log.Warn("No X display; the overlay window is not click-through");
@@ -95,14 +96,14 @@ public sealed class OverlayDesktop : IOverlayDesktop, IDisposable
     {
         try
         {
-            if (OperatingSystem.IsWindows())
+            if (_desktop.IsWindows)
             {
                 var cursor = OverlayWindowStyle.CursorPosition();
                 var hint = cursor is { } at ? new ScreenHint(new PixelPoint(at.X, at.Y), null) : ScreenHint.None;
                 return new OverlayProbe(hint, !OverlayWindowStyle.AnimationsEnabled());
             }
 
-            if (_session is { } session)
+            if (_desktop.Session is { } session)
             {
                 var hint = await LinuxHintAsync(session, ct).ConfigureAwait(false);
                 var reduced = await DesktopMotion.ReducedAsync(session, Environment.GetEnvironmentVariable, ct).ConfigureAwait(false);

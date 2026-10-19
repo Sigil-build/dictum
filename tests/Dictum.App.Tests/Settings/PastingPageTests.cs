@@ -106,7 +106,7 @@ public sealed class PastingPageTests : IDisposable
     {
         var (_, session) = Open();
         var general = new GeneralPage(session, new GeneralServices(new FakeChannel(), new FrameHub(TimeProvider.System), _timers, null, null,
-            new FakeSounds(), TimeProvider.System, NullLog.Instance));
+            new FakeSounds(), TimeProvider.System, NullLog.Instance, IsLinux: false));
         SettingsPage? opened = null;
         general.NavigateRequested += page => opened = page;
 
