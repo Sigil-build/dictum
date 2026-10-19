@@ -62,6 +62,21 @@ public sealed class IpcTests : IDisposable
     }
 
     [Fact]
+    public async Task AStartThatCannotListenLeavesNothingHeld()
+    {
+        // Over the socket path limit: binding fails after the lock is taken and the socket created.
+        var tooLong = Path.Combine(_dir, new string('s', 150));
+        await using var first = new IpcServer(tooLong, NullLog.Instance);
+        var failure = Record.Exception(() => first.Start(Refuse));
+        await using var second = new IpcServer(tooLong, NullLog.Instance);
+
+        var again = Record.Exception(() => second.Start(Refuse));
+
+        Assert.NotNull(failure);
+        Assert.IsType(failure.GetType(), again);
+    }
+
+    [Fact]
     public async Task ClientWithoutServerReportsDaemonNotRunning() =>
         await Assert.ThrowsAsync<DaemonNotRunningException>(() => new IpcClient(SocketPath).SendAsync(new IpcRequest(IpcCommand.Status), _ct));
 
@@ -255,6 +270,8 @@ public sealed class IpcTests : IDisposable
         });
         Assert.Equal(DaemonPresence.NotAnswering, (await client.ProbeAsync(ct, TimeSpan.FromMilliseconds(200))).Presence);
     }
+
+    private static Task<IpcResponse> Refuse(IpcRequest request, CancellationToken ct) => Task.FromResult(IpcResponse.Failure("x"));
 
     private static DaemonStatus Status(string state) => new(state, null, [], "test", "test", Environment.ProcessId);
 }

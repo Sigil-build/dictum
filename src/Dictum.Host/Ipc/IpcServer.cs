@@ -51,20 +51,33 @@ public sealed class IpcServer : IAsyncDisposable
             throw new DaemonAlreadyRunningException("Another Dictum daemon is already running.");
         }
 
-        if (File.Exists(_socketPath))
+        Socket? listener = null;
+        try
         {
-            // We hold the lock, so whatever is left is stale.
-            File.Delete(_socketPath);
+            if (File.Exists(_socketPath))
+            {
+                // We hold the lock, so whatever is left is stale.
+                File.Delete(_socketPath);
+            }
+
+            listener = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
+            listener.Bind(new UnixDomainSocketEndPoint(_socketPath));
+            if (!OperatingSystem.IsWindows())
+            {
+                File.SetUnixFileMode(_socketPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+            }
+
+            listener.Listen(ListenBacklog);
+        }
+        catch
+        {
+            // A server that cannot listen holds nothing: neither the socket nor the lock that would turn away the next one.
+            listener?.Dispose();
+            _lock.Dispose();
+            _lock = null;
+            throw;
         }
 
-        var listener = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
-        listener.Bind(new UnixDomainSocketEndPoint(_socketPath));
-        if (!OperatingSystem.IsWindows())
-        {
-            File.SetUnixFileMode(_socketPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
-        }
-
-        listener.Listen(ListenBacklog);
         _listener = listener;
         _acceptLoop = AcceptLoopAsync(listener, handler, _stop.Token);
         _log.Info($"Listening on {_socketPath}");
