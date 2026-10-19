@@ -27,10 +27,6 @@ public sealed partial class LlmEditor : ObservableObject, IDisposable
         ["en"] = "so um i want you to like check this code and push it to main by the evening okay",
     };
 
-    /// <summary>LlmProcessorConfig's defaults, for a processor that is not on disk yet.</summary>
-    private const double DefaultTemperature = 0.2;
-    private const int DefaultTimeoutMs = 4_000;
-
     private static readonly TimeSpan PromptSaveDelay = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan PreviewDelay = TimeSpan.FromMilliseconds(600);
     private static readonly string[] SampleLanguages = ["uk", "en"];
@@ -280,7 +276,7 @@ public sealed partial class LlmEditor : ObservableObject, IDisposable
         {
             // As General's History field: nothing typed on the way to empty is saved.
             _temperatureEmpty = true;
-            var saved = (_session.OnDisk.Processors.GetValueOrDefault(_id ?? "") as LlmProcessorConfig)?.Temperature ?? DefaultTemperature;
+            var saved = (_session.OnDisk.Processors.GetValueOrDefault(_id ?? "") as LlmProcessorConfig)?.Temperature ?? LlmProcessorConfig.DefaultTemperature;
             EditLlm(l => l with { Temperature = saved });
             TemperatureError = Strings.SettingsNumberRequired;
             return;
@@ -300,7 +296,7 @@ public sealed partial class LlmEditor : ObservableObject, IDisposable
         if (value is not { } seconds)
         {
             _timeoutEmpty = true;
-            var saved = (_session.OnDisk.Processors.GetValueOrDefault(_id ?? "") as LlmProcessorConfig)?.TimeoutMs ?? DefaultTimeoutMs;
+            var saved = (_session.OnDisk.Processors.GetValueOrDefault(_id ?? "") as LlmProcessorConfig)?.TimeoutMs ?? LlmProcessorConfig.DefaultTimeoutMs;
             EditLlm(l => l with { TimeoutMs = saved });
             TimeoutError = Strings.SettingsNumberRequired;
             return;

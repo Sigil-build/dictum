@@ -12,6 +12,12 @@ public static class IpcProtocol
 
     /// <summary>Every message is one line of JSON.</summary>
     internal const char LineEnd = '\n';
+
+    /// <summary>How long <c>test-stt</c> records when the request gives no <see cref="IpcRequest.Seconds"/>.</summary>
+    public const int DefaultTestSeconds = 5;
+
+    /// <summary>A <c>monitor-start</c> level meter that its client does not renew within this time is closed.</summary>
+    public static readonly TimeSpan MonitorLifetime = TimeSpan.FromSeconds(60);
 }
 
 /// <summary>The commands the daemon answers, sent as <see cref="IpcRequest.Command"/>.</summary>

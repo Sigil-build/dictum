@@ -111,6 +111,7 @@ public sealed record LlmProcessorConfig : ProcessorConfig
 {
     public const string TypeName = "llm";
     public const int DefaultTimeoutMs = 4_000;
+    public const double DefaultTemperature = 0.2;
 
     public required string BaseUrl { get; init; }
 
@@ -121,7 +122,7 @@ public sealed record LlmProcessorConfig : ProcessorConfig
 
     public string? ApiKey { get; init; }
 
-    public double Temperature { get; set; } = 0.2;
+    public double Temperature { get; set; } = DefaultTemperature;
 
     public int TimeoutMs { get; set; } = DefaultTimeoutMs;
 

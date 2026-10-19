@@ -23,7 +23,6 @@ public sealed class DictumDaemon : IAsyncDisposable
     /// <summary>Must match the LogicalName of the sample in Dictum.Host.csproj.</summary>
     private const string SampleResource = "Dictum.Host.Samples.uk.wav";
 
-    private const int DefaultTestSeconds = 5;
     private const int MinTestSeconds = 1;
     private const int MaxTestSeconds = 30;
 
@@ -31,9 +30,6 @@ public sealed class DictumDaemon : IAsyncDisposable
     private const int MonitorChecksPerLifetime = 4;
     private const double MinMonitorCheckMs = 20;
     private const double MaxMonitorCheckMs = 1000;
-
-    /// <summary>A level meter its client does not renew within this time is closed.</summary>
-    private static readonly TimeSpan DefaultMonitorLifetime = TimeSpan.FromSeconds(60);
 
     private readonly Func<DictumConfig, IDictationEngine> _createEngine;
     private readonly PlatformServices _platform;
@@ -79,7 +75,7 @@ public sealed class DictumDaemon : IAsyncDisposable
         _log = log;
         _events = events ?? new IpcEventHub();
         _configWarnings = configWarnings ?? [];
-        _monitorLifetime = monitorLifetime ?? DefaultMonitorLifetime;
+        _monitorLifetime = monitorLifetime ?? IpcProtocol.MonitorLifetime;
         _engine = createEngine(config);
     }
 
@@ -531,7 +527,7 @@ public sealed class DictumDaemon : IAsyncDisposable
             {
                 try
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(Math.Clamp(request.Seconds ?? DefaultTestSeconds, MinTestSeconds, MaxTestSeconds)), ct).ConfigureAwait(false);
+                    await Task.Delay(TimeSpan.FromSeconds(Math.Clamp(request.Seconds ?? IpcProtocol.DefaultTestSeconds, MinTestSeconds, MaxTestSeconds)), ct).ConfigureAwait(false);
                 }
                 finally
                 {

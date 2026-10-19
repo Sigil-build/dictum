@@ -45,10 +45,7 @@ public sealed partial class ProviderCard : ObservableObject
     /// <summary>The daemon's watcher waits 300 ms after a write, then applies the config.</summary>
     public static readonly TimeSpan ReloadWait = TimeSpan.FromMilliseconds(1500);
 
-    private const int TestSeconds = 5;
-
-    /// <summary>OpenAiCompatibleSttConfig's default, for a provider that is not on disk yet.</summary>
-    private const int DefaultTimeoutMs = 60_000;
+    private const int TestSeconds = IpcProtocol.DefaultTestSeconds;
 
     /// <summary>The recording, then two minutes for the daemon to load the model and transcribe.</summary>
     private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(TestSeconds) + TimeSpan.FromMinutes(2);
@@ -247,7 +244,7 @@ public sealed partial class ProviderCard : ObservableObject
         {
             // As General's History field: nothing typed on the way to empty is saved.
             _timeoutEmpty = true;
-            var saved = (_session.OnDisk.Stt.GetValueOrDefault(Id) as OpenAiCompatibleSttConfig)?.TimeoutMs ?? DefaultTimeoutMs;
+            var saved = (_session.OnDisk.Stt.GetValueOrDefault(Id) as OpenAiCompatibleSttConfig)?.TimeoutMs ?? OpenAiCompatibleSttConfig.DefaultTimeoutMs;
             EditRemote(r => r with { TimeoutMs = saved });
             TimeoutError = Strings.SettingsNumberRequired;
             return;

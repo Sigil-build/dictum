@@ -43,6 +43,7 @@ public sealed partial class GeneralPage : SettingsPage
 
     private static readonly string HistorySizePath = ConfigPaths.General(nameof(GeneralSettings.HistorySize));
 
+    /// <summary>Well inside <see cref="IpcProtocol.MonitorLifetime"/>, so the daemon keeps the meter open while the page shows.</summary>
     private static readonly TimeSpan MonitorRenewal = TimeSpan.FromSeconds(10);
 
     private readonly SettingsSession _session;
