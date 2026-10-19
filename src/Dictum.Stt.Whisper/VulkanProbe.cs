@@ -45,6 +45,8 @@ public static unsafe partial class VulkanProbe
     private const int HeapFlagsOffset = 8;
     private const uint MaxMemoryHeaps = 16;
     private const uint HeapDeviceLocalBit = 1;
+    private const int VkSuccess = 0;
+    private const int VkIncomplete = 5;
 
     private static readonly Lazy<IReadOnlyList<VulkanDevice>> Cached = new(Enumerate);
     private static int _resolverInstalled;
@@ -65,7 +67,7 @@ public static unsafe partial class VulkanProbe
 
             var info = new InstanceCreateInfo { SType = StructureTypeInstanceCreateInfo };
             nint instance;
-            if (vkCreateInstance(&info, 0, &instance) != 0)
+            if (vkCreateInstance(&info, 0, &instance) != VkSuccess)
             {
                 return [];
             }
@@ -73,15 +75,21 @@ public static unsafe partial class VulkanProbe
             try
             {
                 uint count = 0;
-                if (vkEnumeratePhysicalDevices(instance, &count, null) != 0 || count == 0)
+                if (vkEnumeratePhysicalDevices(instance, &count, null) != VkSuccess || count == 0)
                 {
                     return [];
                 }
 
                 var handles = stackalloc nint[(int)count];
 
-                // The first call sized the buffer; VK_INCOMPLETE would still fill it and lower count to match.
-                _ = vkEnumeratePhysicalDevices(instance, &count, handles);
+                // The first call sized the buffer; VK_INCOMPLETE still fills it and lowers count to match. Any other
+                // result leaves the handles unwritten.
+                var listed = vkEnumeratePhysicalDevices(instance, &count, handles);
+                if (listed is not (VkSuccess or VkIncomplete))
+                {
+                    return [];
+                }
+
                 var devices = new List<VulkanDevice>((int)count);
 
                 var properties = stackalloc byte[DevicePropertiesBufferSize];
