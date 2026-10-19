@@ -389,11 +389,9 @@ public sealed partial class SetupViewModel : ViewModelBase
             }
 
             _services.Store.Save(plan.Config);
-            if (typed is not null && current is not null)
+            if (current is not null)
             {
-                // A key that dictum init once stored under its old name goes once the new key replaced it, as in Settings.
-                var previous = (current.Processors.GetValueOrDefault(SetupPlanner.CleanupProcessorId(current)) as LlmProcessorConfig)?.ApiKey;
-                await ApiKeys.DeleteLegacyCleanupAsync(_services.Secrets, previous, plan.Config, _services.Log, CancellationToken.None);
+                await CleanupKey.DeleteLegacyAsync(_services.Secrets, current, plan.Config, _services.Log, CancellationToken.None);
             }
 
             SavedSetupFile.Delete(_services.Paths, _services.Log);

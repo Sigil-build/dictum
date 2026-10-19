@@ -5,7 +5,7 @@ public static class SecretNames
 {
     /// <summary>
     /// Where earlier versions of <c>dictum init</c> kept a typed key for the clean-up server. Configs written then still
-    /// refer to it, so Settings deletes it along with the key.
+    /// refer to it; init, the setup wizard and Settings delete it once the config no longer does.
     /// </summary>
     public const string LegacyCleanup = "dictum-cleanup";
 

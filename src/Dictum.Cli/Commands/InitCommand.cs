@@ -88,7 +88,7 @@ internal static class InitCommand
                 await WarnIfUnreachableAsync(context, plan.Config, pendingSecret, token).ConfigureAwait(false);
             }
 
-            await RunSetupAsync(context, plan, hardware, pendingSecret, token).ConfigureAwait(false);
+            await RunSetupAsync(context, current, plan, hardware, pendingSecret, context.Platform.Secrets, token).ConfigureAwait(false);
             await ApplyAutostartAsync(context, autostartAnswer, token).ConfigureAwait(false);
             await ReportReadinessAsync(context, autostartAnswer, token).ConfigureAwait(false);
             context.Error.WriteLine($"Add words any time: dictum vocab add --profile {plan.Config.Profiles[0].Id} \"Notepad++\" \"VS Code\"");
@@ -272,14 +272,27 @@ internal static class InitCommand
         return true;
     }
 
-    private static async Task RunSetupAsync(CliContext context, SetupPlan plan, HardwareInfo hardware, PendingSecret? pendingSecret, CancellationToken ct)
+    /// <summary>Downloads, stores the key, saves the config, then deletes the old clean-up entry that the saved config no longer uses.</summary>
+    /// <param name="current">The config init started from.</param>
+    internal static async Task RunSetupAsync(
+        CliContext context,
+        DictumConfig? current,
+        SetupPlan plan,
+        HardwareInfo hardware,
+        PendingSecret? pendingSecret,
+        ISecretStore secrets,
+        CancellationToken ct)
     {
         using var http = FileDownloader.CreateHttpClient(CliApp.UserAgent);
         using var view = new SetupProgressView(context.Error, redraw: !Console.IsErrorRedirected);
         await new SetupRunner(new FileDownloader(http), context.Paths)
             .RunAsync(plan, context.Store, hardware.FreeDiskBytes, view, ct, beforeSave: pendingSecret is null
                 ? null
-                : c => pendingSecret.WriteAsync(context.Platform.Secrets, c)).ConfigureAwait(false);
+                : c => pendingSecret.WriteAsync(secrets, c)).ConfigureAwait(false);
+        if (current is not null)
+        {
+            await CleanupKey.DeleteLegacyAsync(secrets, current, plan.Config, context.Log, ct).ConfigureAwait(false);
+        }
     }
 
     private static bool? AskAutostart(CliContext context, ConsolePrompt prompt, bool interactive, bool flag)

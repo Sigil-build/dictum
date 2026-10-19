@@ -40,6 +40,19 @@ public sealed class SetupViewModelTests : IDisposable
     private void Finish(string id) =>
         _fx.Downloads.Set(new QueuedDownload(ModelsPageTests.TestCatalog().Get(id), DownloadState.Done, 0));
 
+    /// <summary>A wizard over a config whose clean-up key is the entry an earlier <c>dictum init</c> stored, still in the store.</summary>
+    private SetupViewModel RerunOverTheOldCleanupEntry()
+    {
+        _fx.InstallAll();
+        var config = ProfilesPageTests.Sample();
+        config.Processors["cleanup"] = (LlmProcessorConfig)config.Processors["cleanup"] with { ApiKey = "secret:dictum-cleanup" };
+        _fx.Store.Save(config);
+        _fx.Secrets.Values[SecretNames.LegacyCleanup] = "sk-old";
+        return Open();
+    }
+
+    private string? SavedCleanupKey() => Assert.IsType<LlmProcessorConfig>(_fx.Store.Load().Processors["cleanup"]).ApiKey;
+
     [Fact]
     public void AFreshSetupStartsWithTheUiLanguageAndEnglish()
     {
@@ -156,20 +169,57 @@ public sealed class SetupViewModelTests : IDisposable
     [Fact]
     public async Task ANewKeyOnARerunDeletesTheOldCleanupEntry()
     {
-        _fx.InstallAll();
-        var config = ProfilesPageTests.Sample();
-        config.Processors["cleanup"] = (LlmProcessorConfig)config.Processors["cleanup"] with { ApiKey = "secret:dictum-cleanup" };
-        _fx.Store.Save(config);
-        _fx.Secrets.Values[SecretNames.LegacyCleanup] = "sk-old";
-        var wizard = Open();
+        var wizard = RerunOverTheOldCleanupEntry();
         await WalkTo(wizard, 2);
         wizard.Cleanup.KeyText = "sk-new";
         await wizard.Cleanup.TestCommand.ExecuteAsync(null);
 
         await WalkTo(wizard, 6);
 
-        Assert.Equal("secret:dictum-processor-cleanup", Assert.IsType<LlmProcessorConfig>(_fx.Store.Load().Processors["cleanup"]).ApiKey);
+        Assert.Equal("secret:dictum-processor-cleanup", SavedCleanupKey());
         Assert.Equal(new Dictionary<string, string> { ["dictum-processor-cleanup"] = "sk-new" }, _fx.Secrets.Values);
+    }
+
+    [Fact]
+    public async Task AKeyReferenceOnARerunDeletesTheOldCleanupEntry()
+    {
+        var wizard = RerunOverTheOldCleanupEntry();
+        await WalkTo(wizard, 2);
+        wizard.Cleanup.KeyText = "env:LLM_KEY";
+        await wizard.Cleanup.TestCommand.ExecuteAsync(null);
+
+        await WalkTo(wizard, 6);
+
+        Assert.Equal("env:LLM_KEY", SavedCleanupKey());
+        Assert.Empty(_fx.Secrets.Values);
+    }
+
+    [Fact]
+    public async Task AnotherServerOnARerunDropsTheKeyAndDeletesTheOldCleanupEntry()
+    {
+        var wizard = RerunOverTheOldCleanupEntry();
+        await WalkTo(wizard, 2);
+        wizard.Cleanup.Url = "http://192.168.1.20:8080/v1";
+        await wizard.Cleanup.TestCommand.ExecuteAsync(null);
+
+        await WalkTo(wizard, 6);
+
+        Assert.Null(SavedCleanupKey());
+        Assert.Empty(_fx.Secrets.Values);
+    }
+
+    [Fact]
+    public async Task CleanupTurnedOffOnARerunKeepsTheOldEntryTheConfigStillRefersTo()
+    {
+        var wizard = RerunOverTheOldCleanupEntry();
+        await WalkTo(wizard, 2);
+        wizard.Cleanup.UseServer = false;
+
+        await WalkTo(wizard, 6);
+
+        Assert.DoesNotContain("cleanup", _fx.Store.Load().Profiles[0].Pipeline);
+        Assert.Equal("secret:dictum-cleanup", SavedCleanupKey());
+        Assert.Equal("sk-old", _fx.Secrets.Values[SecretNames.LegacyCleanup]);
     }
 
     [Fact]

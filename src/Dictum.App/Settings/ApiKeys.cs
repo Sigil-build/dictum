@@ -1,6 +1,7 @@
 using Dictum.App.Resources;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Setup;
 
 namespace Dictum.App.Settings;
 
@@ -59,37 +60,6 @@ public static class ApiKeys
     /// </summary>
     public static Task RemoveAsync(ISecretStore secrets, string secretName, string? current, DictumConfig remaining, ILog log, CancellationToken ct) =>
         current == ConfigValueResolver.SecretReference(secretName)
-            ? DeleteUnusedAsync(secrets, secretName, remaining, log, ct)
-            : DeleteLegacyCleanupAsync(secrets, current, remaining, log, ct);
-
-    /// <summary>
-    /// After a typed key replaced <paramref name="previous"/>: deletes <see cref="SecretNames.LegacyCleanup"/> when
-    /// <paramref name="previous"/> referred to it and nothing in <paramref name="remaining"/> still does.
-    /// </summary>
-    public static Task DeleteLegacyCleanupAsync(ISecretStore secrets, string? previous, DictumConfig remaining, ILog log, CancellationToken ct) =>
-        previous == ConfigValueResolver.SecretReference(SecretNames.LegacyCleanup)
-            ? DeleteUnusedAsync(secrets, SecretNames.LegacyCleanup, remaining, log, ct)
-            : Task.CompletedTask;
-
-    private static async Task DeleteUnusedAsync(ISecretStore secrets, string secretName, DictumConfig remaining, ILog log, CancellationToken ct)
-    {
-        if (IsReferenced(remaining, ConfigValueResolver.SecretReference(secretName)))
-        {
-            return;
-        }
-
-        try
-        {
-            await secrets.DeleteAsync(secretName, ct);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            log.Warn($"Secret '{secretName}' not deleted: {ex.Message}");
-        }
-    }
-
-    // A new processor copies the first one's key reference, and a hand-edited config may share one.
-    private static bool IsReferenced(DictumConfig config, string reference) =>
-        config.Stt.Values.OfType<OpenAiCompatibleSttConfig>().Any(s => s.ApiKey == reference)
-        || config.Processors.Values.OfType<LlmProcessorConfig>().Any(l => l.ApiKey == reference);
+            ? StoredKeys.DeleteUnusedAsync(secrets, secretName, remaining, log, ct)
+            : StoredKeys.DeleteLegacyCleanupAsync(secrets, current, remaining, log, ct);
 }

@@ -4,6 +4,7 @@ using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Setup;
 
 namespace Dictum.App.ViewModels.Settings;
 
@@ -109,6 +110,6 @@ public sealed partial class ApiKeyField : ObservableObject
 
         var previous = target.Current();
         target.Apply(result.Value);
-        await ApiKeys.DeleteLegacyCleanupAsync(_secrets, previous, _config(), _log, CancellationToken.None);
+        await StoredKeys.DeleteLegacyCleanupAsync(_secrets, previous, _config(), _log, CancellationToken.None);
     }
 }
