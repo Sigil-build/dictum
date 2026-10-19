@@ -6,6 +6,7 @@ using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.Audio.PortAudio;
 using Dictum.Core.Audio;
+using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
@@ -40,7 +41,7 @@ public sealed partial class GeneralPage : SettingsPage
 {
     public static readonly TimeSpan MeterTick = TimeSpan.FromMilliseconds(50);
 
-    private const string HistorySizePath = "general.historySize";
+    private static readonly string HistorySizePath = ConfigPaths.General(nameof(GeneralSettings.HistorySize));
 
     private static readonly TimeSpan MonitorRenewal = TimeSpan.FromSeconds(10);
 

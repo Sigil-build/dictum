@@ -122,7 +122,7 @@ public sealed partial class PastingPage : SettingsPage
             if (!_delayEmpty)
             {
                 PasteDelay = general.PasteDelayMs;
-                PasteDelayError = _session.IssueAt("general.pasteDelayMs");
+                PasteDelayError = _session.IssueAt(ConfigPaths.General(nameof(GeneralSettings.PasteDelayMs)));
             }
 
             TerminalApps = [.. general.TerminalApps.Select(app => new WordChip(app,

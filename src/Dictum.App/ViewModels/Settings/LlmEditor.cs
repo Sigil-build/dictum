@@ -193,7 +193,7 @@ public sealed partial class LlmEditor : ObservableObject, IDisposable
         _loading = true;
         try
         {
-            LoadSettings(llm, $"processors.{id}");
+            LoadSettings(llm, ConfigPaths.Processor(id));
             LoadPrompt(id, llm, config);
         }
         finally
@@ -490,27 +490,27 @@ public sealed partial class LlmEditor : ObservableObject, IDisposable
     private void LoadSettings(LlmProcessorConfig llm, string path)
     {
         Url = llm.BaseUrl;
-        UrlError = _session.IssueAt($"{path}.baseUrl");
+        UrlError = _session.IssueAt(ConfigPaths.Field(path, nameof(LlmProcessorConfig.BaseUrl)));
         Model = llm.Model;
-        ModelError = _session.IssueAt($"{path}.model");
+        ModelError = _session.IssueAt(ConfigPaths.Field(path, nameof(LlmProcessorConfig.Model)));
         HasKey = llm.ApiKey is not null;
         KeyState = ApiKeys.State(llm.ApiKey);
         if (!_temperatureEmpty)
         {
             Temperature = (decimal)llm.Temperature;
-            TemperatureError = _session.IssueAt($"{path}.temperature");
+            TemperatureError = _session.IssueAt(ConfigPaths.Field(path, nameof(LlmProcessorConfig.Temperature)));
         }
 
         if (!_timeoutEmpty)
         {
             TimeoutSeconds = TimeoutFields.Seconds(llm.TimeoutMs);
-            TimeoutError = _session.IssueAt($"{path}.timeoutMs");
+            TimeoutError = _session.IssueAt(ConfigPaths.Field(path, nameof(LlmProcessorConfig.TimeoutMs)));
         }
 
         OnError = ErrorModes.FirstOrDefault(m => m.Value == llm.OnError) ?? ErrorModes[0];
         Wording = Wordings.FirstOrDefault(w => w.Value == llm.PreserveText) ?? Wordings[0];
         MaxTokens = llm.MaxTokens;
-        MaxTokensError = _session.IssueAt($"{path}.maxTokens");
+        MaxTokensError = _session.IssueAt(ConfigPaths.Field(path, nameof(LlmProcessorConfig.MaxTokens)));
     }
 
     private void LoadPrompt(string id, LlmProcessorConfig llm, DictumConfig config)

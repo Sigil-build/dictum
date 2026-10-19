@@ -188,7 +188,7 @@ public sealed partial class ProviderCard : ObservableObject
             CanEdit = _session.CanEdit;
             CanRemove = CanEdit && users.Count == 0;
             UpdateCanTest();
-            var path = $"stt.{Id}";
+            var path = ConfigPaths.Stt(Id);
             switch (stt)
             {
                 case WhisperLocalSttConfig local:
@@ -370,11 +370,11 @@ public sealed partial class ProviderCard : ObservableObject
         }
 
         Model = Models.FirstOrDefault(m => string.Equals(m.Value, local.Model, StringComparison.OrdinalIgnoreCase));
-        ModelError = _session.IssueAt($"{path}.model");
+        ModelError = _session.IssueAt(ConfigPaths.Field(path, nameof(WhisperLocalSttConfig.Model)));
         Runtimes = RuntimesFor(local.Runtime);
         Runtime = Runtimes.First(r => r.Value == local.Runtime);
         Threads = local.Threads;
-        ThreadsError = _session.IssueAt($"{path}.threads");
+        ThreadsError = _session.IssueAt(ConfigPaths.Field(path, nameof(WhisperLocalSttConfig.Threads)));
         Vad = local.Vad;
         VadNote = local.Vad && !_services.ModelPresent(local.VadModel)
             ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsProvidersVadMissing, local.VadModel)
@@ -384,15 +384,15 @@ public sealed partial class ProviderCard : ObservableObject
     private void LoadRemote(OpenAiCompatibleSttConfig remote, string path)
     {
         Url = remote.BaseUrl;
-        UrlError = _session.IssueAt($"{path}.baseUrl");
+        UrlError = _session.IssueAt(ConfigPaths.Field(path, nameof(OpenAiCompatibleSttConfig.BaseUrl)));
         ModelName = remote.Model;
-        ModelNameError = _session.IssueAt($"{path}.model");
+        ModelNameError = _session.IssueAt(ConfigPaths.Field(path, nameof(OpenAiCompatibleSttConfig.Model)));
         HasKey = remote.ApiKey is not null;
         KeyState = ApiKeys.State(remote.ApiKey);
         if (!_timeoutEmpty)
         {
             TimeoutSeconds = TimeoutFields.Seconds(remote.TimeoutMs);
-            TimeoutError = _session.IssueAt($"{path}.timeoutMs");
+            TimeoutError = _session.IssueAt(ConfigPaths.Field(path, nameof(OpenAiCompatibleSttConfig.TimeoutMs)));
         }
     }
 

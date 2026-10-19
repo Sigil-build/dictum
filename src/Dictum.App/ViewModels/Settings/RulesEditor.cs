@@ -168,7 +168,7 @@ public sealed partial class RulesEditor(SettingsSession session) : ObservableObj
         for (var i = 0; i < replace.Rules.Count; i++)
         {
             var row = i < _rows.Count ? _rows[i] : new RuleRow(this);
-            var path = $"processors.{id}.rules[{i}]";
+            var path = ConfigPaths.Item(ConfigPaths.Processor(id, nameof(ReplaceProcessorConfig.Rules)), i);
             row.Load(i, replace.Rules[i], session.Issues.FirstOrDefault(issue => issue.Path.StartsWith(path, StringComparison.Ordinal))?.Message);
             rows.Add(row);
         }

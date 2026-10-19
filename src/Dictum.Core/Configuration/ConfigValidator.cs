@@ -24,19 +24,19 @@ public static class ConfigValidator
 
         foreach (var (id, stt) in config.Stt)
         {
-            ValidateStt(issues, $"stt.{id}", stt);
+            ValidateStt(issues, ConfigPaths.Stt(id), stt);
         }
 
         foreach (var (id, processor) in config.Processors)
         {
-            ValidateProcessor(issues, $"processors.{id}", processor);
+            ValidateProcessor(issues, ConfigPaths.Processor(id), processor);
         }
 
         var seenIds = new HashSet<string>(StringComparer.Ordinal);
         var takenHotkeys = new HashSet<Hotkey>();
         for (var i = 0; i < config.Profiles.Count; i++)
         {
-            ValidateProfile(issues, $"profiles[{i}]", config.Profiles[i], config, seenIds, takenHotkeys);
+            ValidateProfile(issues, ConfigPaths.Profile(i), config.Profiles[i], config, seenIds, takenHotkeys);
         }
 
         return issues;
@@ -52,22 +52,22 @@ public static class ConfigValidator
     {
         if (general.HistorySize < 0)
         {
-            Error(issues, "general.historySize", "must be zero or positive");
+            Error(issues, ConfigPaths.General(nameof(GeneralSettings.HistorySize)), "must be zero or positive");
         }
 
         if (general.PasteDelayMs is < 0 or > MaxPasteDelayMs)
         {
-            Error(issues, "general.pasteDelayMs", $"must be between 0 and {MaxPasteDelayMs}");
+            Error(issues, ConfigPaths.General(nameof(GeneralSettings.PasteDelayMs)), $"must be between 0 and {MaxPasteDelayMs}");
         }
 
         if (general.Overlay.Opacity is < MinOverlayOpacity or > MaxOverlayOpacity)
         {
-            Error(issues, "general.overlay.opacity", string.Create(CultureInfo.InvariantCulture, $"must be between {MinOverlayOpacity} and {MaxOverlayOpacity:0.0}"));
+            Error(issues, ConfigPaths.Field(ConfigPaths.General(nameof(GeneralSettings.Overlay)), nameof(OverlaySettings.Opacity)), string.Create(CultureInfo.InvariantCulture, $"must be between {MinOverlayOpacity} and {MaxOverlayOpacity:0.0}"));
         }
 
         if (general.UiLanguage is not (null or "en" or "uk"))
         {
-            Error(issues, "general.uiLanguage", $"'{general.UiLanguage}' is not a UI language; use \"en\" or \"uk\", or leave it out to follow the system");
+            Error(issues, ConfigPaths.General(nameof(GeneralSettings.UiLanguage)), $"'{general.UiLanguage}' is not a UI language; use \"en\" or \"uk\", or leave it out to follow the system");
         }
     }
 
@@ -81,21 +81,21 @@ public static class ConfigValidator
     {
         if (string.IsNullOrWhiteSpace(profile.Id))
         {
-            Error(issues, $"{path}.id", "must not be empty");
+            Error(issues, ConfigPaths.Field(path, nameof(ProfileConfig.Id)), "must not be empty");
         }
         else if (!seenIds.Add(profile.Id))
         {
-            Error(issues, $"{path}.id", $"duplicate profile id '{profile.Id}'");
+            Error(issues, ConfigPaths.Field(path, nameof(ProfileConfig.Id)), $"duplicate profile id '{profile.Id}'");
         }
 
         if (!config.Stt.ContainsKey(profile.Stt))
         {
-            Error(issues, $"{path}.stt", $"unknown STT provider '{profile.Stt}'");
+            Error(issues, ConfigPaths.Field(path, nameof(ProfileConfig.Stt)), $"unknown STT provider '{profile.Stt}'");
         }
 
         foreach (var step in profile.Pipeline.Where(step => !config.Processors.ContainsKey(step)))
         {
-            Error(issues, $"{path}.pipeline", $"unknown processor '{step}'");
+            Error(issues, ConfigPaths.Field(path, nameof(ProfileConfig.Pipeline)), $"unknown processor '{step}'");
         }
 
         ValidateLanguage(issues, path, profile, config.Stt.GetValueOrDefault(profile.Stt));
@@ -105,11 +105,11 @@ public static class ConfigValidator
         {
             if (!Hotkey.TryParse(profile.Hotkey, out var hotkey, out var hotkeyError))
             {
-                Error(issues, $"{path}.hotkey", hotkeyError);
+                Error(issues, ConfigPaths.Field(path, nameof(ProfileConfig.Hotkey)), hotkeyError);
             }
             else if (!takenHotkeys.Add(hotkey))
             {
-                Error(issues, $"{path}.hotkey", $"{hotkey} is already used by another profile");
+                Error(issues, ConfigPaths.Field(path, nameof(ProfileConfig.Hotkey)), $"{hotkey} is already used by another profile");
             }
         }
     }
@@ -118,18 +118,18 @@ public static class ConfigValidator
     {
         if (LanguageList.Parse(profile.Language) is not { } languages)
         {
-            Error(issues, $"{path}.language", $"'{profile.Language}' is not an ISO 639-1 code, a comma-separated list of codes, or 'auto'");
+            Error(issues, ConfigPaths.Field(path, nameof(ProfileConfig.Language)), $"'{profile.Language}' is not an ISO 639-1 code, a comma-separated list of codes, or 'auto'");
             return;
         }
 
         if (languages.Count > 1 && stt is OpenAiCompatibleSttConfig)
         {
-            Warning(issues, $"{path}.language", $"'{profile.Stt}' takes a single language, so with a list the server detects any language");
+            Warning(issues, ConfigPaths.Field(path, nameof(ProfileConfig.Language)), $"'{profile.Stt}' takes a single language, so with a list the server detects any language");
         }
 
         if (LanguageList.SimilarWarning(languages) is { } similar)
         {
-            Warning(issues, $"{path}.language", similar);
+            Warning(issues, ConfigPaths.Field(path, nameof(ProfileConfig.Language)), similar);
         }
     }
 
@@ -138,20 +138,20 @@ public static class ConfigValidator
         switch (stt)
         {
             case WhisperLocalSttConfig whisper:
-                Required(issues, $"{path}.model", whisper.Model);
+                Required(issues, ConfigPaths.Field(path, nameof(WhisperLocalSttConfig.Model)), whisper.Model);
                 if (whisper.Threads < 0)
                 {
-                    Error(issues, $"{path}.threads", "must be zero (auto) or positive");
+                    Error(issues, ConfigPaths.Field(path, nameof(WhisperLocalSttConfig.Threads)), "must be zero (auto) or positive");
                 }
 
                 break;
             case OpenAiCompatibleSttConfig remote:
-                ValidateUrl(issues, $"{path}.baseUrl", remote.BaseUrl);
-                Required(issues, $"{path}.model", remote.Model);
-                ValidateApiKey(issues, $"{path}.apiKey", remote.ApiKey);
+                ValidateUrl(issues, ConfigPaths.Field(path, nameof(OpenAiCompatibleSttConfig.BaseUrl)), remote.BaseUrl);
+                Required(issues, ConfigPaths.Field(path, nameof(OpenAiCompatibleSttConfig.Model)), remote.Model);
+                ValidateApiKey(issues, ConfigPaths.Field(path, nameof(OpenAiCompatibleSttConfig.ApiKey)), remote.ApiKey);
                 if (remote.TimeoutMs <= 0)
                 {
-                    Error(issues, $"{path}.timeoutMs", "must be positive");
+                    Error(issues, ConfigPaths.Field(path, nameof(OpenAiCompatibleSttConfig.TimeoutMs)), "must be positive");
                 }
 
                 break;
@@ -165,28 +165,28 @@ public static class ConfigValidator
             case ReplaceProcessorConfig replace:
                 for (var i = 0; i < replace.Rules.Count; i++)
                 {
-                    ValidateRule(issues, $"{path}.rules[{i}]", replace.Rules[i]);
+                    ValidateRule(issues, ConfigPaths.Item(ConfigPaths.Field(path, nameof(ReplaceProcessorConfig.Rules)), i), replace.Rules[i]);
                 }
 
                 break;
             case LlmProcessorConfig llm:
-                ValidateUrl(issues, $"{path}.baseUrl", llm.BaseUrl);
-                Required(issues, $"{path}.model", llm.Model);
-                Required(issues, $"{path}.prompt", llm.Prompt);
-                ValidateApiKey(issues, $"{path}.apiKey", llm.ApiKey);
+                ValidateUrl(issues, ConfigPaths.Field(path, nameof(LlmProcessorConfig.BaseUrl)), llm.BaseUrl);
+                Required(issues, ConfigPaths.Field(path, nameof(LlmProcessorConfig.Model)), llm.Model);
+                Required(issues, ConfigPaths.Field(path, nameof(LlmProcessorConfig.Prompt)), llm.Prompt);
+                ValidateApiKey(issues, ConfigPaths.Field(path, nameof(LlmProcessorConfig.ApiKey)), llm.ApiKey);
                 if (llm.Temperature is < 0 or > MaxTemperature)
                 {
-                    Error(issues, $"{path}.temperature", $"must be between 0 and {MaxTemperature}");
+                    Error(issues, ConfigPaths.Field(path, nameof(LlmProcessorConfig.Temperature)), $"must be between 0 and {MaxTemperature}");
                 }
 
                 if (llm.TimeoutMs <= 0)
                 {
-                    Error(issues, $"{path}.timeoutMs", "must be positive");
+                    Error(issues, ConfigPaths.Field(path, nameof(LlmProcessorConfig.TimeoutMs)), "must be positive");
                 }
 
                 if (llm.MaxTokens <= 0)
                 {
-                    Error(issues, $"{path}.maxTokens", "must be positive");
+                    Error(issues, ConfigPaths.Field(path, nameof(LlmProcessorConfig.MaxTokens)), "must be positive");
                 }
 
                 break;
@@ -207,7 +207,7 @@ public static class ConfigValidator
         {
             if (rule.Pattern!.Contains('\b', StringComparison.Ordinal))
             {
-                Warning(issues, $"{path}.pattern", @"contains a backspace character: in JSON, ""\b"" is a backspace; write ""\\b"" for a regex word boundary");
+                Warning(issues, ConfigPaths.Field(path, nameof(ReplaceRule.Pattern)), @"contains a backspace character: in JSON, ""\b"" is a backspace; write ""\\b"" for a regex word boundary");
             }
 
             try
@@ -216,36 +216,37 @@ public static class ConfigValidator
             }
             catch (ArgumentException ex)
             {
-                Error(issues, $"{path}.pattern", $"invalid regex: {ex.Message}");
+                Error(issues, ConfigPaths.Field(path, nameof(ReplaceRule.Pattern)), $"invalid regex: {ex.Message}");
             }
         }
     }
 
-    private static void ValidateVocabulary(List<ConfigIssue> issues, string path, ProfileConfig profile)
+    private static void ValidateVocabulary(List<ConfigIssue> issues, string profilePath, ProfileConfig profile)
     {
+        var path = ConfigPaths.Field(profilePath, nameof(ProfileConfig.Vocabulary));
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (var i = 0; i < profile.Vocabulary.Count; i++)
         {
             var term = profile.Vocabulary[i];
             if (string.IsNullOrWhiteSpace(term))
             {
-                Error(issues, $"{path}.vocabulary[{i}]", "must not be empty");
+                Error(issues, ConfigPaths.Item(path, i), "must not be empty");
             }
             else if (!seen.Add(term.Trim()))
             {
-                Warning(issues, $"{path}.vocabulary[{i}]", $"'{term.Trim()}' is listed twice");
+                Warning(issues, ConfigPaths.Item(path, i), $"'{term.Trim()}' is listed twice");
             }
         }
 
         if (profile.Vocabulary.Count > 0 && profile.Language is null or LanguageList.Auto)
         {
-            Warning(issues, $"{path}.vocabulary", "a word list can pull language detection towards its own language; set 'language' for this profile");
+            Warning(issues, path, "a word list can pull language detection towards its own language; set 'language' for this profile");
         }
 
         var dropped = SttPromptBuilder.Build(profile.SttPrompt, VocabularyList.Normalize(profile.Vocabulary)).Dropped;
         if (dropped.Count > 0)
         {
-            Warning(issues, $"{path}.vocabulary", $"the speech hint holds {SttPromptBuilder.MaxLength} characters; left out: {string.Join(", ", dropped)}");
+            Warning(issues, path, $"the speech hint holds {SttPromptBuilder.MaxLength} characters; left out: {string.Join(", ", dropped)}");
         }
     }
 

@@ -473,11 +473,11 @@ public sealed partial class ProfilesPage : SettingsPage
         }
 
         var profile = config.Profiles[index];
-        var path = $"profiles[{index}]";
+        var path = ConfigPaths.Profile(index);
         Name = profile.Name ?? "";
         NamePlaceholder = profile.Id;
         Hotkey = profile.Hotkey;
-        HotkeyError = _session.IssueAt($"{path}.hotkey") ?? DuplicateHotkey(config, index);
+        HotkeyError = _session.IssueAt(ConfigPaths.Field(path, nameof(ProfileConfig.Hotkey))) ?? DuplicateHotkey(config, index);
         HotkeyWarning = RegistrationWarning(_channel.Link);
         Mode = Modes.FirstOrDefault(m => m.Value == profile.Mode) ?? Modes[0];
         LoadLanguages(profile, path);
@@ -506,7 +506,7 @@ public sealed partial class ProfilesPage : SettingsPage
             ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsProfilesSimilar, WhisperLanguages.Name(pairs[0].First), WhisperLanguages.Name(pairs[0].Second))
             : null;
         var similarText = LanguageList.SimilarWarning(setting.Codes);
-        LanguageNote = _session.Issues.FirstOrDefault(i => i.Path == $"{path}.language" && i.Message != similarText)?.Message;
+        LanguageNote = _session.Issues.FirstOrDefault(i => i.Path == ConfigPaths.Field(path, nameof(ProfileConfig.Language)) && i.Message != similarText)?.Message;
     }
 
     private void LoadWords(ProfileConfig profile, string path)
@@ -514,7 +514,7 @@ public sealed partial class ProfilesPage : SettingsPage
         Words = [.. profile.Vocabulary.Select(word => new WordChip(word,
             new RelayCommand(() => EditProfile(p => p with { Vocabulary = [.. p.Vocabulary.Where(w => w != word)] }))))];
         WordCount = string.Format(CultureInfo.CurrentCulture, Strings.SettingsProfilesWordCount, profile.Vocabulary.Count);
-        WordsNote = _session.Issues.FirstOrDefault(i => i.Path.StartsWith($"{path}.vocabulary", StringComparison.Ordinal))?.Message;
+        WordsNote = _session.Issues.FirstOrDefault(i => i.Path.StartsWith(ConfigPaths.Field(path, nameof(ProfileConfig.Vocabulary)), StringComparison.Ordinal))?.Message;
     }
 
     private void LoadChain(DictumConfig config, ProfileConfig profile, string path)
@@ -526,7 +526,7 @@ public sealed partial class ProfilesPage : SettingsPage
             .Select(id => new Option<string>(id, string.Format(CultureInfo.CurrentCulture, Strings.SettingsProfilesStep, id, Kind(config, id))))];
         StepToAdd = null;
         CanAddStep = StepsToAdd.Count > 0;
-        ChainNote = _session.IssueAt($"{path}.pipeline");
+        ChainNote = _session.IssueAt(ConfigPaths.Field(path, nameof(ProfileConfig.Pipeline)));
     }
 
     private void LoadOutput(ProfileConfig profile)
@@ -551,7 +551,7 @@ public sealed partial class ProfilesPage : SettingsPage
         }
 
         Provider = Providers.First(p => p.Value == profile.Stt);
-        ProviderError = _session.IssueAt($"{path}.stt");
+        ProviderError = _session.IssueAt(ConfigPaths.Field(path, nameof(ProfileConfig.Stt)));
     }
 
     /// <summary>
@@ -568,7 +568,7 @@ public sealed partial class ProfilesPage : SettingsPage
         for (var i = 0; i < config.Profiles.Count; i++)
         {
             if (i != index && Dictum.Core.Hotkeys.Hotkey.TryParse(config.Profiles[i].Hotkey, out var other, out _) && other == mine
-                && _session.IssueAt($"profiles[{i}].hotkey") is { } issue)
+                && _session.IssueAt(ConfigPaths.Profile(i, nameof(ProfileConfig.Hotkey))) is { } issue)
             {
                 return issue;
             }
