@@ -1,7 +1,5 @@
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Media;
-using Dictum.App.Tray;
 using Dictum.App.ViewModels.Setup;
 
 namespace Dictum.App.Views.Setup;
@@ -9,21 +7,10 @@ namespace Dictum.App.Views.Setup;
 /// <summary>The setup wizard's dialog. Esc closes and keeps what was entered; Enter is Next when it is on.</summary>
 public sealed partial class SetupWindow : Window
 {
-    /// <summary>Windows 11's first build, the first with Mica.</summary>
-    private const int Windows11Build = 22000;
-
-    private const int IconSize = 32;
-
     public SetupWindow()
     {
         InitializeComponent();
-        if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, Windows11Build))
-        {
-            TransparencyLevelHint = [WindowTransparencyLevel.Mica];
-            Background = Brushes.Transparent;
-        }
-
-        Icon = new WindowIcon(TrayIconRenderer.Render(TrayGlyph.Idle, 0, IconSize, Color.Parse(TrayGeometry.MonoOnDark), colourLayer: true));
+        WindowChrome.Apply(this);
         KeyDown += OnKeyDown;
         Opened += (_, _) => Open.Add(this);
         Closed += (_, _) => Open.Remove(this);
