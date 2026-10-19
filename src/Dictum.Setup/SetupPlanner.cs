@@ -10,8 +10,14 @@ public enum CleanupChoice
     ExistingServer,
 }
 
-/// <param name="ApiKey">The processor's apiKey value: <c>secret:name</c>, <c>env:VAR</c>, or null for none.</param>
-public sealed record ExistingLlmServer(string BaseUrl, string Model, string? ApiKey);
+/// <param name="ApiKey">
+/// The processor's apiKey value: <c>secret:name</c>, <c>env:VAR</c>, null for none, or, carried over from a hand-edited
+/// config, the key itself.
+/// </param>
+public sealed record ExistingLlmServer(string BaseUrl, string Model, string? ApiKey)
+{
+    public override string ToString() => KeyRedaction.Print(nameof(ExistingLlmServer), (this with { ApiKey = KeyRedaction.Redact(ApiKey) }).PrintMembers);
+}
 
 /// <param name="Language">ISO 639-1 code or "auto".</param>
 /// <param name="SpeechModel">Catalog id of the Whisper model, or null to keep the current one.</param>

@@ -7,6 +7,8 @@ namespace Dictum.Setup;
 public sealed record PendingSecret(string Name, string Value)
 {
     public Task WriteAsync(ISecretStore secrets, CancellationToken ct) => secrets.SetAsync(Name, Value, ct);
+
+    public override string ToString() => KeyRedaction.Print(nameof(PendingSecret), (this with { Value = KeyRedaction.Mask }).PrintMembers);
 }
 
 /// <summary>

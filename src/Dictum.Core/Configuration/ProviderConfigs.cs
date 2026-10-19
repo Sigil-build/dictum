@@ -60,6 +60,9 @@ public sealed record OpenAiCompatibleSttConfig : SttConfig
     public string? ApiKey { get; init; }
 
     public int TimeoutMs { get; set; } = DefaultTimeoutMs;
+
+    public override string ToString() =>
+        KeyRedaction.Print(nameof(OpenAiCompatibleSttConfig), (this with { ApiKey = KeyRedaction.Redact(ApiKey) }).PrintMembers);
 }
 
 /// <summary>Base for text processor settings. The <c>type</c> property selects the derived record.</summary>
@@ -145,4 +148,7 @@ public sealed record LlmProcessorConfig : ProcessorConfig
     /// answering, or turn reasoning off on the server.
     /// </summary>
     public int? MaxTokens { get; init; }
+
+    public override string ToString() =>
+        KeyRedaction.Print(nameof(LlmProcessorConfig), (this with { ApiKey = KeyRedaction.Redact(ApiKey) }).PrintMembers);
 }
