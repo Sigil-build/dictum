@@ -1,4 +1,3 @@
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Daemon;
@@ -295,14 +294,14 @@ public sealed partial class GeneralPage : SettingsPage
     private static List<Option<string?>> MicrophoneList(IReadOnlyList<AudioDevice> devices, bool known, string? configured)
     {
         var standard = devices.FirstOrDefault(d => d.IsDefault) is { } device
-            ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsMicrophoneDefault, device.Name)
+            ? UiText.Format(Strings.SettingsMicrophoneDefault, device.Name)
             : Strings.SettingsMicrophoneSystemDefault;
         var list = new List<Option<string?>> { new(null, standard) };
         list.AddRange(devices.Select(d => d.Name).Distinct().Select(name => new Option<string?>(name, name)));
         if (configured is not null && !devices.Any(d => d.Name == configured))
         {
             list.Add(new Option<string?>(configured,
-                known ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsMicrophoneMissing, configured) : configured));
+                known ? UiText.Format(Strings.SettingsMicrophoneMissing, configured) : configured));
         }
 
         return list;
@@ -326,7 +325,7 @@ public sealed partial class GeneralPage : SettingsPage
         {
             // Each OS stores the login item its own way (registry, autostart file, portal); any failure shows by the switch.
             _services.Log.Warn($"Login item not changed: {ex.Message}");
-            StartAtLoginError = string.Format(CultureInfo.CurrentCulture, Strings.SettingsStartAtLoginFailed, ex.Message);
+            StartAtLoginError = UiText.Format(Strings.SettingsStartAtLoginFailed, ex.Message);
             ReadLoginItem();
         }
     }

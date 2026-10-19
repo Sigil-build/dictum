@@ -1,4 +1,3 @@
-using System.Globalization;
 using Dictum.App.Resources;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
@@ -158,7 +157,7 @@ public sealed class SettingsSession(ConfigStore store, ITimers timers, ILog log)
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            SaveError = string.Format(CultureInfo.CurrentCulture, Strings.SettingsSaveFailed, ex.Message);
+            SaveError = UiText.Format(Strings.SettingsSaveFailed, ex.Message);
             log.Warn($"Settings not saved: {ex.Message}");
         }
 

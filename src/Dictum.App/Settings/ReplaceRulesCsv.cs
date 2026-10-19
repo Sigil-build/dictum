@@ -83,7 +83,7 @@ public static class ReplaceRulesCsv
 
             if (Cells(line, separator) is not { } cells)
             {
-                problems.Add(string.Format(CultureInfo.CurrentCulture, Strings.SettingsRulesCsvQuote, i + 1));
+                problems.Add(UiText.Format(Strings.SettingsRulesCsvQuote, i + 1));
                 continue;
             }
 
@@ -95,7 +95,7 @@ public static class ReplaceRulesCsv
 
             if (find.Length == 0)
             {
-                problems.Add(string.Format(CultureInfo.CurrentCulture, Strings.SettingsRulesCsvEmptyFind, i + 1));
+                problems.Add(UiText.Format(Strings.SettingsRulesCsvEmptyFind, i + 1));
                 continue;
             }
 

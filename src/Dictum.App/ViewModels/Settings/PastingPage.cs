@@ -1,4 +1,3 @@
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Resources;
@@ -26,7 +25,7 @@ public sealed partial class PastingPage : SettingsPage
     public PastingPage(SettingsSession session, string parentTitle, bool linux)
     {
         _session = session;
-        BackLabel = string.Format(CultureInfo.CurrentCulture, Strings.SettingsBack, parentTitle);
+        BackLabel = UiText.Format(Strings.SettingsBack, parentTitle);
         ShowsInjector = linux;
         Injectors =
         [

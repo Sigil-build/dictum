@@ -1,4 +1,3 @@
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Dictum.App.Daemon;
 using Dictum.App.Resources;
@@ -146,7 +145,7 @@ public sealed partial class ModelsPage : SettingsPage
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            card.Error = string.Format(CultureInfo.CurrentCulture, Strings.SettingsModelsDeleteFailed, ex.Message);
+            card.Error = UiText.Format(Strings.SettingsModelsDeleteFailed, ex.Message);
         }
 
         Refresh();
@@ -167,7 +166,7 @@ public sealed partial class ModelsPage : SettingsPage
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             card.CheckText = null;
-            card.Error = string.Format(CultureInfo.CurrentCulture, Strings.SettingsModelsVerifyFailed, ex.Message);
+            card.Error = UiText.Format(Strings.SettingsModelsVerifyFailed, ex.Message);
         }
         finally
         {
@@ -224,7 +223,7 @@ public sealed partial class ModelsPage : SettingsPage
                     card.CheckText = null;
                     card.Error = answer is null
                         ? Strings.SettingsProvidersNoDaemon
-                        : string.Format(CultureInfo.CurrentCulture, Strings.SettingsModelsMeasureFailed, answer.Error ?? Strings.SettingsProvidersTestFailed);
+                        : UiText.Format(Strings.SettingsModelsMeasureFailed, answer.Error ?? Strings.SettingsProvidersTestFailed);
                     return;
                 }
 
@@ -232,7 +231,7 @@ public sealed partial class ModelsPage : SettingsPage
                 if (!string.Equals(Path.GetFileName(test.Model), card.Entry.File, StringComparison.OrdinalIgnoreCase))
                 {
                     card.CheckText = null;
-                    card.Error = string.Format(CultureInfo.CurrentCulture, Strings.SettingsModelsMeasureOtherModel, test.Model ?? "?");
+                    card.Error = UiText.Format(Strings.SettingsModelsMeasureOtherModel, test.Model ?? "?");
                     return;
                 }
 
@@ -274,7 +273,7 @@ public sealed partial class ModelsPage : SettingsPage
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            card.Error = string.Format(CultureInfo.CurrentCulture, Strings.SettingsModelsQueueFailed, ex.Message);
+            card.Error = UiText.Format(Strings.SettingsModelsQueueFailed, ex.Message);
         }
     }
 
@@ -348,11 +347,11 @@ public sealed partial class ModelsPage : SettingsPage
 
             if (_rate.Id == item.Entry.Id && _rate.BytesPerSecond is { } rate && _rate.TimeLeft(item.Entry.Size) is { } left)
             {
-                return string.Format(CultureInfo.CurrentCulture, Strings.SettingsModelsProgressRate, done, total, Units.Rate(rate), Units.TimeLeft(left));
+                return UiText.Format(Strings.SettingsModelsProgressRate, done, total, Units.Rate(rate), Units.TimeLeft(left));
             }
         }
 
-        return string.Format(CultureInfo.CurrentCulture, Strings.SettingsModelsProgress, done, total);
+        return UiText.Format(Strings.SettingsModelsProgress, done, total);
     }
 
     /// <summary>

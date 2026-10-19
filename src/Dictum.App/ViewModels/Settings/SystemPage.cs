@@ -1,4 +1,3 @@
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Daemon;
@@ -93,9 +92,9 @@ public sealed partial class SystemPage : SettingsPage
         PlatformCheckNames.Elevation => Strings.SettingsCheckElevation,
         PlatformCheckNames.Daemon => Strings.SettingsCheckDaemon,
         _ when name.StartsWith(PlatformCheckNames.SttPrefix, StringComparison.Ordinal) =>
-            string.Format(CultureInfo.CurrentCulture, Strings.SettingsCheckStt, name[PlatformCheckNames.SttPrefix.Length..]),
+            UiText.Format(Strings.SettingsCheckStt, name[PlatformCheckNames.SttPrefix.Length..]),
         _ when name.StartsWith(PlatformCheckNames.ProcessorPrefix, StringComparison.Ordinal) =>
-            string.Format(CultureInfo.CurrentCulture, Strings.SettingsCheckProcessor, name[PlatformCheckNames.ProcessorPrefix.Length..]),
+            UiText.Format(Strings.SettingsCheckProcessor, name[PlatformCheckNames.ProcessorPrefix.Length..]),
         _ => name,
     };
 
@@ -155,7 +154,7 @@ public sealed partial class SystemPage : SettingsPage
         var warnings = rows.Count(r => r.Level == HealthLevel.Warning);
         HasProblems = problems + warnings > 0;
         Summary = HasProblems
-            ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsSystemSummary, problems, warnings)
+            ? UiText.Format(Strings.SettingsSystemSummary, problems, warnings)
             : Strings.SettingsSystemAllGood;
         _checkedAt = _services.Time.GetUtcNow();
         Checking = false;
@@ -163,6 +162,6 @@ public sealed partial class SystemPage : SettingsPage
     }
 
     private void UpdateHeader() => Header = Checking || _checkedAt is not { } at
-        ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsSystemChecking, _services.Desktop)
-        : string.Format(CultureInfo.CurrentCulture, Strings.SettingsSystemChecked, _services.Desktop, (int)(_services.Time.GetUtcNow() - at).TotalSeconds);
+        ? UiText.Format(Strings.SettingsSystemChecking, _services.Desktop)
+        : UiText.Format(Strings.SettingsSystemChecked, _services.Desktop, (int)(_services.Time.GetUtcNow() - at).TotalSeconds);
 }

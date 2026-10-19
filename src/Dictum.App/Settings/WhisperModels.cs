@@ -1,4 +1,3 @@
-using System.Globalization;
 using Dictum.App.Resources;
 using Dictum.App.ViewModels.Settings;
 using Dictum.Core;
@@ -46,7 +45,7 @@ public static class WhisperModels
             var name = Path.GetFileName(current);
             choices.Add(new Option<string>(current, IsPresent(paths, current)
                 ? name
-                : string.Format(CultureInfo.CurrentCulture, Strings.SettingsProvidersModelMissing, name)));
+                : UiText.Format(Strings.SettingsProvidersModelMissing, name)));
         }
 
         return choices;

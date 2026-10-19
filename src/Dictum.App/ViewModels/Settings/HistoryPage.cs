@@ -13,7 +13,7 @@ namespace Dictum.App.ViewModels.Settings;
 /// <summary>One dictation in the list: the entry and its texts for the row.</summary>
 public sealed record HistoryItem(HistoryEntry Entry, string When, string Profile, string? Language, string FirstLine, string Duration)
 {
-    public string? Problem => Entry.Error is null ? null : string.Format(CultureInfo.CurrentCulture, Strings.SettingsHistoryFailed, Entry.Error);
+    public string? Problem => Entry.Error is null ? null : UiText.Format(Strings.SettingsHistoryFailed, Entry.Error);
 
     public static HistoryItem Of(HistoryEntry entry) => new(
         entry,
@@ -21,7 +21,7 @@ public sealed record HistoryItem(HistoryEntry Entry, string When, string Profile
         entry.ProfileId,
         entry.Language?.ToUpperInvariant(),
         entry.Text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault() ?? "",
-        string.Format(CultureInfo.CurrentCulture, Strings.SettingsHistorySeconds, entry.AudioSeconds));
+        UiText.Format(Strings.SettingsHistorySeconds, entry.AudioSeconds));
 }
 
 /// <summary>
@@ -129,7 +129,7 @@ public sealed partial class HistoryPage : SettingsPage, IDisposable
         catch (Exception ex)
         {
             // A busy clipboard throws; a command that throws would take dictum-gui down.
-            Error = string.Format(CultureInfo.CurrentCulture, Strings.SettingsHistoryCopyFailed, ex.Message);
+            Error = UiText.Format(Strings.SettingsHistoryCopyFailed, ex.Message);
             _log.Warn($"Re-run result not copied: {ex.Message}");
         }
     }
@@ -138,7 +138,7 @@ public sealed partial class HistoryPage : SettingsPage, IDisposable
     {
         var config = _session.Config;
         Chains = [.. config.Profiles.Where(p => p.Pipeline.Count > 0).Select(p => new Option<string>(p.Id,
-            string.Format(CultureInfo.CurrentCulture, Strings.SettingsHistoryChain, p.Name ?? p.Id, string.Join(" → ", p.Pipeline))))];
+            UiText.Format(Strings.SettingsHistoryChain, p.Name ?? p.Id, string.Join(" → ", p.Pipeline))))];
         HasChains = Chains.Count > 0;
     }
 
@@ -168,7 +168,7 @@ public sealed partial class HistoryPage : SettingsPage, IDisposable
             }
 
             ReRunText = result.Text;
-            ReRunLabel = string.Format(CultureInfo.CurrentCulture, Strings.SettingsHistoryReRunLabel, profile.Name ?? profile.Id, result.Milliseconds);
+            ReRunLabel = UiText.Format(Strings.SettingsHistoryReRunLabel, profile.Name ?? profile.Id, result.Milliseconds);
             ReRunError = result.Error;
         }
         catch (OperationCanceledException)
@@ -202,7 +202,7 @@ public sealed partial class HistoryPage : SettingsPage, IDisposable
         catch (Exception ex)
         {
             // A busy clipboard throws; a command that throws would take dictum-gui down.
-            Error = string.Format(CultureInfo.CurrentCulture, Strings.SettingsHistoryCopyFailed, ex.Message);
+            Error = UiText.Format(Strings.SettingsHistoryCopyFailed, ex.Message);
             _log.Warn($"History text not copied: {ex.Message}");
         }
     }
@@ -247,7 +247,7 @@ public sealed partial class HistoryPage : SettingsPage, IDisposable
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             _all = [];
-            Error = string.Format(CultureInfo.CurrentCulture, Strings.SettingsHistoryReadFailed, ex.Message);
+            Error = UiText.Format(Strings.SettingsHistoryReadFailed, ex.Message);
             _log.Warn($"History not read: {ex.Message}");
         }
 
@@ -265,7 +265,7 @@ public sealed partial class HistoryPage : SettingsPage, IDisposable
         Selected = Items.FirstOrDefault(i => i.Entry.At == selected) ?? (Items.Count > 0 ? Items[0] : null);
         Empty = Items.Count > 0 ? null
             : _session.Config.General.HistorySize <= 0 ? Strings.SettingsHistoryOff
-            : search.Length > 0 ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsHistoryNoMatch, search)
+            : search.Length > 0 ? UiText.Format(Strings.SettingsHistoryNoMatch, search)
             : Strings.SettingsHistoryNone;
     }
 }

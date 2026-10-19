@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Text.Json;
 using Dictum.App.Resources;
 using Dictum.Core.Configuration;
@@ -56,7 +55,7 @@ public sealed class ServerProbe(HttpClient http, ISecretStore secrets, TimeProvi
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // A missing secret is a ConfigException; Credential Manager and the portal throw their own.
-            return new ServerCheck(false, Format(Strings.SetupServerKeyUnreadable, ex.Message));
+            return new ServerCheck(false, UiText.Format(Strings.SetupServerKeyUnreadable, ex.Message));
         }
 
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -73,21 +72,21 @@ public sealed class ServerProbe(HttpClient http, ISecretStore secrets, TimeProvi
 
             if (!response.IsSuccessStatusCode)
             {
-                return new ServerCheck(false, Format(Strings.SetupServerAnswered, (int)response.StatusCode));
+                return new ServerCheck(false, UiText.Format(Strings.SetupServerAnswered, (int)response.StatusCode));
             }
 
             var models = await ModelIdsAsync(response, limit.Token);
             return models.Count > 1 && !models.Contains(name, StringComparer.Ordinal) && !models.Contains(name + OllamaDefaultTag, StringComparer.Ordinal)
-                ? new ServerCheck(false, Format(Strings.SetupServerNoModel, name, string.Join(", ", models.Take(ModelsNamed))))
-                : new ServerCheck(true, Format(Strings.SetupServerReachable, milliseconds));
+                ? new ServerCheck(false, UiText.Format(Strings.SetupServerNoModel, name, string.Join(", ", models.Take(ModelsNamed))))
+                : new ServerCheck(true, UiText.Format(Strings.SetupServerReachable, milliseconds));
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            return new ServerCheck(false, Format(Strings.SetupServerTimeout, url));
+            return new ServerCheck(false, UiText.Format(Strings.SetupServerTimeout, url));
         }
         catch (HttpRequestException ex)
         {
-            return new ServerCheck(false, Format(Strings.SetupServerUnreachable, url, ex.Message));
+            return new ServerCheck(false, UiText.Format(Strings.SetupServerUnreachable, url, ex.Message));
         }
     }
 
@@ -120,5 +119,4 @@ public sealed class ServerProbe(HttpClient http, ISecretStore secrets, TimeProvi
         }
     }
 
-    private static string Format(string format, params object[] args) => string.Format(CultureInfo.CurrentCulture, format, args);
 }

@@ -1,4 +1,3 @@
-using System.Globalization;
 using Dictum.App.Resources;
 using Dictum.Setup;
 
@@ -41,10 +40,10 @@ public static class ModelText
 
     /// <summary>"874 MB · MIT licence · huggingface.co/ggerganov/whisper.cpp · 99 languages".</summary>
     public static string Meta(CatalogEntry entry) =>
-        Format(Strings.SettingsModelsMeta, Units.Size(entry.Size), entry.Licence.Name, Source(entry), Languages(entry));
+        UiText.Format(Strings.SettingsModelsMeta, Units.Size(entry.Size), entry.Licence.Name, Source(entry), Languages(entry));
 
     /// <summary>"~6 s for 5 s of speech", saying where the number comes from.</summary>
-    public static string Speed(SpeedEstimate estimate) => Format(estimate.Source switch
+    public static string Speed(SpeedEstimate estimate) => UiText.Format(estimate.Source switch
     {
         SpeedSource.Dictations => Strings.SettingsModelsSpeedDictations,
         SpeedSource.Measured => Strings.SettingsModelsSpeedMeasured,
@@ -57,22 +56,21 @@ public static class ModelText
         var ram = Units.Memory(memoryBytes);
         if (hardware.GpuName is not { } gpu)
         {
-            return Format(Strings.SettingsModelsNoGpu, ram);
+            return UiText.Format(Strings.SettingsModelsNoGpu, ram);
         }
 
         if (hardware.GpuMemoryBytes is not { } bytes || bytes <= 0)
         {
-            return Format(Strings.SettingsModelsGpuNoMemory, gpu, ram);
+            return UiText.Format(Strings.SettingsModelsGpuNoMemory, gpu, ram);
         }
 
-        var memory = Format(hardware.GpuIsIntegrated ? Strings.UnitShared : Strings.UnitVram, Units.Memory(bytes));
-        return Format(bytes < SetupPlanner.MinGpuMemoryBytes ? Strings.SettingsModelsSmallGpu : Strings.SettingsModelsGpu, gpu, memory, ram);
+        var memory = UiText.Format(hardware.GpuIsIntegrated ? Strings.UnitShared : Strings.UnitVram, Units.Memory(bytes));
+        return UiText.Format(bytes < SetupPlanner.MinGpuMemoryBytes ? Strings.SettingsModelsSmallGpu : Strings.SettingsModelsGpu, gpu, memory, ram);
     }
 
     /// <summary>The disk line; free space the probe could not read (<see cref="long.MaxValue"/>) is left out.</summary>
     public static string Disk(long usedBytes, long freeBytes) => freeBytes == long.MaxValue
-        ? Format(Strings.SettingsModelsDiskUsed, Units.Size(usedBytes))
-        : Format(Strings.SettingsModelsDisk, Units.Size(usedBytes), Units.Size(freeBytes));
+        ? UiText.Format(Strings.SettingsModelsDiskUsed, Units.Size(usedBytes))
+        : UiText.Format(Strings.SettingsModelsDisk, Units.Size(usedBytes), Units.Size(freeBytes));
 
-    private static string Format(string format, params object[] args) => string.Format(CultureInfo.CurrentCulture, format, args);
 }

@@ -1,4 +1,3 @@
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Overlay;
@@ -25,7 +24,7 @@ public sealed partial class OverlayPage : SettingsPage
     public OverlayPage(SettingsSession session, string parentTitle)
     {
         _session = session;
-        BackLabel = string.Format(CultureInfo.CurrentCulture, Strings.SettingsBack, parentTitle);
+        BackLabel = UiText.Format(Strings.SettingsBack, parentTitle);
         Positions = [new(OverlayPosition.Bottom, Strings.SettingsOverlayBottom), new(OverlayPosition.Top, Strings.SettingsOverlayTop)];
         Sizes =
         [
@@ -135,7 +134,7 @@ public sealed partial class OverlayPage : SettingsPage
             Size = Sizes.FirstOrDefault(s => s.Value == overlay.Size) ?? Sizes.First(s => s.Value == OverlaySize.Medium);
             Opacity = Math.Round(overlay.Opacity * 100);
             Palette = Palettes.FirstOrDefault(p => p.Value == overlay.Palette) ?? Palettes[0];
-            OpacityText = string.Format(CultureInfo.CurrentCulture, Strings.SettingsOverlayOpacityValue, Opacity);
+            OpacityText = UiText.Format(Strings.SettingsOverlayOpacityValue, Opacity);
             PreviewPalette = overlay.Palette;
             PreviewZoom = OverlayTokens.SizeScale(overlay.Size);
             PreviewOpacity = Math.Clamp(overlay.Opacity, ConfigValidator.MinOverlayOpacity, ConfigValidator.MaxOverlayOpacity);

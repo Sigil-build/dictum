@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Resources;
@@ -204,13 +203,13 @@ public sealed partial class RulesEditor(SettingsSession session) : ObservableObj
         }
 
         ImportNote = problems.Count == 0
-            ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsRulesImported, rules.Count)
-            : string.Format(CultureInfo.CurrentCulture, Strings.SettingsRulesImportProblems, rules.Count, string.Join(" ", problems));
+            ? UiText.Format(Strings.SettingsRulesImported, rules.Count)
+            : UiText.Format(Strings.SettingsRulesImportProblems, rules.Count, string.Join(" ", problems));
     }
 
     /// <summary>The CSV file could not be read (the view's file picker reports it here).</summary>
     public void ShowImportError(string message) =>
-        ImportNote = string.Format(CultureInfo.CurrentCulture, Strings.SettingsRulesImportFailed, message);
+        ImportNote = UiText.Format(Strings.SettingsRulesImportFailed, message);
 
     internal void Add(RuleRow draft) => Edit(list => list.Add(draft.ToRule()));
 

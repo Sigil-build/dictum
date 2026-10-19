@@ -1,4 +1,3 @@
-using System.Globalization;
 using Dictum.App.Resources;
 
 namespace Dictum.App.Tray;
@@ -10,6 +9,6 @@ public static class TrayLabels
 
     /// <summary>The item's text with its languages, escaped. Plasma shows the languages in a column instead.</summary>
     public static string ForItem(TrayMenuItem item) => Escape(item.Detail is { } detail
-        ? string.Format(CultureInfo.CurrentCulture, Strings.MenuProfileWithLanguages, item.Label, detail)
+        ? UiText.Format(Strings.MenuProfileWithLanguages, item.Label, detail)
         : item.Label);
 }

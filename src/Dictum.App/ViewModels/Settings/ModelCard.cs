@@ -1,4 +1,3 @@
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Resources;
@@ -54,7 +53,7 @@ public sealed partial class ModelCard : ObservableObject
         Name = ModelText.Name(entry);
         Note = ModelText.Note(entry);
         Meta = ModelText.Meta(entry);
-        DeleteText = string.Format(CultureInfo.CurrentCulture, Strings.SettingsModelsDelete, Units.Size(entry.Size));
+        DeleteText = UiText.Format(Strings.SettingsModelsDelete, Units.Size(entry.Size));
     }
 
     public CatalogEntry Entry { get; }
@@ -245,12 +244,12 @@ public sealed partial class ModelCard : ObservableObject
         var offered = (!state.Installed && download is null) || IsFailed;
         ShowDownload = offered && !IsTooSlow;
         ShowDownloadAnyway = offered && IsTooSlow;
-        DownloadText = string.Format(CultureInfo.CurrentCulture,
+        DownloadText = UiText.Format(
             IsFailed ? Strings.SettingsModelsRetry : IsTooSlow ? Strings.SettingsModelsDownloadAnyway : Strings.SettingsModelsDownload,
             Units.Size(Entry.Size));
         var names = string.Join(", ", users);
-        UsedByText = used ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsProvidersUsedBy, names) : Strings.SettingsModelsUnused;
-        DeleteNote = IsInstalled && used ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsModelsDeleteRefused, names) : null;
+        UsedByText = used ? UiText.Format(Strings.SettingsProvidersUsedBy, names) : Strings.SettingsModelsUnused;
+        DeleteNote = IsInstalled && used ? UiText.Format(Strings.SettingsModelsDeleteRefused, names) : null;
         CanDelete = IsInstalled && !used && state.CanEdit && !Busy;
         CanVerify = IsInstalled && !Busy;
         ShowMeasure = IsInstalled && used && state.CanEdit && state.Estimate?.Source != SpeedSource.Dictations;
@@ -275,7 +274,7 @@ public sealed partial class ModelCard : ObservableObject
             var others = state.Profiles.Where(o => o.Provider == p.Provider && o.Id != p.Id).Select(o => o.Name).ToList();
             return new Option<string>(p.Id, others.Count == 0
                 ? p.Name
-                : string.Format(CultureInfo.CurrentCulture, Strings.SettingsModelsUseInShared, p.Name, string.Join(", ", others)));
+                : UiText.Format(Strings.SettingsModelsUseInShared, p.Name, string.Join(", ", others)));
         }),
     ];
 }

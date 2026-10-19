@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Diagnostics;
-using System.Globalization;
 using Dictum.App.Resources;
 using Dictum.Core.Diagnostics;
 using Dictum.Platform;
@@ -45,7 +44,7 @@ public sealed class DaemonProcessLauncher(
         // Bare names ("cmd.exe", "/bin/sh") are left to the OS search path; a full path must exist.
         if (Path.IsPathFullyQualified(executable) && !File.Exists(executable))
         {
-            throw new DaemonLaunchException(string.Format(CultureInfo.CurrentCulture, Strings.ProblemExecutableMissing, executable));
+            throw new DaemonLaunchException(UiText.Format(Strings.ProblemExecutableMissing, executable));
         }
 
         var info = new ProcessStartInfo(executable)
@@ -77,7 +76,7 @@ public sealed class DaemonProcessLauncher(
         catch (Win32Exception ex)
         {
             process.Dispose();
-            throw new DaemonLaunchException(string.Format(CultureInfo.CurrentCulture, Strings.ProblemCannotStart, executable, ex.Message));
+            throw new DaemonLaunchException(UiText.Format(Strings.ProblemCannotStart, executable, ex.Message));
         }
 
         process.BeginOutputReadLine();

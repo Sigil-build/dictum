@@ -1,4 +1,3 @@
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Resources;
@@ -183,7 +182,7 @@ public sealed partial class ProcessorsPage : SettingsPage, IDisposable
             var users = config.Profiles.Where(p => p.Pipeline.Contains(id)).Select(p => p.Name ?? p.Id).ToList();
             UsedBy = users.Count == 0
                 ? Strings.SettingsProcessorsUnused
-                : string.Format(CultureInfo.CurrentCulture, Strings.SettingsProvidersUsedBy, string.Join(", ", users));
+                : UiText.Format(Strings.SettingsProvidersUsedBy, string.Join(", ", users));
             CanRemove = CanEdit && users.Count == 0;
         }
         finally
@@ -218,8 +217,8 @@ public sealed partial class ProcessorsPage : SettingsPage, IDisposable
 
     private static string Caption(ProcessorConfig processor) => processor switch
     {
-        LlmProcessorConfig llm => string.Format(CultureInfo.CurrentCulture, Strings.SettingsProcessorsLlmCaption, llm.Prompt),
-        ReplaceProcessorConfig replace => string.Format(CultureInfo.CurrentCulture, Strings.SettingsChainRules, replace.Rules.Count),
+        LlmProcessorConfig llm => UiText.Format(Strings.SettingsProcessorsLlmCaption, llm.Prompt),
+        ReplaceProcessorConfig replace => UiText.Format(Strings.SettingsChainRules, replace.Rules.Count),
         _ => Strings.SettingsChainMissing,
     };
 }

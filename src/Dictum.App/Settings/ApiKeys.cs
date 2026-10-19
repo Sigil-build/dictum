@@ -1,4 +1,3 @@
-using System.Globalization;
 using Dictum.App.Resources;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
@@ -49,7 +48,7 @@ public static class ApiKeys
         null => Strings.SettingsProvidersNoKey,
         var key when key.StartsWith(ConfigValueResolver.SecretPrefix, StringComparison.Ordinal) => Strings.SettingsProvidersKeyStored,
         var key when ConfigValueResolver.TryGetEnvVariable(key, out var variable) =>
-            string.Format(CultureInfo.CurrentCulture, Strings.SettingsProvidersKeyEnv, variable),
+            UiText.Format(Strings.SettingsProvidersKeyEnv, variable),
         _ => Strings.SettingsProvidersKeyPlain,
     };
 

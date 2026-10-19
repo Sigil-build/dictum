@@ -42,7 +42,7 @@ public sealed class InputMeter
     public static string Readout(int db)
     {
         var number = Math.Abs(db).ToString(CultureInfo.CurrentCulture);
-        return string.Format(CultureInfo.CurrentCulture, Strings.SettingsDbfs, db < 0 ? TypographicMinus + number : number);
+        return UiText.Format(Strings.SettingsDbfs, db < 0 ? TypographicMinus + number : number);
     }
 
     public void Update(float rms, TimeSpan now)

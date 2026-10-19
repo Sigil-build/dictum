@@ -1,4 +1,3 @@
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Daemon;
@@ -306,7 +305,7 @@ public sealed partial class SetupViewModel : ViewModelBase
         }
 
         var step = _steps[Index];
-        StepLine = string.Format(CultureInfo.CurrentCulture, Strings.SetupStepLine, Index + 1, step.Name);
+        StepLine = UiText.Format(Strings.SetupStepLine, Index + 1, step.Name);
         Bars = [.. Enumerable.Range(0, _steps.Length).Select(i => i <= Index)];
         NextText = Index switch
         {
@@ -384,7 +383,7 @@ public sealed partial class SetupViewModel : ViewModelBase
                 var stored = await ApiKeys.StoreAsync(_services.Secrets, SetupPlanner.CleanupSecretName(current), typed, CancellationToken.None);
                 if (stored.Error is { } problem)
                 {
-                    Error = string.Format(CultureInfo.CurrentCulture, Strings.SetupKeyFailed, problem);
+                    Error = UiText.Format(Strings.SetupKeyFailed, problem);
                     return;
                 }
             }
@@ -402,7 +401,7 @@ public sealed partial class SetupViewModel : ViewModelBase
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            Error = string.Format(CultureInfo.CurrentCulture, Strings.SetupSaveFailed, ex.Message);
+            Error = UiText.Format(Strings.SetupSaveFailed, ex.Message);
         }
         finally
         {
@@ -426,7 +425,7 @@ public sealed partial class SetupViewModel : ViewModelBase
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _services.Log.Warn($"Login item not changed: {ex.Message}");
-            return string.Format(CultureInfo.CurrentCulture, Strings.SetupLoginFailed, ex.Message);
+            return UiText.Format(Strings.SetupLoginFailed, ex.Message);
         }
     }
 

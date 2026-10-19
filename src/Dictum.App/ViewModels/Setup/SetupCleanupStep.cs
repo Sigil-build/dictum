@@ -1,4 +1,3 @@
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Resources;
@@ -137,7 +136,7 @@ public sealed partial class SetupCleanupStep : SetupStep
             // Commands never throw: an error the probe did not expect is a failed test.
             _tested = inputs;
             _passed = false;
-            TestResult = string.Format(CultureInfo.CurrentCulture, Strings.SetupServerUnreachable, inputs.Url, ex.Message);
+            TestResult = UiText.Format(Strings.SetupServerUnreachable, inputs.Url, ex.Message);
         }
         finally
         {

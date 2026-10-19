@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Reflection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Dictum.App.Daemon;
@@ -41,7 +40,7 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
             Follow(page);
         }
 
-        Version = string.Format(CultureInfo.CurrentCulture, Strings.SettingsVersion, AppVersion());
+        Version = UiText.Format(Strings.SettingsVersion, AppVersion());
         Banner = BannerFor(session);
         session.Changed += () => Banner = BannerFor(session);
     }

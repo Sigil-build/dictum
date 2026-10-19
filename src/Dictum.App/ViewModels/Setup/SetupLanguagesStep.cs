@@ -110,7 +110,7 @@ public sealed partial class SetupLanguagesStep : SetupStep
     {
         CanContinue = DetectAny || _picked.Count > 0;
         BannerLead = !DetectAny && LanguageList.SimilarPairs(_picked) is [var pair, ..]
-            ? string.Format(CultureInfo.CurrentCulture, Strings.SetupSimilarLead, WhisperLanguages.Name(pair.First), WhisperLanguages.Name(pair.Second))
+            ? UiText.Format(Strings.SetupSimilarLead, WhisperLanguages.Name(pair.First), WhisperLanguages.Name(pair.Second))
             : null;
         OnPropertyChanged(nameof(Setting));
     }

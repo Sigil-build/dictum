@@ -1,4 +1,3 @@
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Daemon;
@@ -25,15 +24,15 @@ public sealed partial class StatusViewModel(string configPath, string logPath, A
     [ObservableProperty]
     public partial IReadOnlyList<string> Profiles { get; set; } = [];
 
-    public string ConfigLine { get; } = string.Format(CultureInfo.CurrentCulture, Strings.StatusConfigFile, configPath);
+    public string ConfigLine { get; } = UiText.Format(Strings.StatusConfigFile, configPath);
 
-    public string LogLine { get; } = string.Format(CultureInfo.CurrentCulture, Strings.StatusLogFile, logPath);
+    public string LogLine { get; } = UiText.Format(Strings.StatusLogFile, logPath);
 
     public void OnLink(DaemonLink link)
     {
         Headline = link.State switch
         {
-            DaemonLinkState.Connected => string.Format(CultureInfo.CurrentCulture, Strings.StatusConnected, link.Status?.ProcessId),
+            DaemonLinkState.Connected => UiText.Format(Strings.StatusConnected, link.Status?.ProcessId),
             DaemonLinkState.Restarting => Strings.StatusRestarting,
             DaemonLinkState.Failed => Strings.StatusFailed,
             DaemonLinkState.VersionMismatch => Strings.StatusVersionMismatch,

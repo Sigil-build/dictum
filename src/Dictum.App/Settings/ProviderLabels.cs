@@ -1,4 +1,3 @@
-using System.Globalization;
 using Dictum.App.Resources;
 using Dictum.Core.Configuration;
 
@@ -11,8 +10,8 @@ public static class ProviderLabels
 
     public static string For(SttConfig config) => config switch
     {
-        WhisperLocalSttConfig local => string.Format(CultureInfo.CurrentCulture, Strings.SettingsProviderLocal, ModelName(local.Model)),
-        OpenAiCompatibleSttConfig remote => string.Format(CultureInfo.CurrentCulture, Strings.SettingsProviderRemote,
+        WhisperLocalSttConfig local => UiText.Format(Strings.SettingsProviderLocal, ModelName(local.Model)),
+        OpenAiCompatibleSttConfig remote => UiText.Format(Strings.SettingsProviderRemote,
             Uri.TryCreate(remote.BaseUrl, UriKind.Absolute, out var uri) ? uri.Authority : remote.BaseUrl),
         _ => config.GetType().Name,
     };

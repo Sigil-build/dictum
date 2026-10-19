@@ -1,4 +1,3 @@
-using System.Globalization;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
@@ -172,6 +171,6 @@ public sealed class HotkeyRecorder : Button
         }
 
         Content = keys;
-        AutomationProperties.SetName(this, string.Format(CultureInfo.CurrentCulture, Strings.SettingsHotkeyAccessible, HotkeyKeys.Spoken(Hotkey)));
+        AutomationProperties.SetName(this, UiText.Format(Strings.SettingsHotkeyAccessible, HotkeyKeys.Spoken(Hotkey)));
     }
 }

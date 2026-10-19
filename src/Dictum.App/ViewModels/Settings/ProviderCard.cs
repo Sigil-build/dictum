@@ -1,4 +1,3 @@
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Daemon;
@@ -170,10 +169,10 @@ public sealed partial class ProviderCard : ObservableObject
         try
         {
             var users = config.Profiles.Where(p => p.Stt == Id).Select(p => p.Name ?? p.Id).ToList();
-            Title = string.Format(CultureInfo.CurrentCulture, IsLocal ? Strings.SettingsProvidersLocalTitle : Strings.SettingsProvidersRemoteTitle, Id);
+            Title = UiText.Format(IsLocal ? Strings.SettingsProvidersLocalTitle : Strings.SettingsProvidersRemoteTitle, Id);
             UsedBy = users.Count == 0
                 ? Strings.SettingsProvidersUnused
-                : string.Format(CultureInfo.CurrentCulture, Strings.SettingsProvidersUsedBy, string.Join(", ", users));
+                : UiText.Format(Strings.SettingsProvidersUsedBy, string.Join(", ", users));
             CanEdit = _session.CanEdit;
             CanRemove = CanEdit && users.Count == 0;
             UpdateCanTest();
@@ -291,7 +290,7 @@ public sealed partial class ProviderCard : ObservableObject
             {
                 null => new SystemRow(Strings.SettingsProvidersTest, HealthLevel.Error, Strings.SettingsProvidersNoDaemon),
                 { Ok: true, Test: { } test } => new SystemRow(Strings.SettingsProvidersTest, HealthLevel.Ok,
-                    string.Format(CultureInfo.CurrentCulture, Strings.SettingsProvidersRecognised, test.LatencyMs),
+                    UiText.Format(Strings.SettingsProvidersRecognised, test.LatencyMs),
                     test.Text.Length > 0 ? test.Text : Strings.SettingsProvidersNothingHeard),
                 _ => new SystemRow(Strings.SettingsProvidersTest, HealthLevel.Error, answer.Error ?? Strings.SettingsProvidersTestFailed),
             };
@@ -330,7 +329,7 @@ public sealed partial class ProviderCard : ObservableObject
         ThreadsError = _session.IssueAt(ConfigPaths.Field(path, nameof(WhisperLocalSttConfig.Threads)));
         Vad = local.Vad;
         VadNote = local.Vad && !_services.ModelPresent(local.VadModel)
-            ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsProvidersVadMissing, local.VadModel)
+            ? UiText.Format(Strings.SettingsProvidersVadMissing, local.VadModel)
             : null;
     }
 

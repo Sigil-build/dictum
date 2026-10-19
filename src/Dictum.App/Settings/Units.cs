@@ -40,15 +40,15 @@ public static class Units
         var seconds = Math.Max(1, (long)Math.Ceiling(left.TotalSeconds));
         if (seconds < TimeSpan.SecondsPerMinute)
         {
-            return string.Format(CultureInfo.CurrentCulture, Strings.SettingsModelsSecondsLeft, seconds);
+            return UiText.Format(Strings.SettingsModelsSecondsLeft, seconds);
         }
 
         var minutes = (seconds + TimeSpan.SecondsPerMinute - 1) / TimeSpan.SecondsPerMinute;
         return minutes < TimeSpan.MinutesPerHour
-            ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsModelsMinutesLeft, minutes)
-            : string.Format(CultureInfo.CurrentCulture, Strings.SettingsModelsHoursLeft, minutes / TimeSpan.MinutesPerHour, minutes % TimeSpan.MinutesPerHour);
+            ? UiText.Format(Strings.SettingsModelsMinutesLeft, minutes)
+            : UiText.Format(Strings.SettingsModelsHoursLeft, minutes / TimeSpan.MinutesPerHour, minutes % TimeSpan.MinutesPerHour);
     }
 
     private static string Format(string unit, double value, string digits) =>
-        string.Format(CultureInfo.CurrentCulture, unit, value.ToString(digits, CultureInfo.CurrentCulture));
+        UiText.Format(unit, value.ToString(digits, CultureInfo.CurrentCulture));
 }
