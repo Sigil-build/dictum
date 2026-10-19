@@ -457,6 +457,10 @@ public sealed class DaemonSupervisor : IDaemonChannel, IAsyncDisposable
         {
             _log.Debug($"Could not send 'shutdown': {ex.Message}");
         }
+        catch (Exception ex) when (IpcFailure.IsBadReply(ex))
+        {
+            _log.Debug($"Could not read the answer to 'shutdown': {ex.Message}");
+        }
 
         if (processId is { } pid)
         {
