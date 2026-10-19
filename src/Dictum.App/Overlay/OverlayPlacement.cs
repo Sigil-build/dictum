@@ -12,13 +12,13 @@ public readonly record struct ScreenHint(PixelPoint? Point, string? Name)
     public static readonly ScreenHint None = default;
 }
 
-/// <summary>Spec 5.4, "Placement": the screen under the pointer, centred, 4 px above the bottom panel or below the top one.</summary>
+/// <summary>Where the overlay goes: the screen under the pointer, centred, just above the bottom panel or below the top one.</summary>
 public static class OverlayPlacement
 {
     /// <summary>The panel height assumed where a working-area inset cannot be trusted, in overlay units.</summary>
     public const double FallbackPanel = 48;
 
-    /// <summary>An inset larger than this share of the screen is another screen's (spike: _NET_WORKAREA is one rectangle).</summary>
+    /// <summary>An inset larger than this share of the screen is another screen's: X11's _NET_WORKAREA is one rectangle for all of them.</summary>
     public const double MaxInsetShare = 0.15;
 
     public static ScreenArea? Choose(IReadOnlyList<ScreenArea> screens, ScreenHint hint)
@@ -49,7 +49,7 @@ public static class OverlayPlacement
         return new PixelRect(x, y, width, height);
     }
 
-    /// <summary>The working area, with any inset larger than 15 % of the screen replaced by a usual panel.</summary>
+    /// <summary>The working area, with any inset larger than <see cref="MaxInsetShare"/> replaced by <see cref="FallbackPanel"/>.</summary>
     public static PixelRect Usable(ScreenArea screen)
     {
         var bounds = screen.Bounds;

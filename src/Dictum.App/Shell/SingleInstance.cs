@@ -13,7 +13,7 @@ public sealed class SingleInstance : IAsyncDisposable
 {
     public const string ShowSettings = "show-settings";
 
-    /// <summary>Quits the running app as the tray's Quit does (phase 4: install and uninstall scripts).</summary>
+    /// <summary>Quits the running app as the tray's Quit does, for the install and uninstall scripts.</summary>
     public const string Quit = "quit";
 
     private static readonly TimeSpan DefaultQuitPatience = TimeSpan.FromSeconds(15);
@@ -74,7 +74,7 @@ public sealed class SingleInstance : IAsyncDisposable
     /// Asks the running app to quit and waits until it has let go of its socket. Returns false when none answered,
     /// true when one was running and is gone; throws <see cref="TimeoutException"/> when it is still there after
     /// <paramref name="patience"/> (15 s by default: the shell waits up to 3 s for the daemon to stop). An instance that
-    /// holds the socket but never answers counts as still there, never as an error (phase 4 final review I3).
+    /// holds the socket but never answers counts as still there, never as an error.
     /// </summary>
     public static async Task<bool> QuitAsync(string socketPath, CancellationToken ct, TimeSpan? patience = null)
     {
@@ -104,11 +104,11 @@ public sealed class SingleInstance : IAsyncDisposable
         QuitCommandAsync(appSocket, daemonSocket, AppContext.BaseDirectory, SystemDictumProcesses.Instance, error, ct, patience);
 
     /// <summary>
-    /// <c>dictum-gui --quit</c> for the install scripts and the MSI (phase 4 spec 5.4). Quits a running Dictum desktop app,
-    /// asks a daemon that runs from <paramref name="folder"/> to shut down too (the app's own, or one started without it:
-    /// a login item, a terminal), then waits until no Dictum process from that folder runs, so an installer never meets
-    /// its files in use (4a final review M2, 4b final review I2). A daemon from another copy is left alone. 0 when nothing
-    /// of this folder runs any more, 1 when something still runs after <paramref name="patience"/>. Never throws.
+    /// <c>dictum-gui --quit</c> for the install scripts and the MSI. Quits a running Dictum desktop app, asks a daemon
+    /// that runs from <paramref name="folder"/> to shut down too (the app's own, or one started without it: a login item,
+    /// a terminal), then waits until no Dictum process from that folder runs, so an installer never meets its files in
+    /// use. A daemon from another copy is left alone. 0 when nothing of this folder runs any more, 1 when something still
+    /// runs after <paramref name="patience"/>. Never throws.
     /// </summary>
     public static async Task<int> QuitCommandAsync(
         string appSocket, string daemonSocket, string folder, IDictumProcesses processes, TextWriter error, CancellationToken ct, TimeSpan? patience = null)

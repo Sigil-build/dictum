@@ -1,8 +1,8 @@
 namespace Dictum.App.Tray;
 
 /// <summary>
-/// The tray glyphs on the design's 32-unit grid (tokens <c>tray.*</c>, <c>reference/Tray.dc.html</c>). The ring is
-/// Dictum; what sits inside it is the state, so every state reads in monochrome at 16 px.
+/// The tray glyphs on a <see cref="Grid"/>-unit grid. The ring is Dictum; what sits inside it is the state, so every
+/// state reads in monochrome at 16 px.
 /// </summary>
 public static class TrayGeometry
 {

@@ -8,9 +8,9 @@ namespace Dictum.App.Overlay;
 public sealed record OverlayDemoOptions(string Path, string State);
 
 /// <summary>
-/// <c>--overlay-demo</c> (spec 5.5): plays a recording through the real overlay window, then the rest of a dictation
-/// on the prototype's demo timers (Transcribing 1.6 s, Cleaning up 0.9 s, Done), and exits. <c>--state</c> starts at
-/// a later state instead. The events go through the same <see cref="OverlayController"/> the daemon's events do.
+/// <c>--overlay-demo</c>: plays a recording through the real overlay window, then the rest of a dictation on fixed demo
+/// timings (Transcribing, Cleaning up, Done), and exits. <c>--state</c> starts at a later state instead. The events go
+/// through the same <see cref="OverlayController"/> the daemon's events do.
 /// </summary>
 public sealed class OverlayDemo
 {
@@ -61,7 +61,7 @@ public sealed class OverlayDemo
         return new OverlayDemoOptions(args[demo + 1], state);
     }
 
-    /// <summary>What the demo shows: the user's overlay look, always on, and a profile that lists two languages.</summary>
+    /// <summary>What the demo shows: the configured overlay look, always on, and a profile that lists two languages.</summary>
     public static DictumConfig Config(DictumConfig? user) => new()
     {
         General = new GeneralSettings { Overlay = (user?.General.Overlay ?? new OverlaySettings()) with { Enabled = true } },

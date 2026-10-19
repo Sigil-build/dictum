@@ -3,7 +3,7 @@ using System.Diagnostics;
 
 namespace Dictum.App.Shell;
 
-/// <summary>The Dictum processes of one install folder: what <c>--quit</c> stops and waits for (phase 4 PR 4b final review I2).</summary>
+/// <summary>The Dictum processes of one install folder: what <c>--quit</c> stops and waits for.</summary>
 public interface IDictumProcesses
 {
     /// <summary>The ids of <c>dictum</c> and <c>dictum-gui</c> processes whose executable lies in <paramref name="folder"/>, this process excluded.</summary>

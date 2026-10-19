@@ -13,7 +13,7 @@ using Dictum.App.Settings;
 namespace Dictum.App.Controls;
 
 /// <summary>
-/// The hotkey recorder (design §4.13). It shows the hotkey as keycaps; a click starts listening.
+/// The hotkey recorder. It shows the hotkey as keycaps; a click starts listening.
 /// <list type="bullet">
 /// <item>The next chord replaces the hotkey. Modifiers alone keep listening.</item>
 /// <item>Esc cancels; Backspace or Delete alone removes the hotkey.</item>
@@ -103,7 +103,7 @@ public sealed class HotkeyRecorder : Button
             return;
         }
 
-        // The release of the key that ended listening must not click the button again (final review I2: Space did).
+        // The release of the key that ended listening must not click the button again, as a Space release would.
         if (_ending == e.PhysicalKey)
         {
             _ending = null;

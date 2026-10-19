@@ -113,6 +113,7 @@ public sealed class DaemonProcessLauncher(
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
+                // The grace ran out: end it below.
             }
 
             log.Warn($"The daemon (pid {processId}) did not stop; ending it");

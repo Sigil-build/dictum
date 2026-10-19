@@ -8,9 +8,9 @@ using Dictum.App.Resources;
 namespace Dictum.App.Overlay;
 
 /// <summary>
-/// Draws an <see cref="OverlayScene"/> (spec 5.2): the waves and every state, or the reduced-motion level bar. Every
-/// stroke is a dark shadow, a glow and a core over one <see cref="StreamGeometry"/>. Drawing happens in overlay units
-/// (480 × 96), scaled by <see cref="Zoom"/>. The whole drawing fades as one layer through <see cref="LayerOpacity"/>.
+/// Draws an <see cref="OverlayScene"/>: the waves and every state, or the reduced-motion level bar. Every stroke is a
+/// dark shadow, a glow and a core over one <see cref="StreamGeometry"/>. Drawing happens in overlay units, scaled by
+/// <see cref="Zoom"/>. The whole drawing fades as one layer through <see cref="LayerOpacity"/>.
 /// </summary>
 public sealed class OverlayCanvas : Control
 {
@@ -43,7 +43,7 @@ public sealed class OverlayCanvas : Control
 
     /// <summary>
     /// The whole overlay's opacity (the setting times the appear fade), applied as one layer so that overlapping strokes
-    /// keep their look (spec 5.2). Not <c>Visual.Opacity</c>: Avalonia applies that to each drawing operation.
+    /// keep their look. Not <c>Visual.Opacity</c>: Avalonia applies that to each drawing operation.
     /// </summary>
     public double LayerOpacity
     {
@@ -246,7 +246,7 @@ public sealed class OverlayCanvas : Control
         }
     }
 
-    /// <summary>A shadow, a glow and a core over the same path (ruling: the shadow is a dark offset stroke).</summary>
+    /// <summary>A dark offset shadow, a glow and a core over the same path.</summary>
     private static void Stroke(DrawingContext context, OverlayInk ink, Ink kind, double alpha, double x0, double x1, Func<double, double> y)
     {
         if (alpha <= 0 || x1 - x0 < 1)
@@ -316,7 +316,7 @@ public sealed class OverlayCanvas : Control
         Text(context, OneLine(message), OverlayTokens.ErrorTextSize, FontWeight.Normal, left, y, alpha, centred: false, W - OverlayTokens.ChipRight - left);
     }
 
-    /// <summary>Provider errors carry pretty-printed JSON; the overlay has one line for them (final review I1).</summary>
+    /// <summary>Provider errors carry pretty-printed JSON; the overlay has one line for them.</summary>
     private static string OneLine(string? text) =>
         string.Join(' ', (text ?? "").Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 

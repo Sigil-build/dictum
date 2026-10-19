@@ -34,10 +34,10 @@ public sealed partial class FileProgress(CatalogEntry entry, Action<FileProgress
 }
 
 /// <summary>
-/// Step 7 (spec 8, 9): the plan's files on the app's one download queue, so they go on after the wizard closes. Each
-/// file shows its bytes or "verified"; the total counts only the wizard's files, with rate and time left; Pause and Resume
-/// act on the queue; a failed file says why and offers Try again. A one-second tick while a file downloads lets a stall
-/// show (4d I3). Next opens once every file is in place.
+/// Step 7: the plan's files on the app's one download queue, so they go on after the wizard closes. Each file shows its
+/// bytes or "verified"; the total counts only the wizard's files, with rate and time left; Pause and Resume act on the
+/// queue; a failed file says why and offers Try again. A tick while a file downloads lets a stall show. Next opens once
+/// every file is in place.
 /// </summary>
 public sealed partial class SetupDownloadingStep(SetupServices services) : SetupStep
 {
@@ -108,7 +108,7 @@ public sealed partial class SetupDownloadingStep(SetupServices services) : Setup
 
     /// <summary>
     /// Shows <paramref name="entries"/> as the queue has them, without queuing: a walk resumed after a restart, whose
-    /// queue was restored on its own and may be paused on purpose (PR 5b).
+    /// queue was restored on its own and may be paused on purpose.
     /// </summary>
     public void Show(IReadOnlyList<CatalogEntry> entries)
     {
@@ -213,7 +213,7 @@ public sealed partial class SetupDownloadingStep(SetupServices services) : Setup
         }
     }
 
-    /// <summary>Queue commands write downloads.json; a full or read-only disk shows on the file, never as a crash (4a I3).</summary>
+    /// <summary>Queue commands write downloads.json; a full or read-only disk shows on the file, never as a crash.</summary>
     private void Queue(FileProgress? file, Action command)
     {
         try

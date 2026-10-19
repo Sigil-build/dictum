@@ -1,9 +1,9 @@
 namespace Dictum.App.Overlay;
 
 /// <summary>
-/// The prototype's simulated voice (overlay design extract §3.5). Each 3.4 s cycle holds 2.3 s of "speech" made of
-/// two syllable sines with 120 ms and 200 ms ramps, then near silence. The 24 bands come from three formants with a
-/// flicker. The overlay sub-page previews with it, and so will the wizard (spec 5.5).
+/// A simulated voice for the overlay previews. Each <see cref="Cycle"/> holds <see cref="Speaking"/> seconds of
+/// "speech" made of two syllable sines with short ramps in and out, then near silence. The bands come from three
+/// formants with a flicker.
 /// </summary>
 public static class SimulatedVoice
 {

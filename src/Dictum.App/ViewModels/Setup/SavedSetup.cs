@@ -10,14 +10,14 @@ namespace Dictum.App.ViewModels.Setup;
 
 /// <summary>
 /// The wizard's answers when step 7 started, kept in <c>&lt;data&gt;/setup.json</c> so a GUI restart in the middle of
-/// the downloads returns to the walk (spec 8, step 7). A plain API key is never written: <see cref="KeyTyped"/> says
-/// one was typed, and the resumed walk asks for it again.
+/// the downloads returns to the walk. A plain API key is never written: <see cref="KeyTyped"/> says one was typed, and
+/// the resumed walk asks for it again.
 /// </summary>
 /// <param name="SpeechModel">The catalog id; null keeps the hand-placed file.</param>
-/// <param name="KeyReference">An <c>env:</c> or <c>secret:</c> reference the user typed; never a plain key.</param>
+/// <param name="KeyReference">A typed <c>env:</c> or <c>secret:</c> reference; never a plain key.</param>
 /// <param name="Files">The catalog ids step 7 downloads.</param>
 /// <param name="BasedOn">The <see cref="SavedSetupFile.Fingerprint"/> of the config the walk was kept over; a walk that is
-/// not downloading resumes only over the same config (final review I2).</param>
+/// not downloading resumes only over the same config.</param>
 public sealed record SavedSetup(
     string Language,
     string? SpeechModel,
@@ -32,7 +32,7 @@ public sealed record SavedSetup(
     string? BasedOn = null,
     int Version = 1);
 
-/// <summary>Reads, writes and removes <c>setup.json</c>; a disk or format problem is logged, never thrown (4a I3).</summary>
+/// <summary>Reads, writes and removes <c>setup.json</c>; a disk or format problem is logged, never thrown.</summary>
 public static class SavedSetupFile
 {
     /// <summary>The kept walk, or null. A damaged file, or one from another version, is removed: the walk starts over.</summary>
@@ -67,7 +67,7 @@ public static class SavedSetupFile
         return null;
     }
 
-    /// <summary>A fingerprint of a config, or of none: a kept walk records the config it was made on (final review I2).</summary>
+    /// <summary>A fingerprint of a config, or of none: a kept walk records the config it was made on.</summary>
     public static string Fingerprint(DictumConfig? config) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(config is null ? "" : ConfigStore.Serialize(config))));
 

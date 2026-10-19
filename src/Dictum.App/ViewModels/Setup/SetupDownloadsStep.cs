@@ -10,7 +10,7 @@ namespace Dictum.App.ViewModels.Setup;
 public sealed record DownloadRow(string File, string Size, string Licence, string Source);
 
 /// <summary>
-/// Step 6 (spec 8): the files the plan still needs, with size, licence and source; what is already in place; a privacy
+/// Step 6: the files the plan still needs, with size, licence and source; what is already in place; a privacy
 /// line that is true for the chosen server; and the consent. Next ("Download") needs the consent and enough space for
 /// the whole set; with nothing to fetch, Next ("Continue") goes straight to the save.
 /// </summary>
@@ -45,7 +45,7 @@ public sealed partial class SetupDownloadsStep(SetupServices services) : SetupSt
     [ObservableProperty]
     public partial string? ConfigNote { get; private set; }
 
-    /// <summary>"Download these files now": the consent (spec 8, step 6).</summary>
+    /// <summary>"Download these files now": the consent.</summary>
     [ObservableProperty]
     public partial bool Consent { get; set; } = true;
 

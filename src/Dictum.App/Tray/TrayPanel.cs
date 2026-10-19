@@ -7,7 +7,7 @@ public static class TrayPanel
 {
     /// <summary>
     /// A contrast theme paints the taskbar in its own colours and leaves the Windows mode as it was, so in high contrast
-    /// the theme decides (Avalonia reports Light only for the light contrast themes, research §4); otherwise the
+    /// the theme decides (Avalonia reports Light only for the light contrast themes); otherwise the
     /// taskbar's own mode.
     /// </summary>
     public static bool IsLight(PlatformColorValues? colours, Func<bool> taskbarIsLight) =>

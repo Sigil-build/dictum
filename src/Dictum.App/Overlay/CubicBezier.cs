@@ -1,6 +1,6 @@
 namespace Dictum.App.Overlay;
 
-/// <summary>A CSS cubic-bezier easing from (0, 0) to (1, 1); <c>tokens.json</c> names its curves this way.</summary>
+/// <summary>A CSS cubic-bezier easing from (0, 0) to (1, 1), the form the motion tokens give their curves in.</summary>
 public sealed class CubicBezier(double x1, double y1, double x2, double y2)
 {
     /// <summary><c>motion.easing.decelerate</c>.</summary>

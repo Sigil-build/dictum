@@ -8,7 +8,7 @@ using Dictum.Host.Ipc;
 
 namespace Dictum.App.Daemon;
 
-/// <summary>Spec 3: 10 s to open the socket, 3 restarts in 5 minutes, 3 s for Quit.</summary>
+/// <summary>The supervisor's timings and restart budget; tests shorten them.</summary>
 public sealed record SupervisorOptions
 {
     public TimeSpan StartTimeout { get; init; } = TimeSpan.FromSeconds(10);
@@ -51,7 +51,7 @@ public sealed class DaemonSupervisor : IDaemonChannel, IAsyncDisposable
     private volatile bool _quitting;
     private volatile bool _announcedStop;
 
-    /// <param name="logFile">The GUI log, named in problem texts so the user knows where to look.</param>
+    /// <param name="logFile">The GUI log, named in problem texts as the place to look.</param>
     public DaemonSupervisor(
         string socketPath,
         Func<bool> configExists,
@@ -90,7 +90,7 @@ public sealed class DaemonSupervisor : IDaemonChannel, IAsyncDisposable
         }
     }
 
-    /// <summary>A config file was just written (the wizard's save): stop waiting for the next poll (PR 5b).</summary>
+    /// <summary>A config file was just written (the wizard's save): stop waiting for the next poll.</summary>
     public void ConfigSaved()
     {
         lock (_gate)
@@ -124,13 +124,14 @@ public sealed class DaemonSupervisor : IDaemonChannel, IAsyncDisposable
         await StopLoopAsync().ConfigureAwait(false);
         if (!connected && _process is { } process && !process.Exited.IsCompleted)
         {
-            // A daemon we started that has not answered yet holds nothing worth saving, and Quit stops both (spec 3).
+            // A daemon we started that has not answered yet holds nothing worth saving, and Quit stops both.
             try
             {
                 await _launcher.EndAsync(process.Id, TimeSpan.Zero, CancellationToken.None).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
+                // Quit goes on whatever happens to the starting daemon.
                 _log.Warn($"Could not end the daemon that was starting: {ex.Message}");
             }
         }
@@ -269,8 +270,8 @@ public sealed class DaemonSupervisor : IDaemonChannel, IAsyncDisposable
 
         if (_announcedStop)
         {
-            // It said it was stopping: someone stopped it on purpose ('dictum shutdown', Ctrl+C, systemctl stop). Spec 3
-            // restarts only a daemon that exits unexpectedly, so the tray offers "Restart daemon" instead.
+            // It said it was stopping: someone stopped it on purpose ('dictum shutdown', Ctrl+C, systemctl stop). Only a
+            // daemon that exits unexpectedly is started again, so the tray offers "Restart daemon" instead.
             _log.Info("The daemon was stopped; not starting it again");
             await FailAsync(Strings.ProblemStoppedOnPurpose, ct).ConfigureAwait(false);
             return;

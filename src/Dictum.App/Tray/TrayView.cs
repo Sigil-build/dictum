@@ -1,6 +1,6 @@
 namespace Dictum.App.Tray;
 
-/// <summary>The five tray icons of the design (reference/Tray.dc.html): the shape inside the ring is the state.</summary>
+/// <summary>The five tray icons: the shape inside the ring is the state.</summary>
 public enum TrayGlyph
 {
     Idle,

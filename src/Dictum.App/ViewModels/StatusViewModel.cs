@@ -6,7 +6,7 @@ using Dictum.App.Resources;
 
 namespace Dictum.App.ViewModels;
 
-/// <summary>The status window until the Settings pages arrive (PR 4): the daemon link, its problem, the profiles, the files.</summary>
+/// <summary>The daemon link's state and problem, the profiles and the file paths: the status the System page shows.</summary>
 public sealed partial class StatusViewModel(string configPath, string logPath, Action restart) : ViewModelBase
 {
     [ObservableProperty]

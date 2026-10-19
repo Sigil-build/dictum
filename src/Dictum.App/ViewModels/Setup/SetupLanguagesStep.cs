@@ -14,7 +14,7 @@ public sealed partial class LanguageRow(string code) : ObservableObject
 
     public string Name { get; } = WhisperLanguages.Name(code);
 
-    /// <summary>What the search matches: the language's own name, the English one and the UI language's (final review I3).</summary>
+    /// <summary>What the search matches: the language's own name, the English one and the UI language's.</summary>
     public IReadOnlyList<string> Names { get; } = WhisperLanguages.Names(code);
 
     [ObservableProperty]
@@ -25,9 +25,8 @@ public sealed partial class LanguageRow(string code) : ObservableObject
 }
 
 /// <summary>
-/// Step 1 (spec 8, design): a row per Whisper language, the picked ones first in the order picked; a search by name or
-/// code that keeps picked rows in sight; "detect any language"; and the similar-language banner (spec 11). Next needs a
-/// language, or "detect any".
+/// Step 1: a row per Whisper language, the picked ones first in the order picked; a search by name or code that keeps
+/// picked rows in sight; "detect any language"; and the similar-language banner. Next needs a language, or "detect any".
 /// </summary>
 public sealed partial class SetupLanguagesStep : SetupStep
 {

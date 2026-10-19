@@ -1,9 +1,10 @@
 namespace Dictum.App.Overlay;
 
 /// <summary>
-/// The prototype's level maths (spec 5.1): rms to a 0–1 level between −60 and −26 dBFS; one-pole smoothing of the level
-/// and the 24 bands on every rendered frame (attack 30 ms, release 160 ms, steps capped at 50 ms); and silence once the
-/// level has stayed under 0.04 for more than 500 ms.
+/// The overlay's level maths: rms to a 0–1 level between <see cref="OverlayTokens.FloorDb"/> and
+/// <see cref="OverlayTokens.CeilingDb"/>; one-pole attack and release smoothing of the level and the bands on every
+/// rendered frame, with the time step capped; and silence once the level has stayed under
+/// <see cref="OverlayTokens.SilenceThreshold"/> for longer than <see cref="OverlayTokens.SilenceHold"/>.
 /// </summary>
 public sealed class LevelMeter
 {
@@ -20,7 +21,7 @@ public sealed class LevelMeter
     public static double Target(float rms) =>
         Math.Clamp((20 * Math.Log10(Math.Max(rms, 1e-6)) - OverlayTokens.FloorDb) / (OverlayTokens.CeilingDb - OverlayTokens.FloorDb), 0, 1);
 
-    /// <summary>Starts from silence, as the prototype does when listening starts.</summary>
+    /// <summary>Starts from silence, as each dictation does.</summary>
     public void Reset(TimeSpan now)
     {
         Array.Clear(_bands);

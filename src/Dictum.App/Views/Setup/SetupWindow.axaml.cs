@@ -6,7 +6,7 @@ using Dictum.App.ViewModels.Setup;
 
 namespace Dictum.App.Views.Setup;
 
-/// <summary>The setup wizard's 640 × 600 dialog (spec 8). Esc closes and keeps what was entered; Enter is Next when it is on.</summary>
+/// <summary>The setup wizard's dialog. Esc closes and keeps what was entered; Enter is Next when it is on.</summary>
 public partial class SetupWindow : Window
 {
     public SetupWindow()
@@ -26,7 +26,7 @@ public partial class SetupWindow : Window
 
     public static List<SetupWindow> Open { get; } = [];
 
-    /// <summary>Keys the focused control did not take: Esc closes; Enter is Next, except in a box that takes new lines (SPEC:147).</summary>
+    /// <summary>Keys the focused control did not take: Esc closes; Enter is Next, except in a box that takes new lines.</summary>
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
         if (e.Key == Key.Escape)

@@ -9,7 +9,7 @@ namespace Dictum.App.ViewModels.Setup;
 
 /// <summary>A card on step 2: a catalog model, or (<see cref="Id"/> null) the hand-placed file the config uses now.</summary>
 /// <param name="Speed">"~6 s for 5 s of speech (estimate)", or null before anything is known.</param>
-/// <param name="SpeedBadge">Fast, Usable or "Too slow here" (spec 10.2), or null with no estimate.</param>
+/// <param name="SpeedBadge">Fast, Usable or "Too slow here", or null with no estimate.</param>
 public sealed record ModelChoice(
     string? Id,
     string Name,
@@ -21,14 +21,14 @@ public sealed record ModelChoice(
     string? SpeedBadge = null,
     bool TooSlow = false)
 {
-    /// <summary>What a screen reader says for the card (final review I5).</summary>
+    /// <summary>What a screen reader says for the card.</summary>
     public override string ToString() => Name;
 }
 
 /// <summary>
-/// Step 2 (spec 8): the GPU and memory line and a card per speech model that understands step 1's languages. The
-/// recommendation comes from the shell's probe, as on Settings → Models; speeds from the user's dictations, a
-/// measurement, or the hardware class (spec 10.2). A model the user picked stays picked when the probe answers.
+/// Step 2: the GPU and memory line and a card per speech model that understands step 1's languages. The
+/// recommendation comes from the shell's probe, as on Settings → Models; speeds from past dictations, a measurement,
+/// or the hardware class. A model picked by hand stays picked when the probe answers.
 /// </summary>
 public sealed partial class SetupModelStep : SetupStep
 {
@@ -80,7 +80,7 @@ public sealed partial class SetupModelStep : SetupStep
         }
     }
 
-    /// <summary>Picks the model a resumed walk had (PR 5b): over the hand-placed file and the config's. Null picks the hand-placed file.</summary>
+    /// <summary>Picks the model a resumed walk had: over the hand-placed file and the config's. Null picks the hand-placed file.</summary>
     public void Pick(string? id)
     {
         _chosen = id ?? KeptKey;

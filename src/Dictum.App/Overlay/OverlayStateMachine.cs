@@ -3,7 +3,7 @@ using Dictum.Core.Configuration;
 namespace Dictum.App.Overlay;
 
 /// <summary>
-/// The overlay's states from the daemon's events (spec 5.3), with the design's timings. It owns no clock: every call
+/// The overlay's states from the daemon's events, timed by <see cref="OverlayTokens"/>. It owns no clock: every call
 /// takes the time, and <see cref="Advance"/> returns the scene to draw for one frame.
 /// </summary>
 public sealed class OverlayStateMachine
@@ -50,7 +50,7 @@ public sealed class OverlayStateMachine
         }
     }
 
-    /// <summary><c>state: Idle</c>. <c>finished</c> follows at once; without it the overlay hides after a second.</summary>
+    /// <summary><c>state: Idle</c>. <c>finished</c> follows at once; without it the overlay hides after <see cref="OverlayTokens.IdleGrace"/>.</summary>
     public void Idle(TimeSpan now)
     {
         if (Phase is OverlayPhase.Listening or OverlayPhase.Transcribing or OverlayPhase.CleaningUp)

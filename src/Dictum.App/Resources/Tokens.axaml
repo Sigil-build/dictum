@@ -50,7 +50,7 @@
       <SolidColorBrush x:Key="color.status.warn.fg" Color="#F2C98A" />
       <SolidColorBrush x:Key="color.status.error.bg" Color="#3D2222" />
       <SolidColorBrush x:Key="color.status.error.fg" Color="#FF8A80" />
-      <!-- tokens.json has no dark color.border.strong; the plain border stands in. -->
+      <!-- The design has no dark color.border.strong; the plain border stands in. -->
       <SolidColorBrush x:Key="color.border.strong" Color="#3A3A40" />
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
@@ -72,7 +72,7 @@
   <SolidColorBrush x:Key="color.tray.error" Color="#FF5A4E" />
   <SolidColorBrush x:Key="color.tray.brand" Color="#7A6BFF" />
 
-  <!-- Type, spacing, radii, elevation, sizes. Motion and overlay tokens come with the PR that uses them. -->
+  <!-- Type, spacing, radii, elevation, sizes. The overlay's tokens live in Overlay/OverlayTokens.cs. -->
   <FontFamily x:Key="font.family.windows">Segoe UI Variable Text, Segoe UI</FontFamily>
   <FontFamily x:Key="font.family.linux">Noto Sans, DejaVu Sans, sans-serif</FontFamily>
   <FontFamily x:Key="font.family.mono">Cascadia Mono, JetBrains Mono, Noto Sans Mono, monospace</FontFamily>

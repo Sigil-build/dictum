@@ -1,6 +1,6 @@
 namespace Dictum.App.Overlay;
 
-/// <summary>The prototype's drawing maths (<c>drawWaves</c>) in overlay units: pure functions of x and time.</summary>
+/// <summary>The overlay's drawing maths in overlay units: pure functions of x and time.</summary>
 public static class WaveShapes
 {
     private const double W = OverlayTokens.Width;
@@ -21,7 +21,7 @@ public static class WaveShapes
         return sum / (wave.LastBand - wave.FirstBand + 1);
     }
 
-    /// <summary>Wave <paramref name="index"/>'s height while the user speaks: level and bands, plus a breath that fades as the level rises.</summary>
+    /// <summary>Wave <paramref name="index"/>'s height while listening: level and bands, plus a breath that fades as the level rises.</summary>
     public static double ListeningAmplitude(int index, double level, double bandMean, double time)
     {
         var weight = OverlayTokens.Waves[index].Weight;
@@ -29,7 +29,7 @@ public static class WaveShapes
         return (level * OverlayTokens.AmplitudeFromLevel + bandMean * OverlayTokens.AmplitudeFromBands) * weight + breath * (1 - level) * weight;
     }
 
-    /// <summary>Wave <paramref name="index"/>'s height in silence: a slow breath on a 4 s sine.</summary>
+    /// <summary>Wave <paramref name="index"/>'s height in silence: a slow breath.</summary>
     public static double QuietAmplitude(int index, double time) =>
         (OverlayTokens.BreatheBase + OverlayTokens.QuietBreatheSwing * Math.Sin(2 * Math.PI * OverlayTokens.BreatheHz * time)) * OverlayTokens.Waves[index].Weight;
 
@@ -42,7 +42,7 @@ public static class WaveShapes
         return Cy + amplitude * Envelope(x) * Math.Sin(2 * Math.PI * wave.Frequency * x / W + wave.Phase + time * wave.Drift);
     }
 
-    /// <summary>Where the Transcribing bump is, as a fraction of the width: from −0.15 to 1.15, once every 1.3 s.</summary>
+    /// <summary>Where the Transcribing bump is, as a fraction of the width: it sweeps in from beyond the left edge and out past the right one.</summary>
     public static double BumpPosition(double time) => time % OverlayTokens.BumpPeriod + OverlayTokens.BumpStart;
 
     /// <summary>The Transcribing line: a small travelling ripple with the bump lifted out of it.</summary>
@@ -54,11 +54,11 @@ public static class WaveShapes
         return line - OverlayTokens.BumpHeight * bump;
     }
 
-    /// <summary>The Cleaning up standing wave: three lobes on a 714 ms beat. <paramref name="ramp"/> is the 0–1 entrance.</summary>
+    /// <summary>The Cleaning up standing wave. <paramref name="ramp"/> is the 0–1 entrance.</summary>
     public static double CleaningY(double x, double time, double ramp) =>
         Cy + OverlayTokens.CleaningAmplitude * ramp * Envelope(x) * Math.Sin(3 * Math.PI * x / W) * Math.Sin(2 * Math.PI * OverlayTokens.CleaningHz * time);
 
-    /// <summary>Walks a polyline from <paramref name="x0"/> to <paramref name="x1"/> in 4-unit steps and ends exactly at x1.</summary>
+    /// <summary>Walks a polyline from <paramref name="x0"/> to <paramref name="x1"/> in <see cref="OverlayTokens.Step"/> steps and ends exactly at x1.</summary>
     /// <param name="point">Gets x, y and whether it is the first point.</param>
     public static void Trace(double x0, double x1, Func<double, double> y, Action<double, double, bool> point)
     {

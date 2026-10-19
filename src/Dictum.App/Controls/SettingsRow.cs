@@ -5,9 +5,8 @@ using Avalonia.Media;
 namespace Dictum.App.Controls;
 
 /// <summary>
-/// A settings card (design "Settings row"): a 20 px icon, a label and a description on the left, the row's control on
-/// the right (its content), an inline error under the description, and an optional second line (<see cref="Footer"/>,
-/// the microphone's meter).
+/// A settings card: an icon, a label and a description on the left, the row's control on the right (its content), an
+/// inline error under the description, and an optional second line (<see cref="Footer"/>, the microphone's meter).
 /// </summary>
 public sealed class SettingsRow : ContentControl
 {

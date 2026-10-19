@@ -5,7 +5,7 @@
              xmlns:res="using:Dictum.App.Resources"
              x:Class="Dictum.App.Views.Setup.SetupView"
              x:DataType="setup:SetupViewModel">
-  <!-- Rows in reading order, so Tab reaches the step's content before Back and Next (spec 14, final review M1). -->
+  <!-- Rows in reading order, so Tab reaches the step's content before Back and Next. -->
   <Grid RowDefinitions="Auto,Auto,*,Auto,Auto">
     <!-- The strip: a bar per step, accent for the steps done and the current one; screen readers get the step line instead. -->
     <ItemsControl ItemsSource="{Binding Bars}" Margin="30,4,30,0" AutomationProperties.AccessibilityView="Raw">

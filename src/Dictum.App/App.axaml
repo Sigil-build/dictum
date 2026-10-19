@@ -11,7 +11,7 @@
       <ResourceDictionary.MergedDictionaries>
         <ResourceInclude Source="/Resources/Tokens.axaml" />
       </ResourceDictionary.MergedDictionaries>
-      <!-- Drawn caption buttons for windows with a custom 40 px title bar (research §3). -->
+      <!-- Drawn caption buttons for windows with a custom 40 px title bar. -->
       <SolidColorBrush x:Key="TitleBarBackgroundBrush" Color="Transparent" />
       <x:Double x:Key="CaptionButtonHeight">40</x:Double>
     </ResourceDictionary>

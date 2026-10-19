@@ -101,7 +101,7 @@ public sealed class WindowsTrayPresenter : ITrayPresenter
             return;
         }
 
-        // WindowIcon encodes the bitmap at once, so it can be disposed here (research §7).
+        // WindowIcon encodes the bitmap at once, so it can be disposed here.
         using var bitmap = TrayIconRenderer.Render(_view.Glyph, _frame, _size, _mono, colourLayer: !_highContrast());
         _icon.Icon = new WindowIcon(bitmap);
     }

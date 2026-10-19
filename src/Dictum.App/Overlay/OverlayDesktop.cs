@@ -26,7 +26,7 @@ public interface IOverlayDesktop
 }
 
 /// <summary>
-/// The desktop the app runs on (spec 5.4, 5.5, spike findings):
+/// The desktop the app runs on:
 /// - Windows: Win32 styles and the cursor.
 /// - X11 and XWayland: override-redirect.
 /// - The pointer's screen: XQueryPointer on an X11 session, KWin on KDE Wayland.
@@ -73,7 +73,7 @@ public sealed class OverlayDesktop : IOverlayDesktop, IDisposable
     public Task<OverlayProbe> ProbeAsync(CancellationToken ct) => Task.Run(() => ProbeCoreAsync(ct), ct);
 
     /// <summary>
-    /// Avalonia rebuilds the extended style on every Show (final review C1), so the bits go through its style callback;
+    /// Avalonia rebuilds the extended style on every Show, so the bits go through its style callback;
     /// the window becomes layered during the first Show, and its alpha is set once it has opened.
     /// </summary>
     [SupportedOSPlatform("windows")]
@@ -124,7 +124,7 @@ public sealed class OverlayDesktop : IOverlayDesktop, IDisposable
             return await _kwin.ActiveOutputAsync(ct).ConfigureAwait(false) is { } output ? new ScreenHint(null, output) : ScreenHint.None;
         }
 
-        // Under XWayland the X pointer freezes over Wayland windows (spike), so only a real X11 session asks X.
+        // Under XWayland the X pointer freezes over Wayland windows, so only a real X11 session asks X.
         return session.Type == SessionType.X11 && X11Overlay.Pointer() is { } pointer
             ? new ScreenHint(new PixelPoint(pointer.X, pointer.Y), null)
             : ScreenHint.None;

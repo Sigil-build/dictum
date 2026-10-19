@@ -16,7 +16,7 @@ public enum OverlayPhase
 /// <summary>Everything one frame of the overlay draws.</summary>
 /// <param name="Since">Seconds since the phase began.</param>
 /// <param name="Time">Seconds on the overlay's clock; the waves drift and breathe on it.</param>
-/// <param name="Appear">0–1: the 120 ms fade-in after the overlay appears.</param>
+/// <param name="Appear">0–1: the fade-in after the overlay appears.</param>
 /// <param name="BandMeans">One smoothed band mean per wave.</param>
 /// <param name="Chip">"UK/EN" while listening, the picked code when done; null unless the profile lists languages.</param>
 /// <param name="Message">The error line.</param>

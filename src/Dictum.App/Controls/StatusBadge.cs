@@ -8,8 +8,8 @@ using Dictum.Core.Diagnostics;
 namespace Dictum.App.Controls;
 
 /// <summary>
-/// The 24 px round badge of a status row (design "Status row"): a check, a triangle or a cross on the status
-/// colours, so the state never rests on colour alone. It is named OK / Warning / Error for screen readers.
+/// The round badge of a status row: a check, a triangle or a cross on the status colours, so the state never rests on
+/// colour alone. It is named OK / Warning / Error for screen readers.
 /// </summary>
 public sealed class StatusBadge : Control
 {

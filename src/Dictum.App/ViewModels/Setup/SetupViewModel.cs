@@ -13,7 +13,7 @@ using Dictum.Setup;
 namespace Dictum.App.ViewModels.Setup;
 
 /// <summary>
-/// The setup wizard (spec 8): eight steps, the step line and strip, and the walk. Step 6 builds the plan from the answers
+/// The setup wizard: eight steps, the step line and strip, and the walk. Step 6 builds the plan from the answers
 /// and the config on disk; leaving it queues the missing files (step 7), or saves when nothing is missing. The save runs
 /// only with every file in place: the typed API key to the secret store, then <c>config.json</c>, then the login item,
 /// as <c>dictum init</c> does. The shell keeps one walk per process, so a closed wizard reopens at the same step.
@@ -41,7 +41,7 @@ public sealed partial class SetupViewModel : ViewModelBase
         var current = LoadConfig(services, out _);
         if (resume is not null && !MayResume(resume, current, services.Catalog))
         {
-            // Not downloading, and kept over another config: the answers are stale (final review I2).
+            // Not downloading, and kept over another config: the answers are stale.
             SavedSetupFile.Delete(services.Paths, services.Log);
             resume = null;
         }
@@ -145,12 +145,12 @@ public sealed partial class SetupViewModel : ViewModelBase
     /// <summary>The window was closed on step 7 and every file is now in place: the shell shows the walk again, to save.</summary>
     public event Action? FilesReady;
 
-    /// <summary>config.json was just written: the shell tells the supervisor, so the daemon starts at once (PR 5b).</summary>
+    /// <summary>config.json was just written: the shell tells the supervisor, so the daemon starts at once.</summary>
     public event Action? Saved;
 
     /// <summary>
     /// Whether the shell may show this walk again: not after the save (step 8, even closed with ✕), and not over a config
-    /// that changed since the walk read it, unless its files are downloading (final review I1, I2).
+    /// that changed since the walk read it, unless its files are downloading.
     /// </summary>
     public bool CanResume => Index != ReadyIndex && (Index == DownloadingIndex || Snapshot(LoadConfig(_services, out _)) == _loaded);
 
@@ -163,8 +163,7 @@ public sealed partial class SetupViewModel : ViewModelBase
 
     /// <summary>
     /// The window closed: the step on screen stops listening; the answers and the step are kept. Closed while its files
-    /// download (on step 7, or a kept walk resumed at step 3), the walk waits for them and raises <see cref="FilesReady"/>
-    /// (5a final review M6, 5b final review M1).
+    /// download (on step 7, or a kept walk resumed at step 3), the walk waits for them and raises <see cref="FilesReady"/>.
     /// </summary>
     public void OnClosed()
     {
@@ -233,7 +232,7 @@ public sealed partial class SetupViewModel : ViewModelBase
     {
         if (Index == DownloadingIndex)
         {
-            // Left step 7: a restart starts over instead of resuming downloads the user stepped back from (PR 5b).
+            // Left step 7: a restart starts over rather than resume downloads that were stepped back from.
             SavedSetupFile.Delete(_services.Paths, _services.Log);
             _awaitingFiles = false;
         }
@@ -241,7 +240,7 @@ public sealed partial class SetupViewModel : ViewModelBase
         Go(Index == ReadyIndex && !_downloaded ? DownloadsIndex : Index - 1);
     }
 
-    /// <summary>Rebuilds a kept walk (PR 5b). Step 7 shows the files as the restored queue has them; nothing is queued again.</summary>
+    /// <summary>Rebuilds a kept walk. Step 7 shows the files as the restored queue has them; nothing is queued again.</summary>
     private void Resume(SavedSetup saved)
     {
         Model.Language = Languages.Setting;
@@ -258,7 +257,7 @@ public sealed partial class SetupViewModel : ViewModelBase
         Go(saved.KeyTyped ? CleanupIndex : files.Count > 0 ? DownloadingIndex : DownloadsIndex);
     }
 
-    /// <summary>Queues the files, goes to step 7, and keeps the walk in setup.json so a restart returns here (PR 5b).</summary>
+    /// <summary>Queues the files, goes to step 7, and keeps the walk in setup.json so a restart returns here.</summary>
     private void StartDownloading(IReadOnlyList<CatalogEntry> files)
     {
         _downloaded = true;
@@ -357,7 +356,7 @@ public sealed partial class SetupViewModel : ViewModelBase
         return new SetupAnswers(Languages.Setting, Model.SpeechModel, choice, server, Words.Words, ReplaceVocabulary: true);
     }
 
-    /// <summary>Key, then config, then login item; only with every file in place (review focus 1).</summary>
+    /// <summary>Key, then config, then login item; only with every file in place.</summary>
     private async Task SaveAsync()
     {
         Saving = true;
@@ -448,8 +447,8 @@ public sealed partial class SetupViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// A kept walk whose files are downloading resumes at step 7 over any config, as within one process (5a I2); one that
-    /// would resume elsewhere (a typed key, files the catalog no longer knows) only over the config it was kept on.
+    /// A kept walk whose files are downloading resumes at step 7 over any config, as within one process; one that would
+    /// resume elsewhere (a typed key, files missing from the catalog) only over the config it was kept on.
     /// </summary>
     private static bool MayResume(SavedSetup saved, DictumConfig? current, Catalog catalog) =>
         (!saved.KeyTyped && saved.Files.Any(id => catalog.Find(id) is not null))
@@ -457,7 +456,7 @@ public sealed partial class SetupViewModel : ViewModelBase
 
     private static string Snapshot(DictumConfig? config) => config is null ? "" : ConfigStore.Serialize(config);
 
-    /// <summary>The secret the clean-up key goes to: the Settings name, so Settings can replace or remove it (code map G5).</summary>
+    /// <summary>The secret the clean-up key goes to: the Settings name, so Settings can replace or remove it.</summary>
     private static string SecretName(DictumConfig? current) =>
         ApiKeys.ProcessorSecretName(SetupPlanner.CleanupProcessorId(current ?? DefaultConfig.Create()));
 

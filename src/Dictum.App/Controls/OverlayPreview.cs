@@ -7,9 +7,8 @@ using Dictum.Core.Configuration;
 namespace Dictum.App.Controls;
 
 /// <summary>
-/// The overlay listening to the simulated voice, drawn over a picture of a desktop: the wizard's 150 px dark panel
-/// with its taskbar strip (overlay design extract §6.2). It runs the real state machine and canvas on every display
-/// frame while it is in a window.
+/// The overlay listening to the simulated voice, drawn over a picture of a desktop: a dark panel with a taskbar
+/// strip. It runs the real state machine and canvas on every display frame while it is in a window.
 /// </summary>
 public sealed class OverlayPreview : Control
 {

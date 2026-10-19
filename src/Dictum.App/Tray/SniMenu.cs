@@ -4,7 +4,7 @@ namespace Dictum.App.Tray;
 
 /// <summary>
 /// The tray menu as a dbusmenu tree. Every build uses fresh ids, because Plasma never re-reads an item's type or
-/// toggle for an id it already knows (research 5).
+/// toggle for an id it already knows.
 /// </summary>
 public static class SniMenu
 {

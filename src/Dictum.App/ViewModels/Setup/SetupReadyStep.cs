@@ -13,9 +13,9 @@ namespace Dictum.App.ViewModels.Setup;
 public sealed record KeyPart(string Text, bool IsKey);
 
 /// <summary>
-/// Step 8 (spec 8): the saved profile's hotkey as keycaps and how to use it, the overlay as the user will see it, a box
-/// to try dictation, and the tray-pinning row unless the icon is known to be visible (SPEC:97). A line follows the
-/// daemon live: starting, loading the speech model, running, or why not; another says how the last try went (PR 5b).
+/// Step 8: the saved profile's hotkey as keycaps and how to use it, the overlay as it will look, a box to try dictation,
+/// and the tray-pinning row unless the icon is known to be visible. A line follows the daemon live: starting, loading
+/// the speech model, running, or why not; another says how the last try went.
 /// </summary>
 public sealed partial class SetupReadyStep(TrayHint tray, IDaemonChannel daemon, Action restartDaemon) : SetupStep
 {
@@ -64,7 +64,7 @@ public sealed partial class SetupReadyStep(TrayHint tray, IDaemonChannel daemon,
     [ObservableProperty]
     public partial string? TryResult { get; private set; }
 
-    /// <summary>The link was pushed while the step was away: read it now (the ProfilesPage pattern).</summary>
+    /// <summary>The link may have changed while the step was away: read it again.</summary>
     public override void OnShown() => OnLink(daemon.Link);
 
     /// <param name="config">The config just saved.</param>
@@ -84,7 +84,7 @@ public sealed partial class SetupReadyStep(TrayHint tray, IDaemonChannel daemon,
         }
 
         _profile = first;
-        // The try starts at the save: a dictation made earlier in the walk is not step 8's (final review I1).
+        // The try starts at the save: a dictation made earlier in the walk is not step 8's.
         TryResult = null;
         Keys = parts;
         HowTo = first.Mode == HotkeyMode.Toggle ? Strings.SetupReadyToggle : Strings.SetupReadyHold;
@@ -117,7 +117,7 @@ public sealed partial class SetupReadyStep(TrayHint tray, IDaemonChannel daemon,
         _ => TryResult,
     };
 
-    /// <summary>Opens the OS page; a shell that cannot open it leaves the advice on screen (final review M2).</summary>
+    /// <summary>Opens the OS page; a shell that cannot open it leaves the advice on screen.</summary>
     [RelayCommand]
     private void OpenTraySettings()
     {
@@ -153,7 +153,7 @@ public sealed partial class SetupReadyStep(TrayHint tray, IDaemonChannel daemon,
 
     private (string Text, bool Ready, bool Problem, bool Restart) Connected(DaemonStatus status)
     {
-        // A daemon that has just started can answer before it registered its hotkeys: not known yet (review focus 1).
+        // A daemon that has just started can answer before it registered its hotkeys: not known yet.
         if (status.Profiles.FirstOrDefault(p => p.Id == _profile!.Id) is not { } registration)
         {
             return (Strings.SetupReadyStarting, false, false, false);
@@ -167,7 +167,7 @@ public sealed partial class SetupReadyStep(TrayHint tray, IDaemonChannel daemon,
         if (registration is { Registered: false, Hotkey: not null })
         {
             // The daemon's own reason when it gives one (no hotkey backend on this desktop, a backend error); otherwise the
-            // usual guess (final review M5).
+            // usual guess.
             return (status.Warning is { Length: > 0 } reason ? Format(Strings.SetupReadyHotkeyFailed, reason) : Strings.SettingsProfilesNotRegistered,
                 false, true, false);
         }

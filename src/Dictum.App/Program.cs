@@ -32,7 +32,7 @@ internal static class Program
 
         if (OperatingSystem.IsLinux())
         {
-            // Spike: Avalonia's X11 backend reported scale 1 where KDE signals the scale through Xft.dpi.
+            // Avalonia's X11 backend reports scale 1 where KDE sets the scale through Xft.dpi.
             DisplayScale.Apply();
         }
 
@@ -84,7 +84,7 @@ internal static class Program
 
     /// <summary>
     /// <c>--quit</c>: stops a running Dictum (the shell's Quit also stops the daemon) for the install and uninstall
-    /// scripts. 0 when none runs or it is gone, 1 when it is still running (phase 4 spec 5.4).
+    /// scripts. 0 when none runs or it is gone, 1 when it is still running.
     /// </summary>
     private static int QuitRunning()
     {

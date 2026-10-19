@@ -11,7 +11,7 @@
         ExtendClientAreaToDecorationsHint="True" ExtendClientAreaTitleBarHeightHint="40"
         Background="{DynamicResource color.bg.base}">
   <DockPanel>
-    <!-- The Settings title bar, only where the window really extends into its decorations (Windows). -->
+    <!-- The title bar Settings has, only where the window really extends into its decorations (Windows). -->
     <Border DockPanel.Dock="Top" Height="40" Background="Transparent"
             IsVisible="{Binding $parent[Window].IsExtendedIntoWindowDecorations}"
             WindowDecorationProperties.ElementRole="TitleBar">

@@ -6,7 +6,7 @@ namespace Dictum.App.Overlay;
 /// <summary>One 20 ms frame of a <c>dictum record --dump-frames</c> file.</summary>
 public sealed record RecordedFrame(double T, float Rms, float[] Bands);
 
-/// <summary>A <c>--dump-frames</c> recording. The overlay tests and <c>--overlay-demo</c> play it by index, as the prototype does.</summary>
+/// <summary>A <c>--dump-frames</c> recording. The overlay tests and <c>--overlay-demo</c> play it by frame index.</summary>
 public sealed record FrameRecording(int FramesPerSecond, int Bands, IReadOnlyList<RecordedFrame> Frames)
 {
     public TimeSpan Duration => TimeSpan.FromSeconds((double)Frames.Count / FramesPerSecond);

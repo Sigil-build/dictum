@@ -20,9 +20,9 @@ public interface IOverlaySurface
 }
 
 /// <summary>
-/// The transparent, click-through, never-activated topmost window that holds the <see cref="OverlayCanvas"/>
-/// (spec 5.4). The OS part (extended styles on Windows, override-redirect on X11) arrives through <c>prepare</c>
-/// before the window is first shown. While shown, it draws on every display frame.
+/// The transparent, click-through, never-activated topmost window that holds the <see cref="OverlayCanvas"/>. The OS
+/// part (extended styles on Windows, override-redirect on X11) arrives through <c>prepare</c> before the window is
+/// first shown. While shown, it draws on every display frame.
 /// </summary>
 public sealed class OverlayWindow : Window, IOverlaySurface
 {
@@ -86,7 +86,7 @@ public sealed class OverlayWindow : Window, IOverlaySurface
     }
 
     /// <summary>
-    /// Every display frame (final review I2): a skipped callback invalidates nothing, and Avalonia then waits for its
+    /// Every display frame: a skipped callback invalidates nothing, and Avalonia then waits for its
     /// own ~16 ms timer (about 31 ms on Win32) instead of the next vsync.
     /// </summary>
     private void OnFrame(TimeSpan time)

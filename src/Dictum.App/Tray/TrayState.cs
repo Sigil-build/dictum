@@ -8,7 +8,7 @@ namespace Dictum.App.Tray;
 
 /// <summary>
 /// Turns the daemon link, its events and the config into what the tray shows. Nothing here touches Avalonia or the
-/// OS: the presenters (Tasks 10 and 11) draw the <see cref="TrayView"/>.
+/// OS: the presenters draw the <see cref="TrayView"/>.
 /// </summary>
 public sealed class TrayState(TimeProvider time)
 {

@@ -3,7 +3,7 @@ using Dictum.App.Resources;
 
 namespace Dictum.App.ViewModels.Setup;
 
-/// <summary>Step 5 (spec 8): start <c>dictum-gui</c> at login, Yes (recommended) or No; written after the config is saved.</summary>
+/// <summary>Step 5: start <c>dictum-gui</c> at login, Yes (recommended) or No; written after the config is saved.</summary>
 public sealed partial class SetupLoginStep : SetupStep
 {
     /// <param name="available">This system has a login item Dictum can write, and the app knows its own path.</param>

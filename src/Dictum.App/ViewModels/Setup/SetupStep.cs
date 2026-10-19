@@ -2,7 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace Dictum.App.ViewModels.Setup;
 
-/// <summary>One step of the setup wizard (spec 8): its name for the step line, and whether Next may leave it.</summary>
+/// <summary>One step of the setup wizard: its name for the step line, and whether Next may leave it.</summary>
 public abstract partial class SetupStep : ViewModelBase
 {
     public abstract string Name { get; }

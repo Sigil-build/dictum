@@ -3,7 +3,7 @@ using Dictum.Core.Configuration;
 
 namespace Dictum.App.Shell;
 
-/// <summary>The UI language (spec 7): <c>general.uiLanguage</c>, or the OS UI culture when that is null.</summary>
+/// <summary>The UI language: <c>general.uiLanguage</c>, or the OS UI culture when that is null.</summary>
 public static class UiCulture
 {
     public static CultureInfo? Resolve(string? uiLanguage) =>

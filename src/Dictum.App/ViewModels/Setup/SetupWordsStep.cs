@@ -6,7 +6,7 @@ using Dictum.Core.Vocabulary;
 namespace Dictum.App.ViewModels.Setup;
 
 /// <summary>
-/// Step 4 (spec 8): names, apps and terms, one per line or as a pasted list. A re-run shows the first profile's words,
+/// Step 4: names, apps and terms, one per line or as a pasted list. A re-run shows the first profile's words,
 /// and the save replaces the list with what is left here. The box keeps the text as typed; it is split only for the plan.
 /// </summary>
 public sealed partial class SetupWordsStep(IReadOnlyList<string> current) : SetupStep

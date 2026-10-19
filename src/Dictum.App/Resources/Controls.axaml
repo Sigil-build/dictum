@@ -3,14 +3,14 @@
         xmlns:controls="using:Dictum.App.Controls">
   <Styles.Resources>
     <ResourceDictionary>
-      <!-- Row icons from the design (20 × 20, stroked 1.6 in text.secondary). -->
+      <!-- Row icons on a 20 × 20 grid, stroked 1.6 in text.secondary. -->
       <StreamGeometry x:Key="icon.login">M3,5.5 L17,5.5 M3,10 L17,10 M3,14.5 L11,14.5</StreamGeometry>
       <StreamGeometry x:Key="icon.microphone">M7,5 A3,3 0 0 1 13,5 L13,9 A3,3 0 0 1 7,9 Z M4.5,9.5 A5.5,5.5 0 0 0 15.5,9.5 M10,15 L10,18</StreamGeometry>
       <StreamGeometry x:Key="icon.sounds">M3,8 L3,12 L6,12 L10,15 L10,5 L6,8 Z M13,7.5 A3.5,3.5 0 0 1 13,12.5 M15.5,5 A7,7 0 0 1 15.5,15</StreamGeometry>
       <StreamGeometry x:Key="icon.history">M3,10 A7,7 0 1 0 17,10 A7,7 0 1 0 3,10 Z M10,6 L10,10 L12.5,11.5</StreamGeometry>
       <StreamGeometry x:Key="icon.language">M3,10 A7,7 0 1 0 17,10 A7,7 0 1 0 3,10 Z M3,10 L17,10 M10,3 C12.5,5.2 12.5,14.8 10,17 M10,3 C7.5,5.2 7.5,14.8 10,17</StreamGeometry>
       <StreamGeometry x:Key="icon.paste">M7,3.5 L13,3.5 L13,6 L7,6 Z M7,4.5 L5,4.5 L5,17 L15,17 L15,4.5 L13,4.5</StreamGeometry>
-<StreamGeometry x:Key="icon.setup">M3,5 L5,7 L8,4 M10,5.5 L17,5.5 M3,10 L5,12 L8,9 M10,10.5 L17,10.5 M3,15 L5,17 L8,14 M10,15.5 L17,15.5</StreamGeometry>
+      <StreamGeometry x:Key="icon.setup">M3,5 L5,7 L8,4 M10,5.5 L17,5.5 M3,10 L5,12 L8,9 M10,10.5 L17,10.5 M3,15 L5,17 L8,14 M10,15.5 L17,15.5</StreamGeometry>
       <StreamGeometry x:Key="icon.overlay">M5,4 L15,4 A2,2 0 0 1 17,6 L17,12 A2,2 0 0 1 15,14 L5,14 A2,2 0 0 1 3,12 L3,6 A2,2 0 0 1 5,4 Z M7,17 L13,17</StreamGeometry>
 
       <ControlTheme x:Key="{x:Type controls:SettingsRow}" TargetType="controls:SettingsRow">
@@ -43,7 +43,7 @@
     </ResourceDictionary>
   </Styles.Resources>
 
-  <!-- Page titles: 28/36 600 (type.title). -->
+  <!-- Page titles. -->
   <Style Selector="TextBlock.title">
     <Setter Property="FontSize" Value="{DynamicResource type.title.size}" />
     <Setter Property="LineHeight" Value="{DynamicResource type.title.lineHeight}" />
@@ -75,7 +75,7 @@
     <Setter Property="Foreground" Value="{DynamicResource color.text.primary}" />
   </Style>
 
-  <!-- Segmented control: joined 32 px items, the selected one in accent (design). -->
+  <!-- Segmented control: joined 32 px items, the selected one in accent. -->
   <Style Selector="ListBox.segmented">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
@@ -117,7 +117,7 @@
     <Setter Property="Foreground" Value="{DynamicResource color.status.warn.fg}" />
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
-  <!-- Hotkey recorder (design §4.13): keycaps; dashed accent while listening. -->
+  <!-- Hotkey recorder: keycaps; an accent border while listening. -->
   <Style Selector="Button.hotkey">
     <Setter Property="MinHeight" Value="36" />
     <Setter Property="Padding" Value="10,0" />
@@ -145,7 +145,7 @@
   <Style Selector="TextBlock.keycapPlus">
     <Setter Property="Foreground" Value="{DynamicResource color.text.secondary}" />
   </Style>
-  <!-- Profiles editor rows (design §3.2): bordered, 140 px label column. -->
+  <!-- Profiles editor rows: bordered cards. -->
   <Style Selector="Border.editorRow">
     <Setter Property="Padding" Value="16,10" />
     <Setter Property="CornerRadius" Value="{DynamicResource radius.control}" />
@@ -169,7 +169,7 @@
     <Setter Property="Foreground" Value="{DynamicResource color.status.warn.fg}" />
   </Style>
 
-  <!-- Chips (design §4.8): pills, a focusable × to remove; warned chips in the warning colours. -->
+  <!-- Chips: pills, a focusable × to remove; warned chips in the warning colours. -->
   <Style Selector="Border.chip">
     <Setter Property="Padding" Value="10,2,4,2" />
     <Setter Property="Margin" Value="0,0,6,6" />
@@ -197,7 +197,7 @@
     <Setter Property="Content" Value="×" />
   </Style>
 
-  <!-- Chain rows (design §3.2): 36 px, a dot handle; the dragged row gets the accent. -->
+  <!-- Chain rows: 36 px, a dot handle; the dragged row gets the accent. -->
   <Style Selector="Border.chainRow">
     <Setter Property="Height" Value="36" />
     <Setter Property="Margin" Value="0,0,0,4" />
@@ -219,7 +219,7 @@
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="Cursor" Value="SizeNorthSouth" />
   </Style>
-  <!-- Models (design §3.5): cards with an accent border while downloading, pill badges, the download and disk bars. -->
+  <!-- Models: cards with an accent border while downloading, pill badges, the download and disk bars. -->
   <Style Selector="Border.modelCard">
     <Setter Property="Padding" Value="16,14" />
     <Setter Property="CornerRadius" Value="{DynamicResource radius.control}" />
@@ -275,7 +275,7 @@
     <Setter Property="Foreground" Value="{DynamicResource color.accent}" />
     <Setter Property="Background" Value="{DynamicResource color.border}" />
   </Style>
-  <!-- Setup wizard (design Wizard): headings and leads, 36 px dialog buttons, the strip, pick rows and radio cards, the table, the 8 px total bar. -->
+  <!-- Setup wizard: headings and leads, 36 px dialog buttons, the strip, pick rows and radio cards, the table, the 8 px total bar. -->
   <Style Selector="TextBlock.h1">
     <Setter Property="FontSize" Value="24" />
     <Setter Property="LineHeight" Value="32" />

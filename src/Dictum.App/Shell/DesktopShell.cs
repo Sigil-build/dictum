@@ -123,7 +123,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     {
         if (command == SingleInstance.Quit)
         {
-            // Before Start there is no shutdown callback yet: quit as soon as it exists (phase 4 --quit).
+            // Before Start there is no shutdown callback yet: quit as soon as it exists.
             if (_started)
             {
                 Quit();
@@ -230,15 +230,15 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         Supervisor.Start();
         _started = true;
 
-        // A walk kept on disk mid-download (PR 5b): with no config it opens below; over a config it waits in the
-        // background and comes back when its files are in (FilesReady), or when the user runs the setup again.
+        // A walk kept on disk mid-download: with no config it opens below; over a config it waits in the background
+        // and comes back when its files are in (FilesReady), or when the setup is opened again.
         if (_store.Exists && File.Exists(_paths.SetupFile))
         {
             _setup = CreateSetup();
             _setup.OnClosed();
         }
 
-        // No config yet: the wizard opens on its own (spec 3.2); ShowSettings sends every Settings entry there too.
+        // No config yet: the wizard opens on its own; ShowSettings sends every Settings entry there too.
         if (_showWhenStarted || !_store.Exists)
         {
             ShowSettings(SettingsPageKey.General);
@@ -327,7 +327,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     }
 
     /// <summary>
-    /// Opens the setup wizard (spec 8), or brings it forward. One walk lives as long as the app: a closed wizard reopens
+    /// Opens the setup wizard, or brings it forward. One walk lives as long as the app: a closed wizard reopens
     /// at the same step with the same answers, and Finish ends the walk.
     /// </summary>
     public void ShowSetup()
@@ -378,7 +378,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             _setupWindow?.Close();
         };
 
-        // Closed on step 7: when the files are in, the walk comes back to save (final review M6).
+        // Closed on step 7: when the files are in, the walk comes back to save.
         setup.FilesReady += () =>
         {
             if (ReferenceEquals(_setup, setup))
@@ -387,12 +387,12 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             }
         };
 
-        // The daemon starts at once after the save, not at the supervisor's next poll (PR 5b).
+        // The daemon starts at once after the save, not at the supervisor's next poll.
         setup.Saved += Supervisor.ConfigSaved;
         return setup;
     }
 
-    /// <summary>The one GPU probe, run once off the UI thread; Settings → Models and the wizard share it (SPEC:147).</summary>
+    /// <summary>The one GPU probe, run once off the UI thread; Settings → Models and the wizard share it.</summary>
     private Task<HardwareInfo> Hardware() => _hardware ??= Task.Run(_probeHardware);
 
     private TrayHint SetupTray()
@@ -500,7 +500,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         ShowSettings(SettingsPageKey.System);
     }
 
-    /// <summary>Downloads a previous run left unfinished continue in the background (spec 9); the tooltip shows the total.</summary>
+    /// <summary>Downloads a previous run left unfinished continue in the background; the tooltip shows the total.</summary>
     private void StartDownloads()
     {
         _http = FileDownloader.CreateHttpClient("dictum-gui");

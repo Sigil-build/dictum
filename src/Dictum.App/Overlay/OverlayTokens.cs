@@ -9,8 +9,8 @@ public readonly record struct WaveSpec(double Frequency, double Phase, double Dr
 public sealed record PaletteSpec(uint Wave1, uint Wave2, uint Wave3, uint Cleaning1, uint Cleaning2, double GlowOpacity);
 
 /// <summary>
-/// The overlay's numbers in overlay units (480 × 96 at medium size and 100 % scaling): <c>tokens.json</c> where it has
-/// them, otherwise SPEC.md and the prototype (design package; extract §2). Durations are in seconds.
+/// The overlay's design tokens, in overlay units (<see cref="Width"/> × <see cref="Height"/> at medium size and 100 %
+/// scaling). Durations are in seconds, colours are ARGB.
 /// </summary>
 public static class OverlayTokens
 {

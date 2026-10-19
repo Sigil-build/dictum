@@ -10,7 +10,7 @@ public partial class SetupView : UserControl
 
     /// <summary>
     /// Step 8's try-it box takes the focus when it appears: the daemon pastes into the focused control, so the first
-    /// dictation lands in the box instead of on the Finish button (PR 5b).
+    /// dictation lands in the box instead of on the Finish button.
     /// </summary>
     private void FocusTryBox(object? sender, VisualTreeAttachmentEventArgs e)
     {

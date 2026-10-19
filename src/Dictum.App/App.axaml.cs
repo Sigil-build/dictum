@@ -15,7 +15,7 @@ public partial class App : Application
     {
         AvaloniaXamlLoader.Load(this);
 
-        // The design's system font per platform (tokens font.family.*); Fluent's controls read ContentControlThemeFontFamily.
+        // The system font per platform (tokens font.family.*); Fluent's controls read ContentControlThemeFontFamily.
         if (this.TryGetResource(OperatingSystem.IsWindows() ? "font.family.windows" : "font.family.linux", null, out var font))
         {
             Resources["ContentControlThemeFontFamily"] = font;
@@ -29,7 +29,7 @@ public partial class App : Application
     {
         if (Shell is { } shell && ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            // The tray menu is a window: the default mode would quit when it closes (research §2).
+            // The tray menu is a window: the default mode would quit when it closes.
             desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
             shell.Start(this, code => desktop.Shutdown(code));
         }

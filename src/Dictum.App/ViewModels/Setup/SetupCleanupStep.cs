@@ -9,7 +9,7 @@ using Dictum.Setup;
 namespace Dictum.App.ViewModels.Setup;
 
 /// <summary>
-/// Step 3 (spec 8): clean-up off, or a server the user already runs (URL, model, optional key). Next leaves with a server
+/// Step 3: clean-up off, or a server that already runs (URL, model, optional key). Next leaves with a server
 /// only after "Test connection" passed for exactly the inputs on screen: an edit clears the result, and an answer that
 /// comes back after an edit never passes the new inputs. The current key is kept only for the same server.
 /// </summary>
@@ -88,7 +88,7 @@ public sealed partial class SetupCleanupStep : SetupStep
     }
 
     /// <summary>
-    /// A walk resumed after a restart (PR 5b). Its answers passed the test before step 7, so they count as tested. A
+    /// A walk resumed after a restart. Its answers passed the test before step 7, so they count as tested. A
     /// plain key was not kept on disk: it must be typed again, and tested again.
     /// </summary>
     public void Restore(bool useServer, string url, string model, string? keyReference, bool keyTyped)
@@ -137,7 +137,7 @@ public sealed partial class SetupCleanupStep : SetupStep
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            // Commands never throw (4a I3): an error the probe did not expect is a failed test (final review M2).
+            // Commands never throw: an error the probe did not expect is a failed test.
             _tested = inputs;
             _passed = false;
             TestResult = string.Format(CultureInfo.CurrentCulture, Strings.SetupServerUnreachable, inputs.Url, ex.Message);

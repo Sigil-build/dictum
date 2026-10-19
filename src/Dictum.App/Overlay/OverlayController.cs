@@ -8,7 +8,7 @@ using Dictum.Host.Ipc;
 namespace Dictum.App.Overlay;
 
 /// <summary>
-/// Turns the daemon's events into the overlay (spec 5.3). It runs the state machine and keeps the newest audio frame.
+/// Turns the daemon's events into the overlay. It runs the state machine and keeps the newest audio frame.
 /// When a dictation starts, it asks the desktop for the pointer's screen and the reduced-motion setting, then places
 /// and shows the surface. Everything runs on the UI thread except <see cref="OnFrame"/>, which the supervisor calls
 /// on its own thread.
