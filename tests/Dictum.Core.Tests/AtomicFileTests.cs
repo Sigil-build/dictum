@@ -1,3 +1,5 @@
+using Dictum.Testing;
+
 namespace Dictum.Core.Tests;
 
 public sealed class AtomicFileTests
