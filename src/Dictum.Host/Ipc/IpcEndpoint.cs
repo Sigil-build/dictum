@@ -56,7 +56,7 @@ public sealed class IpcClient(string socketPath)
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
 
-    /// <param name="timeout">How long to wait for the answer; 10 s unless the command takes longer (e.g. <c>test-stt</c>).</param>
+    /// <param name="timeout">How long to wait for the answer; slow commands such as <c>test-stt</c> pass a longer one.</param>
     public async Task<IpcResponse> SendAsync(IpcRequest request, CancellationToken ct, TimeSpan? timeout = null)
     {
         using var socket = await ConnectAsync(ct).ConfigureAwait(false);
@@ -213,6 +213,7 @@ public sealed class IpcServer : IAsyncDisposable
             }
             catch (OperationCanceledException)
             {
+                // The loop ends by cancellation.
             }
         }
 
@@ -263,7 +264,7 @@ public sealed class IpcServer : IAsyncDisposable
                     var request = line is null ? null : JsonSerializer.Deserialize(line, IpcJsonContext.Default.IpcRequest);
 
                     // Subscribed before the reply is built: an event published meanwhile follows the reply instead of being
-                    // lost, so a client that connects while the daemon registers its hotkeys hears about it (PR 5b).
+                    // lost, so a client that connects while the daemon registers its hotkeys hears about it.
                     subscriber = request?.Command == "subscribe" ? _events?.Subscribe() : null;
                     response = request is null
                         ? IpcResponse.Failure("Empty request.")
@@ -351,10 +352,12 @@ public sealed class IpcServer : IAsyncDisposable
         {
             while (await reader.ReadLineAsync(closed.Token).ConfigureAwait(false) is not null)
             {
+                // Whatever a subscriber sends is ignored.
             }
         }
         catch (Exception ex) when (ex is IOException or OperationCanceledException or ObjectDisposedException)
         {
+            // A failed or cancelled read ends the watch like the end of the stream.
         }
 
         try
@@ -363,6 +366,7 @@ public sealed class IpcServer : IAsyncDisposable
         }
         catch (ObjectDisposedException)
         {
+            // The event stream already ended and disposed the token source.
         }
     }
 }

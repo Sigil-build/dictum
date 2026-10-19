@@ -5,7 +5,7 @@ using Dictum.Host.Ipc;
 
 namespace Dictum.Cli.Commands;
 
-/// <summary><c>toggle</c>, <c>start</c>, <c>stop</c>, <c>cancel</c> and <c>status</c>: talk to a running daemon.</summary>
+/// <summary>The commands that talk to a running daemon, from <c>toggle</c> to <c>status</c>.</summary>
 internal static class ControlCommands
 {
     public static IEnumerable<Command> Create()

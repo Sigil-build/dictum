@@ -18,8 +18,8 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Dictum.Host;
 
 /// <summary>
-/// Composition root shared by the CLI and (later) the daemon and GUI.
-/// Registrations are explicit; nothing is discovered by reflection.
+/// Composition root for the CLI and its daemon. Registrations are explicit, as Native AOT needs: nothing is discovered
+/// by reflection.
 /// </summary>
 public sealed class DictumHost : IDictationEngine
 {

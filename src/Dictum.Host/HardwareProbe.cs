@@ -4,7 +4,7 @@ using Dictum.Stt.Whisper;
 
 namespace Dictum.Host;
 
-/// <summary>What <c>dictum init</c> needs to know about this machine.</summary>
+/// <summary>The GPU and free disk space that model recommendations depend on.</summary>
 public static class HardwareProbe
 {
     public static HardwareInfo Detect(AppPaths paths)
@@ -17,10 +17,9 @@ public static class HardwareProbe
             gpu?.Type == VulkanDeviceType.IntegratedGpu);
     }
 
-    /// <summary>Free space where models are stored; unknown counts as plenty. The desktop app's download queue checks it.</summary>
+    /// <summary>Free space where models are stored; unknown counts as plenty.</summary>
     public static long FreeDiskBytes(AppPaths paths) => FreeBytes(paths.DataDirectory);
 
-    /// <summary>Free space on the volume that holds <paramref name="directory"/>; unknown counts as plenty.</summary>
     private static long FreeBytes(string directory)
     {
         try

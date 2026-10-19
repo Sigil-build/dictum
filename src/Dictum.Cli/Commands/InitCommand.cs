@@ -55,7 +55,6 @@ internal static class InitCommand
                 ? "No GPU that Whisper can use was found; recommending a model that is fast on a CPU."
                 : $"GPU: {HardwareText.Gpu(hardware)}.");
 
-            // 1. Language
             var languageAnswer = parse.GetValue(language)
                 ?? (interactive ? AskLanguage(context, prompt, defaults.Language) : defaults.Language);
             if (!ConfigValidator.IsValidLanguage(languageAnswer))
@@ -68,15 +67,12 @@ internal static class InitCommand
                 context.Error.WriteLine($"warning: {similar}");
             }
 
-            // 2. Speech model
             var recommended = SetupPlanner.RecommendSpeechModel(hardware);
             var sttAnswer = parse.GetValue(stt)
                 ?? (interactive ? ChooseModel(prompt, catalog, languageAnswer, defaults, recommended) : defaults.SpeechModel);
 
-            // 3. Text cleanup
             var (server, pendingSecret) = AskCleanup(context, prompt, interactive, parse.GetValue(llm), parse.GetValue(llmModel), parse.GetValue(llmApiKey), defaults.Server);
 
-            // 4. Your words
             var words = new List<string>();
             if (parse.GetValue(vocabFile) is { } file)
             {
@@ -89,7 +85,6 @@ internal static class InitCommand
                 words.AddRange(typed.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
             }
 
-            // 5. Start at login
             var autostartAnswer = AskAutostart(context, prompt, interactive, parse.GetValue(autostart));
 
             var answers = new SetupAnswers(
@@ -164,7 +159,7 @@ internal static class InitCommand
         }
     }
 
-    /// <returns>A catalog id, or null to keep the current model file.</returns>
+    /// <summary>Returns a catalog id, or null to keep the current model file.</summary>
     private static string? ChooseModel(ConsolePrompt prompt, Catalog catalog, string language, SetupDefaults defaults, string recommended)
     {
         var models = catalog.Entries.Where(e => e is { Kind: CatalogKind.Whisper, Hidden: false } && e.Understands(language)).ToList();
@@ -180,7 +175,7 @@ internal static class InitCommand
         return models[prompt.Choose("Speech model:", options, index)].Id;
     }
 
-    /// <returns>The server to use (or null for no cleanup) and a key value still to be written to the secret store.</returns>
+    /// <summary>Returns the server to use (null for no cleanup) and a key value still to be written to the secret store.</summary>
     private static (ExistingLlmServer? Server, string? PendingSecret) AskCleanup(
         CliContext context,
         ConsolePrompt prompt,
@@ -351,7 +346,7 @@ internal static class InitCommand
 
     /// <summary>
     /// Login start records the executable path, so it breaks when Dictum runs from a folder that gets cleaned up. Inside an
-    /// AppImage that is the AppImage file, not its temporary mount (phase 4 final review I2).
+    /// AppImage that is the AppImage file, not its temporary mount.
     /// </summary>
     private static string? PathWarning()
     {

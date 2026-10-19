@@ -101,7 +101,6 @@ public sealed class DictumDaemon : IAsyncDisposable
 
     public PipelineState State => _engine.Pipeline.State;
 
-    /// <summary>Raised after every state change, for tests and status displays.</summary>
     public event Action<PipelineState>? StateChanged;
 
     public async Task StartAsync(CancellationToken ct)
@@ -703,7 +702,7 @@ public sealed class DictumDaemon : IAsyncDisposable
         }
 
         // A failed warm-up ends "loading" too: the first dictation reports the problem. An engine a reload replaced
-        // meanwhile says nothing (PR 5b).
+        // meanwhile says nothing.
         if (ReferenceEquals(engine, _engine) && !_stopping.IsCancellationRequested)
         {
             _warmedUp = true;

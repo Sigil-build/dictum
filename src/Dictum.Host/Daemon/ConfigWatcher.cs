@@ -19,7 +19,6 @@ public sealed class ConfigWatcher : IDisposable
     private readonly Lock _gate = new();
     private CancellationTokenSource? _pending;
 
-    /// <param name="onChanged">Gets the new config and its warnings.</param>
     public ConfigWatcher(ConfigStore store, Func<DictumConfig, IReadOnlyList<ConfigIssue>, Task> onChanged, Func<ConfigException, Task> onInvalid, ILog log)
     {
         _store = store;
@@ -79,6 +78,7 @@ public sealed class ConfigWatcher : IDisposable
         }
         catch (OperationCanceledException)
         {
+            // A newer change restarted the debounce, or the watcher was disposed.
         }
         catch (ConfigException ex)
         {
