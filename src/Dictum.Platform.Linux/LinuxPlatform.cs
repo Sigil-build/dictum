@@ -51,7 +51,11 @@ public static class LinuxPlatform
             [
                 new(PlatformCheckNames.Session, HealthStatus.Ok(session.ToString())),
                 new(PlatformCheckNames.Hotkeys, HealthStatus.Ok(hotkeys.Capabilities.Backend)),
-                Tool(PlatformCheckNames.Clipboard, XClipboard.IsAvailable, XClipboard.Xclip, "Install xclip: 'sudo pacman -S xclip' or 'sudo apt install xclip'."),
+                Tool(
+                    PlatformCheckNames.Clipboard,
+                    XClipboard.IsAvailable,
+                    XClipboard.IsAvailable ? new XClipboard().Backend : XClipboard.Xclip,
+                    "Install xclip: 'sudo pacman -S xclip' or 'sudo apt install xclip'."),
                 Tool(PlatformCheckNames.ActiveWindow, XpropActiveApp.IsAvailable, XpropActiveApp.Program, "Install xprop (package xorg-xprop / x11-utils) so terminals get Ctrl+Shift+V."),
             ]));
     }
