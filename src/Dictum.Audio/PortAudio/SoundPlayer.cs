@@ -6,8 +6,8 @@ using static Dictum.Audio.PortAudio.PortAudioNative;
 namespace Dictum.Audio.PortAudio;
 
 /// <summary>
-/// Short synthesised cues on the default output device. Best effort: a missing library or device, or a stream that
-/// does not open, is logged and ignored; a stream that fails after opening just stays silent.
+/// Short synthesised cues on the default output device. Best effort: a missing library or device, a stream that
+/// does not open, and a stream that fails after opening are logged and ignored.
 /// </summary>
 public sealed class SoundPlayer(ILog log) : ISoundPlayer, IDisposable
 {
@@ -26,7 +26,7 @@ public sealed class SoundPlayer(ILog log) : ISoundPlayer, IDisposable
         try
         {
             var samples = Synthesize(cue);
-            await Task.Run(() => Play(samples), ct).ConfigureAwait(false);
+            await Task.Run(() => Play(cue, samples), ct).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is AudioDeviceException or DllNotFoundException)
         {
@@ -65,7 +65,7 @@ public sealed class SoundPlayer(ILog log) : ISoundPlayer, IDisposable
         return [.. samples];
     }
 
-    private static unsafe void Play(float[] samples)
+    private unsafe void Play(SoundCue cue, float[] samples)
     {
         PortAudioLibrary.EnsureInitialized();
         var device = Pa_GetDefaultOutputDevice();
@@ -90,13 +90,14 @@ public sealed class SoundPlayer(ILog log) : ISoundPlayer, IDisposable
             throw new AudioDeviceException(ErrorText(error));
         }
 
-        // A cue is not worth an error once its stream is open, so the results below are not checked.
+        // A cue is not worth an error once its stream is open: a failed start or write is only logged, and the stream
+        // is still stopped and closed.
         try
         {
-            _ = Pa_StartStream(stream);
+            LogFailure(cue, "start the stream", Pa_StartStream(stream));
             fixed (float* data = samples)
             {
-                _ = Pa_WriteStream(stream, data, new CULong((nuint)samples.Length));
+                LogFailure(cue, "write the stream", Pa_WriteStream(stream, data, new CULong((nuint)samples.Length)));
             }
 
             // Pa_StopStream waits for queued audio to finish playing.
@@ -105,6 +106,14 @@ public sealed class SoundPlayer(ILog log) : ISoundPlayer, IDisposable
         finally
         {
             _ = Pa_CloseStream(stream);
+        }
+    }
+
+    private void LogFailure(SoundCue cue, string action, int error)
+    {
+        if (error != NoError)
+        {
+            log.Debug($"Could not {action} of the {cue} sound: {ErrorText(error)}");
         }
     }
 }
