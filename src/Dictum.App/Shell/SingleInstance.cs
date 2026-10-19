@@ -1,4 +1,3 @@
-using Dictum.App.Daemon;
 using Dictum.Core.Diagnostics;
 using Dictum.Host.Ipc;
 

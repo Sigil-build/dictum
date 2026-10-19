@@ -1,11 +1,10 @@
 using System.Net.Sockets;
 using System.Text.Json;
-using Dictum.Host.Ipc;
 
-namespace Dictum.App.Daemon;
+namespace Dictum.Host.Ipc;
 
 /// <summary>How a request to the daemon, or to the running app, can fail without a bug on this side.</summary>
-internal static class IpcFailure
+public static class IpcFailure
 {
     /// <summary>
     /// Nobody listens, the connection broke, or no answer came in time. An <see cref="OperationCanceledException"/>
