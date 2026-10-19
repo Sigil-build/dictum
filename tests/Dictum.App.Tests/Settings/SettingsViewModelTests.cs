@@ -111,7 +111,6 @@ public sealed class SettingsViewModelTests : IDisposable
         Assert.Equal(["shown", "hidden"], child.Calls);
     }
 
-    // Review focus 5.
     [Fact]
     public void ClosingTheWindowHidesThePage()
     {
@@ -124,7 +123,6 @@ public sealed class SettingsViewModelTests : IDisposable
         Assert.Equal(["shown", "hidden"], general.Calls);
     }
 
-    // Review focus 2.
     [Fact]
     public void ClosingTheWindowSavesPendingEdits()
     {
@@ -201,7 +199,6 @@ public sealed class SettingsViewModelTests : IDisposable
         public override void OnLink(DaemonLink link) => Last = link;
     }
 
-    // Review focus 3.
     [Fact]
     public void UnsavedErrorsShowTheBanner()
     {

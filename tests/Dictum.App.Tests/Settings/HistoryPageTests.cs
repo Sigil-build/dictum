@@ -123,7 +123,7 @@ public sealed class HistoryPageTests : IDisposable
         Assert.Equal(["Hello there."], _clipboard.Texts);
     }
 
-    // Final review I3: a busy clipboard throws; the page says so instead of crashing dictum-gui.
+    // A busy clipboard throws; the page says so instead of crashing dictum-gui.
     [Fact]
     public async Task ACopyThatFailsIsShownNotThrown()
     {
@@ -200,7 +200,6 @@ public sealed class HistoryPageTests : IDisposable
         Assert.True(page.HasChains);
     }
 
-    // Review focus 5.
     [Fact]
     public void AReRunShowsTheResultAndLeavesTheFileAlone()
     {
@@ -219,7 +218,6 @@ public sealed class HistoryPageTests : IDisposable
         Assert.Empty(_clipboard.Texts);
     }
 
-    // Review focus 5.
     [Fact]
     public void ANewerReRunWins()
     {

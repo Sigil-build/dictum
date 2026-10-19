@@ -102,7 +102,7 @@ public class OverlayCanvasTests(AvaloniaFixture fx)
         Assert.True(Count(pixels, Light, 182, 58, 330, 78) > 20, "message");
     });
 
-    // Review focus 1: a provider's long HTTP error.
+    // A provider's HTTP error can be this long.
     [Fact]
     public Task ALongErrorStaysOnOneLineInsideTheOverlay() => fx.Ui(() =>
     {
@@ -115,7 +115,7 @@ public class OverlayCanvasTests(AvaloniaFixture fx)
         Assert.True(Count(pixels, Light, 182, 58, W - 16, 78) > 100);
     });
 
-    // Review focus 1, final review I1: providers answer with pretty-printed JSON, so the message has line breaks.
+    // Providers answer with pretty-printed JSON, so the message has line breaks.
     [Fact]
     public Task AMultiLineErrorIsShownOnOneLine() => fx.Ui(() =>
     {

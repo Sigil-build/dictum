@@ -4,7 +4,7 @@ using Avalonia.Media.Imaging;
 
 namespace Dictum.App.Tests;
 
-/// <summary>A bitmap's pixels as BGRA, premultiplied (what a RenderTargetBitmap holds, research §6).</summary>
+/// <summary>A bitmap's pixels as BGRA, premultiplied (what a RenderTargetBitmap holds).</summary>
 internal static class Pixels
 {
     public static byte[] Of(Bitmap bitmap)

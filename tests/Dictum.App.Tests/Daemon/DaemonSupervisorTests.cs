@@ -323,7 +323,6 @@ public sealed class DaemonSupervisorTests : IAsyncDisposable
         Assert.Equal(DaemonLinkState.Stopped, supervisor.Link.State);
     }
 
-    // PR 5b: the wizard's save starts the daemon at once, not at the next poll.
     [Fact]
     public async Task ASavedConfigStartsTheDaemonWithoutWaitingForThePoll()
     {
@@ -338,7 +337,7 @@ public sealed class DaemonSupervisorTests : IAsyncDisposable
         Assert.Equal(1, _launcher.Launches);
     }
 
-    // PR 5b: a nudge while there is still no config keeps waiting; a later save still counts.
+    // A save after such a nudge still starts the daemon.
     [Fact]
     public async Task ANudgeWithoutAConfigKeepsWaiting()
     {

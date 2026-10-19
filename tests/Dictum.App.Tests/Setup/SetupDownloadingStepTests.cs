@@ -35,7 +35,6 @@ public sealed class SetupDownloadingStepTests : IDisposable
         Assert.Equal(("Downloading…", false, "Downloading"), (step.Title, step.CanContinue, step.Name));
     }
 
-    // Review focus 5: the rate and time left come from the queue, and a stall drops them (4d I3).
     [Fact]
     public void ProgressFollowsTheQueueAndAStallDropsTheRate()
     {
@@ -69,7 +68,6 @@ public sealed class SetupDownloadingStepTests : IDisposable
         Assert.Equal(["download whisper-large-v3-turbo-q8", "pause", "resume"], _fx.Downloads.Calls);
     }
 
-    // Review focus 5.
     [Fact]
     public void AFailedFileOffersTryAgain()
     {
@@ -83,7 +81,6 @@ public sealed class SetupDownloadingStepTests : IDisposable
         Assert.Equal("download whisper-large-v3-turbo-q8", _fx.Downloads.Calls[^1]);
     }
 
-    // Review focus 5.
     [Fact]
     public void OnlyTheWizardsFilesCountInItsTotal()
     {

@@ -20,7 +20,7 @@ public sealed class SimulatedVoiceTests
             Assert.All(bands, b => Assert.Equal(0f, b));
         }
 
-        // Peaks near −29 dBFS: the overlay's level reaches about 0.9 (spec 5.1).
+        // Peaks near −29 dBFS: the overlay's level reaches about 0.9.
         Assert.InRange(loudest, 0.025f, 0.0355f);
     }
 

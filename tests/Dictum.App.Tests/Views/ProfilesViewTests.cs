@@ -92,7 +92,7 @@ public sealed class ProfilesViewTests(AvaloniaFixture fx) : IDisposable
         Dispatcher.UIThread.RunJobs();
     }
 
-    // Final review C1: the real box must clear, and a removed chip must not come back.
+    // The real box must clear, and a removed chip must not come back.
     [Fact]
     public Task TypingACommaAddsTheWordAndClearsTheBox() => fx.Ui(() =>
     {
@@ -112,7 +112,7 @@ public sealed class ProfilesViewTests(AvaloniaFixture fx) : IDisposable
         window.Close();
     });
 
-    // Final review C1: a half-typed word must not move to the next profile.
+    // A half-typed word must not move to the next profile.
     [Fact]
     public Task SwitchingProfilesClearsTheWordBox() => fx.Ui(() =>
     {
@@ -130,7 +130,7 @@ public sealed class ProfilesViewTests(AvaloniaFixture fx) : IDisposable
         window.Close();
     });
 
-    // Final review C1: a picker that stays on its last pick cannot pick the same language again.
+    // A picker that stays on its last pick cannot pick the same language again.
     [Fact]
     public Task PickingALanguageClearsThePicker() => fx.Ui(() =>
     {

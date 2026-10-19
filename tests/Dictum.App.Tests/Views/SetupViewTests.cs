@@ -80,7 +80,6 @@ public sealed class SetupViewTests(AvaloniaFixture fx) : IDisposable
         window.Close();
     });
 
-    // Review focus 4.
     [Fact]
     public Task EscClosesTheWindowAndKeepsTheStep() => fx.UiAsync(async () =>
     {
@@ -112,7 +111,7 @@ public sealed class SetupViewTests(AvaloniaFixture fx) : IDisposable
         window.Close();
     });
 
-    // Final review I4: a long choice label wraps in the 640 px dialog instead of being cut off.
+    // A long choice label wraps in the 640 px dialog instead of being cut off.
     [Fact]
     public Task LongChoiceLabelsWrap() => fx.UiAsync(async () =>
     {
@@ -128,7 +127,7 @@ public sealed class SetupViewTests(AvaloniaFixture fx) : IDisposable
         window.Close();
     });
 
-    // Final review M1: Tab follows reading order (spec 14): the step's search, its list, the option under the list, then Next.
+    // Tab follows reading order: the step's search, its list, the option under the list, then Next.
     [Fact]
     public Task TabFollowsReadingOrder() => fx.UiAsync(() =>
     {
@@ -161,7 +160,7 @@ public sealed class SetupViewTests(AvaloniaFixture fx) : IDisposable
         _ => element?.GetType().Name ?? "none",
     };
 
-    // PR 5b: step 8 gives its try-it box the focus, so the first dictation lands there, and shows the daemon's line.
+    // Step 8 gives its try-it box the focus, so the first dictation lands there, and shows the daemon's line.
     [Fact]
     public Task StepEightFocusesTheTryBoxAndShowsTheDaemon() => fx.UiAsync(async () =>
     {
@@ -185,7 +184,7 @@ public sealed class SetupViewTests(AvaloniaFixture fx) : IDisposable
         window.Close();
     });
 
-    // PR 5b: a failed start shows Restart, which reaches the supervisor.
+    // A failed start shows Restart, which reaches the supervisor.
     [Fact]
     public Task StepEightOffersRestartWhenTheDaemonFailed() => fx.UiAsync(async () =>
     {

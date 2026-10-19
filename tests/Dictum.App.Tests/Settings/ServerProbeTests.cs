@@ -116,7 +116,7 @@ public sealed class ServerProbeTests : IDisposable
         Assert.Empty(_server.Requests);
     }
 
-    // Final review M3: llama-server, the default URL's server, lists one model and serves it under any name.
+    // llama-server, the default URL's server, lists one model and serves it under any name.
     [Fact]
     public async Task AServerWithOneModelServesAnyName()
     {
@@ -125,7 +125,7 @@ public sealed class ServerProbeTests : IDisposable
         Assert.True((await Probe().CheckAsync(Url, "qwen", null, _ct)).Ok);
     }
 
-    // Final review M3: Ollama lists "qwen2.5:latest" for a model pulled as "qwen2.5".
+    // Ollama lists "qwen2.5:latest" for a model pulled as "qwen2.5".
     [Fact]
     public async Task AnOllamaNameWithoutItsTagPasses()
     {
@@ -154,7 +154,7 @@ public sealed class ServerProbeTests : IDisposable
         }
     }
 
-    // Final review M2: Windows Credential Manager and the Linux portal throw their own errors, not ConfigException.
+    // Windows Credential Manager and the Linux portal throw their own errors, not ConfigException.
     [Fact]
     public async Task AKeyringThatFailsSaysSo()
     {

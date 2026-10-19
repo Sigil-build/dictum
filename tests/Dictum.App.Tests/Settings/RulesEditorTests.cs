@@ -38,7 +38,6 @@ public sealed class RulesEditorTests : IDisposable
         Assert.True(editor.Rows[1].IsDraft);
     }
 
-    // Review focus 1.
     [Fact]
     public void TypingInTheBlankRowAddsARule()
     {
@@ -59,7 +58,6 @@ public sealed class RulesEditorTests : IDisposable
         Assert.False(session.HasErrors);
     }
 
-    // Review focus 1.
     [Fact]
     public void AClearedFindIsShownNotSaved()
     {
@@ -72,7 +70,6 @@ public sealed class RulesEditorTests : IDisposable
         Assert.Equal(0, _timers.Pending);
     }
 
-    // Review focus 1.
     [Fact]
     public void ABadRegexIsShownOnItsRow()
     {
@@ -137,7 +134,7 @@ public sealed class RulesEditorTests : IDisposable
     }
 
 
-    // Final review M2: Regex ticked on an empty Find must stay ticked, or the pattern is saved as plain text.
+    // Regex ticked on an empty Find must stay ticked, or the pattern is saved as plain text.
     [Fact]
     public void RegexTickedOnAnEmptyFindSticks()
     {

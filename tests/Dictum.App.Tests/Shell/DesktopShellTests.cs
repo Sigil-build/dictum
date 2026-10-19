@@ -145,7 +145,6 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         await launcher.DisposeAsync();
     });
 
-    // Spec 3.2.
     [Fact]
     public Task AFirstStartWithoutAConfigOpensTheWizard() => fx.UiAsync(async () =>
     {
@@ -177,7 +176,6 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         await launcher.DisposeAsync();
     });
 
-    // Review focus 4.
     [Fact]
     public Task ClosingAndReopeningReturnsToTheSameStep() => fx.UiAsync(async () =>
     {
@@ -198,7 +196,6 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         await launcher.DisposeAsync();
     });
 
-    // Spec 7.
     [Fact]
     public Task RunSetupAgainOpensTheWizardOverSettings() => fx.UiAsync(async () =>
     {
@@ -216,7 +213,7 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         await launcher.DisposeAsync();
     });
 
-    // Final review I1: Run setup again after Settings edits shows the edits, not the walk read before them.
+    // Run setup again after Settings edits shows the edits, not the walk read before them.
     [Fact]
     public Task ARerunAfterSettingsEditsShowsTheEdits() => fx.UiAsync(async () =>
     {
@@ -239,7 +236,7 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         await launcher.DisposeAsync();
     });
 
-    // PR 5b: the daemon's events reach the wizard, for step 8's try line.
+    // The daemon's events reach the wizard, for step 8's try line.
     [Fact]
     public Task TheDaemonsEventsReachTheWizard() => fx.UiAsync(async () =>
     {
@@ -257,7 +254,7 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         await launcher.DisposeAsync();
     });
 
-    // PR 5b: a GUI restarted in the middle of step 7 opens the wizard where it was, and queues nothing.
+    // A GUI restarted in the middle of step 7 opens the wizard where it was, and queues nothing.
     [Fact]
     public Task AFirstStartResumesAWalkKeptOnDisk() => fx.UiAsync(async () =>
     {
@@ -274,7 +271,7 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         await launcher.DisposeAsync();
     });
 
-    // PR 5b: over a config the kept walk does not open on its own; Run setup again returns to it.
+    // Over a config the kept walk does not open on its own; Run setup again returns to it.
     [Fact]
     public Task AKeptWalkOverAConfigWaitsUntilAsked() => fx.UiAsync(async () =>
     {
@@ -292,8 +289,8 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         await launcher.DisposeAsync();
     });
 
-    // Final review I2: Run setup again after Settings edits shows the edits, even when a walk kept at step 3 was resumed
-    // before them; the stale walk is gone for good.
+    // Run setup again after Settings edits shows the edits, even when a walk kept at step 3 was resumed before them;
+    // the stale walk is gone for good.
     [Fact]
     public Task AKeptWalkDoesNotOutliveSettingsEdits() => fx.UiAsync(async () =>
     {
@@ -325,7 +322,7 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
     private static SavedSetup KeptWalk() =>
         new("pl", "whisper-large-v3-turbo-q8", false, "http://localhost:8080/v1", "", null, false, [], false, ["whisper-large-v3-turbo-q8"]);
 
-    // Phase 4: --quit reaches the running app as a command; it quits as the tray's Quit does, stopping the daemon too.
+    // --quit reaches the running app as a command; it quits as the tray's Quit does, stopping the daemon too.
     [Fact]
     public Task AQuitCommandStopsBoth() => fx.UiAsync(async () =>
     {
@@ -342,7 +339,6 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         await launcher.DisposeAsync();
     });
 
-    // Review focus 4: a quit sent while the app is still starting is kept until it has started.
     [Fact]
     public Task AQuitBeforeStartQuitsOnceStarted() => fx.UiAsync(async () =>
     {

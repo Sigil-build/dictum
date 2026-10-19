@@ -85,7 +85,7 @@ public class LevelMeterTests
         Assert.Equal(0, meter.Level);
     }
 
-    // Measured by replaying the recordings through the prototype's maths (plan rulings).
+    // Measured by replaying the recordings through the design prototype's maths.
     [Theory]
     [InlineData("frames-uk.json", 0.574, 0.769)]
     [InlineData("frames-en.json", 0.550, 0.748)]

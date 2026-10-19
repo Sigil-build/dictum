@@ -130,7 +130,6 @@ public sealed class ProfilesPageTests : IDisposable
         Assert.Equal("Ctrl+Alt+H is already used by another profile", page.HotkeyError);
     }
 
-    // Review focus 1.
     [Fact]
     public void RecordingPausesAndResumesTheDaemonsHotkeys()
     {
@@ -143,7 +142,6 @@ public sealed class ProfilesPageTests : IDisposable
         Assert.Equal([IpcCommand.PauseHotkeys, IpcCommand.ResumeHotkeys], _channel.Commands);
     }
 
-    // Review focus 1.
     [Fact]
     public void RecordingLeavesTheUsersOwnPauseAlone()
     {
@@ -156,7 +154,6 @@ public sealed class ProfilesPageTests : IDisposable
         Assert.Empty(_channel.Commands);
     }
 
-    // Review focus 1.
     [Fact]
     public void ALeftPageEndsRecording()
     {
@@ -247,7 +244,6 @@ public sealed class ProfilesPageTests : IDisposable
         Assert.Equal([true, false, true], page.Languages.Chips.Select(l => l.Warned));
     }
 
-    // Review focus 4.
     [Fact]
     public void TypingACommaAddsTheWord()
     {
@@ -354,7 +350,7 @@ public sealed class ProfilesPageTests : IDisposable
     }
 
 
-    // Final review M3: the daemon outlives a dropped event stream, so its pause must still be lifted.
+    // The daemon outlives a dropped event stream, so its pause must still be lifted.
     [Fact]
     public void ADroppedLinkStillGetsItsResume()
     {

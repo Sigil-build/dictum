@@ -4,7 +4,7 @@ namespace Dictum.App.Tests.Overlay;
 
 public class CubicBezierTests
 {
-    // Values from the CSS definition of cubic-bezier, computed while planning.
+    // Values from the CSS definition of cubic-bezier.
     [Theory]
     [InlineData(0.1, 0.4463)]
     [InlineData(0.25, 0.6906)]

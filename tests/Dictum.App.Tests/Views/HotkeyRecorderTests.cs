@@ -72,7 +72,6 @@ public class HotkeyRecorderTests(AvaloniaFixture fx)
         window.Close();
     });
 
-    // Review focus 1.
     [Fact]
     public Task LosingFocusCancelsRecording() => fx.Ui(() =>
     {
@@ -99,7 +98,7 @@ public class HotkeyRecorderTests(AvaloniaFixture fx)
     });
 
 
-    // Final review I2: Space's key-up used to click the button and start listening again.
+    // Space's key-up would click the button and start listening again.
     [Fact]
     public Task ReleasingTheChordDoesNotStartListeningAgain() => fx.Ui(() =>
     {
@@ -115,7 +114,7 @@ public class HotkeyRecorderTests(AvaloniaFixture fx)
         window.Close();
     });
 
-    // Final review I3: a bare Enter or a letter keeps listening instead of becoming a hotkey.
+    // A bare Enter or a letter keeps listening instead of becoming a hotkey.
     [Fact]
     public Task KeysThatTypeKeepListening() => fx.Ui(() =>
     {
@@ -129,7 +128,7 @@ public class HotkeyRecorderTests(AvaloniaFixture fx)
         window.Close();
     });
 
-    // Final review I3: Tab stops listening and moves on, as it does everywhere else.
+    // Tab stops listening and moves on, as it does everywhere else.
     [Fact]
     public Task TabStopsListening() => fx.Ui(() =>
     {

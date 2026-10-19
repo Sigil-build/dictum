@@ -11,7 +11,7 @@ namespace Dictum.App.Tests.Daemon;
 /// <summary>
 /// The supervisor with the real <c>dictum daemon</c>, in temp folders, with the microphone replaced by a file.
 /// Enabled with DICTUM_INTEGRATION=1 and DICTUM_TEST_MODEL=&lt;path to a ggml model&gt;. The profile has no hotkey,
-/// so it never competes with a daemon the user is running, and nothing is pasted.
+/// so it never competes with a daemon already running on the machine, and nothing is pasted.
 /// </summary>
 public sealed class RealDaemonTests : IAsyncDisposable
 {

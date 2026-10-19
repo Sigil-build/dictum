@@ -24,7 +24,7 @@ public sealed class ProcessorsPageTests : IDisposable
 
     public void Dispose() => _dir.Dispose();
 
-    /// <summary>The page as the user meets it: on screen. <paramref name="shown"/> false is a window opened on another page.</summary>
+    /// <summary>The page on screen; <paramref name="shown"/> false is a window opened on another page.</summary>
     private (ProcessorsPage Page, SettingsSession Session) Open(bool shown = true, string? cleanupKey = null)
     {
         var config = ProfilesPageTests.Sample();
@@ -113,7 +113,6 @@ public sealed class ProcessorsPageTests : IDisposable
         Assert.True(page.Llm.Prompt.CanRestore);
     }
 
-    // Review focus 2.
     [Fact]
     public async Task ThePreviewUsesTheEditedPrompt()
     {
@@ -144,7 +143,6 @@ public sealed class ProcessorsPageTests : IDisposable
         Assert.Equal(("So I want you to check this code.", "812 ms", (string?)null), (page.Llm.Preview.Text, page.Llm.Preview.Latency, page.Llm.Preview.Error));
     }
 
-    // Review focus 2.
     [Fact]
     public async Task ANewerPreviewWins()
     {
@@ -208,7 +206,7 @@ public sealed class ProcessorsPageTests : IDisposable
     [Theory]
     [InlineData("a/b", "SettingsLlmPromptNameInvalid")]
     [InlineData("email", "SettingsLlmPromptNameTaken")]
-    [InlineData("Cleanup", "SettingsLlmPromptNameTaken")] // Final review M1: the same file on Windows.
+    [InlineData("Cleanup", "SettingsLlmPromptNameTaken")] // The same file on Windows.
     public void ABadPromptNameIsRefused(string name, string error)
     {
         var (page, session) = Open();
@@ -299,7 +297,6 @@ public sealed class ProcessorsPageTests : IDisposable
         Assert.Equal(0, _timers.Pending);
     }
 
-    // Final review I1.
     [Fact]
     public void OpeningSettingsOnAnotherPageSendsNothingToTheLlm()
     {
@@ -313,7 +310,6 @@ public sealed class ProcessorsPageTests : IDisposable
         Assert.Equal("cleanup", _runner.Runs.Single().Steps.Single().Id);
     }
 
-    // Final review I1.
     [Fact]
     public void ChoosingARulesProcessorStopsTheLlmPreview()
     {
@@ -331,7 +327,6 @@ public sealed class ProcessorsPageTests : IDisposable
         Assert.Single(_runner.Runs);
     }
 
-    // Final review I1 and M7: a preview still running when the page is left is dropped, not shown later.
     [Fact]
     public async Task LeavingThePageDropsARunningPreview()
     {
@@ -349,7 +344,6 @@ public sealed class ProcessorsPageTests : IDisposable
         Assert.False(page.Llm.Preview.Running);
     }
 
-    // Final review I2.
     [Fact]
     public void ANewLlmProcessorGetsItsOwnPrompt()
     {
@@ -367,7 +361,7 @@ public sealed class ProcessorsPageTests : IDisposable
         Assert.False(_prompts.HasFile("cleanup"));
     }
 
-    // Final review I2 and M1: "LLM.md" is the same file as "llm.md" on Windows.
+    // "LLM.md" is the same file as "llm.md" on Windows.
     [Fact]
     public void ANewLlmProcessorNeverTakesAnExistingPromptName()
     {
@@ -380,7 +374,6 @@ public sealed class ProcessorsPageTests : IDisposable
         Assert.Equal("theirs {{text}}", _prompts.Read("LLM"));
     }
 
-    // Final review I2.
     [Fact]
     public void ASharedPromptSaysWhoElseUsesIt()
     {
@@ -394,7 +387,7 @@ public sealed class ProcessorsPageTests : IDisposable
         Assert.Equal(string.Format(Strings.Culture, Strings.SettingsLlmPromptShared, "summary"), page.Llm.Prompt.Shared);
     }
 
-    // Final review I3: "+ LLM prompt" copies the first processor's key reference.
+    // "+ LLM prompt" copies the first processor's key reference.
     [Fact]
     public async Task ACopiedKeyOutlivesTheOriginal()
     {
@@ -411,7 +404,7 @@ public sealed class ProcessorsPageTests : IDisposable
         Assert.Equal("sk-llm", _secrets.Values["dictum-processor-cleanup"]);
     }
 
-    // Final review I5: a keyring prompt on Linux answers after the user has moved on.
+    // A keyring prompt on Linux can answer after another processor was selected.
     [Fact]
     public async Task AKeyStoredLateGoesToTheProcessorItWasTypedFor()
     {
@@ -432,7 +425,7 @@ public sealed class ProcessorsPageTests : IDisposable
         Assert.Equal(before, Llm(session, "llm").ApiKey);
     }
 
-    // Final review M4: another program holds the prompt file open.
+    // Another program holds the prompt file open.
     [Fact]
     public void AnUnreadablePromptFileShowsWhyInsteadOfCrashing()
     {
@@ -448,7 +441,6 @@ public sealed class ProcessorsPageTests : IDisposable
         Assert.Equal("Mine {{text}}", _prompts.Read("cleanup"));
     }
 
-    // Final review M4.
     [Fact]
     public void RestoringALockedPromptShowsWhyInsteadOfCrashing()
     {

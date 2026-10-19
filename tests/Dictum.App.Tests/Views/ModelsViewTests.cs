@@ -69,7 +69,6 @@ public sealed class ModelsViewTests(AvaloniaFixture fx) : IDisposable
         window.Close();
     });
 
-    // Review focus 4, in the real dropdown: the pick applies and the dropdown clears itself (4b C1).
     [Fact]
     public Task PickingAProfileUsesTheModelAndClearsThePicker() => fx.Ui(() =>
     {

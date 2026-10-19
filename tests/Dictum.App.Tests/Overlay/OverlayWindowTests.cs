@@ -45,7 +45,7 @@ public class OverlayWindowTests(AvaloniaFixture fx)
         Assert.Equal(OverlayPhase.Hidden, window.Canvas.Scene.Phase);
     });
 
-    // Final review I2: skipping display frames dropped a 100 Hz desktop to about 32 fps.
+    // Skipping display frames would drop a 100 Hz desktop to about 32 fps.
     [Fact]
     public Task TheWindowDrawsEveryDisplayFrame() => fx.Ui(() =>
     {

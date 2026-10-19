@@ -12,7 +12,6 @@ public sealed class ApiKeysTests
     [Fact]
     public void ProviderSecretsAreNamedAfterTheProvider() => Assert.Equal("dictum-stt-remote", SecretNames.Stt("remote"));
 
-    // Review focus 2.
     [Fact]
     public async Task ATypedKeyGoesToTheStoreAndTheConfigGetsAReference()
     {
@@ -35,7 +34,6 @@ public sealed class ApiKeysTests
     public async Task AnEmptyBoxMeansNoKey() =>
         Assert.Equal(new KeyResult(null, null), await ApiKeys.StoreAsync(_secrets, "dictum-stt-remote", "   ", _ct));
 
-    // Review focus 2.
     [Fact]
     public async Task AStoreThatFailsSavesNothing()
     {
@@ -91,7 +89,7 @@ public sealed class ApiKeysTests
         Assert.Equal("sk-123", _secrets.Values["dictum-cleanup"]);
     }
 
-    // Final review I3: another provider or processor still holds the reference.
+    // Another provider or processor still holds the reference.
     [Theory]
     [InlineData("stt")]
     [InlineData("processor")]

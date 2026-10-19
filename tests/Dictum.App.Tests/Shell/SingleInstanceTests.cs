@@ -69,7 +69,7 @@ public sealed class SingleInstanceTests : IDisposable
             SingleInstance.NotifyAsync(SocketPath, SingleInstance.ShowSettings, _ct, TimeSpan.FromMilliseconds(300)));
     }
 
-    // Review focus 3: install.sh calls --quit whether or not Dictum runs.
+    // install.sh calls --quit whether or not Dictum runs.
     [Fact]
     public async Task QuitWithoutAnInstanceReturnsAtOnce()
     {
@@ -79,7 +79,7 @@ public sealed class SingleInstanceTests : IDisposable
         Assert.True(DateTime.UtcNow - started < TimeSpan.FromSeconds(2));
     }
 
-    // Review focus 3: the call returns once the running instance has let go of its socket.
+    // The call returns once the running instance has let go of its socket.
     [Fact]
     public async Task QuitWaitsUntilTheInstanceIsGone()
     {
@@ -100,7 +100,7 @@ public sealed class SingleInstanceTests : IDisposable
         Assert.False(await SingleInstance.QuitAsync(SocketPath, _ct));
     }
 
-    // Review focus 3: an instance that never lets go does not hang the script.
+    // An instance that never lets go does not hang the script.
     [Fact]
     public async Task QuitGivesUpAfterThePatience()
     {
@@ -109,7 +109,7 @@ public sealed class SingleInstanceTests : IDisposable
         await Assert.ThrowsAsync<TimeoutException>(() => SingleInstance.QuitAsync(SocketPath, _ct, TimeSpan.FromMilliseconds(500)));
     }
 
-    // Final review I3: an instance that holds the socket but never answers (hung) must not crash --quit; it gives up.
+    // An instance that holds the socket but never answers (hung) must not crash --quit; it gives up.
     [Fact]
     public async Task QuitOfASilentInstanceGivesUpInsteadOfThrowing()
     {
@@ -118,7 +118,6 @@ public sealed class SingleInstanceTests : IDisposable
         await Assert.ThrowsAsync<TimeoutException>(() => SingleInstance.QuitAsync(SocketPath, _ct, TimeSpan.FromMilliseconds(500)));
     }
 
-    // Final review I3 + M3: --quit's exit codes, and it never throws: 0 when nothing runs, 1 when an instance never lets go.
     [Fact]
     public async Task QuitExitsZeroWithoutAnInstanceAndOneForAHungOne()
     {
@@ -130,8 +129,8 @@ public sealed class SingleInstanceTests : IDisposable
         Assert.Contains("still running", error.ToString());
     }
 
-    // 4a final review M2, 4b final review I2: the shell asks its daemon to stop and exits; --quit returns only once no
-    // Dictum process from this folder runs, so an upgrade never meets dictum.exe still exiting.
+    // The shell asks its daemon to stop and exits; --quit returns only once no Dictum process from this folder runs, so
+    // an upgrade never meets dictum.exe still exiting.
     [Fact]
     public async Task QuitWaitsForTheDaemonToo()
     {
@@ -157,8 +156,8 @@ public sealed class SingleInstanceTests : IDisposable
         Assert.Equal((0, false), (code, processes.IsRunning(4242)));
     }
 
-    // 4b final review I2: a daemon from this folder that runs without the desktop app (a login item, a terminal) is
-    // stopped too, or the installer meets its files in use.
+    // A daemon from this folder that runs without the desktop app (a login item, a terminal) is stopped too, or the
+    // installer meets its files in use.
     [Fact]
     public async Task QuitStopsALoneDaemonFromThisFolder()
     {
@@ -171,7 +170,7 @@ public sealed class SingleInstanceTests : IDisposable
         Assert.Equal((0, true, false), (code, daemon.ShutdownAsked, processes.IsRunning(4242)));
     }
 
-    // 4b final review I2: a daemon from another copy (a portable folder) answers on the same socket; it is not ours to stop.
+    // A daemon from another copy (a portable folder) answers on the same socket; it is not ours to stop.
     [Fact]
     public async Task QuitLeavesADaemonFromAnotherFolderAlone()
     {
@@ -184,7 +183,7 @@ public sealed class SingleInstanceTests : IDisposable
         Assert.Equal((0, false), (code, daemon.ShutdownAsked));
     }
 
-    // 4b final review I2: a Dictum process from this folder that does not exit is reported, never waited for forever.
+    // A Dictum process from this folder that does not exit is reported, never waited for forever.
     [Fact]
     public async Task QuitReportsAProcessThatDoesNotExit()
     {

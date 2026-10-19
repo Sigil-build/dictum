@@ -49,7 +49,6 @@ public sealed class SetupDownloadsStepTests : IDisposable
         Assert.False(step.CanContinue);
     }
 
-    // Review focus 5.
     [Fact]
     public void TooLittleSpaceBlocksTheDownload()
     {

@@ -113,7 +113,6 @@ public sealed class GeneralPageTests : IDisposable
         Assert.Equal(2, _channel.Commands.Count(c => c == IpcCommand.MonitorStart));
     }
 
-    // Review focus 5.
     [Fact]
     public void HidingThePageStopsTheMeter()
     {
@@ -127,7 +126,6 @@ public sealed class GeneralPageTests : IDisposable
         Assert.Equal(0, page.MeterLevel);
     }
 
-    // Review focus 3.
     [Fact]
     public void WithoutTheDaemonTheMeterSaysSo()
     {
@@ -218,7 +216,6 @@ public sealed class GeneralPageTests : IDisposable
         Assert.Contains("Access denied.", page.StartAtLoginError);
     }
 
-    // Review focus 1.
     [Fact]
     public void AnEmptyHistoryFieldIsNotSaved()
     {
@@ -280,7 +277,7 @@ public sealed class GeneralPageTests : IDisposable
     }
 
 
-    // Final review C1: backspacing "100" passes through 10 and 1; the empty field must leave the file alone.
+    // Backspacing "100" passes through 10 and 1; the empty field must leave the file alone.
     [Fact]
     public void BackspacingToAnEmptyFieldSavesNothing()
     {
@@ -297,7 +294,6 @@ public sealed class GeneralPageTests : IDisposable
         Assert.Equal(Strings.SettingsNumberRequired, page.HistoryError);
     }
 
-    // Final review C1: another row's save must not refill the field under the cursor.
     [Fact]
     public void AnEmptyFieldStaysEmptyWhileAnotherRowSaves()
     {
@@ -314,7 +310,7 @@ public sealed class GeneralPageTests : IDisposable
     }
 
 
-    // Final review I3: a command that throws would crash dictum-gui.
+    // A command that throws would crash dictum-gui.
     [Fact]
     public async Task APreviewThatFailsDoesNotThrow()
     {
@@ -327,7 +323,6 @@ public sealed class GeneralPageTests : IDisposable
     }
 
 
-    // Final review M5: a switch while a start is still out must stop that monitor before starting the new one.
     [Fact]
     public void SwitchingWhileAStartIsOutStopsItFirst()
     {
@@ -345,7 +340,7 @@ public sealed class GeneralPageTests : IDisposable
         Assert.Equal("Webcam C920", _channel.Sent[^1].Device);
     }
 
-    // Final review M5: each request opens its own connection, so the start waits for the stop's answer.
+    // Each request opens its own connection, so the start waits for the stop's answer.
     [Fact]
     public void TheNewStartWaitsForTheStop()
     {
@@ -362,7 +357,6 @@ public sealed class GeneralPageTests : IDisposable
         Assert.Equal([IpcCommand.MonitorStop, IpcCommand.MonitorStart], _channel.Commands);
     }
 
-    // Final review M5: hidden while a start is out, the monitor it opened is closed once the answer comes.
     [Fact]
     public void HidingWhileAStartIsOutClosesTheMonitorItOpened()
     {
@@ -377,7 +371,7 @@ public sealed class GeneralPageTests : IDisposable
         Assert.Equal(IpcCommand.MonitorStop, _channel.Commands.Last());
     }
 
-    // Final review M6: without a device list nothing is known to be missing.
+    // Without a device list nothing is known to be missing.
     [Fact]
     public void WhileTheDaemonIsDownTheConfiguredMicrophoneIsNotCalledMissing()
     {
@@ -390,7 +384,6 @@ public sealed class GeneralPageTests : IDisposable
         Assert.Equal("Old USB mic", page.Microphone?.Value);
     }
 
-    // Spec 7: General → "Run setup again".
     [Fact]
     public void RunSetupAgainAsksTheShell()
     {
@@ -403,7 +396,7 @@ public sealed class GeneralPageTests : IDisposable
         Assert.Equal(1, asked);
     }
 
-    /// <summary>The shared fake, plus a read of <see cref="Installed"/> that can fail.</summary>
+    /// <summary>Dictum.Testing's FakeAutostart, plus a read of <see cref="Installed"/> that can fail.</summary>
     private sealed class FallibleAutostart : IAutostart
     {
         private LoginApp? _installed;

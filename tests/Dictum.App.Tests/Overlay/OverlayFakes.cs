@@ -4,7 +4,7 @@ using Dictum.App.Overlay;
 
 namespace Dictum.App.Tests.Overlay;
 
-/// <summary>Records what the controller asks of the window; the user's two monitors from the KDE spike.</summary>
+/// <summary>Records what the controller asks of the window; its screens are two monitors measured on KDE.</summary>
 internal sealed class FakeSurface : IOverlaySurface
 {
     public List<PixelRect> Presented { get; } = [];

@@ -5,7 +5,7 @@ namespace Dictum.App.Tests;
 
 internal static class TestCulture
 {
-    /// <summary>Tests compare English text and formats, whatever the machine's language (the user's is Ukrainian).</summary>
+    /// <summary>Tests compare English text and formats, whatever the machine's language.</summary>
     [ModuleInitializer]
     internal static void UseEnglish()
     {

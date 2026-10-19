@@ -41,7 +41,6 @@ public sealed class SystemPageTests
         Assert.Equal(SystemPage.DoctorTimeout, _channel.LastTimeout);
     }
 
-    // Review focus 3.
     [Fact]
     public void WithoutTheDaemonTheChecksSaySo()
     {
@@ -133,7 +132,7 @@ public sealed class SystemPageTests
     public void TheDaemonCardIsTheStatusModel() => Assert.Same(_service, Page().Service);
 
 
-    // Final review I3: an answer that cannot be read is a problem row, not a crash or an endless "checking".
+    // An answer that cannot be read is a problem row, not a crash or an endless "checking".
     [Fact]
     public async Task AnAnswerThatCannotBeReadIsAProblemNotACrash()
     {

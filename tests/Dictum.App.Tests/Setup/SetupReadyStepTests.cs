@@ -29,7 +29,7 @@ public sealed class SetupReadyStepTests
 
     private static (string, bool, bool, bool) Line(SetupReadyStep step) => (step.DaemonText, step.IsReady, step.HasProblem, step.CanRestart);
 
-    // Final review M2: opening the OS page is a Process.Start that can fail; the command never throws.
+    // Opening the OS page is a Process.Start that can fail; the command never throws.
     [Fact]
     public void OpeningTheTraySettingsNeverThrows()
     {
@@ -44,7 +44,7 @@ public sealed class SetupReadyStepTests
     public void UntilTheDaemonAnswersStepEightSaysItIsStarting() =>
         Assert.Equal(("Starting Dictum…", false, false, false), Line(Step()));
 
-    // Review focus 1: a daemon that has just started answers before it registered its hotkeys.
+    // A daemon that has just started answers before it registered its hotkeys.
     [Fact]
     public void AnEmptyProfileListIsNotKnownYet()
     {
@@ -55,7 +55,6 @@ public sealed class SetupReadyStepTests
         Assert.Equal(("Starting Dictum…", false, false, false), Line(step));
     }
 
-    // Review focus 1.
     [Fact]
     public void RunningOnlyAfterTheWarmUp()
     {
@@ -68,7 +67,7 @@ public sealed class SetupReadyStepTests
         Assert.Equal(("Dictum is running. Try it in the box below.", true, false, false), Line(step));
     }
 
-    // Review focus 1: an older daemon does not say; it is taken as running.
+    // An older daemon does not say; it is taken as running.
     [Fact]
     public void ADaemonThatDoesNotSayIsTakenAsRunning()
     {
@@ -79,7 +78,6 @@ public sealed class SetupReadyStepTests
         Assert.True(step.IsReady);
     }
 
-    // Review focus 3.
     [Fact]
     public void ARefusedHotkeySaysSo()
     {
@@ -90,7 +88,6 @@ public sealed class SetupReadyStepTests
         Assert.Equal(("The daemon could not register this hotkey; another app may already use it.", false, true, false), Line(step));
     }
 
-    // Review focus 3.
     [Fact]
     public void PausedHotkeysSaySo()
     {
@@ -101,7 +98,6 @@ public sealed class SetupReadyStepTests
         Assert.Equal(("Hotkeys are paused. Resume them from the tray menu.", false, true, false), Line(step));
     }
 
-    // Review focus 3.
     [Fact]
     public void AFailedStartOffersRestart()
     {
@@ -142,8 +138,8 @@ public sealed class SetupReadyStepTests
         Assert.Equal("The dictation failed: The microphone is busy.", step.TryResult);
     }
 
-    // Final review M5: when the daemon says why the hotkey failed (no backend on this desktop, a backend error), step 8
-    // shows that reason instead of guessing at another app.
+    // When the daemon says why the hotkey failed (no backend on this desktop, a backend error), step 8 shows that
+    // reason instead of guessing at another app.
     [Fact]
     public void ARefusedHotkeyGivesTheDaemonsReason()
     {

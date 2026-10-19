@@ -4,7 +4,6 @@ namespace Dictum.App.Tests.Settings;
 
 public sealed class WordListTests
 {
-    // Review focus 4.
     [Fact]
     public void PastedListsSplitAndSkipRepeats()
     {
@@ -15,7 +14,6 @@ public sealed class WordListTests
         Assert.Equal(["Wayland", "Nexus5", "Avalonia", "запуш", "main", "KDE"], WordList.Add(["Wayland"], words));
     }
 
-    // Review focus 4.
     [Fact]
     public void ATrailingPartStaysInTheBox()
     {

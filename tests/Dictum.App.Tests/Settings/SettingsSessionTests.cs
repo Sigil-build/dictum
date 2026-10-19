@@ -83,7 +83,6 @@ public sealed class SettingsSessionTests : IDisposable
         Assert.Equal(300, OnDisk());
     }
 
-    // Review focus 1.
     [Fact]
     public void EditsWithinTheDelaySaveOnce()
     {
@@ -102,7 +101,6 @@ public sealed class SettingsSessionTests : IDisposable
         Assert.Equal(200, OnDisk());
     }
 
-    // Review focus 1.
     [Fact]
     public void AnInvalidEditIsShownAndNotSaved()
     {
@@ -134,7 +132,6 @@ public sealed class SettingsSessionTests : IDisposable
         Assert.Equal(0, _timers.Pending);
     }
 
-    // Review focus 4.
     [Fact]
     public void OwnSavesAreNotExternalEdits()
     {
@@ -210,7 +207,6 @@ public sealed class SettingsSessionTests : IDisposable
     }
 
 
-    // Final review C1: an edit back to what is on disk leaves nothing to save.
     [Fact]
     public void AnEditBackToTheValueOnDiskSavesNothing()
     {
@@ -226,7 +222,7 @@ public sealed class SettingsSessionTests : IDisposable
         Assert.Equal(0, saves);
     }
 
-    // Final review C1: a good save changes nothing the pages show, so it must not reload them.
+    // A good save changes nothing the pages show, so it must not reload them.
     [Fact]
     public void AGoodSaveDoesNotReloadThePages()
     {
@@ -253,7 +249,6 @@ public sealed class SettingsSessionTests : IDisposable
         Assert.Equal(300, session.OnDisk.General.HistorySize);
     }
 
-    // Final review I2a.
     [Fact]
     public void AnOutsideRevertToOurLastSaveIsApplied()
     {
@@ -269,7 +264,6 @@ public sealed class SettingsSessionTests : IDisposable
         Assert.Equal(300, session.Config.General.HistorySize);
     }
 
-    // Final review I2b.
     [Fact]
     public void AFileFixedBackToOurLastSaveCanBeEditedAgain()
     {

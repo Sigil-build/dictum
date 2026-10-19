@@ -96,7 +96,7 @@ public class OverlayStateMachineTests
         Assert.Equal(OverlayPhase.Error, Step(machine, 0.05).Phase);
     }
 
-    // Review focus 3: the daemon went away between Idle and finished.
+    // The daemon went away between Idle and finished.
     [Fact]
     public void IdleWithoutFinishedHidesAfterASecond()
     {

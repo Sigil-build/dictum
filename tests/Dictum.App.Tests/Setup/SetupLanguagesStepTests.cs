@@ -81,7 +81,7 @@ public sealed class SetupLanguagesStepTests
         Assert.Null(step.BannerLead);
     }
 
-    // Final review I3: people search in the language they read, not only by each language's own name.
+    // People search in the language they read, not only by each language's own name.
     [Theory]
     [InlineData("ukrainian", "uk")]
     [InlineData("German", "de")]

@@ -16,7 +16,6 @@ public sealed class PastingViewTests(AvaloniaFixture fx) : IDisposable
 
     public void Dispose() => _dir.Dispose();
 
-    // Final review C1: the real app box clears once the app is added.
     [Fact]
     public Task TypingACommaAddsTheAppAndClearsTheBox() => fx.Ui(() =>
     {

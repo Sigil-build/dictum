@@ -6,7 +6,7 @@ namespace Dictum.App.Tests.Overlay;
 
 public class OverlayPlacementTests
 {
-    // The user's two monitors from the KDE spike.
+    // Two monitors measured on KDE.
     private static readonly ScreenArea Primary = new("DP-6", new PixelRect(0, 0, 2560, 1440), new PixelRect(0, 0, 2560, 1394), 1, true);
     private static readonly ScreenArea Second = new("DP-2", new PixelRect(2560, 0, 2560, 1440), new PixelRect(2560, 0, 2560, 1394), 1.25, false);
 
@@ -33,7 +33,7 @@ public class OverlayPlacementTests
         Assert.Equal(1394 - 150 - 5, rect.Y);
     }
 
-    // Review focus 4. Measured in the spike: DP-6 at 125 % made XWayland cut DP-2's working area to DP-6's height.
+    // Measured on KDE: DP-6 at 125 % made XWayland cut DP-2's working area to DP-6's height.
     [Fact]
     public void AWorkingAreaCutByAnotherScreenIsIgnored()
     {

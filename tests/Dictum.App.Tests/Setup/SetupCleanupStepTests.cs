@@ -50,7 +50,6 @@ public sealed class SetupCleanupStepTests
         Assert.Equal(("Could not reach http://localhost:8080/v1: Connection refused", false, false), (step.TestResult, step.TestOk, step.CanContinue));
     }
 
-    // Review focus 2.
     [Fact]
     public async Task AnEditAfterTheTestAsksForANewOne()
     {
@@ -62,7 +61,6 @@ public sealed class SetupCleanupStepTests
         Assert.Equal(((string?)null, false, false), (step.TestResult, step.TestOk, step.CanContinue));
     }
 
-    // Review focus 2.
     [Fact]
     public async Task AnOlderTestNeverPassesNewerInputs()
     {
@@ -78,7 +76,6 @@ public sealed class SetupCleanupStepTests
         Assert.Equal(((string?)null, false, false), (step.TestResult, step.TestOk, step.CanContinue));
     }
 
-    // Review focus 2.
     [Fact]
     public async Task TheCurrentKeyGoesOnlyToTheSameServer()
     {
@@ -122,7 +119,7 @@ public sealed class SetupCleanupStepTests
         Assert.True(step.CanContinue);
     }
 
-    // Final review M2: commands never throw (4a I3); an unexpected error is a failed test.
+    // Commands never throw; an unexpected error is a failed test.
     [Fact]
     public async Task AProbeThatThrowsShowsAFailedTest()
     {

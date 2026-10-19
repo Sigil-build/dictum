@@ -109,7 +109,7 @@ public class OverlayControllerTests
         Assert.True(scene.Level > 0.99, $"level {scene.Level}");
     }
 
-    // Review focus 2: Settings' level meter (monitor-start) and test-stt send frames while the daemon is Idle.
+    // Settings' level meter (monitor-start) and test-stt send frames while the daemon is Idle.
     [Fact]
     public void FramesOutsideADictationDoNotShowTheOverlay()
     {
@@ -123,7 +123,6 @@ public class OverlayControllerTests
         Assert.Equal(0, Frame(0.02).Level);
     }
 
-    // Review focus 3.
     [Fact]
     public void ALostLinkHidesTheOverlay()
     {
@@ -148,7 +147,6 @@ public class OverlayControllerTests
         Assert.Equal(OverlayPhase.Hidden, controller.Phase);
     }
 
-    // Review focus 5.
     [Fact]
     public void TurningTheOverlayOffHidesItAndKeepsItHidden()
     {

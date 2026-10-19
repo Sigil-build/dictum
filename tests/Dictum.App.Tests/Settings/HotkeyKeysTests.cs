@@ -55,7 +55,7 @@ public sealed class HotkeyKeysTests
     }
 
 
-    // Final review I3: the daemon swallows its hotkey in every app, so a key that types needs Ctrl, Alt or Win.
+    // The daemon swallows its hotkey in every app, so a key that types needs Ctrl, Alt or Win.
     [Theory]
     [InlineData(PhysicalKey.Enter, KeyModifiers.None)]
     [InlineData(PhysicalKey.Tab, KeyModifiers.None)]

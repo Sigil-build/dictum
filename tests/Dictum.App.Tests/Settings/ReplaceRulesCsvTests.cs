@@ -15,7 +15,6 @@ public sealed class ReplaceRulesCsvTests
             rules.Select(r => (r.From, r.To, r.IgnoreCase, r.WholeWord)));
     }
 
-    // Review focus 3.
     [Fact]
     public void ExcelStyleFilesImport()
     {
@@ -33,7 +32,6 @@ public sealed class ReplaceRulesCsvTests
             rules.Select(r => (r.From, r.To, r.IgnoreCase, r.WholeWord)));
     }
 
-    // Review focus 3.
     [Fact]
     public void BadLinesAreNamedAndSkipped()
     {
@@ -45,7 +43,7 @@ public sealed class ReplaceRulesCsvTests
 
     private static readonly Encoding Cp1251 = CodePagesEncodingProvider.Instance.GetEncoding(1251)!;
 
-    // Final review I4: Excel's plain "CSV (comma delimited)" on a Ukrainian Windows is Windows-1251.
+    // Excel's plain "CSV (comma delimited)" on a Ukrainian Windows is Windows-1251.
     [Fact]
     public void AFileInTheAnsiCodePageReadsAsCyrillic()
     {

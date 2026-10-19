@@ -125,7 +125,6 @@ public sealed class SpeechProvidersPageTests : IDisposable
         Assert.Equal(Strings.SettingsNumberRequired, card.TimeoutError);
     }
 
-    // Review focus 2.
     [Fact]
     public async Task TheKeyFieldCommitsThroughTheStore()
     {
@@ -218,7 +217,6 @@ public sealed class SpeechProvidersPageTests : IDisposable
         Assert.Equal(["local"], page.Cards.Select(c => c.Id));
     }
 
-    // Review focus 5.
     [Fact]
     public async Task ATestSavesFirstAndWaitsForTheReload()
     {
@@ -244,7 +242,6 @@ public sealed class SpeechProvidersPageTests : IDisposable
         Assert.Empty(_waits);
     }
 
-    // Review focus 5.
     [Fact]
     public async Task ATestWaitsForErrorsToBeFixed()
     {
@@ -326,7 +323,7 @@ public sealed class SpeechProvidersPageTests : IDisposable
     }
 
 
-    // Final review I1: a debounced save just before the click needs the rest of the reload time too.
+    // A debounced save just before the click needs the rest of the reload time too.
     [Fact]
     public async Task ATestRightAfterAnAutomaticSaveWaitsTheRest()
     {
@@ -355,7 +352,7 @@ public sealed class SpeechProvidersPageTests : IDisposable
         Assert.Empty(_waits);
     }
 
-    // Final review I1: a key still being stored (a keyring prompt) is part of the settings the test must use.
+    // A key still being stored (a keyring prompt) is part of the settings the test must use.
     [Fact]
     public async Task ATestWaitsForAKeyStillBeingStored()
     {
@@ -386,7 +383,7 @@ public sealed class SpeechProvidersPageTests : IDisposable
         Assert.Equal("secret:dictum-stt-remote", keyAtTest);
     }
 
-    // PR 4d: a model downloaded on Settings → Models appears here without a config change.
+    // A model downloaded on Settings → Models appears here without a config change.
     [Fact]
     public void ShowingThePageListsModelsDownloadedSinceItOpened()
     {

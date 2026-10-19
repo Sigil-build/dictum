@@ -141,7 +141,6 @@ public sealed class ModelsPageTests : IDisposable
         Assert.Equal("GPU found: Intel(R) Iris(R) Xe Graphics · 15.8 GB shared · 31.6 GB RAM. Recommendations are based on it.", page.HardwareText);
     }
 
-    // Review focus 5.
     [Fact]
     public async Task BeforeTheProbeAnswersTheLineSaysSo()
     {
@@ -160,7 +159,6 @@ public sealed class ModelsPageTests : IDisposable
         Assert.Equal("Too slow here", Card(page, Turbo).SpeedBadge);
     }
 
-    // Review focus 5.
     [Fact]
     public void AFailedProbeFallsBackToTheCpu()
     {
@@ -182,7 +180,6 @@ public sealed class ModelsPageTests : IDisposable
         Assert.Null(Card(page, Small).Recommendation);
     }
 
-    // Review focus 2.
     [Fact]
     public void BadgesFollowTheFileAndTheQueue()
     {
@@ -210,7 +207,6 @@ public sealed class ModelsPageTests : IDisposable
         Assert.False(small.IsInstalled || small.IsActive || small.CanCancel);
     }
 
-    // Review focus 2.
     [Fact]
     public void ADownloadShowsItsRateAndTimeLeft()
     {
@@ -241,7 +237,6 @@ public sealed class ModelsPageTests : IDisposable
         Assert.Equal("Downloading", small.StateText);
     }
 
-    // Review focus 1.
     [Fact]
     public void UsedByNamesTheProfilesAndKeepsDeleteOff()
     {
@@ -270,7 +265,6 @@ public sealed class ModelsPageTests : IDisposable
         Assert.Equal(("Used by: Work, Home", false), (Card(page, Small).UsedByText, Card(page, Small).CanDelete));
     }
 
-    // Review focus 3.
     [Fact]
     public void SpeedComesFromDictationsThenFromScaling()
     {
@@ -283,7 +277,6 @@ public sealed class ModelsPageTests : IDisposable
         Assert.Equal(("~1.1 s for 5 s of speech (estimate)", "Fast"), (Card(page, Small).SpeedText, Card(page, Small).SpeedBadge));
     }
 
-    // Review focus 3.
     [Fact]
     public void ATooSlowModelOffersDownloadAnyway()
     {
@@ -338,7 +331,7 @@ public sealed class ModelsPageTests : IDisposable
         Assert.Equal("Models use 0 MB · 48 GB free", page.DiskText);
     }
 
-    // Review focus 1: the button is off, and a command sent anyway is refused too.
+    // The button is off, and a command sent anyway is refused too.
     [Fact]
     public void AModelInUseIsNotDeleted()
     {
@@ -351,7 +344,6 @@ public sealed class ModelsPageTests : IDisposable
         Assert.Equal("Installed", Card(page, Turbo).StateText);
     }
 
-    // Review focus 1.
     [Fact]
     public void ALockedFileShowsWhyItWasNotDeleted()
     {
@@ -385,7 +377,6 @@ public sealed class ModelsPageTests : IDisposable
         Assert.False(small.Busy);
     }
 
-    // Review focus 4.
     [Fact]
     public void UseInProfileSetsTheProvidersModel()
     {
@@ -478,7 +469,7 @@ public sealed class ModelsPageTests : IDisposable
         Assert.False(Card(page, Turbo).CanMeasure);
     }
 
-    // Final review I1: the daemon runs the saved config, so a file it still uses is not freed by an unsaved edit.
+    // The daemon runs the saved config, so a file it still uses is not freed by an unsaved edit.
     [Fact]
     public void AModelTheSavedConfigUsesIsNotDeletedBeforeTheSave()
     {
@@ -497,7 +488,6 @@ public sealed class ModelsPageTests : IDisposable
         Assert.Equal(("Not used by any profile", true), (turbo.UsedByText, turbo.CanDelete));
     }
 
-    // Final review I1: an edit that cannot be saved never frees the file the saved config uses.
     [Fact]
     public void AnEditThatCannotBeSavedKeepsTheModelInUse()
     {
@@ -520,7 +510,7 @@ public sealed class ModelsPageTests : IDisposable
         Assert.True(File.Exists(ModelPath(TurboFile)));
     }
 
-    // Final review I2: the daemon says which file it ran; another model's speed is not kept under this one.
+    // The daemon says which file it ran; another model's speed is not kept under this one.
     [Fact]
     public async Task AMeasureOfAnotherModelIsNotKept()
     {
@@ -538,7 +528,7 @@ public sealed class ModelsPageTests : IDisposable
         Assert.Equal("~5.5 s for 5 s of speech (estimate)", turbo.SpeedText);
     }
 
-    // Final review I3: the queue reports nothing while a download stalls; the line must not keep its last rate.
+    // The queue reports nothing while a download stalls; the line must not keep its last rate.
     [Fact]
     public void AStalledDownloadStopsShowingARate()
     {

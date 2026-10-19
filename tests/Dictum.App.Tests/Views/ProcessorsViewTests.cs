@@ -47,7 +47,7 @@ public sealed class ProcessorsViewTests(AvaloniaFixture fx) : IDisposable
         window.Close();
     });
 
-    // Review focus 1, in the real table: typing in the blank row adds a rule and a new blank row.
+    // Typing in the blank row adds a rule and a new blank row.
     [Fact]
     public Task TypingInTheBlankRowOfTheTableAddsARule() => fx.Ui(() =>
     {
@@ -68,7 +68,7 @@ public sealed class ProcessorsViewTests(AvaloniaFixture fx) : IDisposable
     });
 
 
-    // Final review C1: real typing sends one key per event; the box must keep focus as the blank row becomes a rule.
+    // Real typing sends one key per event; the box must keep focus as the blank row becomes a rule.
     [Fact]
     public Task TypingOneKeyAtATimeInTheBlankRowKeepsFocus() => fx.Ui(() =>
     {

@@ -6,7 +6,6 @@ public sealed class DownloadRateTests
 {
     private readonly ManualClock _clock = new(DateTimeOffset.UnixEpoch);
 
-    // Review focus 2.
     [Fact]
     public void TheRateFollowsTheLastFiveSeconds()
     {
@@ -29,7 +28,6 @@ public sealed class DownloadRateTests
         Assert.Equal(1_000_000, rate.BytesPerSecond.GetValueOrDefault(), 6);
     }
 
-    // Review focus 2.
     [Fact]
     public void AnotherFileOrARestartStartsOver()
     {

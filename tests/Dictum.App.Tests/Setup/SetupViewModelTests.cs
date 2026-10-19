@@ -118,7 +118,6 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.StartsWith("Hold these keys and speak.", wizard.Ready.HowTo);
     }
 
-    // Review focus 3.
     [Fact]
     public async Task NothingToDownloadSkipsStepSeven()
     {
@@ -173,7 +172,6 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.Equal(new Dictionary<string, string> { ["dictum-processor-cleanup"] = "sk-new" }, _fx.Secrets.Values);
     }
 
-    // Review focus 1.
     [Fact]
     public async Task AKeyStoreFailureStopsTheSave()
     {
@@ -190,7 +188,6 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.Null(_fx.Autostart.Item);
     }
 
-    // Review focus 1.
     [Fact]
     public async Task AFileMissingAtTheSaveGoesBackToDownloading()
     {
@@ -221,7 +218,6 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.Null(wizard.Ready.LoginError);
     }
 
-    // Review focus 3.
     [Fact]
     public async Task ARerunShowsTheCurrentValues()
     {
@@ -238,7 +234,6 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.True(wizard.Login.StartAtLogin);
     }
 
-    // Review focus 3.
     [Fact]
     public async Task RemovingAWordOnARerunRemovesIt()
     {
@@ -283,7 +278,7 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.Equal(1, _fx.TraySettingsOpened);
     }
 
-    // Final review I2: after the save the walk is over, even when the window was closed with ✕ on step 8.
+    // After the save the walk is over, even when the window was closed with ✕ on step 8.
     [Fact]
     public async Task AWalkPastTheSaveCannotResume()
     {
@@ -296,7 +291,7 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.False(wizard.CanResume);
     }
 
-    // Final review I1: a re-run must show the config as it is now; only a walk with files downloading carries on.
+    // A re-run must show the config as it is now; only a walk with files downloading carries on.
     [Fact]
     public async Task AWalkCannotResumeOverConfigEditsUnlessItIsDownloading()
     {
@@ -316,7 +311,6 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.True(downloading.CanResume);
     }
 
-    // Final review M6: a wizard closed while its files download asks to come back once they are all in place, to save.
     [Fact]
     public async Task AWizardClosedWhileDownloadingAsksBackWhenTheFilesAreIn()
     {
@@ -336,7 +330,7 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.Equal(1, asked);
     }
 
-    // Final review M6: on screen, step 7 itself shows the files are in; nothing asks to reopen.
+    // On screen, step 7 itself shows the files are in; nothing asks to reopen.
     [Fact]
     public async Task AWizardOnScreenDoesNotAskBack()
     {
@@ -353,7 +347,7 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.Equal(0, asked);
     }
 
-    // PR 5b: the save tells the shell at once, so the daemon starts without waiting for the poll.
+    // The save tells the shell at once, so the daemon starts without waiting for the poll.
     [Fact]
     public async Task TheSaveTellsTheShellAtOnce()
     {
@@ -371,7 +365,6 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.Equal(1, saved);
     }
 
-    // PR 5b: the shell's link and events reach step 8 through the wizard.
     [Fact]
     public async Task StepEightFollowsTheDaemonThroughTheWizard()
     {
@@ -391,8 +384,8 @@ public sealed class SetupViewModelTests : IDisposable
 
     private SavedSetup? Kept() => SavedSetupFile.Load(_fx.Paths, NullLog.Instance);
 
-    // PR 5b: a walk that reached step 7 is kept on disk; a new process resumes it there with the same answers, without
-    // queuing anything again, and the save removes it.
+    // A walk that reached step 7 is kept on disk; a new process resumes it there with the same answers, without queuing
+    // anything again, and the save removes it.
     [Fact]
     public async Task AWalkAtStepSevenResumesAfterARestart()
     {
@@ -423,7 +416,7 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.Null(Kept());
     }
 
-    // PR 5b, review focus 4: a typed key never reaches setup.json, and the resumed walk asks for it at step 3.
+    // A typed key never reaches setup.json, and the resumed walk asks for it at step 3.
     [Fact]
     public async Task ATypedKeyIsNeverKeptAndIsAskedAgain()
     {
@@ -440,8 +433,8 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.Equal("Type the API key again: it is not kept on disk while files download.", resumed.Cleanup.KeyNote);
     }
 
-    // PR 5b, review focus 5: the restored queue carries on as it was. A resumed walk sends it nothing: the real queue's
-    // Download resumes a paused queue, so even a "download" would undo the user's pause.
+    // The restored queue carries on as it was. A resumed walk sends it nothing: the real queue's Download resumes a
+    // paused queue, so even a "download" would undo a pause.
     [Fact]
     public async Task AResumedWalkKeepsAPause()
     {
@@ -456,7 +449,7 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.True(_fx.Downloads.IsPaused);
     }
 
-    // PR 5b: Back from step 7 drops the kept walk; a restart starts over instead of resuming downloads left behind.
+    // Back from step 7 drops the kept walk; a restart starts over instead of resuming downloads left behind.
     [Fact]
     public async Task BackFromStepSevenDropsTheKeptWalk()
     {
@@ -469,8 +462,8 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.Null(Kept());
     }
 
-    // Final review I1: on a re-run the daemon already runs; a dictation made earlier in the walk (into step 4's box, say)
-    // is not step 8's try, so step 8 must not say "Done" before the user tried.
+    // On a re-run the daemon already runs; a dictation made earlier in the walk (into step 4's box, say) is not
+    // step 8's try, so step 8 must not say "Done" before that try.
     [Fact]
     public async Task ATryBeforeStepEightIsNotShown()
     {
@@ -484,8 +477,8 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.Null(wizard.Ready.TryResult);
     }
 
-    // Final review I2: a kept walk that is not downloading (a typed key sends it back to step 3) resumes only over the
-    // config it was kept on; over another one it starts over, and the kept walk goes.
+    // A kept walk that is not downloading (a typed key sends it back to step 3) resumes only over the config it was
+    // kept on; over another one it starts over, and the kept walk goes.
     [Fact]
     public async Task AKeptWalkAtStepThreeDoesNotResumeOverAnotherConfig()
     {
@@ -500,8 +493,8 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.Null(Kept());
     }
 
-    // Final review M1: a walk kept with a typed key resumes at step 3; closed (a re-run waits in the background), it still
-    // asks back once its files are in, or the interrupted setup never finishes.
+    // A walk kept with a typed key resumes at step 3; closed (a re-run waits in the background), it still asks back
+    // once its files are in, or the interrupted setup never finishes.
     [Fact]
     public async Task AWalkResumedAtStepThreeAsksBackWhenItsFilesAreIn()
     {

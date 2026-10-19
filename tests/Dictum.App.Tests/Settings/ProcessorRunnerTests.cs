@@ -37,7 +37,6 @@ public sealed class ProcessorRunnerTests : IDisposable
         Assert.Equal(("деплой у Kubernetes", (string?)null), (result.Text, result.Error));
     }
 
-    // Review focus 2.
     [Fact]
     public async Task AnLlmThatFailsSaysSo()
     {

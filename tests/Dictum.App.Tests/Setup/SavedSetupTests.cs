@@ -26,7 +26,7 @@ public sealed class SavedSetupTests : IDisposable
         Assert.Equal(Sample().Files, read.Files);
     }
 
-    // Review focus 5: a damaged or foreign setup.json is ignored and removed; the walk starts over.
+    // A damaged or foreign setup.json is ignored and removed; the walk starts over.
     [Theory]
     [InlineData("{ not json")]
     [InlineData("""{ "version": 2, "language": "uk", "url": "", "model": "", "words": [], "files": [] }""")]

@@ -9,7 +9,7 @@ using Dictum.Setup;
 
 namespace Dictum.App.Tests.Setup;
 
-/// <summary>The wizard's world for a test: temp folders, the 4d test catalog (small files), and fakes for the rest.</summary>
+/// <summary>The wizard's world for a test: temp folders, the test catalog (small files), and fakes for the rest.</summary>
 internal sealed class SetupFixture : IDisposable
 {
     public const string Executable = @"C:\Dictum\dictum-gui.exe";
@@ -70,7 +70,7 @@ internal sealed class SetupFixture : IDisposable
         File.WriteAllBytes(ModelPath(file), data);
     }
 
-    /// <summary>The 4d test catalog's speech model files and the VAD file, all in place.</summary>
+    /// <summary>The test catalog's speech model files and the VAD file, all in place.</summary>
     public void InstallAll()
     {
         Install(ModelsPageTests.TurboFile, ModelsPageTests.TurboData);

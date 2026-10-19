@@ -97,11 +97,11 @@ public sealed class SetupModelStepTests : IDisposable
         Assert.Null(step.SpeechModel);
     }
 
-    // Final review I5: a screen reader reads a card by its model's name, not as a record.
+    // A screen reader reads a card by its model's name, not as a record.
     [Fact]
     public void ACardReadsAsItsModelsName() => Assert.Equal("Whisper large-v3-turbo, 8-bit", Show().Choices[0].ToString());
 
-    // Final review M9: step 2 shows the speed class (spec 8 step 2, 10.2), as Settings → Models does.
+    // Step 2 shows the speed class, as Settings → Models does.
     [Fact]
     public void EachCardShowsItsSpeedClass()
     {
@@ -113,7 +113,7 @@ public sealed class SetupModelStepTests : IDisposable
         Assert.Equal(("Too slow here", true), (turbo.SpeedBadge, turbo.TooSlow));
     }
 
-    // PR 5b, review focus 5: a resumed walk's model wins over a hand-placed file and the config's model.
+    // A resumed walk's model wins over a hand-placed file and the config's model.
     [Fact]
     public void APickedModelWinsOverAHandPlacedFile()
     {
