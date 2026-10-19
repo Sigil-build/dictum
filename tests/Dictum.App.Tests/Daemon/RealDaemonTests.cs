@@ -92,13 +92,7 @@ public sealed class RealDaemonTests : IAsyncDisposable
     /// <summary>The <c>dictum</c> apphost that the project reference built, in the same configuration as this test.</summary>
     private static string CliExecutable()
     {
-        var root = new DirectoryInfo(AppContext.BaseDirectory);
-        while (root is not null && !File.Exists(Path.Combine(root.FullName, "Dictum.slnx")))
-        {
-            root = root.Parent;
-        }
-
         var configuration = new DirectoryInfo(AppContext.BaseDirectory).Parent!.Name;
-        return Path.Combine(root!.FullName, "src", "Dictum.Cli", "bin", configuration, "net10.0", DictumExecutables.FileName(DictumExecutables.Cli));
+        return Path.Combine(Repository.Root, "src", "Dictum.Cli", "bin", configuration, "net10.0", DictumExecutables.FileName(DictumExecutables.Cli));
     }
 }

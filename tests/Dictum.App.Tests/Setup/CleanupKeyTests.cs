@@ -1,4 +1,3 @@
-using Dictum.App.Tests.Settings;
 using Dictum.Core.Configuration;
 using Dictum.Setup;
 

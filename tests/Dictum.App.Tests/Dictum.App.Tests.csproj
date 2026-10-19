@@ -3,6 +3,11 @@
   <!-- Desktop app logic and views. UI code runs in Avalonia's headless platform with Skia, through AvaloniaFixture. -->
   <ItemGroup>
     <ProjectReference Include="../../src/Dictum.App/Dictum.App.csproj" />
+    <ProjectReference Include="../Dictum.Testing/Dictum.Testing.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Dictum.Testing" />
   </ItemGroup>
 
   <ItemGroup>

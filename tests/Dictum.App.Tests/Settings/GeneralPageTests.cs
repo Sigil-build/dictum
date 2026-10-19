@@ -16,7 +16,7 @@ public sealed class GeneralPageTests : IDisposable
     private readonly ManualTimers _timers = new();
     private readonly ManualClock _clock = new(DateTimeOffset.UnixEpoch);
     private readonly FakeChannel _channel = new();
-    private readonly FakeAutostart _autostart = new();
+    private readonly FallibleAutostart _autostart = new();
     private readonly FakeSounds _sounds = new();
 
     public GeneralPageTests() => Directory.CreateDirectory(_dir);
@@ -412,5 +412,49 @@ public sealed class GeneralPageTests : IDisposable
         page.RunSetupCommand.Execute(null);
 
         Assert.Equal(1, asked);
+    }
+
+    /// <summary>The shared fake, plus a read of <see cref="Installed"/> that can fail.</summary>
+    private sealed class FallibleAutostart : IAutostart
+    {
+        private LoginApp? _installed;
+
+        public LoginApp? Installed
+        {
+            get => ReadFails is { } fails ? throw fails : _installed;
+            set => _installed = value;
+        }
+
+        /// <summary>Thrown when <see cref="Installed"/> is read: a login item the OS will not show.</summary>
+        public Exception? ReadFails { get; set; }
+
+        public LoginItem? Item { get; private set; }
+
+        public Exception? Fails { get; set; }
+
+        public string Location(LoginApp app) => "fake";
+
+        public Task InstallAsync(LoginItem item, CancellationToken ct)
+        {
+            if (Fails is not null)
+            {
+                return Task.FromException(Fails);
+            }
+
+            Item = item;
+            Installed = item.App;
+            return Task.CompletedTask;
+        }
+
+        public Task UninstallAsync(CancellationToken ct)
+        {
+            if (Fails is not null)
+            {
+                return Task.FromException(Fails);
+            }
+
+            Installed = null;
+            return Task.CompletedTask;
+        }
     }
 }

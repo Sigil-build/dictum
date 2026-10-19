@@ -1,12 +1,10 @@
 using Dictum.App.Daemon;
 using Dictum.App.Settings;
-using Dictum.Audio;
 using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Pipeline;
 using Dictum.Core.Processing;
 using Dictum.Host.Ipc;
-using Dictum.Platform;
 
 namespace Dictum.App.Tests.Settings;
 
@@ -56,102 +54,6 @@ internal sealed class FakeChannel : IDaemonChannel
         return Link.State == DaemonLinkState.Connected
             ? Task.FromResult(Answer(request))
             : Task.FromException<IpcResponse>(new DaemonNotRunningException("The daemon is not running."));
-    }
-}
-
-internal sealed class FakeAutostart : IAutostart
-{
-    private LoginApp? _installed;
-
-    public LoginApp? Installed
-    {
-        get => ReadFails is { } fails ? throw fails : _installed;
-        set => _installed = value;
-    }
-
-    /// <summary>Thrown when <see cref="Installed"/> is read: a login item the OS will not show.</summary>
-    public Exception? ReadFails { get; set; }
-
-    public LoginItem? Item { get; private set; }
-
-    public Exception? Fails { get; set; }
-
-    public string Location(LoginApp app) => "fake";
-
-    public Task InstallAsync(LoginItem item, CancellationToken ct)
-    {
-        if (Fails is not null)
-        {
-            return Task.FromException(Fails);
-        }
-
-        Item = item;
-        Installed = item.App;
-        return Task.CompletedTask;
-    }
-
-    public Task UninstallAsync(CancellationToken ct)
-    {
-        if (Fails is not null)
-        {
-            return Task.FromException(Fails);
-        }
-
-        Installed = null;
-        return Task.CompletedTask;
-    }
-}
-
-internal sealed class FakeSounds : ISoundPlayer
-{
-    public List<SoundCue> Played { get; } = [];
-
-    public Exception? Fails { get; set; }
-
-    public Task PlayAsync(SoundCue cue, CancellationToken ct)
-    {
-        if (Fails is not null)
-        {
-            return Task.FromException(Fails);
-        }
-
-        Played.Add(cue);
-        return Task.CompletedTask;
-    }
-}
-
-/// <summary>An in-memory secret store; never the real Credential Manager or keyring.</summary>
-internal sealed class FakeSecrets : ISecretStore
-{
-    public Dictionary<string, string> Values { get; } = [];
-
-    public Exception? Fails { get; set; }
-
-    /// <summary>Holds the next store until the test completes it, as a keyring prompt would.</summary>
-    public TaskCompletionSource? Held { get; set; }
-
-    public Task<string?> GetAsync(string key, CancellationToken ct) => Task.FromResult(Values.GetValueOrDefault(key));
-
-    public async Task SetAsync(string key, string value, CancellationToken ct)
-    {
-        if (Fails is not null)
-        {
-            throw Fails;
-        }
-
-        if (Held is { } held)
-        {
-            Held = null;
-            await held.Task;
-        }
-
-        Values[key] = value;
-    }
-
-    public Task DeleteAsync(string key, CancellationToken ct)
-    {
-        Values.Remove(key);
-        return Task.CompletedTask;
     }
 }
 
