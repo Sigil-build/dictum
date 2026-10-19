@@ -56,7 +56,7 @@ public static class ModelFiles
 /// <summary>Turns the answers to <c>dictum init</c> and the current config into the config to write and the files to fetch.</summary>
 public static class SetupPlanner
 {
-    public const string SttId = "local";
+    public const string SttId = DefaultConfig.LocalSttId;
     public const string CleanupId = "cleanup";
     public const string VadId = "vad-silero-6.2";
     public const string GpuModel = "whisper-large-v3-turbo-q8";
@@ -66,11 +66,17 @@ public static class SetupPlanner
     /// <summary>Used when <see cref="CleanupId"/> already names a processor that is not an LLM.</summary>
     public const string LlmCleanupFallbackId = "llm-cleanup";
 
+    /// <summary>Turbo-q8 with its buffers needs about 1.5 GB of GPU memory; below this the CPU model is the safer pick.</summary>
+    public const long MinGpuMemoryBytes = 2L * 1024 * 1024 * 1024;
+
     /// <summary>Used when <see cref="SttId"/> already names a provider that is not a local Whisper.</summary>
     private const string FallbackSttId = "whisper-local";
 
-    /// <summary>Turbo-q8 with its buffers needs about 1.5 GB of GPU memory; below this the CPU model is the safer pick.</summary>
-    public const long MinGpuMemoryBytes = 2L * 1024 * 1024 * 1024;
+    /// <summary>Offered when there is no profile to take the language from.</summary>
+    private const string DefaultLanguage = "uk";
+
+    /// <summary>The built-in prompt a new cleanup processor uses.</summary>
+    private const string CleanupPrompt = "cleanup";
 
     public static string RecommendSpeechModel(HardwareInfo hardware) =>
         hardware.GpuName is null || hardware.GpuMemoryBytes < MinGpuMemoryBytes ? CpuModel : GpuModel;
@@ -88,7 +94,7 @@ public static class SetupPlanner
     public static SetupDefaults Defaults(DictumConfig? current, HardwareInfo hardware, Catalog catalog, Func<string, bool> modelFileExists)
     {
         var first = current?.Profiles.FirstOrDefault();
-        var language = first is null ? "uk" : first.Language ?? "auto";
+        var language = first is null ? DefaultLanguage : first.Language ?? "auto";
         var recommended = RecommendSpeechModel(hardware);
         if (current is null)
         {
@@ -184,7 +190,7 @@ public static class SetupPlanner
                 {
                     BaseUrl = server.BaseUrl,
                     Model = server.Model,
-                    Prompt = "cleanup",
+                    Prompt = CleanupPrompt,
                     ApiKey = server.ApiKey,
                     TimeoutMs = ExistingServerTimeoutMs,
                 };
@@ -222,6 +228,8 @@ public static class SetupPlanner
 
 public static class HardwareText
 {
+    private const double BytesPerGibibyte = 1L << 30;
+
     /// <summary>"Intel(R) Iris(R) Xe Graphics, 15.8 GB shared memory", "RTX 3060, 12.0 GB VRAM", or null without a GPU.</summary>
     public static string? Gpu(HardwareInfo hardware) =>
         hardware.GpuName is not { } name ? null
@@ -229,5 +237,5 @@ public static class HardwareText
         : name;
 
     /// <summary>Binary gigabytes with one decimal, as Windows Task Manager labels them ("15.8 GB").</summary>
-    public static string Memory(long bytes) => string.Create(CultureInfo.InvariantCulture, $"{bytes / 1073741824.0:F1} GB");
+    public static string Memory(long bytes) => string.Create(CultureInfo.InvariantCulture, $"{bytes / BytesPerGibibyte:F1} GB");
 }

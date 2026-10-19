@@ -7,6 +7,8 @@ namespace Dictum.Platform.Windows;
 [SupportedOSPlatform("windows")]
 public sealed unsafe class ForegroundAppProvider : IActiveAppProvider
 {
+    private const int ImageNameCapacity = 1024;
+
     public string? GetActiveApp()
     {
         var window = Win32.GetForegroundWindow();
@@ -23,8 +25,8 @@ public sealed unsafe class ForegroundAppProvider : IActiveAppProvider
 
         try
         {
-            var buffer = stackalloc char[1024];
-            uint size = 1024;
+            var buffer = stackalloc char[ImageNameCapacity];
+            uint size = ImageNameCapacity;
             return Win32.QueryFullProcessImageName(process, 0, buffer, ref size)
                 ? Path.GetFileNameWithoutExtension(new string(buffer, 0, (int)size)).ToLowerInvariant()
                 : null;

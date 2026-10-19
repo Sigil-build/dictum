@@ -262,7 +262,7 @@ public sealed class DownloadQueue(FileDownloader downloader, AppPaths paths, Cat
             var entry = next.Entry;
             try
             {
-                var needed = (long)(entry.Size * 1.1) + SetupRunner.SpareBytes - PartialBytes(entry);
+                var needed = SetupRunner.NeededFor(entry.Size) - PartialBytes(entry);
                 var free = freeDiskBytes();
                 if (free < needed)
                 {
@@ -337,9 +337,11 @@ public sealed class DownloadQueue(FileDownloader downloader, AppPaths paths, Cat
         }
     }
 
+    private string PartialPath(CatalogEntry entry) => FileDownloader.PartialPath(paths.ResolveModel(entry.File));
+
     private long PartialBytes(CatalogEntry entry)
     {
-        var partial = paths.ResolveModel(entry.File) + ".partial";
+        var partial = PartialPath(entry);
         return File.Exists(partial) ? new FileInfo(partial).Length : 0;
     }
 
@@ -347,7 +349,7 @@ public sealed class DownloadQueue(FileDownloader downloader, AppPaths paths, Cat
     {
         try
         {
-            File.Delete(paths.ResolveModel(entry.File) + ".partial");
+            File.Delete(PartialPath(entry));
         }
         catch (IOException)
         {

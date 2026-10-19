@@ -16,6 +16,7 @@ public static class OverlayWindowStyle
     public const long Required = Layered | Transparent | NoActivate | ToolWindow;
 
     private const uint SpiGetClientAreaAnimation = 0x1042;
+    private const byte OpaqueAlpha = 255;
 
     /// <summary>
     /// Adds the extended styles to a plain window. An Avalonia window rebuilds its extended style on every Show, so it
@@ -32,7 +33,7 @@ public static class OverlayWindowStyle
     /// A layered window stays invisible until its alpha is set, so this sets it to opaque. The per-pixel transparency
     /// still comes from Avalonia's composition surface.
     /// </summary>
-    public static void MakeOpaque(nint window) => Win32.SetLayeredWindowAttributes(window, 0, 255, Win32.LwaAlpha);
+    public static void MakeOpaque(nint window) => Win32.SetLayeredWindowAttributes(window, 0, OpaqueAlpha, Win32.LwaAlpha);
 
     public static long ExtendedStyle(nint window) => Win32.GetWindowLongPtr(window, Win32.GwlExStyle);
 

@@ -20,12 +20,20 @@ public sealed class SetupRunner(FileDownloader downloader, AppPaths paths)
     /// <summary>Kept free beyond the downloads themselves, so the system never runs out of disk because of Dictum.</summary>
     public const long SpareBytes = 200_000_000;
 
+    private const double SizeMargin = 1.1;
+    private const long BytesPerMegabyte = 1_000_000;
+    private const long BytesPerGigabyte = 1_000_000_000;
+    private const long WholeMegabytesFrom = 10 * BytesPerMegabyte;
+
     /// <summary>Space the missing files need: their size and a tenth more, with <see cref="SpareBytes"/> left over; 0 when none is missing.</summary>
     public static long NeededBytes(AppPaths paths, IEnumerable<CatalogEntry> entries)
     {
         var missing = entries.Where(e => !ModelFiles.IsInstalled(paths, e)).ToList();
-        return missing.Count == 0 ? 0 : (long)(missing.Sum(e => e.Size) * 1.1) + SpareBytes;
+        return missing.Count == 0 ? 0 : NeededFor(missing.Sum(e => e.Size));
     }
+
+    /// <summary>Space a download of <paramref name="bytes"/> needs: a tenth more, with <see cref="SpareBytes"/> left over.</summary>
+    internal static long NeededFor(long bytes) => (long)(bytes * SizeMargin) + SpareBytes;
 
     public async Task DownloadAsync(IReadOnlyList<CatalogEntry> entries, long freeDiskBytes, IProgress<SetupEvent>? progress, CancellationToken ct)
     {
@@ -79,8 +87,8 @@ public sealed class SetupRunner(FileDownloader downloader, AppPaths paths)
     /// <summary>Decimal units, as model sites show them: "874 MB", "0.9 MB", "2.5 GB".</summary>
     public static string Format(long bytes) => bytes switch
     {
-        >= 1_000_000_000 => string.Create(CultureInfo.InvariantCulture, $"{bytes / 1e9:F1} GB"),
-        >= 10_000_000 => string.Create(CultureInfo.InvariantCulture, $"{bytes / 1e6:F0} MB"),
-        _ => string.Create(CultureInfo.InvariantCulture, $"{bytes / 1e6:F1} MB"),
+        >= BytesPerGigabyte => string.Create(CultureInfo.InvariantCulture, $"{bytes / (double)BytesPerGigabyte:F1} GB"),
+        >= WholeMegabytesFrom => string.Create(CultureInfo.InvariantCulture, $"{bytes / (double)BytesPerMegabyte:F0} MB"),
+        _ => string.Create(CultureInfo.InvariantCulture, $"{bytes / (double)BytesPerMegabyte:F1} MB"),
     };
 }

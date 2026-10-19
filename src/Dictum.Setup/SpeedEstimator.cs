@@ -50,6 +50,7 @@ public sealed record SpeedEstimate(double Ratio, SpeedSource Source)
 /// </summary>
 public static class SpeedEstimator
 {
+    /// <summary>How many of the latest dictations with a model the median covers.</summary>
     public const int Dictations = 20;
 
     /// <summary>Turbo on a discrete GPU: about 0.3–1 s for 5 s of speech.</summary>
@@ -71,6 +72,14 @@ public static class SpeedEstimator
     /// <summary>The relative cost of Whisper small, which the CPU anchors are for.</summary>
     private const double SmallCost = 6.5;
 
+    /// <summary>Cores from which <see cref="CpuSmallManyCores"/> applies.</summary>
+    private const int ManyCores = 8;
+
+    /// <summary>Cores from which <see cref="CpuSmallSomeCores"/> applies; fewer get <see cref="CpuSmallFewCores"/>.</summary>
+    private const int SomeCores = 4;
+
+    private const double MillisecondsPerSecond = 1000.0;
+
     /// <summary>Seconds of work per second of speech for each model file, from its last <see cref="Dictations"/> dictations.</summary>
     public static IReadOnlyDictionary<string, double> FromHistory(IEnumerable<HistoryEntry> history) =>
         history
@@ -78,7 +87,7 @@ public static class SpeedEstimator
             .GroupBy(h => Path.GetFileName(h.Model!), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
                 g => g.Key,
-                g => Median([.. g.TakeLast(Dictations).Select(h => h.TranscribeMs.GetValueOrDefault() / 1000.0 / h.AudioSeconds)]),
+                g => Median([.. g.TakeLast(Dictations).Select(h => h.TranscribeMs.GetValueOrDefault() / MillisecondsPerSecond / h.AudioSeconds)]),
                 StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
@@ -133,7 +142,7 @@ public static class SpeedEstimator
     private static (double Ratio, double Cost) Anchor(HardwareInfo hardware, int cpuCores) =>
         hardware.GpuName is not null && !(hardware.GpuMemoryBytes < SetupPlanner.MinGpuMemoryBytes)
             ? (hardware.GpuIsIntegrated ? IntegratedGpuTurbo : DiscreteGpuTurbo, TurboCost)
-            : (cpuCores >= 8 ? CpuSmallManyCores : cpuCores >= 4 ? CpuSmallSomeCores : CpuSmallFewCores, SmallCost);
+            : (cpuCores >= ManyCores ? CpuSmallManyCores : cpuCores >= SomeCores ? CpuSmallSomeCores : CpuSmallFewCores, SmallCost);
 
     private static double Median(double[] values)
     {

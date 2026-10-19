@@ -15,6 +15,7 @@ namespace Dictum.Platform.Input;
 public sealed class SharpHookHotkeyService(ILog log, string backend) : IHotkeyService, IModifierState
 {
     private static readonly TimeSpan StartTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan ReleasePollInterval = TimeSpan.FromMilliseconds(15);
 
     private readonly Lock _gate = new();
     private readonly bool _suppress = OperatingSystem.IsWindows();
@@ -56,7 +57,7 @@ public sealed class SharpHookHotkeyService(ILog log, string backend) : IHotkeySe
                 }
             }
 
-            await Task.Delay(15, ct).ConfigureAwait(false);
+            await Task.Delay(ReleasePollInterval, ct).ConfigureAwait(false);
         }
 
         log.Debug("Modifiers still held after waiting; pasting anyway");

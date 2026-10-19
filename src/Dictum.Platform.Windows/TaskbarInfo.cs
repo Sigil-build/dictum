@@ -8,9 +8,12 @@ namespace Dictum.Platform.Windows;
 public static class TaskbarInfo
 {
     private const int SmCxSmIcon = 49;
+    private const int MinIconSize = 16;
+    private const int MaxIconSize = 64;
 
     /// <summary>The small-icon size at the system DPI: 16 px at 100 %, 20 at 125 %, 24 at 150 %, 32 at 200 %.</summary>
-    public static int SmallIconSize() => Math.Clamp(Win32.GetSystemMetricsForDpi(SmCxSmIcon, Win32.GetDpiForSystem()), 16, 64);
+    public static int SmallIconSize() =>
+        Math.Clamp(Win32.GetSystemMetricsForDpi(SmCxSmIcon, Win32.GetDpiForSystem()), MinIconSize, MaxIconSize);
 
     /// <summary>The taskbar's mode, from "Choose your default Windows mode" (not the apps' mode).</summary>
     public static bool UsesLightTheme()

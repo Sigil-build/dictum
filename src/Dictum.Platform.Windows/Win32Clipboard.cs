@@ -10,14 +10,15 @@ namespace Dictum.Platform.Windows;
 /// CF_UNICODETEXT clipboard access. A message-only window owns the clipboard while writing:
 /// with a null owner, EmptyClipboard leaves no owner and SetClipboardData fails.
 /// </summary>
-/// <param name="openTimeout">How long to wait for another app to close the clipboard; 2 s when not set.</param>
+/// <param name="openTimeout">How long to wait for another app to close the clipboard.</param>
 [SupportedOSPlatform("windows")]
 public sealed unsafe class Win32Clipboard(TimeSpan? openTimeout = null) : IClipboard
 {
+    private static readonly TimeSpan DefaultOpenTimeout = TimeSpan.FromSeconds(2);
     private static readonly TimeSpan FirstPause = TimeSpan.FromMilliseconds(10);
     private static readonly TimeSpan LongestPause = TimeSpan.FromMilliseconds(200);
 
-    private readonly TimeSpan _openTimeout = openTimeout ?? TimeSpan.FromSeconds(2);
+    private readonly TimeSpan _openTimeout = openTimeout ?? DefaultOpenTimeout;
 
     public string Backend => "Win32 clipboard";
 

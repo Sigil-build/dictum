@@ -17,20 +17,26 @@ public sealed class DownloadException(string message, Exception? inner = null) :
 /// </summary>
 public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? retryDelays = null, TimeSpan? stallTimeout = null)
 {
+    private const string PartialSuffix = ".partial";
     private const int BufferSize = 1 << 20;
+    private const int FirstServerErrorStatus = 500;
 
     private static readonly TimeSpan[] DefaultRetryDelays = [TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15)];
+    private static readonly TimeSpan DefaultStallTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan ConnectionTimeout = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan ConnectionLifetime = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan ProgressInterval = TimeSpan.FromMilliseconds(100);
 
     private readonly IReadOnlyList<TimeSpan> _retryDelays = retryDelays ?? DefaultRetryDelays;
-    private readonly TimeSpan _stallTimeout = stallTimeout ?? TimeSpan.FromSeconds(30);
+    private readonly TimeSpan _stallTimeout = stallTimeout ?? DefaultStallTimeout;
 
     /// <summary>A client for long downloads: no overall timeout (the stall timeout applies instead), redirects followed.</summary>
     public static HttpClient CreateHttpClient(string userAgent)
     {
         var client = new HttpClient(new SocketsHttpHandler
         {
-            ConnectTimeout = TimeSpan.FromSeconds(30),
-            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+            ConnectTimeout = ConnectionTimeout,
+            PooledConnectionLifetime = ConnectionLifetime,
         })
         {
             Timeout = Timeout.InfiniteTimeSpan,
@@ -42,7 +48,7 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
     public async Task DownloadAsync(CatalogEntry entry, string target, IProgress<DownloadProgress>? progress, CancellationToken ct)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(target))!);
-        var partial = target + ".partial";
+        var partial = PartialPath(target);
         for (var attempt = 0; ; attempt++)
         {
             try
@@ -64,6 +70,9 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
         await VerifyAsync(entry, partial, ct).ConfigureAwait(false);
         File.Move(partial, target, overwrite: true);
     }
+
+    /// <summary>Where the download of <paramref name="target"/> collects its bytes until the hash is checked.</summary>
+    internal static string PartialPath(string target) => target + PartialSuffix;
 
     private static bool IsTransient(Exception ex) => ex is HttpRequestException or IOException;
 
@@ -107,7 +116,7 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
             throw new HttpRequestException("the server refused to resume; starting over", null, response.StatusCode);
         }
 
-        if ((int)response.StatusCode >= 500)
+        if ((int)response.StatusCode >= FirstServerErrorStatus)
         {
             throw new HttpRequestException($"the server answered {(int)response.StatusCode}", null, response.StatusCode);
         }
@@ -149,7 +158,7 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
                 throw new DownloadException($"{entry.File} is larger than the expected {entry.Size} bytes; the server sent something else.");
             }
 
-            if (sinceReport.ElapsedMilliseconds >= 100)
+            if (sinceReport.Elapsed >= ProgressInterval)
             {
                 progress?.Report(new DownloadProgress(entry.File, written, entry.Size));
                 sinceReport.Restart();

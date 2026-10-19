@@ -19,7 +19,7 @@ public static class UnsupportedPlatform
 
     private sealed class NoInjector(string reason) : ITextInjector
     {
-        public InjectionCapabilities Capabilities { get; } = new(false, false, false, "none");
+        public InjectionCapabilities Capabilities { get; } = new(Paste: false, TypeText: false, RestoreClipboard: false, Backend: "none");
 
         public Task InjectAsync(string text, InjectionOptions options, CancellationToken ct) =>
             throw new InjectionUnavailableException(reason);

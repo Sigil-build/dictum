@@ -42,10 +42,13 @@ public sealed record LoginItem(LoginApp App, string Executable, bool AppImage = 
 {
     public const string DesktopAppName = "dictum-gui";
 
+    /// <summary>The CLI command that runs the daemon.</summary>
+    public const string DaemonArgument = "daemon";
+
     public static string DesktopAppFile => OperatingSystem.IsWindows() ? DesktopAppName + ".exe" : DesktopAppName;
 
     public IReadOnlyList<string> Arguments => App == LoginApp.Daemon
-        ? AppImage ? [InstallLocation.AppImageCli, "daemon"] : ["daemon"]
+        ? AppImage ? [InstallLocation.AppImageCli, DaemonArgument] : [DaemonArgument]
         : [];
 
     /// <summary>The quoted executable, then the arguments: the Run key value, the unit's ExecStart, an entry's Exec.</summary>
