@@ -71,5 +71,5 @@ public sealed class ProcessorRunnerTests : IDisposable
     }
 
     [Fact]
-    public void ProcessorKeysAreNamedAfterTheProcessor() => Assert.Equal("dictum-processor-cleanup", ApiKeys.ProcessorSecretName("cleanup"));
+    public void ProcessorKeysAreNamedAfterTheProcessor() => Assert.Equal("dictum-processor-cleanup", SecretNames.Processor("cleanup"));
 }

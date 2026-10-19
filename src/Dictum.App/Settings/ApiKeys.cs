@@ -18,14 +18,6 @@ public sealed record KeyResult(string? Value, string? Error);
 /// </summary>
 public static class ApiKeys
 {
-    public const string SecretPrefix = "secret:";
-
-    private const string EnvPrefix = "env:";
-
-    public static string SecretName(string providerId) => $"dictum-stt-{providerId}";
-
-    public static string ProcessorSecretName(string processorId) => $"dictum-processor-{processorId}";
-
     public static async Task<KeyResult> StoreAsync(ISecretStore secrets, string secretName, string typed, CancellationToken ct)
     {
         var key = typed.Trim();
@@ -42,7 +34,7 @@ public static class ApiKeys
         try
         {
             await secrets.SetAsync(secretName, key, ct);
-            return new KeyResult(SecretPrefix + secretName, null);
+            return new KeyResult(ConfigValueResolver.SecretReference(secretName), null);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -52,12 +44,12 @@ public static class ApiKeys
     }
 
     /// <summary>What a key field says about the configured key, which it never shows.</summary>
-    public static string State(string? apiKey) => apiKey switch
+    public static string Describe(string? apiKey) => apiKey switch
     {
         null => Strings.SettingsProvidersNoKey,
-        var key when key.StartsWith(SecretPrefix, StringComparison.Ordinal) => Strings.SettingsProvidersKeyStored,
-        var key when key.StartsWith(EnvPrefix, StringComparison.Ordinal) =>
-            string.Format(CultureInfo.CurrentCulture, Strings.SettingsProvidersKeyEnv, key[EnvPrefix.Length..]),
+        var key when key.StartsWith(ConfigValueResolver.SecretPrefix, StringComparison.Ordinal) => Strings.SettingsProvidersKeyStored,
+        var key when ConfigValueResolver.TryGetEnvVariable(key, out var variable) =>
+            string.Format(CultureInfo.CurrentCulture, Strings.SettingsProvidersKeyEnv, variable),
         _ => Strings.SettingsProvidersKeyPlain,
     };
 
@@ -67,7 +59,7 @@ public static class ApiKeys
     /// </summary>
     public static async Task RemoveAsync(ISecretStore secrets, string secretName, string? current, DictumConfig remaining, ILog log, CancellationToken ct)
     {
-        if (current != SecretPrefix + secretName || IsReferenced(remaining, current))
+        if (current != ConfigValueResolver.SecretReference(secretName) || IsReferenced(remaining, current))
         {
             return;
         }

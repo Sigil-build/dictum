@@ -80,7 +80,7 @@ public sealed partial class ProviderCard : ObservableObject
 
     public bool IsRemote => Kind == ProviderKind.Remote;
 
-    public string SecretName => ApiKeys.SecretName(Id);
+    public string SecretName => SecretNames.Stt(Id);
 
     [ObservableProperty]
     public partial string Title { get; private set; } = "";
@@ -385,7 +385,7 @@ public sealed partial class ProviderCard : ObservableObject
         ModelName = remote.Model;
         ModelNameError = _session.IssueAt(ConfigPaths.Field(path, nameof(OpenAiCompatibleSttConfig.Model)));
         HasKey = remote.ApiKey is not null;
-        KeyState = ApiKeys.State(remote.ApiKey);
+        KeyState = ApiKeys.Describe(remote.ApiKey);
         if (!_timeoutEmpty)
         {
             TimeoutSeconds = TimeoutFields.Seconds(remote.TimeoutMs);

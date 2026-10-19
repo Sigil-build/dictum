@@ -10,7 +10,7 @@ public sealed class ApiKeysTests
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
 
     [Fact]
-    public void ProviderSecretsAreNamedAfterTheProvider() => Assert.Equal("dictum-stt-remote", ApiKeys.SecretName("remote"));
+    public void ProviderSecretsAreNamedAfterTheProvider() => Assert.Equal("dictum-stt-remote", SecretNames.Stt("remote"));
 
     // Review focus 2.
     [Fact]

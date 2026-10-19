@@ -18,7 +18,6 @@ namespace Dictum.Cli.Commands;
 /// </summary>
 internal static class InitCommand
 {
-    private const string CleanupSecret = "dictum-cleanup";
     private const string NoCleanup = "none";
     private const string GpuAuto = "auto";
     private const string GpuCpu = "cpu";
@@ -149,7 +148,7 @@ internal static class InitCommand
     }
 
     /// <summary>Returns the server to use (null for no cleanup) and a key value still to be written to the secret store.</summary>
-    private static (ExistingLlmServer? Server, string? PendingSecret) AskCleanup(
+    private static (ExistingLlmServer? Server, PendingSecret? Pending) AskCleanup(
         CliContext context,
         ConsolePrompt prompt,
         bool interactive,
@@ -193,7 +192,7 @@ internal static class InitCommand
 
         var modelName = prompt.Ask("Model name on that server", current?.Model);
         var apiKey = SetupPlanner.CarriedApiKey(current, baseUrl);
-        string? pendingSecret = null;
+        PendingSecret? pendingSecret = null;
         var typed = prompt.ReadHidden(apiKey is null
             ? "API key (Enter if the server needs none): "
             : "API key (Enter keeps the current one, - for none): ");
@@ -235,25 +234,16 @@ internal static class InitCommand
         return words;
     }
 
-    /// <summary>
-    /// A key given as a value never goes into config.json (which may roam between machines): the config gets
-    /// <c>secret:dictum-cleanup</c>, and the value is written to the OS secret store only once the downloads and
-    /// validation succeeded, right before the config is saved.
-    /// </summary>
-    private static (string Reference, string? PendingSecret) KeepKeyOutOfConfig(CliContext context, string key)
+    /// <exception cref="ConfigException">A key given as a value, and no secret store to keep it in.</exception>
+    private static (string Reference, PendingSecret? Pending) KeepKeyOutOfConfig(CliContext context, string key)
     {
-        if (ConfigValueResolver.IsReference(key))
-        {
-            return (key, null);
-        }
-
-        if (context.Platform.Secrets is UnavailableSecretStore)
+        if (!ConfigValueResolver.IsReference(key) && context.Platform.Secrets is UnavailableSecretStore)
         {
             throw new ConfigException(
                 "This system has no secret store Dictum can use, and the key is not written to the config in plain text. Pass it as env:VAR instead.");
         }
 
-        return ($"secret:{CleanupSecret}", key);
+        return CleanupKey.KeepOutOfConfig(key);
     }
 
     /// <summary>Lists what the plan downloads and asks to go on; false when the answer is no.</summary>
@@ -281,14 +271,14 @@ internal static class InitCommand
         return true;
     }
 
-    private static async Task RunSetupAsync(CliContext context, SetupPlan plan, HardwareInfo hardware, string? pendingSecret, CancellationToken ct)
+    private static async Task RunSetupAsync(CliContext context, SetupPlan plan, HardwareInfo hardware, PendingSecret? pendingSecret, CancellationToken ct)
     {
         using var http = FileDownloader.CreateHttpClient(CliApp.UserAgent);
         using var view = new SetupProgressView(context.Error, redraw: !Console.IsErrorRedirected);
         await new SetupRunner(new FileDownloader(http), context.Paths)
             .RunAsync(plan, context.Store, hardware.FreeDiskBytes, view, ct, beforeSave: pendingSecret is null
                 ? null
-                : c => context.Platform.Secrets.SetAsync(CleanupSecret, pendingSecret, c)).ConfigureAwait(false);
+                : c => pendingSecret.WriteAsync(context.Platform.Secrets, c)).ConfigureAwait(false);
     }
 
     private static bool? AskAutostart(CliContext context, ConsolePrompt prompt, bool interactive, bool flag)
@@ -332,13 +322,13 @@ internal static class InitCommand
     }
 
     /// <summary>A <paramref name="pendingSecret"/> is not in the secret store yet, so the check uses a copy of the config that holds it.</summary>
-    private static async Task WarnIfUnreachableAsync(CliContext context, DictumConfig config, string? pendingSecret, CancellationToken ct)
+    private static async Task WarnIfUnreachableAsync(CliContext context, DictumConfig config, PendingSecret? pendingSecret, CancellationToken ct)
     {
         var id = SetupPlanner.CleanupProcessorId(config);
         if (pendingSecret is not null && config.Processors[id] is LlmProcessorConfig llm)
         {
             config = ConfigStore.Parse(ConfigStore.Serialize(config));
-            config.Processors[id] = llm with { ApiKey = pendingSecret };
+            config.Processors[id] = llm with { ApiKey = pendingSecret.Value };
         }
 
         await using var host = context.CreateHost(config);

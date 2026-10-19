@@ -25,11 +25,27 @@ public sealed class UnavailableSecretStore : ISecretStore
 /// <summary>Resolves config values of the form <c>env:VAR</c> and <c>secret:name</c>; other values pass through.</summary>
 public sealed class ConfigValueResolver(ISecretStore secrets)
 {
-    private const string EnvPrefix = "env:";
-    private const string SecretPrefix = "secret:";
+    public const string EnvPrefix = "env:";
+    public const string SecretPrefix = "secret:";
 
     public static bool IsReference(string value) =>
         value.StartsWith(EnvPrefix, StringComparison.Ordinal) || value.StartsWith(SecretPrefix, StringComparison.Ordinal);
+
+    /// <summary>The config value that reads secret <paramref name="name"/> from the OS secret store.</summary>
+    public static string SecretReference(string name) => SecretPrefix + name;
+
+    /// <summary>The variable that an <c>env:VAR</c> value reads.</summary>
+    public static bool TryGetEnvVariable(string value, out string name)
+    {
+        if (value.StartsWith(EnvPrefix, StringComparison.Ordinal))
+        {
+            name = value[EnvPrefix.Length..];
+            return true;
+        }
+
+        name = "";
+        return false;
+    }
 
     public async ValueTask<string?> ResolveAsync(string? value, CancellationToken ct)
     {
@@ -38,9 +54,8 @@ public sealed class ConfigValueResolver(ISecretStore secrets)
             return null;
         }
 
-        if (value.StartsWith(EnvPrefix, StringComparison.Ordinal))
+        if (TryGetEnvVariable(value, out var name))
         {
-            var name = value[EnvPrefix.Length..];
             return Environment.GetEnvironmentVariable(name) is { Length: > 0 } resolved
                 ? resolved
                 : throw new ConfigException($"Environment variable '{name}' is not set.");

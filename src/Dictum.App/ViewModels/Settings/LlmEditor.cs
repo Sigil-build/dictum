@@ -456,7 +456,7 @@ public sealed partial class LlmEditor : ObservableObject, IDisposable
 
         var current = (_session.Config.Processors.GetValueOrDefault(id) as LlmProcessorConfig)?.ApiKey;
         EditLlm(l => l with { ApiKey = null });
-        await ApiKeys.RemoveAsync(_services.Secrets, ApiKeys.ProcessorSecretName(id), current, _session.Config, _services.Log, CancellationToken.None);
+        await ApiKeys.RemoveAsync(_services.Secrets, SecretNames.Processor(id), current, _session.Config, _services.Log, CancellationToken.None);
     }
 
     /// <summary>
@@ -465,7 +465,7 @@ public sealed partial class LlmEditor : ObservableObject, IDisposable
     /// </summary>
     private async Task StoreKeyAsync(string id, string typed)
     {
-        var result = await ApiKeys.StoreAsync(_services.Secrets, ApiKeys.ProcessorSecretName(id), typed, CancellationToken.None);
+        var result = await ApiKeys.StoreAsync(_services.Secrets, SecretNames.Processor(id), typed, CancellationToken.None);
         var shown = _id == id;
         if (result.Error is { } error)
         {
@@ -492,7 +492,7 @@ public sealed partial class LlmEditor : ObservableObject, IDisposable
         Model = llm.Model;
         ModelError = _session.IssueAt(ConfigPaths.Field(path, nameof(LlmProcessorConfig.Model)));
         HasKey = llm.ApiKey is not null;
-        KeyState = ApiKeys.State(llm.ApiKey);
+        KeyState = ApiKeys.Describe(llm.ApiKey);
         if (!_temperatureEmpty)
         {
             Temperature = (decimal)llm.Temperature;

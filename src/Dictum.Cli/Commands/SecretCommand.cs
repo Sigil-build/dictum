@@ -1,4 +1,5 @@
 using System.CommandLine;
+using Dictum.Core.Configuration;
 
 namespace Dictum.Cli.Commands;
 
@@ -23,7 +24,7 @@ internal static class SecretCommand
             }
 
             await context.Platform.Secrets.SetAsync(name, value, token).ConfigureAwait(false);
-            context.Error.WriteLine($"Stored. Use \"apiKey\": \"secret:{name}\" in the config.");
+            context.Error.WriteLine($"Stored. Use \"apiKey\": \"{ConfigValueResolver.SecretReference(name)}\" in the config.");
             return ExitCodes.Success;
         }, ct));
 

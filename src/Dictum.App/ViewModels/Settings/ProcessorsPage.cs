@@ -136,7 +136,7 @@ public sealed partial class ProcessorsPage : SettingsPage
             c.Processors.Remove(id);
             return c;
         });
-        _ = ApiKeys.RemoveAsync(_services.Secrets, ApiKeys.ProcessorSecretName(id), key, _session.Config, _services.Log, CancellationToken.None);
+        _ = ApiKeys.RemoveAsync(_services.Secrets, SecretNames.Processor(id), key, _session.Config, _services.Log, CancellationToken.None);
     }
 
     private void Load()

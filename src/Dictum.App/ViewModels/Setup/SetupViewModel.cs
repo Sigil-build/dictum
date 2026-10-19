@@ -463,9 +463,9 @@ public sealed partial class SetupViewModel : ViewModelBase
 
     /// <summary>The secret the clean-up key goes to: the Settings name, so Settings can replace or remove it.</summary>
     private static string SecretName(DictumConfig? current) =>
-        ApiKeys.ProcessorSecretName(SetupPlanner.CleanupProcessorId(current ?? DefaultConfig.Create()));
+        SecretNames.Processor(SetupPlanner.CleanupProcessorId(current ?? DefaultConfig.Create()));
 
-    private static string SecretReference(DictumConfig? current) => ApiKeys.SecretPrefix + SecretName(current);
+    private static string SecretReference(DictumConfig? current) => ConfigValueResolver.SecretReference(SecretName(current));
 
     private static string Describe(ConfigException ex) =>
         ex.Issues.Count == 0 ? ex.Message : $"{ex.Message} {string.Join(" ", ex.Issues.Select(i => $"{i.Path}: {i.Message}."))}";
