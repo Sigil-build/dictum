@@ -75,6 +75,21 @@ public sealed class ConfigWatcherTests : IDisposable
         Assert.Equal("renamed", (await NextAsync(_changed)).Profiles[0].Id);
     }
 
+    [Fact]
+    public async Task AReloadThatFailsForAnotherReasonIsLogged()
+    {
+        var log = new ErrorLog();
+        using var watcher = new ConfigWatcher(
+            _store,
+            (_, _) => throw new InvalidOperationException("The engine could not be built."),
+            _ => Task.CompletedTask,
+            log);
+
+        _store.Save(Config("next"));
+
+        Assert.Contains("The engine could not be built.", await NextAsync(log.Errors));
+    }
+
     private ConfigWatcher Watch() => new(
         _store,
         (config, _) =>
@@ -96,4 +111,19 @@ public sealed class ConfigWatcherTests : IDisposable
         Stt = new() { ["s"] = new WhisperLocalSttConfig { Model = "m.bin" } },
         Profiles = [new ProfileConfig { Id = profile, Stt = "s" }],
     };
+
+    private sealed class ErrorLog : ILog
+    {
+        public Channel<string> Errors { get; } = Channel.CreateUnbounded<string>();
+
+        public bool IncludeText => false;
+
+        public void Write(LogLevel level, string message, Exception? exception = null)
+        {
+            if (level == LogLevel.Error)
+            {
+                Errors.Writer.TryWrite(message);
+            }
+        }
+    }
 }

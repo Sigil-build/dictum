@@ -67,6 +67,19 @@ public sealed class ConfigWatcher : IDisposable
     {
         try
         {
+            await ReloadAsync(ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Nothing awaits this task, so a failure not logged here, such as a denied read or a callback that throws, is lost.
+            _log.Error($"Config reload failed: {ex.Message}", ex);
+        }
+    }
+
+    private async Task ReloadAsync(CancellationToken ct)
+    {
+        try
+        {
             await Task.Delay(Debounce, ct).ConfigureAwait(false);
             var (config, warnings) = _store.LoadWithIssues();
             foreach (var warning in warnings)
