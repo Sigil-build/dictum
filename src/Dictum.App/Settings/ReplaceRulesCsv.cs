@@ -22,6 +22,11 @@ public static class ReplaceRulesCsv
     /// <summary>For <see cref="CodePagesEncodingProvider"/>, the system's active ANSI code page.</summary>
     private const int ActiveCodePage = 0;
 
+    private const int FindColumn = 0;
+    private const int ReplaceColumn = 1;
+    private const int MatchCaseColumn = 2;
+    private const int WholeWordColumn = 3;
+
     private static readonly string[] Yes = ["true", "yes", "1", "x", "так", "+"];
     private static readonly string[] FindHeaders = ["find", "знайти"];
     private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
@@ -82,12 +87,13 @@ public static class ReplaceRulesCsv
                 continue;
             }
 
-            if (rules.Count == 0 && problems.Count == 0 && FindHeaders.Contains(cells[0].Trim(), StringComparer.OrdinalIgnoreCase))
+            var find = cells[FindColumn];
+            if (rules.Count == 0 && problems.Count == 0 && FindHeaders.Contains(find.Trim(), StringComparer.OrdinalIgnoreCase))
             {
                 continue;
             }
 
-            if (cells[0].Length == 0)
+            if (find.Length == 0)
             {
                 problems.Add(string.Format(CultureInfo.CurrentCulture, Strings.SettingsRulesCsvEmptyFind, i + 1));
                 continue;
@@ -95,17 +101,20 @@ public static class ReplaceRulesCsv
 
             rules.Add(new ReplaceRule
             {
-                From = cells[0],
-                To = cells.Count > 1 ? cells[1] : "",
-                IgnoreCase = !(cells.Count > 2 && IsYes(cells[2])),
-                WholeWord = cells.Count > 3 && IsYes(cells[3]),
+                From = find,
+                To = Cell(cells, ReplaceColumn) ?? "",
+                IgnoreCase = !IsYes(Cell(cells, MatchCaseColumn)),
+                WholeWord = IsYes(Cell(cells, WholeWordColumn)),
             });
         }
 
         return (rules, problems);
     }
 
-    private static bool IsYes(string cell) => Yes.Contains(cell.Trim(), StringComparer.OrdinalIgnoreCase);
+    /// <summary>The cell of an optional column; null when the line is shorter.</summary>
+    private static string? Cell(List<string> cells, int column) => column < cells.Count ? cells[column] : null;
+
+    private static bool IsYes(string? cell) => cell is not null && Yes.Contains(cell.Trim(), StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The cells of one line; null when a quote is not closed.</summary>
     private static List<string>? Cells(string line, char separator)
