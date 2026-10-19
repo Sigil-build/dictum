@@ -144,7 +144,7 @@ internal static class RecordCommand
         target == ToStdout ? null : InjectorOutput.For(
             context.Platform.Injector,
             target == ToPaste ? OutputMode.Paste : OutputMode.Clipboard,
-            context.TryLoadConfig()?.Profiles.FirstOrDefault(p => p.Id == profileId)?.PasteShortcut ?? PasteShortcut.Auto,
+            context.TryLoadConfig()?.FindProfile(profileId)?.PasteShortcut ?? PasteShortcut.Auto,
             context.TryLoadConfig()?.General ?? new GeneralSettings());
 
     private static async Task WriteFrameDumpAsync(CliContext context, string path, List<RecordedFrame> frames, CancellationToken ct)

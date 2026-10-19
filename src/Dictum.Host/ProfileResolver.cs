@@ -31,7 +31,7 @@ public static class ProfileResolver
         Func<string, SttConfig, ISpeechToText> createAdHocStt)
     {
         var profile = overrides.Profile is { } profileId
-            ? config.Profiles.FirstOrDefault(p => p.Id == profileId)
+            ? config.FindProfile(profileId)
                 ?? throw new ConfigException($"Unknown profile '{profileId}'. Configured: {ConfiguredIds.Format(config.Profiles.Select(p => p.Id))}.")
             : config.Profiles.FirstOrDefault();
 

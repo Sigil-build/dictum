@@ -204,7 +204,7 @@ public sealed partial class ProfilesPage : SettingsPage
 
         var source = Current;
         var config = _session.Config;
-        var id = UniqueIds.For("profile", candidate => config.Profiles.Any(p => p.Id == candidate));
+        var id = UniqueIds.For("profile", candidate => config.FindProfile(candidate) is not null);
         IsRecording = false;
         _id = id;
         Languages.Reset();

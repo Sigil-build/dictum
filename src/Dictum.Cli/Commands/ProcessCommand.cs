@@ -43,7 +43,7 @@ internal static class ProcessCommand
             var host = context.Host();
             var config = host.Config;
             var chosen = parse.GetValue(profile) is { } id
-                ? config.Profiles.FirstOrDefault(p => p.Id == id) ?? throw new ConfigException($"Unknown profile '{id}'.")
+                ? config.FindProfile(id) ?? throw new ConfigException($"Unknown profile '{id}'.")
                 : config.Profiles.FirstOrDefault();
             var steps = TranscriptionOptions.SplitList(parse.GetValue(pipeline)) ?? chosen?.Pipeline ?? [];
             if (steps.Count == 0)

@@ -27,7 +27,7 @@ internal static class ProfilesCommand
         {
             var config = context.LoadConfig();
             var wanted = parse.GetValue(id);
-            var profile = config.Profiles.FirstOrDefault(p => p.Id == wanted)
+            var profile = config.FindProfile(wanted)
                 ?? throw new ConfigException($"Unknown profile '{wanted}'.");
 
             var o = context.Out;

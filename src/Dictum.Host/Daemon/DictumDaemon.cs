@@ -163,13 +163,11 @@ public sealed class DictumDaemon : IAsyncDisposable
     internal string ProfileFor(string? requested) =>
         requested is null
             ? _selectedProfile ?? Config.Profiles.FirstOrDefault()?.Id ?? throw new ConfigException("No profiles in the config.")
-            : Config.Profiles.Any(p => p.Id == requested) ? requested : throw new ConfigException($"Unknown profile '{requested}'.");
+            : Config.FindProfile(requested)?.Id ?? throw new ConfigException($"Unknown profile '{requested}'.");
 
     internal void SelectProfile(string? profile)
     {
-        _selectedProfile = profile is { } id && Config.Profiles.Any(p => p.Id == id)
-            ? id
-            : throw new ConfigException($"Unknown profile '{profile}'.");
+        _selectedProfile = Config.FindProfile(profile)?.Id ?? throw new ConfigException($"Unknown profile '{profile}'.");
         PublishStatus();
     }
 
@@ -310,7 +308,7 @@ public sealed class DictumDaemon : IAsyncDisposable
 
     private void OnHotkey(HotkeyEvent hotkeyEvent)
     {
-        var profile = Config.Profiles.FirstOrDefault(p => p.Id == hotkeyEvent.BindingId);
+        var profile = Config.FindProfile(hotkeyEvent.BindingId);
         if (profile is null)
         {
             return;
@@ -352,7 +350,8 @@ public sealed class DictumDaemon : IAsyncDisposable
         }
 
         Cue(SoundCue.Stop);
-        var config = engine.Config.Profiles.First(p => p.Id == profileId);
+        var config = engine.Config.FindProfile(profileId)
+            ?? throw new InvalidOperationException($"Profile '{profileId}' resolved but is not in the config.");
         var output = InjectorOutput.For(_platform.Injector, config, engine.Config.General);
         try
         {
@@ -479,7 +478,7 @@ public sealed class DictumDaemon : IAsyncDisposable
 
     private void PublishStatus() => _events.Publish(IpcEvent.ForStatus(Status()));
 
-    private string? ModeOf(string? profileId) => Config.Profiles.FirstOrDefault(p => p.Id == profileId)?.Mode.ToString();
+    private string? ModeOf(string? profileId) => Config.FindProfile(profileId)?.Mode.ToString();
 
     private void Finish(string outcome, string? message, DictationResult? result) =>
         _events.Publish(IpcEvent.Finished(
