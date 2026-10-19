@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using Dictum.Platform;
 
 namespace Dictum.App.Shell;
 
@@ -13,6 +14,8 @@ public interface IDictumProcesses
 /// <summary>The real processes, by name and executable path.</summary>
 public sealed class SystemDictumProcesses : IDictumProcesses
 {
+    private static readonly string[] Names = [AppNames.Cli, LoginItem.DesktopAppName];
+
     public static readonly SystemDictumProcesses Instance = new();
 
     public IReadOnlyList<int> RunningFrom(string folder)
@@ -20,7 +23,7 @@ public sealed class SystemDictumProcesses : IDictumProcesses
         var root = Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
         var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
         var found = new List<int>();
-        foreach (var name in new[] { "dictum", "dictum-gui" })
+        foreach (var name in Names)
         {
             foreach (var process in Process.GetProcessesByName(name))
             {

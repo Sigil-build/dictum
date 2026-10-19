@@ -15,6 +15,9 @@ namespace Dictum.App;
 
 internal static class Program
 {
+    /// <summary>The exit code for arguments that cannot be used, as a command line tool gives.</summary>
+    private const int UsageExitCode = 2;
+
     [STAThread]
     public static int Main(string[] args)
     {
@@ -36,13 +39,13 @@ internal static class Program
             DisplayScale.Apply();
         }
 
-        if (args.Contains("--overlay-demo"))
+        if (args.Contains(OverlayDemo.Flag))
         {
             return RunOverlayDemo(args);
         }
 
         var paths = AppPaths.FromEnvironment();
-        using var log = new DictumLog(LogLevel.Warning, includeText: false, console: null, paths.LogsDirectory, "dictum-gui.log");
+        using var log = new DictumLog(LogLevel.Warning, includeText: false, console: null, paths.LogsDirectory, AppNames.GuiLogFile);
         var configPath = Environment.GetEnvironmentVariable("DICTUM_CONFIG") is { Length: > 0 } custom ? custom : paths.ConfigFile;
         var store = new ConfigStore(configPath, log);
         UiCulture.Apply(UiCulture.FromConfig(store));
@@ -98,7 +101,7 @@ internal static class Program
     {
         if (OverlayDemo.Parse(args, Console.Error) is not { } options)
         {
-            return 2;
+            return UsageExitCode;
         }
 
         FrameRecording recording;
@@ -109,11 +112,11 @@ internal static class Program
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or FormatException)
         {
             Console.Error.WriteLine($"Cannot play {options.Path}: {ex.Message}");
-            return 2;
+            return UsageExitCode;
         }
 
         var paths = AppPaths.FromEnvironment();
-        using var log = new DictumLog(LogLevel.Warning, includeText: false, console: null, paths.LogsDirectory, "dictum-gui.log");
+        using var log = new DictumLog(LogLevel.Warning, includeText: false, console: null, paths.LogsDirectory, AppNames.GuiLogFile);
         var store = new ConfigStore(Environment.GetEnvironmentVariable("DICTUM_CONFIG") is { Length: > 0 } custom ? custom : paths.ConfigFile, log);
         UiCulture.Apply(UiCulture.FromConfig(store));
         DictumConfig? user = null;

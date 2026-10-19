@@ -35,7 +35,7 @@ public sealed class DaemonProcessLauncher(
     string executable, IReadOnlyList<string> arguments, ILog log, IReadOnlyDictionary<string, string>? environment = null) : IDaemonLauncher
 {
     /// <summary><c>dictum</c> next to <c>dictum-gui</c>: both ship in one folder.</summary>
-    public static string DefaultExecutable => Path.Combine(AppContext.BaseDirectory, OperatingSystem.IsWindows() ? "dictum.exe" : "dictum");
+    public static string DefaultExecutable => Path.Combine(AppContext.BaseDirectory, AppNames.CliFile);
 
     public static DaemonProcessLauncher NextToApp(ILog log) => new(DefaultExecutable, ["daemon"], log);
 
@@ -135,7 +135,7 @@ public sealed class DaemonProcessLauncher(
         try
         {
             // Exactly "dictum": the test runner is "Dictum.App.Tests", and dictum-gui must never end itself.
-            return string.Equals(process.ProcessName, "dictum", StringComparison.OrdinalIgnoreCase);
+            return string.Equals(process.ProcessName, AppNames.Cli, StringComparison.OrdinalIgnoreCase);
         }
         catch (InvalidOperationException)
         {

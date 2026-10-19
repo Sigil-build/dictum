@@ -2,6 +2,7 @@ using System.Globalization;
 using Dictum.App.Daemon;
 using Dictum.App.Resources;
 using Dictum.Core.Configuration;
+using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 
 namespace Dictum.App.Tray;
@@ -19,7 +20,7 @@ public sealed class TrayState(TimeProvider time)
     public static readonly TimeSpan ErrorHold = TimeSpan.FromSeconds(30);
 
     private DaemonLink _link = new(DaemonLinkState.Starting);
-    private string _pipeline = "Idle";
+    private string _pipeline = nameof(PipelineState.Idle);
     private (string Message, DateTimeOffset At)? _error;
     private Dictionary<string, string> _languages = [];
     private double? _downloads;
@@ -33,7 +34,7 @@ public sealed class TrayState(TimeProvider time)
         if (link.State != DaemonLinkState.Connected)
         {
             // A daemon that comes back starts idle; a stale "Recording" would stay on the icon.
-            _pipeline = "Idle";
+            _pipeline = nameof(PipelineState.Idle);
         }
     }
 
@@ -90,12 +91,12 @@ public sealed class TrayState(TimeProvider time)
 
     private (TrayGlyph Glyph, string Tooltip, bool Attention, TrayCommand Activate) DescribeConnected(DateTimeOffset now)
     {
-        if (_pipeline == "Recording")
+        if (_pipeline == nameof(PipelineState.Recording))
         {
             return (TrayGlyph.Recording, Strings.TrayTooltipRecording, true, TrayCommand.Settings);
         }
 
-        if (_pipeline is "Transcribing" or "Processing" or "Output")
+        if (_pipeline is nameof(PipelineState.Transcribing) or nameof(PipelineState.Processing) or nameof(PipelineState.Output))
         {
             return (TrayGlyph.Processing, Strings.TrayTooltipTranscribing, false, TrayCommand.Settings);
         }
@@ -112,7 +113,7 @@ public sealed class TrayState(TimeProvider time)
 
         var tooltip = SelectedProfile(_link.Status) switch
         {
-            null => "Dictum",
+            null => AppNames.Product,
             { Hotkey: { } hotkey } profile => Format(Strings.TrayTooltipIdle, profile.Id, hotkey),
             var profile => Format(Strings.TrayTooltipIdleNoHotkey, profile.Id),
         };

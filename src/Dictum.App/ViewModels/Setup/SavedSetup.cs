@@ -30,11 +30,14 @@ public sealed record SavedSetup(
     bool StartAtLogin,
     IReadOnlyList<string> Files,
     string? BasedOn = null,
-    int Version = 1);
+    int Version = SavedSetupFile.CurrentVersion);
 
 /// <summary>Reads, writes and removes <c>setup.json</c>; a disk or format problem is logged, never thrown.</summary>
 public static class SavedSetupFile
 {
+    /// <summary>The shape of <c>setup.json</c>; a file of another version is dropped and the walk starts over.</summary>
+    public const int CurrentVersion = 1;
+
     /// <summary>The kept walk, or null. A damaged file, or one from another version, is removed: the walk starts over.</summary>
     public static SavedSetup? Load(AppPaths paths, ILog log)
     {
@@ -46,7 +49,7 @@ public static class SavedSetupFile
         try
         {
             var saved = JsonSerializer.Deserialize(File.ReadAllText(paths.SetupFile), SetupJsonContext.Default.SavedSetup);
-            if (saved is { Version: 1, Language: not null, Url: not null, Model: not null, Words: not null, Files: not null })
+            if (saved is { Version: CurrentVersion, Language: not null, Url: not null, Model: not null, Words: not null, Files: not null })
             {
                 return saved;
             }

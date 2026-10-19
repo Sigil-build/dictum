@@ -29,6 +29,9 @@ public sealed class HotkeyRecorder : Button
     public static readonly StyledProperty<bool> IsRecordingProperty =
         AvaloniaProperty.Register<HotkeyRecorder, bool>(nameof(IsRecording), defaultBindingMode: BindingMode.TwoWay);
 
+    private const double PartSpacing = 6;
+    private const double RecordingDotSize = 8;
+
     private PhysicalKey? _ending;
 
     public HotkeyRecorder()
@@ -139,10 +142,10 @@ public sealed class HotkeyRecorder : Button
             Content = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Spacing = 6,
+                Spacing = PartSpacing,
                 Children =
                 {
-                    new Ellipse { Width = 8, Height = 8, Classes = { "recordingDot" }, VerticalAlignment = VerticalAlignment.Center },
+                    new Ellipse { Width = RecordingDotSize, Height = RecordingDotSize, Classes = { "recordingDot" }, VerticalAlignment = VerticalAlignment.Center },
                     new TextBlock { Text = Strings.SettingsHotkeyListening, VerticalAlignment = VerticalAlignment.Center },
                 },
             };
@@ -157,7 +160,7 @@ public sealed class HotkeyRecorder : Button
             return;
         }
 
-        var keys = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        var keys = new StackPanel { Orientation = Orientation.Horizontal, Spacing = PartSpacing };
         var parts = Hotkey.Split('+');
         for (var i = 0; i < parts.Length; i++)
         {

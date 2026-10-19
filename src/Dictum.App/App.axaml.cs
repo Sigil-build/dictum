@@ -8,6 +8,9 @@ namespace Dictum.App;
 
 public partial class App : Application
 {
+    /// <summary>The resource Fluent's controls read their font from; controls that draw text themselves read it too.</summary>
+    internal const string ContentFontKey = "ContentControlThemeFontFamily";
+
     /// <summary>Set by Program before Avalonia starts; null in tests and in the self-test, where nothing is started.</summary>
     public static DesktopShell? Shell { get; set; }
 
@@ -15,10 +18,10 @@ public partial class App : Application
     {
         AvaloniaXamlLoader.Load(this);
 
-        // The system font per platform (tokens font.family.*); Fluent's controls read ContentControlThemeFontFamily.
+        // The system font per platform (tokens font.family.*).
         if (this.TryGetResource(OperatingSystem.IsWindows() ? "font.family.windows" : "font.family.linux", null, out var font))
         {
-            Resources["ContentControlThemeFontFamily"] = font;
+            Resources[ContentFontKey] = font;
         }
     }
 

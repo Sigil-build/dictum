@@ -18,6 +18,25 @@ public sealed class OverlayCanvas : Control
     private const double Cx = OverlayTokens.Width / 2;
     private const double Cy = OverlayTokens.CenterY;
     private const double HaloAlpha = 0.4;
+
+    /// <summary>How much wider than its stroke the shadow under the check and the warning icon is.</summary>
+    private const double IconShadowGrowth = 2;
+
+    // The warning icon around its centre: the triangle's apex and base, then the exclamation mark's bar and dot.
+    private const double WarningApex = 7;
+    private const double WarningHalfBase = 7;
+    private const double WarningBase = 6;
+    private const double WarningBarTop = 2.5;
+    private const double WarningBarBottom = 1.5;
+    private const double WarningDotY = 4;
+    private const double WarningDotRadius = 0.9;
+
+    /// <summary>Moves the chip's label down half a unit, where it looks centred.</summary>
+    private const double ChipLabelDrop = 0.5;
+
+    /// <summary>Formatted texts kept before the cache starts over; the overlay shows only a few.</summary>
+    private const int MaxCachedTexts = 64;
+
     private static readonly (double X, double Y)[] HaloOffsets = [(-0.75, 1), (0.75, 1), (0, 0.25), (0, 1.75)];
     private static readonly Rect TrackRect = new(
         Cx - OverlayTokens.MeterWidth / 2, Cy - OverlayTokens.MeterHeight / 2, OverlayTokens.MeterWidth, OverlayTokens.MeterHeight);
@@ -84,7 +103,7 @@ public sealed class OverlayCanvas : Control
         {
             if (_layerOpacity < 1)
             {
-                var mask = new ImmutableSolidColorBrush(Color.FromArgb((byte)Math.Round(_layerOpacity * 255), 0, 0, 0));
+                var mask = new ImmutableSolidColorBrush(Color.FromArgb((byte)Math.Round(_layerOpacity * byte.MaxValue), 0, 0, 0));
                 using (context.PushOpacityMask(mask, new Rect(0, 0, W, OverlayTokens.Height)))
                 {
                     Draw(context, scene, _ink);
@@ -303,7 +322,7 @@ public sealed class OverlayCanvas : Control
             figure.EndFigure(isClosed: false);
         }
 
-        context.DrawGeometry(null, ink.Pen(Ink.Shadow, alpha * OverlayTokens.CheckShadowAlpha, OverlayTokens.CheckWidth + 2), geometry);
+        context.DrawGeometry(null, ink.Pen(Ink.Shadow, alpha * OverlayTokens.CheckShadowAlpha, OverlayTokens.CheckWidth + IconShadowGrowth), geometry);
         context.DrawGeometry(null, ink.Pen(Ink.Done, alpha, OverlayTokens.CheckWidth), geometry);
     }
 
@@ -330,18 +349,18 @@ public sealed class OverlayCanvas : Control
         var icon = new StreamGeometry();
         using (var figure = icon.Open())
         {
-            figure.BeginFigure(new Point(x, y - 7), isFilled: false);
-            figure.LineTo(new Point(x + 7, y + 6));
-            figure.LineTo(new Point(x - 7, y + 6));
+            figure.BeginFigure(new Point(x, y - WarningApex), isFilled: false);
+            figure.LineTo(new Point(x + WarningHalfBase, y + WarningBase));
+            figure.LineTo(new Point(x - WarningHalfBase, y + WarningBase));
             figure.EndFigure(isClosed: true);
-            figure.BeginFigure(new Point(x, y - 2.5), isFilled: false);
-            figure.LineTo(new Point(x, y + 1.5));
+            figure.BeginFigure(new Point(x, y - WarningBarTop), isFilled: false);
+            figure.LineTo(new Point(x, y + WarningBarBottom));
             figure.EndFigure(isClosed: false);
         }
 
-        context.DrawGeometry(null, ink.Pen(Ink.Shadow, alpha * OverlayTokens.IconShadowAlpha, OverlayTokens.IconStroke + 2), icon);
+        context.DrawGeometry(null, ink.Pen(Ink.Shadow, alpha * OverlayTokens.IconShadowAlpha, OverlayTokens.IconStroke + IconShadowGrowth), icon);
         context.DrawGeometry(null, ink.Pen(Ink.ErrorIcon, alpha, OverlayTokens.IconStroke), icon);
-        context.DrawEllipse(ink.Brush(Ink.ErrorIcon, alpha), null, new Point(x, y + 4), 0.9, 0.9);
+        context.DrawEllipse(ink.Brush(Ink.ErrorIcon, alpha), null, new Point(x, y + WarningDotY), WarningDotRadius, WarningDotRadius);
     }
 
     private static void Track(DrawingContext context, OverlayInk ink, double alpha)
@@ -382,7 +401,7 @@ public sealed class OverlayCanvas : Control
         {
             context.DrawRectangle(ink.Brush(Ink.Chip, 1), null,
                 new Rect(left, Cy - OverlayTokens.ChipHeight / 2, width, OverlayTokens.ChipHeight), OverlayTokens.ChipRadius, OverlayTokens.ChipRadius, default);
-            context.DrawText(label, new Point(left + OverlayTokens.ChipPadding, Cy + 0.5 - label.Height / 2));
+            context.DrawText(label, new Point(left + OverlayTokens.ChipPadding, Cy + ChipLabelDrop - label.Height / 2));
         }
     }
 
@@ -422,12 +441,12 @@ public sealed class OverlayCanvas : Control
             return cached;
         }
 
-        if (_texts.Count >= 64)
+        if (_texts.Count >= MaxCachedTexts)
         {
             _texts.Clear();
         }
 
-        _font ??= this.TryFindResource("ContentControlThemeFontFamily", out var found) && found is FontFamily family ? family : FontFamily.Default;
+        _font ??= this.TryFindResource(App.ContentFontKey, out var found) && found is FontFamily family ? family : FontFamily.Default;
         var formatted = new FormattedText(
             text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, new Typeface(_font, FontStyle.Normal, weight), size,
             new SolidColorBrush(Color.FromUInt32(colour)))

@@ -5,6 +5,7 @@ using Dictum.App.Daemon;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.Core.Configuration;
+using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 
 namespace Dictum.App.ViewModels.Setup;
@@ -105,9 +106,9 @@ public sealed partial class SetupReadyStep(TrayHint tray, IDaemonChannel daemon,
     /// <summary>A pipeline state or a finished dictation; frames never come here. Any profile's dictation counts.</summary>
     public void OnEvent(IpcEvent message) => TryResult = message switch
     {
-        { Event: "state", State: "Recording" } => Strings.OverlayListening,
-        { Event: "state", State: "Transcribing" } => Strings.OverlayTranscribing,
-        { Event: "state", State: "Processing" } => Strings.OverlayCleaningUp,
+        { Event: "state", State: nameof(PipelineState.Recording) } => Strings.OverlayListening,
+        { Event: "state", State: nameof(PipelineState.Transcribing) } => Strings.OverlayTranscribing,
+        { Event: "state", State: nameof(PipelineState.Processing) } => Strings.OverlayCleaningUp,
         { Event: "finished", Outcome: DictationOutcome.Pasted } => Strings.SetupReadyPasted,
         { Event: "finished", Outcome: DictationOutcome.Copied } => Strings.SetupReadyCopied,
         { Event: "finished", Outcome: DictationOutcome.Empty } => Strings.SetupReadyEmpty,

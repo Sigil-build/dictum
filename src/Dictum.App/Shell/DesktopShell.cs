@@ -32,6 +32,9 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
 {
     private static readonly TimeSpan NoTrayGrace = TimeSpan.FromSeconds(5);
 
+    /// <summary>How often the tray checks whether a held error has expired.</summary>
+    private static readonly TimeSpan TrayTickInterval = TimeSpan.FromSeconds(1);
+
     private readonly AppPaths _paths;
     private readonly DictumLog _log;
     private readonly ConfigStore _store;
@@ -81,7 +84,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         _log = log;
         _store = store;
         _createTray = createTray;
-        var logFile = log.FilePath ?? Path.Combine(paths.LogsDirectory, "dictum-gui.log");
+        var logFile = log.FilePath ?? Path.Combine(paths.LogsDirectory, AppNames.GuiLogFile);
         Supervisor = new DaemonSupervisor(daemonSocket, () => store.Exists, launcher, log, logFile);
         Status = new StatusViewModel(store.Path, logFile, Supervisor.Restart);
         _tray = new TrayController(new TrayState(TimeProvider.System), this, TimeProvider.System);
@@ -221,7 +224,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             _log.Warn($"Not watching the config for changes: {ex.Message}");
         }
 
-        _tick = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _tick = new DispatcherTimer { Interval = TrayTickInterval };
         _tick.Tick += (_, _) => _tray.Tick();
         _tick.Start();
 
@@ -503,7 +506,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     /// <summary>Downloads a previous run left unfinished continue in the background; the tooltip shows the total.</summary>
     private void StartDownloads()
     {
-        _http = FileDownloader.CreateHttpClient("dictum-gui");
+        _http = FileDownloader.CreateHttpClient(LoginItem.DesktopAppName);
         _downloads = new DownloadQueue(new FileDownloader(_http), _paths, Catalog.BuiltIn, () => HardwareProbe.FreeDiskBytes(_paths));
         var queue = _downloads;
         _modelDownloads = new QueueDownloads(queue, action => Dispatcher.UIThread.Post(action));

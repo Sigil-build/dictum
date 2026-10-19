@@ -28,6 +28,26 @@ namespace Dictum.App.Shell;
 /// </summary>
 public static class SelfTest
 {
+    /// <summary>The tray's SVG set: idle, recording and error in colour and in mono, paused, and the processing frames.</summary>
+    private const int TrayIconFiles = 11;
+
+    // The overlay model check: rms 0.01 is −40 dBFS, at 60 frames a second.
+    private const int MeterFrames = 120;
+    private const int SpeakingFrames = 30;
+    private const double FramesPerSecond = 60;
+    private const float SpeakingRms = 0.01f;
+    private const double ExpectedLevel = 0.588;
+    private const double LevelTolerance = 0.01;
+
+    /// <summary>The alpha a pixel needs to count as drawn in the overlay check; the tray icons need full alpha.</summary>
+    private const byte OverlayInkAlpha = 32;
+
+    private const string BaseColourToken = "color.bg.base";
+    private const int BytesPerPixel = 4;
+
+    /// <summary>Alpha is the last byte of each pixel the bitmap copies out.</summary>
+    private const int AlphaOffset = 3;
+
     /// <param name="avalonia">
     /// False skips the checks that need a process of their own: Avalonia's platform (tests already run one) and the UI
     /// culture (changing it would leak into tests running in parallel).
@@ -42,7 +62,7 @@ public static class SelfTest
         }
 
         var english = Strings.ResourceManager.GetString(nameof(Strings.MenuQuit), CultureInfo.InvariantCulture) ?? "";
-        var ukrainian = Strings.ResourceManager.GetString(nameof(Strings.MenuQuit), CultureInfo.GetCultureInfo("uk")) ?? "";
+        var ukrainian = Strings.ResourceManager.GetString(nameof(Strings.MenuQuit), CultureInfo.GetCultureInfo(UiCulture.Ukrainian)) ?? "";
         Check("strings", english == "Quit Dictum" && ukrainian.Any(c => c is >= 'А' and <= 'я'), $"en \"{english}\", uk \"{ukrainian}\"");
 
         var icons = Path.Combine(Path.GetTempPath(), $"dictum-self-test-{Environment.ProcessId}");
@@ -50,7 +70,7 @@ public static class SelfTest
         {
             TraySvgIcons.WriteAll(icons);
             var files = Directory.GetFiles(icons, "*.svg").Length;
-            Check("svg icons", files == 11, $"{files} files");
+            Check("svg icons", files == TrayIconFiles, $"{files} files");
         }
         finally
         {
@@ -61,25 +81,25 @@ public static class SelfTest
         var meter = new LevelMeter();
         meter.Reset(TimeSpan.Zero);
         var speaking = 0.0;
-        for (var frame = 1; frame <= 120; frame++)
+        for (var frame = 1; frame <= MeterFrames; frame++)
         {
-            meter.Update(frame <= 30 ? 0.01f : 0f, [], TimeSpan.FromSeconds(frame / 60.0));
-            if (frame == 30)
+            meter.Update(frame <= SpeakingFrames ? SpeakingRms : 0f, [], TimeSpan.FromSeconds(frame / FramesPerSecond));
+            if (frame == SpeakingFrames)
             {
                 speaking = meter.Level;
             }
         }
 
-        Check("overlay model", Math.Abs(speaking - 0.588) < 0.01 && meter.Quiet,
+        Check("overlay model", Math.Abs(speaking - ExpectedLevel) < LevelTolerance && meter.Quiet,
             string.Create(CultureInfo.InvariantCulture, $"level {speaking:0.00} at -40 dBFS, then silence"));
 
         if (avalonia)
         {
             Program.BuildAvaloniaApp().SetupWithoutStarting();
             var app = Application.Current!;
-            var dark = app.TryGetResource("color.bg.base", ThemeVariant.Dark, out var darkBrush) ? darkBrush : null;
-            var light = app.TryGetResource("color.bg.base", ThemeVariant.Light, out var lightBrush) ? lightBrush : null;
-            Check("tokens", dark is ISolidColorBrush d && light is ISolidColorBrush l && d.Color != l.Color, "color.bg.base in both themes");
+            var dark = app.TryGetResource(BaseColourToken, ThemeVariant.Dark, out var darkBrush) ? darkBrush : null;
+            var light = app.TryGetResource(BaseColourToken, ThemeVariant.Light, out var lightBrush) ? lightBrush : null;
+            Check("tokens", dark is ISolidColorBrush d && light is ISolidColorBrush l && d.Color != l.Color, $"{BaseColourToken} in both themes");
 
             var drawn = 0;
             var empty = new List<string>();
@@ -109,10 +129,10 @@ public static class SelfTest
                     canvas.Scene = new OverlayScene(phase, 0.15, 1, 1, 0.6, false, [0.5, 0.4, 0.3, 0.2, 0.1], "UK/EN", "Microphone not found", reduced, OverlayPalette.Aurora);
                     canvas.Measure(Size.Infinity);
                     canvas.Arrange(new Rect(canvas.DesiredSize));
-                    using var bitmap = new RenderTargetBitmap(new PixelSize(480, 96));
+                    using var bitmap = new RenderTargetBitmap(new PixelSize((int)OverlayTokens.Width, (int)OverlayTokens.Height));
                     bitmap.Render(canvas);
                     scenes++;
-                    if (!HasInk(bitmap, 32))
+                    if (!HasInk(bitmap, OverlayInkAlpha))
                     {
                         blank.Add(reduced ? $"{phase} (reduced)" : phase.ToString());
                     }
@@ -123,7 +143,7 @@ public static class SelfTest
 
             Check("settings views", SettingsViews(out var views), views);
 
-            UiCulture.Apply("uk");
+            UiCulture.Apply(UiCulture.Ukrainian);
             Check("ui culture", Strings.MenuQuit == ukrainian, $"\"{Strings.MenuQuit}\" with {CultureInfo.CurrentUICulture.Name}");
         }
 
@@ -195,21 +215,21 @@ public static class SelfTest
             Task.FromException<IpcResponse>(new DaemonNotRunningException("self-test"));
     }
 
-    private static bool HasInk(Bitmap bitmap, byte minimum = 255)
+    private static bool HasInk(Bitmap bitmap, byte minimum = byte.MaxValue)
     {
         var (width, height) = (bitmap.PixelSize.Width, bitmap.PixelSize.Height);
-        var pixels = new byte[width * height * 4];
+        var pixels = new byte[width * height * BytesPerPixel];
         var handle = GCHandle.Alloc(pixels, GCHandleType.Pinned);
         try
         {
-            bitmap.CopyPixels(new PixelRect(0, 0, width, height), handle.AddrOfPinnedObject(), pixels.Length, width * 4);
+            bitmap.CopyPixels(new PixelRect(0, 0, width, height), handle.AddrOfPinnedObject(), pixels.Length, width * BytesPerPixel);
         }
         finally
         {
             handle.Free();
         }
 
-        for (var i = 3; i < pixels.Length; i += 4)
+        for (var i = AlphaOffset; i < pixels.Length; i += BytesPerPixel)
         {
             if (pixels[i] >= minimum)
             {

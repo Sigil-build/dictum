@@ -1,5 +1,6 @@
 using Avalonia.Threading;
 using Dictum.Core.Configuration;
+using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 
 namespace Dictum.App.Overlay;
@@ -14,9 +15,37 @@ public sealed record OverlayDemoOptions(string Path, string State);
 /// </summary>
 public sealed class OverlayDemo
 {
-    public static readonly IReadOnlyList<string> States = ["listening", "silence", "transcribing", "cleaning", "done", "cancelled", "error"];
+    /// <summary>The command line flag that runs the demo.</summary>
+    public const string Flag = "--overlay-demo";
+
+    private const string StateFlag = "--state";
+
+    private const string ListeningState = "listening";
+    private const string SilenceState = "silence";
+    private const string TranscribingState = "transcribing";
+    private const string CleaningState = "cleaning";
+    private const string DoneState = "done";
+    private const string CancelledState = "cancelled";
+    private const string ErrorState = "error";
+
+    public static readonly IReadOnlyList<string> States =
+        [ListeningState, SilenceState, TranscribingState, CleaningState, DoneState, CancelledState, ErrorState];
 
     private const string Profile = "demo";
+    private const string Stt = "demo";
+    private const string Languages = "uk, en";
+    private const string PickedLanguage = "uk";
+    private const string DemoError = "Microphone not found";
+
+    // The script's timings, in seconds.
+    private const double SilenceFor = 3;
+    private const double TranscribingFor = 1.6;
+    private const double CleaningFor = 0.9;
+    private const double DoneAt = TranscribingFor + CleaningFor;
+
+    /// <summary>Seconds after the last event before the demo gives up on the overlay going away.</summary>
+    private const double GiveUpAfter = 10;
+
     private static readonly TimeSpan Tick = TimeSpan.FromMilliseconds(20);
 
     private readonly OverlayController _controller;
@@ -38,20 +67,20 @@ public sealed class OverlayDemo
     /// <returns>The options, or null after writing what is wrong to <paramref name="error"/>.</returns>
     public static OverlayDemoOptions? Parse(IReadOnlyList<string> args, TextWriter error)
     {
-        var demo = IndexOf(args, "--overlay-demo");
+        var demo = IndexOf(args, Flag);
         if (demo < 0 || demo + 1 >= args.Count || args[demo + 1].StartsWith("--", StringComparison.Ordinal))
         {
-            error.WriteLine($"Usage: dictum-gui --overlay-demo <frames.json> [--state <{string.Join("|", States)}>]");
+            error.WriteLine($"Usage: dictum-gui {Flag} <frames.json> [{StateFlag} <{string.Join("|", States)}>]");
             return null;
         }
 
-        var state = "listening";
-        var named = IndexOf(args, "--state");
+        var state = ListeningState;
+        var named = IndexOf(args, StateFlag);
         if (named >= 0)
         {
             if (named + 1 >= args.Count || !States.Contains(args[named + 1]))
             {
-                error.WriteLine($"--state takes one of: {string.Join(", ", States)}");
+                error.WriteLine($"{StateFlag} takes one of: {string.Join(", ", States)}");
                 return null;
             }
 
@@ -65,20 +94,20 @@ public sealed class OverlayDemo
     public static DictumConfig Config(DictumConfig? user) => new()
     {
         General = new GeneralSettings { Overlay = (user?.General.Overlay ?? new OverlaySettings()) with { Enabled = true } },
-        Profiles = [new ProfileConfig { Id = Profile, Stt = "demo", Language = "uk, en" }],
+        Profiles = [new ProfileConfig { Id = Profile, Stt = Stt, Language = Languages }],
     };
 
     /// <summary>Starts the demo's clock; <see cref="Start"/> also runs the timer that drives <see cref="Step"/>.</summary>
     public void Begin() => _start = _time.GetUtcNow();
 
     /// <summary>
-    /// On the UI thread: starts the clock and a 20 ms timer that calls <paramref name="exit"/> with 0 once the overlay
-    /// is gone (1 if it never goes).
+    /// On the UI thread: starts the clock and a timer that calls <paramref name="exit"/> with 0 once the overlay is gone
+    /// (1 if it never goes).
     /// </summary>
     public void Start(Action<int> exit)
     {
         Begin();
-        var deadline = _start + TimeSpan.FromSeconds(_script[^1].At + 10);
+        var deadline = _start + TimeSpan.FromSeconds(_script[^1].At + GiveUpAfter);
         var timer = new DispatcherTimer { Interval = Tick };
         timer.Tick += (_, _) =>
         {
@@ -125,38 +154,38 @@ public sealed class OverlayDemo
 
     private static (IReadOnlyList<(double, IpcEvent)> Script, double PlayFor) Script(string state, double duration)
     {
-        static IpcEvent State(string name) => new("state", State: name, Profile: Profile, Mode: "Toggle");
-        static IpcEvent Finished(string outcome, string? message = null) => new("finished", Outcome: outcome, Message: message, Language: "uk");
+        static IpcEvent State(PipelineState state) => IpcEvent.ForState(state, Profile, nameof(HotkeyMode.Toggle));
+        static IpcEvent Finished(string outcome, string? message = null) => new("finished", Outcome: outcome, Message: message, Language: PickedLanguage);
 
-        var events = new List<(double, IpcEvent)> { (0, State("Recording")) };
-        var listen = state switch { "listening" => duration, "silence" => 3, _ => 0 };
+        var events = new List<(double, IpcEvent)> { (0, State(PipelineState.Recording)) };
+        var listen = state switch { ListeningState => duration, SilenceState => SilenceFor, _ => 0 };
         switch (state)
         {
-            case "listening" or "silence" or "transcribing":
-                events.Add((listen, State("Transcribing")));
-                events.Add((listen + 1.6, State("Processing")));
-                events.Add((listen + 2.5, State("Idle")));
-                events.Add((listen + 2.5, Finished(DictationOutcome.Pasted)));
+            case ListeningState or SilenceState or TranscribingState:
+                events.Add((listen, State(PipelineState.Transcribing)));
+                events.Add((listen + TranscribingFor, State(PipelineState.Processing)));
+                events.Add((listen + DoneAt, State(PipelineState.Idle)));
+                events.Add((listen + DoneAt, Finished(DictationOutcome.Pasted)));
                 break;
-            case "cleaning":
-                events.Add((0, State("Processing")));
-                events.Add((0.9, State("Idle")));
-                events.Add((0.9, Finished(DictationOutcome.Pasted)));
+            case CleaningState:
+                events.Add((0, State(PipelineState.Processing)));
+                events.Add((CleaningFor, State(PipelineState.Idle)));
+                events.Add((CleaningFor, Finished(DictationOutcome.Pasted)));
                 break;
-            case "done":
-                events.Add((0, State("Idle")));
+            case DoneState:
+                events.Add((0, State(PipelineState.Idle)));
                 events.Add((0, Finished(DictationOutcome.Pasted)));
                 break;
-            case "cancelled":
-                events.Add((0, State("Idle")));
+            case CancelledState:
+                events.Add((0, State(PipelineState.Idle)));
                 events.Add((0, Finished(DictationOutcome.Cancelled)));
                 break;
             default:
-                events.Add((0, State("Idle")));
-                events.Add((0, Finished(DictationOutcome.Error, "Microphone not found")));
+                events.Add((0, State(PipelineState.Idle)));
+                events.Add((0, Finished(DictationOutcome.Error, DemoError)));
                 break;
         }
 
-        return (events, state == "listening" ? duration : 0);
+        return (events, state == ListeningState ? duration : 0);
     }
 }

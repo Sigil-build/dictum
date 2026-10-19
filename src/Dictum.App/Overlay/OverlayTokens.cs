@@ -14,11 +14,13 @@ public sealed record PaletteSpec(uint Wave1, uint Wave2, uint Wave3, uint Cleani
 /// </summary>
 public static class OverlayTokens
 {
+    // The window and the line's centre.
     public const double Width = 480;
     public const double Height = 96;
     public const double CenterY = 44;
     public const double MarginFromPanel = 4;
 
+    // The level meter: dBFS range, smoothing time constants and the longest step, silence detection.
     public const double FloorDb = -60;
     public const double CeilingDb = -26;
     public const double Attack = 0.030;
@@ -28,6 +30,7 @@ public static class OverlayTokens
     public const double SilenceHold = 0.5;
     public const int BandCount = 24;
 
+    // The listening waves: envelope, amplitudes, the breath, the polyline step and the gradient's ends.
     public const double EnvelopeSigma = 0.17;
     public const double AmplitudeFromLevel = 26;
     public const double AmplitudeFromBands = 26;
@@ -39,12 +42,14 @@ public static class OverlayTokens
     public const double Step = 4;
     public const double GradientInset = 40;
 
+    // Every stroke: core, glow and the dark offset shadow.
     public const double CoreWidth = 1.6;
     public const double GlowWidth = 9;
     public const double ShadowWidth = 3;
     public const double ShadowAlpha = 0.25;
     public const double ShadowOffsetY = 1;
 
+    // The Transcribing ripple and bump, and the Cleaning up standing wave.
     public const double TranscribingAmplitude = 2;
     public const double TranscribingCycles = 1.3;
     public const double TranscribingSpeed = 2;
@@ -54,7 +59,9 @@ public static class OverlayTokens
     public const double BumpStart = -0.15;
     public const double CleaningAmplitude = 7;
     public const double CleaningHz = 1.4;
+    public const double CleaningLobes = 3;
 
+    // Transitions and end states: their durations and delays, and each state's shapes.
     public const double Appear = 0.120;
     public const double TranscribingMerge = 0.320;
     public const double CleaningEnter = 0.250;
@@ -80,6 +87,7 @@ public static class OverlayTokens
     public const double IconShadowAlpha = 0.7;
     public const double IdleGrace = 1.0;
 
+    // The reduced-motion level bar.
     public const double MeterWidth = 240;
     public const double MeterHeight = 6;
     public const double MeterRadius = 3;
@@ -91,6 +99,7 @@ public static class OverlayTokens
     public const double MeterCleaningFill = 0.85;
     public const double MeterShadowAlpha = 0.25;
 
+    // Captions, the error line and the language chip.
     public const double CaptionSize = 11;
     public const double ErrorTextSize = 12;
     public const double ChipSize = 10;
@@ -105,6 +114,7 @@ public static class OverlayTokens
     public const double IconOffsetX = -72;
     public const double ErrorTextOffsetX = -58;
 
+    // Colours that do not change with the palette.
     public const uint TextFill = 0xFFF4F6FB;
     public const uint TextHalo = 0xBF000000;
     public const uint ChipBackground = 0x99141622;

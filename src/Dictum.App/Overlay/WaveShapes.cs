@@ -6,6 +6,15 @@ public static class WaveShapes
     private const double W = OverlayTokens.Width;
     private const double Cy = OverlayTokens.CenterY;
 
+    // The check mark's legs, as the design gives their lengths: the drawn length is split between them in this ratio.
+    private const double CheckFirstLeg = 7.07;
+    private const double CheckSecondLeg = 15.62;
+
+    // The check mark around its centre: from its start down to the corner, then up to its end.
+    private static readonly (double X, double Y) CheckStart = (-7, 0);
+    private static readonly (double X, double Y) CheckCorner = (-2, 5);
+    private static readonly (double X, double Y) CheckEnd = (8, -6);
+
     /// <summary>The horizontal envelope that keeps both ends flat.</summary>
     public static double Envelope(double x) =>
         Math.Exp(-Math.Pow(x / W - 0.5, 2) / (2 * OverlayTokens.EnvelopeSigma * OverlayTokens.EnvelopeSigma));
@@ -56,7 +65,8 @@ public static class WaveShapes
 
     /// <summary>The Cleaning up standing wave. <paramref name="ramp"/> is the 0–1 entrance.</summary>
     public static double CleaningY(double x, double time, double ramp) =>
-        Cy + OverlayTokens.CleaningAmplitude * ramp * Envelope(x) * Math.Sin(3 * Math.PI * x / W) * Math.Sin(2 * Math.PI * OverlayTokens.CleaningHz * time);
+        Cy + OverlayTokens.CleaningAmplitude * ramp * Envelope(x) * Math.Sin(OverlayTokens.CleaningLobes * Math.PI * x / W)
+            * Math.Sin(2 * Math.PI * OverlayTokens.CleaningHz * time);
 
     /// <summary>Walks a polyline from <paramref name="x0"/> to <paramref name="x1"/> in <see cref="OverlayTokens.Step"/> steps and ends exactly at x1.</summary>
     /// <param name="point">Gets x, y and whether it is the first point.</param>
@@ -77,17 +87,15 @@ public static class WaveShapes
     /// <summary>The check mark's points around its centre, drawn up to <paramref name="progress"/> of its length.</summary>
     public static IReadOnlyList<(double X, double Y)> CheckPath(double progress)
     {
-        // (−7, 0) → (−2, 5) → (8, −6), with the prototype's leg lengths.
-        const double first = 7.07;
-        const double second = 15.62;
-        var drawn = Math.Clamp(progress, 0, 1) * (first + second);
-        if (drawn <= first)
+        var drawn = Math.Clamp(progress, 0, 1) * (CheckFirstLeg + CheckSecondLeg);
+        if (drawn <= CheckFirstLeg)
         {
-            var k = drawn / first;
-            return [(-7, 0), (-7 + 5 * k, 5 * k)];
+            return [CheckStart, Along(CheckStart, CheckCorner, drawn / CheckFirstLeg)];
         }
 
-        var j = (drawn - first) / second;
-        return [(-7, 0), (-2, 5), (-2 + 10 * j, 5 - 11 * j)];
+        return [CheckStart, CheckCorner, Along(CheckCorner, CheckEnd, (drawn - CheckFirstLeg) / CheckSecondLeg)];
     }
+
+    private static (double X, double Y) Along((double X, double Y) from, (double X, double Y) to, double share) =>
+        (from.X + (to.X - from.X) * share, from.Y + (to.Y - from.Y) * share);
 }

@@ -8,6 +8,9 @@ namespace Dictum.App.Overlay;
 /// </summary>
 public sealed class LevelMeter
 {
+    /// <summary>The rms floor before the logarithm, so digital silence gives a finite level.</summary>
+    private const double MinRms = 1e-6;
+
     private readonly double[] _bands = new double[OverlayTokens.BandCount];
     private TimeSpan _last;
     private TimeSpan? _quietSince;
@@ -19,7 +22,7 @@ public sealed class LevelMeter
     public bool Quiet { get; private set; }
 
     public static double Target(float rms) =>
-        Math.Clamp((20 * Math.Log10(Math.Max(rms, 1e-6)) - OverlayTokens.FloorDb) / (OverlayTokens.CeilingDb - OverlayTokens.FloorDb), 0, 1);
+        Math.Clamp((20 * Math.Log10(Math.Max(rms, MinRms)) - OverlayTokens.FloorDb) / (OverlayTokens.CeilingDb - OverlayTokens.FloorDb), 0, 1);
 
     /// <summary>Starts from silence, as each dictation does.</summary>
     public void Reset(TimeSpan now)

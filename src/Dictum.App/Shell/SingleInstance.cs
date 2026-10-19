@@ -16,14 +16,22 @@ public sealed class SingleInstance : IAsyncDisposable
     /// <summary>Quits the running app as the tray's Quit does, for the install and uninstall scripts.</summary>
     public const string Quit = "quit";
 
+    private const string PingCommand = "ping";
+
+    private const string SocketSuffix = "-gui.sock";
+
+    private static readonly TimeSpan DefaultNotifyPatience = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan DefaultQuitPatience = TimeSpan.FromSeconds(15);
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(100);
 
     private readonly IpcServer _server;
 
     private SingleInstance(IpcServer server) => _server = server;
 
     public static string SocketPathFor(string daemonSocket) =>
-        Path.Combine(Path.GetDirectoryName(daemonSocket)!, Path.GetFileNameWithoutExtension(daemonSocket) + "-gui.sock");
+        Path.Combine(Path.GetDirectoryName(daemonSocket)!, Path.GetFileNameWithoutExtension(daemonSocket) + SocketSuffix);
 
     /// <summary>Becomes the instance, or returns null when another one holds the lock.</summary>
     /// <param name="onCommand">Gets each command a later launch sends; called on a server thread.</param>
@@ -55,17 +63,17 @@ public sealed class SingleInstance : IAsyncDisposable
     /// <exception cref="DaemonNotRunningException">Nobody answered in time.</exception>
     public static async Task NotifyAsync(string socketPath, string command, CancellationToken ct, TimeSpan? patience = null)
     {
-        var deadline = DateTime.UtcNow + (patience ?? TimeSpan.FromSeconds(5));
+        var deadline = DateTime.UtcNow + (patience ?? DefaultNotifyPatience);
         while (true)
         {
             try
             {
-                await new IpcClient(socketPath).SendAsync(new IpcRequest(command), ct, TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+                await new IpcClient(socketPath).SendAsync(new IpcRequest(command), ct, RequestTimeout).ConfigureAwait(false);
                 return;
             }
             catch (DaemonNotRunningException) when (DateTime.UtcNow < deadline)
             {
-                await Task.Delay(100, ct).ConfigureAwait(false);
+                await Task.Delay(PollInterval, ct).ConfigureAwait(false);
             }
         }
     }
@@ -80,17 +88,17 @@ public sealed class SingleInstance : IAsyncDisposable
     {
         var wait = patience ?? DefaultQuitPatience;
         var deadline = DateTime.UtcNow + wait;
-        if (await TryAsync(socketPath, Quit, ct, TimeSpan.FromSeconds(2)).ConfigureAwait(false) == Reply.Gone)
+        if (await TryAsync(socketPath, Quit, ct, RequestTimeout).ConfigureAwait(false) == Reply.Gone)
         {
             return false;
         }
 
         while (DateTime.UtcNow < deadline)
         {
-            await Task.Delay(100, ct).ConfigureAwait(false);
+            await Task.Delay(PollInterval, ct).ConfigureAwait(false);
 
             // Any command will do: the shell ignores what it does not know, and an instance that is gone answers nothing.
-            if (await TryAsync(socketPath, "ping", ct, TimeSpan.FromSeconds(1)).ConfigureAwait(false) == Reply.Gone)
+            if (await TryAsync(socketPath, PingCommand, ct, ProbeTimeout).ConfigureAwait(false) == Reply.Gone)
             {
                 return true;
             }
@@ -122,7 +130,7 @@ public sealed class SingleInstance : IAsyncDisposable
                 && await DaemonProcessAsync(daemonSocket, ct).ConfigureAwait(false) is { } daemon
                 && running.Contains(daemon))
             {
-                await TryAsync(daemonSocket, "shutdown", ct, TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+                await TryAsync(daemonSocket, "shutdown", ct, RequestTimeout).ConfigureAwait(false);
             }
 
             while (processes.RunningFrom(folder).Count > 0)
@@ -133,7 +141,7 @@ public sealed class SingleInstance : IAsyncDisposable
                     return 1;
                 }
 
-                await Task.Delay(100, ct).ConfigureAwait(false);
+                await Task.Delay(PollInterval, ct).ConfigureAwait(false);
             }
 
             return 0;
@@ -155,7 +163,7 @@ public sealed class SingleInstance : IAsyncDisposable
     {
         try
         {
-            var response = await new IpcClient(socket).SendAsync(new IpcRequest("status"), ct, TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+            var response = await new IpcClient(socket).SendAsync(new IpcRequest("status"), ct, ProbeTimeout).ConfigureAwait(false);
             return response.Status?.ProcessId;
         }
         catch (DaemonNotRunningException)

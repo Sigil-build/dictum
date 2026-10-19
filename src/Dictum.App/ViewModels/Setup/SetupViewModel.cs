@@ -20,10 +20,15 @@ namespace Dictum.App.ViewModels.Setup;
 /// </summary>
 public sealed partial class SetupViewModel : ViewModelBase
 {
+    private const int LanguagesIndex = 0;
+    private const int ModelIndex = 1;
     private const int CleanupIndex = 2;
     private const int DownloadsIndex = 5;
     private const int DownloadingIndex = 6;
     private const int ReadyIndex = 7;
+
+    /// <summary>A first setup offers the UI's language and English.</summary>
+    private const string English = "en";
 
     private readonly SetupServices _services;
     private readonly SetupStep[] _steps;
@@ -53,7 +58,7 @@ public sealed partial class SetupViewModel : ViewModelBase
             : null;
 
         Languages = new SetupLanguagesStep(resume?.Language ?? (current is null
-            ? LanguageList.Format([.. new[] { WhisperLanguages.Fallback(), "en" }.Distinct()])
+            ? LanguageList.Format([.. new[] { WhisperLanguages.Fallback(), English }.Distinct()])
             : defaults.Language));
         Model = new SetupModelStep(services, defaults.KeptModelFile, currentModel);
         Cleanup = new SetupCleanupStep(services.Server, defaults.Server);
@@ -78,7 +83,7 @@ public sealed partial class SetupViewModel : ViewModelBase
 
         if (resume is null)
         {
-            Go(0);
+            Go(LanguagesIndex);
         }
         else
         {
@@ -278,7 +283,7 @@ public sealed partial class SetupViewModel : ViewModelBase
         Current?.OnHidden();
         Error = null;
         Index = index;
-        if (index == 1)
+        if (index == ModelIndex)
         {
             Model.Language = Languages.Setting;
         }

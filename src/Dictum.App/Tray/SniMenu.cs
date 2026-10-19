@@ -8,6 +8,9 @@ namespace Dictum.App.Tray;
 /// </summary>
 public static class SniMenu
 {
+    /// <summary>Ids one build may use: every build starts at its generation times this.</summary>
+    private const int IdsPerGeneration = 1000;
+
     /// <param name="generation">1, 2, …: one per build.</param>
     /// <param name="rightAlignDetail">Plasma: a tab puts the languages in a right-aligned grey column.</param>
     public static (MenuNode Root, IReadOnlyDictionary<int, TrayMenuItem> Commands) Build(
@@ -15,7 +18,7 @@ public static class SniMenu
     {
         var commands = new Dictionary<int, TrayMenuItem>();
         var nodes = new List<MenuNode>();
-        var id = generation * 1000;
+        var id = generation * IdsPerGeneration;
         foreach (var item in items)
         {
             id++;

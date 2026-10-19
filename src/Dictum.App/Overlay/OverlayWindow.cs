@@ -42,7 +42,7 @@ public sealed class OverlayWindow : Window, IOverlaySurface
         TransparencyLevelHint = [WindowTransparencyLevel.Transparent];
         WindowStartupLocation = WindowStartupLocation.Manual;
         SizeToContent = SizeToContent.WidthAndHeight;
-        Title = "Dictum";
+        Title = AppNames.Product;
         Content = Canvas;
 
         // Before the first Show: X11 needs override-redirect before the first map, Win32 its style callback.

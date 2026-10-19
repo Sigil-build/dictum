@@ -10,8 +10,6 @@ namespace Dictum.App.Tray;
 /// </summary>
 public sealed class SniTrayPresenter : ITrayPresenter
 {
-    private static readonly TimeSpan FrameStep = TimeSpan.FromMilliseconds(200);
-
     private readonly StatusNotifierHost _host;
     private readonly string _iconDirectory;
     private readonly Func<bool> _highContrast;
@@ -70,7 +68,7 @@ public sealed class SniTrayPresenter : ITrayPresenter
                 _host.Menu.SetMenu(root);
             }
 
-            _animation.Change(view.Glyph == TrayGlyph.Processing ? FrameStep : Timeout.InfiniteTimeSpan, FrameStep);
+            _animation.Change(view.Glyph == TrayGlyph.Processing ? TrayGeometry.FrameStep : Timeout.InfiniteTimeSpan, TrayGeometry.FrameStep);
             Render();
         }
     }
@@ -108,7 +106,7 @@ public sealed class SniTrayPresenter : ITrayPresenter
 
         var icon = TraySvgIcons.Name(view.Glyph, _frame, colour: !_highContrast());
         _host.Item.Update(new SniState(
-            view.Attention ? "NeedsAttention" : "Active", icon, icon, _iconDirectory, "Dictum", "Dictum", view.Tooltip));
+            view.Attention ? "NeedsAttention" : "Active", icon, icon, _iconDirectory, AppNames.Product, AppNames.Product, view.Tooltip));
     }
 
     private static bool SameMenu(IReadOnlyList<TrayMenuItem>? a, IReadOnlyList<TrayMenuItem> b) => a is not null && a.SequenceEqual(b);

@@ -10,11 +10,14 @@ namespace Dictum.App.Tray;
 /// </summary>
 public static class TrayIconRenderer
 {
+    /// <summary>The bitmap's DPI: 96 makes one unit one pixel, so the panel's size is the bitmap's.</summary>
+    private const double Dpi = 96;
+
     /// <param name="mono">The shapes' colour: <see cref="TrayGeometry.MonoOnLight"/> or <see cref="TrayGeometry.MonoOnDark"/>.</param>
     /// <param name="colourLayer">False in high contrast: the red parts are drawn in <paramref name="mono"/>.</param>
     public static RenderTargetBitmap Render(TrayGlyph glyph, int frame, int size, Color mono, bool colourLayer)
     {
-        var bitmap = new RenderTargetBitmap(new PixelSize(size, size), new Vector(96, 96));
+        var bitmap = new RenderTargetBitmap(new PixelSize(size, size), new Vector(Dpi, Dpi));
         IBrush shapes = new SolidColorBrush(mono);
         IBrush red = colourLayer ? new SolidColorBrush(Color.Parse(TrayGeometry.ColourLayer)) : shapes;
         var round = new Pen(shapes, TrayGeometry.Stroke, lineCap: PenLineCap.Round);

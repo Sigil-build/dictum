@@ -14,6 +14,9 @@ public static class TraySvgIcons
 {
     private const string Mono = "class=\"ColorScheme-Text\"";
 
+    /// <summary>The grey that hosts without Plasma's recolouring (GNOME) draw the mono parts in.</summary>
+    private const string HostGrey = "#9AA0AE";
+
     public static string Name(TrayGlyph glyph, int frame = 0, bool colour = true) => glyph switch
     {
         TrayGlyph.Processing => $"dictum-processing-{frame % TrayGeometry.ProcessingFrames}",
@@ -48,26 +51,32 @@ public static class TraySvgIcons
     {
         var red = colour ? $"fill=\"{TrayGeometry.ColourLayer}\"" : $"{Mono} fill=\"currentColor\"";
         var redStroke = colour ? $"stroke=\"{TrayGeometry.ColourLayer}\"" : $"{Mono} stroke=\"currentColor\"";
+        var ring = Invariant(
+            $"<circle {Mono} cx=\"{TrayGeometry.Centre}\" cy=\"{TrayGeometry.Centre}\" r=\"{TrayGeometry.RingRadius}\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"{TrayGeometry.Stroke}\"");
         var svg = new StringBuilder()
-            .Append("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"32\" height=\"32\" viewBox=\"0 0 32 32\">")
-            .Append("<style id=\"current-color-scheme\" type=\"text/css\">.ColorScheme-Text { color:#9AA0AE; }</style>");
+            .Append(Invariant($"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"{TrayGeometry.Grid}\" height=\"{TrayGeometry.Grid}\" viewBox=\"0 0 {TrayGeometry.Grid} {TrayGeometry.Grid}\">"))
+            .Append($"<style id=\"current-color-scheme\" type=\"text/css\">.ColorScheme-Text {{ color:{HostGrey}; }}</style>");
         svg.Append(glyph == TrayGlyph.Processing
-            ? Invariant($"<circle {Mono} cx=\"16\" cy=\"16\" r=\"13\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\" stroke-dasharray=\"{TrayGeometry.DashOn} {TrayGeometry.DashOff}\" stroke-dashoffset=\"{TrayGeometry.DashOffset(frame):0.##}\"/>")
-            : $"<circle {Mono} cx=\"16\" cy=\"16\" r=\"13\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\"/>");
+            ? Invariant($"{ring} stroke-linecap=\"round\" stroke-dasharray=\"{TrayGeometry.DashOn} {TrayGeometry.DashOff}\" stroke-dashoffset=\"{TrayGeometry.DashOffset(frame):0.##}\"/>")
+            : ring + "/>");
         svg.Append(glyph switch
         {
-            TrayGlyph.Idle or TrayGlyph.Processing =>
-                $"<path {Mono} d=\"{TrayGeometry.WavePath}\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"3\" stroke-linecap=\"round\"/>",
-            TrayGlyph.Recording => $"<circle cx=\"16\" cy=\"16\" r=\"6\" {red}/>",
-            TrayGlyph.Error =>
-                $"<path d=\"M16 9v8.5\" {redStroke} stroke-width=\"3.2\" stroke-linecap=\"round\"/><circle cx=\"16\" cy=\"22.5\" r=\"1.9\" {red}/>",
-            TrayGlyph.Paused =>
-                $"<rect {Mono} x=\"11\" y=\"10\" width=\"3.4\" height=\"12\" rx=\"1.2\" fill=\"currentColor\"/>" +
-                $"<rect {Mono} x=\"17.6\" y=\"10\" width=\"3.4\" height=\"12\" rx=\"1.2\" fill=\"currentColor\"/>",
+            TrayGlyph.Idle or TrayGlyph.Processing => Invariant(
+                $"<path {Mono} d=\"{TrayGeometry.WavePath}\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"{TrayGeometry.Stroke}\" stroke-linecap=\"round\"/>"),
+            TrayGlyph.Recording => Invariant($"<circle cx=\"{TrayGeometry.Centre}\" cy=\"{TrayGeometry.Centre}\" r=\"{TrayGeometry.DotRadius}\" {red}/>"),
+            TrayGlyph.Error => Exclamation(red, redStroke),
+            TrayGlyph.Paused => PauseBar(TrayGeometry.PauseBarLeft) + PauseBar(TrayGeometry.PauseBarRight),
             _ => throw new ArgumentOutOfRangeException(nameof(glyph)),
         });
         return svg.Append("</svg>").ToString();
     }
+
+    private static string Exclamation(string red, string redStroke) =>
+        Invariant($"<path d=\"M{TrayGeometry.Centre} {TrayGeometry.ExclamationTop}v{TrayGeometry.ExclamationBottom - TrayGeometry.ExclamationTop}\" {redStroke} stroke-width=\"{TrayGeometry.ExclamationStroke}\" stroke-linecap=\"round\"/>")
+        + Invariant($"<circle cx=\"{TrayGeometry.Centre}\" cy=\"{TrayGeometry.ExclamationDotY}\" r=\"{TrayGeometry.ExclamationDotRadius}\" {red}/>");
+
+    private static string PauseBar(double left) =>
+        Invariant($"<rect {Mono} x=\"{left}\" y=\"{TrayGeometry.PauseBarTop}\" width=\"{TrayGeometry.PauseBarWidth}\" height=\"{TrayGeometry.PauseBarHeight}\" rx=\"{TrayGeometry.PauseBarRadius}\" fill=\"currentColor\"/>");
 
     private static (string Name, string Svg) Entry(TrayGlyph glyph, int frame = 0, bool colour = true) =>
         (Name(glyph, frame, colour), Svg(glyph, frame, colour));

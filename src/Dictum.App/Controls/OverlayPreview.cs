@@ -21,6 +21,14 @@ public sealed class OverlayPreview : Control
     private const double Top = 14;
     private const double Gap = 4;
     private const double Taskbar = 36;
+    private const double PanelRadius = 8;
+    private const double AppIconSize = 18;
+    private const double AppIconGap = 12;
+    private const double AppIconRadius = 4;
+
+    /// <summary>Desktop shown beside the overlay when the layout sets no width.</summary>
+    private const double UnconstrainedPadding = 96;
+
     private static readonly IBrush Desk = new SolidColorBrush(Color.Parse("#1E1F22"));
     private static readonly IBrush Bar = new SolidColorBrush(Color.Parse("#EB1C1C1E"));
     private static readonly IBrush[] Apps = [new SolidColorBrush(Color.Parse("#4C8DFF")), new SolidColorBrush(Color.Parse("#E8EAF0")), new SolidColorBrush(Color.Parse("#F2C94C"))];
@@ -46,7 +54,7 @@ public sealed class OverlayPreview : Control
         set => SetValue(PaletteProperty, value);
     }
 
-    /// <summary>The size setting's factor (0.8 / 1 / 1.25).</summary>
+    /// <summary>The size setting's factor, <see cref="OverlayTokens.SizeScale"/>.</summary>
     public double Zoom
     {
         get => GetValue(ZoomProperty);
@@ -64,7 +72,7 @@ public sealed class OverlayPreview : Control
     {
         Canvas.Zoom = Zoom;
         Canvas.Measure(Size.Infinity);
-        var width = double.IsInfinity(availableSize.Width) ? Canvas.DesiredSize.Width + 96 : availableSize.Width;
+        var width = double.IsInfinity(availableSize.Width) ? Canvas.DesiredSize.Width + UnconstrainedPadding : availableSize.Width;
         return new Size(width, Top + Canvas.DesiredSize.Height + Gap + Taskbar);
     }
 
@@ -78,14 +86,15 @@ public sealed class OverlayPreview : Control
     public override void Render(DrawingContext context)
     {
         var bounds = new Rect(Bounds.Size);
-        using (context.PushClip(new RoundedRect(bounds, 8)))
+        using (context.PushClip(new RoundedRect(bounds, PanelRadius)))
         {
             context.DrawRectangle(Desk, null, bounds);
             context.DrawRectangle(Bar, null, new Rect(0, bounds.Height - Taskbar, bounds.Width, Taskbar));
-            var left = (bounds.Width - (3 * 18 + 2 * 12)) / 2;
+            var left = (bounds.Width - (Apps.Length * AppIconSize + (Apps.Length - 1) * AppIconGap)) / 2;
             for (var i = 0; i < Apps.Length; i++)
             {
-                context.DrawRectangle(Apps[i], null, new RoundedRect(new Rect(left + i * 30, bounds.Height - Taskbar + 9, 18, 18), 4));
+                var icon = new Rect(left + i * (AppIconSize + AppIconGap), bounds.Height - Taskbar + (Taskbar - AppIconSize) / 2, AppIconSize, AppIconSize);
+                context.DrawRectangle(Apps[i], null, new RoundedRect(icon, AppIconRadius));
             }
         }
     }

@@ -14,8 +14,8 @@ namespace Dictum.App.Tray;
 [SupportedOSPlatform("windows")]
 public sealed class WindowsTrayPresenter : ITrayPresenter
 {
-    private readonly TrayIcon _icon = new() { ToolTipText = "Dictum" };
-    private readonly DispatcherTimer _animation = new() { Interval = TimeSpan.FromMilliseconds(200) };
+    private readonly TrayIcon _icon = new() { ToolTipText = AppNames.Product };
+    private readonly DispatcherTimer _animation = new() { Interval = TrayGeometry.FrameStep };
     private readonly Application _app;
     private readonly Func<bool> _highContrast;
     private TrayView? _view;

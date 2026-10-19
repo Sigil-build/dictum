@@ -41,6 +41,8 @@ public sealed partial class FileProgress(CatalogEntry entry, Action<FileProgress
 /// </summary>
 public sealed partial class SetupDownloadingStep(SetupServices services) : SetupStep
 {
+    private static readonly TimeSpan TickInterval = TimeSpan.FromSeconds(1);
+
     private readonly DownloadRate _rate = new(services.Time);
     private IDisposable? _tick;
     private bool _listening;
@@ -204,7 +206,7 @@ public sealed partial class SetupDownloadingStep(SetupServices services) : Setup
     {
         if (downloading && _listening && _tick is null)
         {
-            _tick = services.Timers.Every(TimeSpan.FromSeconds(1), () => Refresh(sample: true));
+            _tick = services.Timers.Every(TickInterval, () => Refresh(sample: true));
         }
         else if (!(downloading && _listening) && _tick is not null)
         {

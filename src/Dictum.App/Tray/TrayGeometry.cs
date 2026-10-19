@@ -20,6 +20,9 @@ public static class TrayGeometry
     public const double DashOff = 4.6;
     public const int ProcessingFrames = 5;
 
+    /// <summary>How long each processing frame shows.</summary>
+    public static readonly TimeSpan FrameStep = TimeSpan.FromMilliseconds(200);
+
     public const double ExclamationTop = 9;
     public const double ExclamationBottom = 17.5;
     public const double ExclamationStroke = 3.2;
