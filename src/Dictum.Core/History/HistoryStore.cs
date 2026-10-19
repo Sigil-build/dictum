@@ -97,6 +97,7 @@ public sealed class HistoryStore(string path, int maxEntries)
                 }
                 catch (JsonException)
                 {
+                    // A line cut short by a crash or edited by hand is skipped; the rest of the history still loads.
                 }
             }
 

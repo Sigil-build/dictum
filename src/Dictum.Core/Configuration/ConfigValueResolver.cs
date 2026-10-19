@@ -10,7 +10,7 @@ public interface ISecretStore
     Task DeleteAsync(string key, CancellationToken ct);
 }
 
-/// <summary>Placeholder until the platform secret stores land.</summary>
+/// <summary>Stands in where the OS has no supported secret store: every call fails and points at <c>env:VAR</c>.</summary>
 public sealed class UnavailableSecretStore : ISecretStore
 {
     private const string Message = "The OS secret store is not supported yet; use 'env:VAR' for API keys.";

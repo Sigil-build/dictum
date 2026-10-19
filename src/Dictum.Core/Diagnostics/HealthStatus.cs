@@ -7,7 +7,7 @@ public enum HealthLevel
     Error,
 }
 
-/// <param name="Hint">What the user can do to fix a non-OK status.</param>
+/// <param name="Hint">How to fix a non-OK status, e.g. the setting to change.</param>
 public sealed record HealthStatus(HealthLevel Level, string Detail, string? Hint = null)
 {
     public static HealthStatus Ok(string detail) => new(HealthLevel.Ok, detail);

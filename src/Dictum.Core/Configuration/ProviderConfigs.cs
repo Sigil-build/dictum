@@ -4,7 +4,7 @@ namespace Dictum.Core.Configuration;
 
 /// <summary>
 /// Base for STT provider settings. The <c>type</c> property selects the derived record.
-/// A new provider = a derived record here + an implementation + one registry line in Dictum.Host.
+/// A new provider is a derived record here, an implementation and one registry line in Dictum.Host.
 /// </summary>
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(WhisperLocalSttConfig), WhisperLocalSttConfig.TypeName)]

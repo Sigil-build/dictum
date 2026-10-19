@@ -25,8 +25,8 @@ public sealed partial class PromptTemplates(string userDirectory)
 
     /// <summary>
     /// The template by name. A user file is read again when its time or size changes, so an edit made in Settings or by
-    /// hand reaches the next dictation without a config reload; the daemon keeps one instance per engine (final review
-    /// C2). The cost is one file stat per load.
+    /// hand reaches the next dictation without a config reload, although the daemon keeps one instance per engine. The
+    /// cost is one file stat per load.
     /// </summary>
     public string Load(string name)
     {

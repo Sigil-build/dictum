@@ -3,9 +3,9 @@ using System.Runtime.InteropServices;
 
 namespace Dictum.Audio.PortAudio;
 
-/// <param name="Hint">What the user can do about it, shown separately from the message.</param>
 public sealed class AudioDeviceException(string message, string? hint = null) : Exception(message)
 {
+    /// <summary>How to fix it, shown apart from the message.</summary>
     public string? Hint { get; } = hint;
 }
 

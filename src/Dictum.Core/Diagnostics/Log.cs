@@ -77,7 +77,7 @@ public sealed class DictumLog : ILog, IDisposable
 
     public bool IncludeText { get; }
 
-    /// <summary>The log file, for messages that point the user at it; null without a logs directory.</summary>
+    /// <summary>The log file, for messages that point at it; null without a logs directory.</summary>
     public string? FilePath => _filePath;
 
     public void Write(LogLevel level, string message, Exception? exception = null)

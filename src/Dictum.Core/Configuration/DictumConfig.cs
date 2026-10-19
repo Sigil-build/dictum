@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Dictum.Core.Configuration;
 
-/// <summary>Root of <c>config.json</c>. See the implementation plan, section 5.</summary>
+/// <summary>Root of <c>config.json</c>.</summary>
 /// <remarks>
 /// Properties with non-default initial values use <c>set</c>, not <c>init</c>: the STJ source generator
 /// assigns every init-only property in an object initializer, which would reset a missing value to null.

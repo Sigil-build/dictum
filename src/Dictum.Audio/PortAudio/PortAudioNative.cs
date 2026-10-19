@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 
 namespace Dictum.Audio.PortAudio;
 
-/// <summary>Minimal PortAudio v19 bindings (blocking-read capture only).</summary>
+/// <summary>Minimal PortAudio v19 bindings for blocking capture and playback.</summary>
 internal static unsafe partial class PortAudioNative
 {
     public const string Library = "portaudio";

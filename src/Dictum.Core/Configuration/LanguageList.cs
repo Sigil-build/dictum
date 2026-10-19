@@ -54,7 +54,7 @@ public static class LanguageList
         return pairs;
     }
 
-    /// <summary>One sentence for the user, or null when nothing in the list sounds alike.</summary>
+    /// <summary>A one-sentence warning naming the pairs, or null when nothing in the list sounds alike.</summary>
     public static string? SimilarWarning(IReadOnlyList<string> codes)
     {
         var pairs = SimilarPairs(codes);

@@ -101,7 +101,7 @@ public static class ConfigValidator
         return issues;
     }
 
-    /// <summary>Null, "auto", or a two/three-letter language code.</summary>
+    /// <summary>Null, <c>auto</c>, one language code or a list of codes; see <see cref="LanguageList.Parse"/>.</summary>
     public static bool IsValidLanguage(string? language) => LanguageList.Parse(language) is not null;
 
     private static void ValidateStt(List<ConfigIssue> issues, string path, SttConfig stt)

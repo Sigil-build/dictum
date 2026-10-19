@@ -37,7 +37,7 @@ public sealed record DictationResult(
     bool Skipped = false,
     string? Model = null);
 
-/// <summary>Where the final text goes: stdout now, clipboard or simulated paste later.</summary>
+/// <summary>Where the final text goes: stdout, the clipboard or a simulated paste.</summary>
 public interface ITextOutput
 {
     Task WriteAsync(string text, CancellationToken ct);

@@ -162,6 +162,7 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
             }
             catch (AudioDeviceException)
             {
+                // The capture loop has already logged the error, and disposal must not throw.
             }
         }
     }
