@@ -61,6 +61,19 @@ public sealed class GeneralPageTests : IDisposable
     }
 
     [Fact]
+    public void ALoginItemThatCannotBeReadLeavesTheOtherRowsEditable()
+    {
+        var (page, session, _) = Open(new GeneralSettings { Sounds = true });
+        _autostart.ReadFails = new UnauthorizedAccessException("The login item cannot be read.");
+        Assert.Throws<UnauthorizedAccessException>(page.OnShown);
+        _autostart.ReadFails = null;
+
+        page.Sounds = false;
+
+        Assert.False(session.Config.General.Sounds);
+    }
+
+    [Fact]
     public void WithoutAConfigThePageCannotEdit() => Assert.False(Open(saved: false).Page.CanEdit);
 
     [Fact]

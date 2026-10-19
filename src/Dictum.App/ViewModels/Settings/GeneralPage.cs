@@ -310,8 +310,14 @@ public sealed partial class GeneralPage : SettingsPage
     private void ReadLoginItem()
     {
         _loading = true;
-        StartAtLogin = _services.Autostart?.Installed == LoginApp.DesktopApp;
-        _loading = false;
+        try
+        {
+            StartAtLogin = _services.Autostart?.Installed == LoginApp.DesktopApp;
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
 
     private async Task ApplyLoginItemAsync(bool enable)

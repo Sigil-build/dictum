@@ -61,7 +61,16 @@ internal sealed class FakeChannel : IDaemonChannel
 
 internal sealed class FakeAutostart : IAutostart
 {
-    public LoginApp? Installed { get; set; }
+    private LoginApp? _installed;
+
+    public LoginApp? Installed
+    {
+        get => ReadFails is { } fails ? throw fails : _installed;
+        set => _installed = value;
+    }
+
+    /// <summary>Thrown when <see cref="Installed"/> is read: a login item the OS will not show.</summary>
+    public Exception? ReadFails { get; set; }
 
     public LoginItem? Item { get; private set; }
 
