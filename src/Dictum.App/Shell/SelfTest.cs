@@ -54,30 +54,51 @@ public static class SelfTest
     /// </param>
     public static int Run(TextWriter output, bool avalonia = true)
     {
-        var failures = 0;
-        void Check(string name, bool ok, string detail)
+        var checks = new Checks(output);
+        var ukrainian = CheckStrings(checks);
+        CheckSvgIcons(checks);
+        CheckOverlayModel(checks);
+        if (avalonia)
         {
-            output.WriteLine($"{(ok ? "ok  " : "FAIL")} {name}: {detail}");
-            failures += ok ? 0 : 1;
+            Program.BuildAvaloniaApp().SetupWithoutStarting();
+            CheckTokens(checks, Application.Current!);
+            CheckTrayIcons(checks);
+            CheckOverlay(checks);
+            checks.Add("settings views", SettingsViews(out var views), views);
+            UiCulture.Apply(UiCulture.Ukrainian);
+            checks.Add("ui culture", Strings.MenuQuit == ukrainian, $"\"{Strings.MenuQuit}\" with {CultureInfo.CurrentUICulture.Name}");
         }
 
+        return checks.Failures == 0 ? 0 : 1;
+    }
+
+    /// <summary>Both resource sets are in. Returns the Ukrainian text the UI culture check expects.</summary>
+    private static string CheckStrings(Checks checks)
+    {
         var english = Strings.ResourceManager.GetString(nameof(Strings.MenuQuit), CultureInfo.InvariantCulture) ?? "";
         var ukrainian = Strings.ResourceManager.GetString(nameof(Strings.MenuQuit), CultureInfo.GetCultureInfo(UiCulture.Ukrainian)) ?? "";
-        Check("strings", english == "Quit Dictum" && ukrainian.Any(c => c is >= 'А' and <= 'я'), $"en \"{english}\", uk \"{ukrainian}\"");
+        checks.Add("strings", english == "Quit Dictum" && ukrainian.Any(c => c is >= 'А' and <= 'я'), $"en \"{english}\", uk \"{ukrainian}\"");
+        return ukrainian;
+    }
 
+    private static void CheckSvgIcons(Checks checks)
+    {
         var icons = Path.Combine(Path.GetTempPath(), $"dictum-self-test-{Environment.ProcessId}");
         try
         {
             TraySvgIcons.WriteAll(icons);
             var files = Directory.GetFiles(icons, "*.svg").Length;
-            Check("svg icons", files == TrayIconFiles, $"{files} files");
+            checks.Add("svg icons", files == TrayIconFiles, $"{files} files");
         }
         finally
         {
             Directory.Delete(icons, recursive: true);
         }
+    }
 
-        // The overlay's maths: half a second at −40 dBFS, then silence.
+    /// <summary>The overlay's maths: half a second at −40 dBFS, then silence.</summary>
+    private static void CheckOverlayModel(Checks checks)
+    {
         var meter = new LevelMeter();
         meter.Reset(TimeSpan.Zero);
         var speaking = 0.0;
@@ -90,64 +111,61 @@ public static class SelfTest
             }
         }
 
-        Check("overlay model", Math.Abs(speaking - ExpectedLevel) < LevelTolerance && meter.Quiet,
+        checks.Add("overlay model", Math.Abs(speaking - ExpectedLevel) < LevelTolerance && meter.Quiet,
             string.Create(CultureInfo.InvariantCulture, $"level {speaking:0.00} at -40 dBFS, then silence"));
+    }
 
-        if (avalonia)
+    private static void CheckTokens(Checks checks, Application app)
+    {
+        var dark = app.TryGetResource(BaseColourToken, ThemeVariant.Dark, out var darkBrush) ? darkBrush : null;
+        var light = app.TryGetResource(BaseColourToken, ThemeVariant.Light, out var lightBrush) ? lightBrush : null;
+        checks.Add("tokens", dark is ISolidColorBrush d && light is ISolidColorBrush l && d.Color != l.Color, $"{BaseColourToken} in both themes");
+    }
+
+    private static void CheckTrayIcons(Checks checks)
+    {
+        var drawn = 0;
+        var empty = new List<string>();
+        foreach (var glyph in Enum.GetValues<TrayGlyph>())
         {
-            Program.BuildAvaloniaApp().SetupWithoutStarting();
-            var app = Application.Current!;
-            var dark = app.TryGetResource(BaseColourToken, ThemeVariant.Dark, out var darkBrush) ? darkBrush : null;
-            var light = app.TryGetResource(BaseColourToken, ThemeVariant.Light, out var lightBrush) ? lightBrush : null;
-            Check("tokens", dark is ISolidColorBrush d && light is ISolidColorBrush l && d.Color != l.Color, $"{BaseColourToken} in both themes");
-
-            var drawn = 0;
-            var empty = new List<string>();
-            foreach (var glyph in Enum.GetValues<TrayGlyph>())
+            foreach (var size in TrayGeometry.Sizes)
             {
-                foreach (var size in TrayGeometry.Sizes)
+                using var bitmap = TrayIconRenderer.Render(glyph, 0, size, Color.Parse(TrayGeometry.MonoOnDark), colourLayer: true);
+                _ = new WindowIcon(bitmap);
+                drawn++;
+                if (!HasInk(bitmap))
                 {
-                    using var bitmap = TrayIconRenderer.Render(glyph, 0, size, Color.Parse(TrayGeometry.MonoOnDark), colourLayer: true);
-                    _ = new WindowIcon(bitmap);
-                    drawn++;
-                    if (!HasInk(bitmap))
-                    {
-                        empty.Add($"{glyph}@{size}");
-                    }
+                    empty.Add($"{glyph}@{size}");
                 }
             }
-
-            Check("tray icons", empty.Count == 0, empty.Count == 0 ? $"{drawn} bitmaps" : $"empty: {string.Join(", ", empty)}");
-
-            var canvas = new OverlayCanvas();
-            var blank = new List<string>();
-            var scenes = 0;
-            foreach (var reduced in new[] { false, true })
-            {
-                foreach (var phase in Enum.GetValues<OverlayPhase>().Where(p => p != OverlayPhase.Hidden))
-                {
-                    canvas.Scene = new OverlayScene(phase, 0.15, 1, 1, 0.6, false, [0.5, 0.4, 0.3, 0.2, 0.1], "UK/EN", "Microphone not found", reduced, OverlayPalette.Aurora);
-                    canvas.Measure(Size.Infinity);
-                    canvas.Arrange(new Rect(canvas.DesiredSize));
-                    using var bitmap = new RenderTargetBitmap(new PixelSize((int)OverlayTokens.Width, (int)OverlayTokens.Height));
-                    bitmap.Render(canvas);
-                    scenes++;
-                    if (!HasInk(bitmap, OverlayInkAlpha))
-                    {
-                        blank.Add(reduced ? $"{phase} (reduced)" : phase.ToString());
-                    }
-                }
-            }
-
-            Check("overlay", blank.Count == 0, blank.Count == 0 ? $"{scenes} scenes" : $"blank: {string.Join(", ", blank)}");
-
-            Check("settings views", SettingsViews(out var views), views);
-
-            UiCulture.Apply(UiCulture.Ukrainian);
-            Check("ui culture", Strings.MenuQuit == ukrainian, $"\"{Strings.MenuQuit}\" with {CultureInfo.CurrentUICulture.Name}");
         }
 
-        return failures == 0 ? 0 : 1;
+        checks.Add("tray icons", empty.Count == 0, empty.Count == 0 ? $"{drawn} bitmaps" : $"empty: {string.Join(", ", empty)}");
+    }
+
+    private static void CheckOverlay(Checks checks)
+    {
+        var canvas = new OverlayCanvas();
+        var blank = new List<string>();
+        var scenes = 0;
+        foreach (var reduced in new[] { false, true })
+        {
+            foreach (var phase in Enum.GetValues<OverlayPhase>().Where(p => p != OverlayPhase.Hidden))
+            {
+                canvas.Scene = new OverlayScene(phase, 0.15, 1, 1, 0.6, false, [0.5, 0.4, 0.3, 0.2, 0.1], "UK/EN", "Microphone not found", reduced, OverlayPalette.Aurora);
+                canvas.Measure(Size.Infinity);
+                canvas.Arrange(new Rect(canvas.DesiredSize));
+                using var bitmap = new RenderTargetBitmap(new PixelSize((int)OverlayTokens.Width, (int)OverlayTokens.Height));
+                bitmap.Render(canvas);
+                scenes++;
+                if (!HasInk(bitmap, OverlayInkAlpha))
+                {
+                    blank.Add(reduced ? $"{phase} (reduced)" : phase.ToString());
+                }
+            }
+        }
+
+        checks.Add("overlay", blank.Count == 0, blank.Count == 0 ? $"{scenes} scenes" : $"blank: {string.Join(", ", blank)}");
     }
 
     /// <summary>Builds each Settings page's view from compiled XAML; a trimmed type or binding throws here.</summary>
@@ -195,6 +213,7 @@ public static class SelfTest
         }
         catch (Exception ex)
         {
+            // Whatever a trimmed build throws here is the failure this check looks for.
             detail = ex.Message;
             return false;
         }
@@ -204,6 +223,18 @@ public static class SelfTest
             {
                 Directory.Delete(folder, recursive: true);
             }
+        }
+    }
+
+    /// <summary>Prints one line per check and counts the failures.</summary>
+    private sealed class Checks(TextWriter output)
+    {
+        public int Failures { get; private set; }
+
+        public void Add(string name, bool ok, string detail)
+        {
+            output.WriteLine($"{(ok ? "ok  " : "FAIL")} {name}: {detail}");
+            Failures += ok ? 0 : 1;
         }
     }
 

@@ -158,72 +158,12 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     public void Start(Application app, Action<int> shutdown)
     {
         _shutdown = shutdown;
-        _highContrast = IsHighContrast(app);
-        if (app.PlatformSettings is { } settings)
-        {
-            settings.ColorValuesChanged += (_, _) => Dispatcher.UIThread.Post(() =>
-            {
-                _highContrast = IsHighContrast(app);
-                _presenter?.Refresh();
-            });
-        }
-
-        Supervisor.LinkChanged += link => Dispatcher.UIThread.Post(() =>
-        {
-            Status.OnLink(link);
-            _tray.OnLink(link);
-            Overlay.OnLink(link);
-            _settings?.OnLink(link);
-            _setup?.OnLink(link);
-        });
-        Supervisor.EventReceived += message =>
-        {
-            // Frames come every 20 ms: the overlay keeps the newest one without a trip through the UI thread.
-            if (message.Event == "frame")
-            {
-                Overlay.OnFrame(message);
-                Frames.Publish(message);
-                return;
-            }
-
-            Dispatcher.UIThread.Post(() =>
-            {
-                _tray.OnEvent(message);
-                Overlay.OnEvent(message);
-                _setup?.OnEvent(message);
-            });
-        };
-
+        FollowContrast(app);
+        ListenToSupervisor();
         var config = TryLoadConfig();
         _tray.OnConfig(config);
         Overlay.OnConfig(config);
-        try
-        {
-            _watcher = new ConfigWatcher(
-                _store,
-                (changed, _) =>
-                {
-                    Dispatcher.UIThread.Post(() =>
-                    {
-                        _tray.OnConfig(changed);
-                        Overlay.OnConfig(changed);
-                        _settings?.Session.OnFileChanged(changed);
-                    });
-                    return Task.CompletedTask;
-                },
-                invalid =>
-                {
-                    Dispatcher.UIThread.Post(() => _settings?.Session.OnFileInvalid(invalid));
-                    return Task.CompletedTask;
-                },
-                _log);
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
-        {
-            // Linux can run out of inotify instances; the tray then misses config edits until the next start.
-            _log.Warn($"Not watching the config for changes: {ex.Message}");
-        }
-
+        WatchConfig();
         _tick = new DispatcherTimer { Interval = TrayTickInterval };
         _tick.Tick += (_, _) => _tray.Tick();
         _tick.Start();
@@ -250,6 +190,79 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         if (_quitWhenStarted)
         {
             Quit();
+        }
+    }
+
+    private void FollowContrast(Application app)
+    {
+        _highContrast = IsHighContrast(app);
+        if (app.PlatformSettings is { } settings)
+        {
+            settings.ColorValuesChanged += (_, _) => Dispatcher.UIThread.Post(() =>
+            {
+                _highContrast = IsHighContrast(app);
+                _presenter?.Refresh();
+            });
+        }
+    }
+
+    /// <summary>The supervisor raises its events on its own thread; all but frames go on to the UI thread.</summary>
+    private void ListenToSupervisor()
+    {
+        Supervisor.LinkChanged += link => Dispatcher.UIThread.Post(() =>
+        {
+            Status.OnLink(link);
+            _tray.OnLink(link);
+            Overlay.OnLink(link);
+            _settings?.OnLink(link);
+            _setup?.OnLink(link);
+        });
+        Supervisor.EventReceived += message =>
+        {
+            // Frames come every 20 ms: the overlay keeps the newest one without a trip through the UI thread.
+            if (message.Event == "frame")
+            {
+                Overlay.OnFrame(message);
+                Frames.Publish(message);
+                return;
+            }
+
+            Dispatcher.UIThread.Post(() =>
+            {
+                _tray.OnEvent(message);
+                Overlay.OnEvent(message);
+                _setup?.OnEvent(message);
+            });
+        };
+    }
+
+    private void WatchConfig()
+    {
+        try
+        {
+            _watcher = new ConfigWatcher(
+                _store,
+                (changed, _) =>
+                {
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        _tray.OnConfig(changed);
+                        Overlay.OnConfig(changed);
+                        _settings?.Session.OnFileChanged(changed);
+                    });
+                    return Task.CompletedTask;
+                },
+                invalid =>
+                {
+                    Dispatcher.UIThread.Post(() => _settings?.Session.OnFileInvalid(invalid));
+                    return Task.CompletedTask;
+                },
+                _log);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            // Linux can run out of inotify instances; the tray then misses config edits until the next start.
+            _log.Warn($"Not watching the config for changes: {ex.Message}");
         }
     }
 
@@ -287,36 +300,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             return;
         }
 
-        var session = new SettingsSession(_store, UiTimers.Instance, _log);
-        session.Load();
-        var general = new GeneralPage(session, new GeneralServices(
-            Supervisor, Frames, UiTimers.Instance, _autostart, InstallLocation.AppImage ?? Environment.ProcessPath, _sounds, TimeProvider.System, _log));
-        general.SetupRequested += ShowSetup;
-        var profiles = new ProfilesPage(session, Supervisor, _log);
-        var providers = new SpeechProvidersPage(session, new SpeechServices(
-            Supervisor, Frames, UiTimers.Instance, _secrets ??= PlatformFactory.CreateSecretStore(_log),
-            current => WhisperModels.Choices(_paths, Catalog.BuiltIn, current), model => WhisperModels.IsPresent(_paths, model),
-            wait => Task.Delay(wait), TimeProvider.System, _log));
-        var system = new SystemPage(new SystemServices(
-            Supervisor, Status, () => OverlayRow(session), TrayRow, UiTimers.Instance, TimeProvider.System, DesktopName()));
-        var runner = _runner ??= new ProcessorRunner(_paths, _secrets ??= PlatformFactory.CreateSecretStore(_log), _log);
-        var processors = new ProcessorsPage(session, new ProcessorsServices(runner, _secrets, new PromptFiles(_paths.PromptsDirectory), UiTimers.Instance, _log));
-        var models = new ModelsPage(session, new ModelsServices(
-            _paths, Catalog.BuiltIn, _modelDownloads ?? ModelDownloads.None,
-            Hardware, () => HardwareProbe.FreeDiskBytes(_paths),
-            GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, Environment.ProcessorCount, _measurements, Supervisor, UiTimers.Instance,
-            wait => Task.Delay(wait), TimeProvider.System, _log));
-        var history = new HistoryPage(session, _paths.HistoryFile, new WindowClipboard(() => _settingsWindow), runner, _log);
-        var settings = new SettingsViewModel(session,
-        [
-            (SettingsPageKey.General, general),
-            (SettingsPageKey.Profiles, profiles),
-            (SettingsPageKey.SpeechProviders, providers),
-            (SettingsPageKey.Processors, processors),
-            (SettingsPageKey.Models, models),
-            (SettingsPageKey.System, system),
-            (SettingsPageKey.History, history),
-        ]);
+        var settings = CreateSettings();
         var window = new SettingsWindow { DataContext = settings };
         window.Closed += (_, _) =>
         {
@@ -327,6 +311,41 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         _settingsWindow = window;
         settings.Open(page);
         window.Show();
+    }
+
+    /// <summary>The Settings pages over a fresh session of the config file.</summary>
+    private SettingsViewModel CreateSettings()
+    {
+        var session = new SettingsSession(_store, UiTimers.Instance, _log);
+        session.Load();
+        var general = new GeneralPage(session, new GeneralServices(
+            Supervisor, Frames, UiTimers.Instance, _autostart, OwnExecutable(), _sounds, TimeProvider.System, _log));
+        general.SetupRequested += ShowSetup;
+        var profiles = new ProfilesPage(session, Supervisor, _log);
+        var providers = new SpeechProvidersPage(session, new SpeechServices(
+            Supervisor, Frames, UiTimers.Instance, Secrets,
+            current => WhisperModels.Choices(_paths, Catalog.BuiltIn, current), model => WhisperModels.IsPresent(_paths, model),
+            wait => Task.Delay(wait), TimeProvider.System, _log));
+        var system = new SystemPage(new SystemServices(
+            Supervisor, Status, () => OverlayRow(session), TrayRow, UiTimers.Instance, TimeProvider.System, DesktopName()));
+        var runner = _runner ??= new ProcessorRunner(_paths, Secrets, _log);
+        var processors = new ProcessorsPage(session, new ProcessorsServices(runner, Secrets, new PromptFiles(_paths.PromptsDirectory), UiTimers.Instance, _log));
+        var models = new ModelsPage(session, new ModelsServices(
+            _paths, Catalog.BuiltIn, _modelDownloads ?? ModelDownloads.None,
+            Hardware, FreeDiskBytes,
+            GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, Environment.ProcessorCount, _measurements, Supervisor, UiTimers.Instance,
+            wait => Task.Delay(wait), TimeProvider.System, _log));
+        var history = new HistoryPage(session, _paths.HistoryFile, new WindowClipboard(() => _settingsWindow), runner, _log);
+        return new SettingsViewModel(session,
+        [
+            (SettingsPageKey.General, general),
+            (SettingsPageKey.Profiles, profiles),
+            (SettingsPageKey.SpeechProviders, providers),
+            (SettingsPageKey.Processors, processors),
+            (SettingsPageKey.Models, models),
+            (SettingsPageKey.System, system),
+            (SettingsPageKey.History, history),
+        ]);
     }
 
     /// <summary>
@@ -368,11 +387,11 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
 
     private SetupViewModel CreateSetup()
     {
-        var secrets = _secrets ??= PlatformFactory.CreateSecretStore(_log);
+        var secrets = Secrets;
         var setup = new SetupViewModel(new SetupServices(
-            _paths, _store, Catalog.BuiltIn, _modelDownloads ?? ModelDownloads.None, Hardware, () => HardwareProbe.FreeDiskBytes(_paths),
+            _paths, _store, Catalog.BuiltIn, _modelDownloads ?? ModelDownloads.None, Hardware, FreeDiskBytes,
             GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, Environment.ProcessorCount, _measurements,
-            new ServerProbe(_serverHttp ??= new HttpClient(), secrets, TimeProvider.System), secrets, _autostart, InstallLocation.AppImage ?? Environment.ProcessPath,
+            new ServerProbe(_serverHttp ??= new HttpClient(), secrets, TimeProvider.System), secrets, _autostart, OwnExecutable(),
             SetupTray(), Supervisor, Supervisor.Restart, UiTimers.Instance, TimeProvider.System, _log),
             SavedSetupFile.Load(_paths, _log));
         setup.Finished += () =>
@@ -395,8 +414,16 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         return setup;
     }
 
+    /// <summary>The OS secret store, opened when first needed.</summary>
+    private ISecretStore Secrets => _secrets ??= PlatformFactory.CreateSecretStore(_log);
+
     /// <summary>The one GPU probe, run once off the UI thread; Settings → Models and the wizard share it.</summary>
     private Task<HardwareInfo> Hardware() => _hardware ??= Task.Run(_probeHardware);
+
+    private long FreeDiskBytes() => HardwareProbe.FreeDiskBytes(_paths);
+
+    /// <summary>What a login item starts: the AppImage when Dictum runs from one, this executable otherwise.</summary>
+    private static string? OwnExecutable() => InstallLocation.AppImage ?? Environment.ProcessPath;
 
     private TrayHint SetupTray()
     {
@@ -415,6 +442,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         }
         catch (Exception ex)
         {
+            // Quit ends the app even when the daemon could not be stopped.
             _log.Error($"Quit: {ex.Message}", ex);
         }
 
@@ -442,7 +470,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         await Supervisor.DisposeAsync().ConfigureAwait(false);
     }
 
-    private static bool IsHighContrast(Application app) =>
+    internal static bool IsHighContrast(Application app) =>
         app.PlatformSettings?.GetColorValues().ContrastPreference == ColorContrastPreference.High;
 
     private static SystemRow OverlayRow(SettingsSession session) =>
@@ -492,6 +520,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         }
         catch (Exception ex)
         {
+            // Without a tray the app goes on: the System page says so and stands in for it.
             _log.Error($"The tray icon could not start: {ex.Message}", ex);
             NoTray();
         }
@@ -507,7 +536,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     private void StartDownloads()
     {
         _http = FileDownloader.CreateHttpClient(LoginItem.DesktopAppName);
-        _downloads = new DownloadQueue(new FileDownloader(_http), _paths, Catalog.BuiltIn, () => HardwareProbe.FreeDiskBytes(_paths));
+        _downloads = new DownloadQueue(new FileDownloader(_http), _paths, Catalog.BuiltIn, FreeDiskBytes);
         var queue = _downloads;
         _modelDownloads = new QueueDownloads(queue, action => Dispatcher.UIThread.Post(action));
         queue.Changed += _ => Dispatcher.UIThread.Post(() => _tray.OnDownloads(QueueProgress.Of(queue.Items)));

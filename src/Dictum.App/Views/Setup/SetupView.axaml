@@ -55,8 +55,8 @@
                 </StackPanel>
               </Border>
               <CheckBox IsChecked="{Binding DetectAny}" AutomationProperties.Name="{x:Static res:Strings.SetupLanguagesAuto}">
-                  <TextBlock Text="{x:Static res:Strings.SetupLanguagesAuto}" TextWrapping="Wrap" />
-                </CheckBox>
+                <TextBlock Text="{x:Static res:Strings.SetupLanguagesAuto}" TextWrapping="Wrap" />
+              </CheckBox>
             </StackPanel>
           </Grid>
         </DataTemplate>
@@ -112,8 +112,8 @@
               <Border Classes="pickRow card" Classes.on="{Binding UseServer}">
                 <StackPanel Spacing="10">
                   <RadioButton GroupName="setupCleanup" IsChecked="{Binding UseServer}" AutomationProperties.Name="{x:Static res:Strings.SetupCleanupServer}">
-                  <TextBlock Text="{x:Static res:Strings.SetupCleanupServer}" TextWrapping="Wrap" />
-                </RadioButton>
+                    <TextBlock Text="{x:Static res:Strings.SetupCleanupServer}" TextWrapping="Wrap" />
+                  </RadioButton>
                   <Grid ColumnDefinitions="*,8,*" RowDefinitions="Auto,8,Auto" Margin="30,0,0,0" IsEnabled="{Binding UseServer}">
                     <StackPanel Spacing="4">
                       <TextBlock Text="{x:Static res:Strings.SettingsProvidersUrl}" Classes="hint" />
@@ -170,8 +170,8 @@
             </Border>
             <Border Classes="pickRow" Classes.on="{Binding StartManually}" IsEnabled="{Binding IsAvailable}">
               <RadioButton GroupName="setupLogin" IsChecked="{Binding StartManually}" VerticalAlignment="Center" AutomationProperties.Name="{x:Static res:Strings.SetupLoginNo}">
-                  <TextBlock Text="{x:Static res:Strings.SetupLoginNo}" TextWrapping="Wrap" />
-                </RadioButton>
+                <TextBlock Text="{x:Static res:Strings.SetupLoginNo}" TextWrapping="Wrap" />
+              </RadioButton>
             </Border>
             <TextBlock Classes="hint" Text="{x:Static res:Strings.SetupLoginUnavailable}" IsVisible="{Binding !IsAvailable}" />
           </StackPanel>
@@ -221,8 +221,8 @@
               <TextBlock Text="{Binding SpaceError}" Classes="error" IsVisible="{Binding SpaceError, Converter={x:Static ObjectConverters.IsNotNull}}" />
               <TextBlock Text="{Binding Error}" Classes="error" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
               <CheckBox IsChecked="{Binding Consent}" IsVisible="{Binding HasFiles}" AutomationProperties.Name="{x:Static res:Strings.SetupDownloadsConsent}">
-                  <TextBlock Text="{x:Static res:Strings.SetupDownloadsConsent}" TextWrapping="Wrap" />
-                </CheckBox>
+                <TextBlock Text="{x:Static res:Strings.SetupDownloadsConsent}" TextWrapping="Wrap" />
+              </CheckBox>
             </StackPanel>
           </ScrollViewer>
         </DataTemplate>

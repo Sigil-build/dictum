@@ -1,4 +1,3 @@
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Daemon;
@@ -113,7 +112,7 @@ public sealed partial class SetupReadyStep(TrayHint tray, IDaemonChannel daemon,
         { Event: "finished", Outcome: DictationOutcome.Copied } => Strings.SetupReadyCopied,
         { Event: "finished", Outcome: DictationOutcome.Empty } => Strings.SetupReadyEmpty,
         { Event: "finished", Outcome: DictationOutcome.Cancelled } => Strings.OverlayCancelled,
-        { Event: "finished", Outcome: DictationOutcome.Error, Message: { } why } => Format(Strings.SetupReadyDictationFailed, why),
+        { Event: "finished", Outcome: DictationOutcome.Error, Message: { } why } => UiText.Format(Strings.SetupReadyDictationFailed, why),
         { Event: "finished", Outcome: DictationOutcome.Error } => Strings.OverlayFailed,
         _ => TryResult,
     };
@@ -145,7 +144,7 @@ public sealed partial class SetupReadyStep(TrayHint tray, IDaemonChannel daemon,
         (DaemonText, IsReady, HasProblem, CanRestart) = _link switch
         {
             { State: DaemonLinkState.Connected, Status: { } status } => Connected(status),
-            { State: DaemonLinkState.Failed } => (Format(Strings.SetupReadyFailed, _link.Problem ?? Strings.StatusFailed), false, true, true),
+            { State: DaemonLinkState.Failed } => (UiText.Format(Strings.SetupReadyFailed, _link.Problem ?? Strings.StatusFailed), false, true, true),
             { State: DaemonLinkState.VersionMismatch } => (Strings.StatusVersionMismatch, false, true, true),
             { State: DaemonLinkState.Stopped } => (Strings.StatusStopped, false, true, false),
             _ => (Strings.SetupReadyStarting, false, false, false),
@@ -169,7 +168,7 @@ public sealed partial class SetupReadyStep(TrayHint tray, IDaemonChannel daemon,
         {
             // The daemon's own reason when it gives one (no hotkey backend on this desktop, a backend error); otherwise the
             // usual guess.
-            return (status.Warning is { Length: > 0 } reason ? Format(Strings.SetupReadyHotkeyFailed, reason) : Strings.SettingsProfilesNotRegistered,
+            return (status.Warning is { Length: > 0 } reason ? UiText.Format(Strings.SetupReadyHotkeyFailed, reason) : Strings.SettingsProfilesNotRegistered,
                 false, true, false);
         }
 
@@ -178,6 +177,4 @@ public sealed partial class SetupReadyStep(TrayHint tray, IDaemonChannel daemon,
             ? (Strings.SetupReadyLoading, false, false, false)
             : (Strings.SetupReadyRunning, true, false, false);
     }
-
-    private static string Format(string format, string value) => string.Format(CultureInfo.CurrentCulture, format, value);
 }

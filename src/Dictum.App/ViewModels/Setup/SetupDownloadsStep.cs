@@ -1,4 +1,3 @@
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
@@ -18,7 +17,7 @@ public sealed partial class SetupDownloadsStep(SetupServices services) : SetupSt
 {
     public override string Name => Strings.SetupStepDownloads;
 
-    public string FolderText { get; } = string.Format(CultureInfo.CurrentCulture, Strings.SetupDownloadsLead, services.Paths.ModelsDirectory);
+    public string FolderText { get; } = UiText.Format(Strings.SetupDownloadsLead, services.Paths.ModelsDirectory);
 
     [ObservableProperty]
     public partial IReadOnlyList<DownloadRow> Rows { get; private set; } = [];
@@ -62,14 +61,14 @@ public sealed partial class SetupDownloadsStep(SetupServices services) : SetupSt
         Rows = [.. Files.Select(e => new DownloadRow(e.File, Units.Size(e.Size), e.Licence.Name, ModelText.Source(e)))];
         HasFiles = Files.Count > 0;
         TotalText = Units.Size(Files.Sum(e => e.Size));
-        var present = wanted.Where(e => !Files.Contains(e)).Select(e => Format(Strings.SetupDownloadsPresentItem, ModelText.Name(e), Units.Size(e.Size))).ToList();
-        PresentNote = plan is null || present.Count == 0 ? null : Format(Strings.SetupDownloadsPresent, string.Join(", ", present));
+        var present = wanted.Where(e => !Files.Contains(e)).Select(e => UiText.Format(Strings.SetupDownloadsPresentItem, ModelText.Name(e), Units.Size(e.Size))).ToList();
+        PresentNote = plan is null || present.Count == 0 ? null : UiText.Format(Strings.SetupDownloadsPresent, string.Join(", ", present));
         PrivacyText = server is not null && Uri.TryCreate(server.BaseUrl, UriKind.Absolute, out var url) && !url.IsLoopback
-            ? Format(Strings.SetupPrivacyServer, url.Host)
+            ? UiText.Format(Strings.SetupPrivacyServer, url.Host)
             : Strings.SetupPrivacyLocal;
         var needed = SetupRunner.NeededBytes(services.Paths, Files);
         var free = services.FreeDiskBytes();
-        SpaceError = needed > 0 && free < needed ? Format(Strings.SetupDownloadsNoSpace, Units.Size(needed), Units.Size(free)) : null;
+        SpaceError = needed > 0 && free < needed ? UiText.Format(Strings.SetupDownloadsNoSpace, Units.Size(needed), Units.Size(free)) : null;
         ConfigNote = replacesInvalid ? Strings.SetupDownloadsReplacesConfig : null;
         Update();
     }
@@ -77,6 +76,4 @@ public sealed partial class SetupDownloadsStep(SetupServices services) : SetupSt
     partial void OnConsentChanged(bool value) => Update();
 
     private void Update() => CanContinue = Error is null && (!HasFiles || (Consent && SpaceError is null));
-
-    private static string Format(string format, params object[] args) => string.Format(CultureInfo.CurrentCulture, format, args);
 }

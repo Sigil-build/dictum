@@ -45,9 +45,8 @@ internal static class Program
         }
 
         var paths = AppPaths.FromEnvironment();
-        using var log = new DictumLog(LogLevel.Warning, includeText: false, console: null, paths.LogsDirectory, AppNames.GuiLogFile);
-        var configPath = Environment.GetEnvironmentVariable("DICTUM_CONFIG") is { Length: > 0 } custom ? custom : paths.ConfigFile;
-        var store = new ConfigStore(configPath, log);
+        using var log = OpenLog(paths);
+        var store = new ConfigStore(ConfigPath(paths), log);
         UiCulture.Apply(UiCulture.FromConfig(store));
 
         var daemonSocket = IpcEndpoint.SocketPath(paths);
@@ -116,8 +115,8 @@ internal static class Program
         }
 
         var paths = AppPaths.FromEnvironment();
-        using var log = new DictumLog(LogLevel.Warning, includeText: false, console: null, paths.LogsDirectory, AppNames.GuiLogFile);
-        var store = new ConfigStore(Environment.GetEnvironmentVariable("DICTUM_CONFIG") is { Length: > 0 } custom ? custom : paths.ConfigFile, log);
+        using var log = OpenLog(paths);
+        var store = new ConfigStore(ConfigPath(paths), log);
         UiCulture.Apply(UiCulture.FromConfig(store));
         DictumConfig? user = null;
         try
@@ -135,7 +134,7 @@ internal static class Program
             var controller = new OverlayController(
                 () => new OverlayWindow(desktop.Prepare),
                 desktop,
-                () => Application.Current?.PlatformSettings?.GetColorValues().ContrastPreference == Avalonia.Platform.ColorContrastPreference.High,
+                () => Application.Current is { } app && DesktopShell.IsHighContrast(app),
                 TimeProvider.System,
                 log);
             controller.OnConfig(OverlayDemo.Config(user));
@@ -143,6 +142,13 @@ internal static class Program
         };
         return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args, ShutdownMode.OnExplicitShutdown);
     }
+
+    private static DictumLog OpenLog(AppPaths paths) =>
+        new(LogLevel.Warning, includeText: false, console: null, paths.LogsDirectory, AppNames.GuiLogFile);
+
+    /// <summary><c>DICTUM_CONFIG</c> when it is set, as for the CLI; the default config file otherwise.</summary>
+    private static string ConfigPath(AppPaths paths) =>
+        Environment.GetEnvironmentVariable("DICTUM_CONFIG") is { Length: > 0 } custom ? custom : paths.ConfigFile;
 
     // Also used by the XAML previewer.
     public static AppBuilder BuildAvaloniaApp() =>

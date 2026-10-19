@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Resources;
@@ -157,7 +156,7 @@ public sealed partial class SetupDownloadingStep(SetupServices services) : Setup
             if (ModelFiles.IsInstalled(services.Paths, entry))
             {
                 done += entry.Size;
-                file.Text = Format(Strings.SetupDownloadVerified, Units.Size(entry.Size));
+                file.Text = UiText.Format(Strings.SetupDownloadVerified, Units.Size(entry.Size));
                 file.Progress = 100;
                 file.Error = null;
                 file.CanRetry = false;
@@ -169,7 +168,7 @@ public sealed partial class SetupDownloadingStep(SetupServices services) : Setup
             var bytes = Math.Min(item?.Bytes ?? 0, entry.Size);
             done += bytes;
             file.Progress = 100.0 * bytes / Math.Max(1, entry.Size);
-            file.Text = Format(Strings.SettingsModelsProgress, Units.Size(bytes), Units.Size(entry.Size));
+            file.Text = UiText.Format(Strings.SettingsModelsProgress, Units.Size(bytes), Units.Size(entry.Size));
             file.Error = item is null ? Strings.SetupDownloadStopped : item.State == DownloadState.Failed ? item.Error : null;
             file.CanRetry = item is null or { State: DownloadState.Failed };
             failed |= file.CanRetry;
@@ -184,22 +183,28 @@ public sealed partial class SetupDownloadingStep(SetupServices services) : Setup
         }
 
         IsDone = allInPlace;
+        ShowTotals(done, total, failed, downloading);
+        CanContinue = IsDone;
+        Tick(downloading);
+    }
+
+    /// <summary>The title, the total line and bar, the note and the Pause button, once the files are counted.</summary>
+    private void ShowTotals(long done, long total, bool failed, bool downloading)
+    {
         var paused = services.Downloads.IsPaused && !IsDone;
         Title = IsDone ? Strings.SetupDownloadedTitle
             : failed ? Strings.SetupDownloadFailedTitle
             : paused ? Strings.SetupDownloadPausedTitle
             : Strings.SetupDownloadingTitle;
         TotalProgress = 100.0 * done / Math.Max(1, total);
-        TotalText = IsDone ? Format(Strings.SetupDownloadAllVerified, Units.Size(total))
-            : paused ? Format(Strings.SetupDownloadTotalPaused, Units.Size(done), Units.Size(total))
+        TotalText = IsDone ? UiText.Format(Strings.SetupDownloadAllVerified, Units.Size(total))
+            : paused ? UiText.Format(Strings.SetupDownloadTotalPaused, Units.Size(done), Units.Size(total))
             : downloading && _rate.BytesPerSecond is { } rate && rate > 0
-                ? Format(Strings.SetupDownloadTotalRate, Units.Size(done), Units.Size(total), Units.Rate(rate), Units.TimeLeft(TimeSpan.FromSeconds((total - done) / rate)))
-                : Format(Strings.SettingsModelsProgress, Units.Size(done), Units.Size(total));
+                ? UiText.Format(Strings.SetupDownloadTotalRate, Units.Size(done), Units.Size(total), Units.Rate(rate), Units.TimeLeft(TimeSpan.FromSeconds((total - done) / rate)))
+                : UiText.Format(Strings.SettingsModelsProgress, Units.Size(done), Units.Size(total));
         Note = IsDone ? Strings.SetupDownloadNoteDone : Strings.SetupDownloadNoteBusy;
         ShowPause = !IsDone;
         PauseText = services.Downloads.IsPaused ? Strings.SettingsModelsResume : Strings.SettingsModelsPause;
-        CanContinue = IsDone;
-        Tick(downloading);
     }
 
     private void Tick(bool downloading)
@@ -227,10 +232,8 @@ public sealed partial class SetupDownloadingStep(SetupServices services) : Setup
             services.Log.Warn($"Download list not updated: {ex.Message}");
             if (file is not null)
             {
-                file.Error = string.Format(CultureInfo.CurrentCulture, Strings.SettingsModelsQueueFailed, ex.Message);
+                file.Error = UiText.Format(Strings.SettingsModelsQueueFailed, ex.Message);
             }
         }
     }
-
-    private static string Format(string format, params object[] args) => string.Format(CultureInfo.CurrentCulture, format, args);
 }

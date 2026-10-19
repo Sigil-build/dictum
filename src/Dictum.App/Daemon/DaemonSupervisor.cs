@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Globalization;
 using System.Net.Sockets;
 using System.Text.Json;
 using Dictum.App.Resources;
@@ -177,7 +176,7 @@ public sealed class DaemonSupervisor : IDaemonChannel, IAsyncDisposable
                 _log.Error($"Daemon supervision failed: {ex.Message}", ex);
                 try
                 {
-                    await FailAsync(Format(Strings.ProblemUnexpected, _logFile), ct).ConfigureAwait(false);
+                    await FailAsync(UiText.Format(Strings.ProblemUnexpected, _logFile), ct).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
@@ -205,64 +204,92 @@ public sealed class DaemonSupervisor : IDaemonChannel, IAsyncDisposable
 
         if (!_configExists())
         {
-            SetLink(new DaemonLink(DaemonLinkState.NotConfigured));
-            using var poll = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            await Task.WhenAny(saved, Task.Delay(_options.ConfigPollInterval, poll.Token)).ConfigureAwait(false);
-            await poll.CancelAsync().ConfigureAwait(false);
-            ct.ThrowIfCancellationRequested();
+            await WaitForConfigAsync(saved, ct).ConfigureAwait(false);
             return;
         }
 
-        var subscription = await TryConnectAsync(ct).ConfigureAwait(false);
-        if (subscription is null)
+        if (await ConnectOrStartAsync(ct).ConfigureAwait(false) is not { } subscription)
         {
-            if (!TakeStart())
-            {
-                await FailAsync(_lastProblem ?? Format(Strings.ProblemKeepsStopping, _logFile), ct).ConfigureAwait(false);
-                return;
-            }
-
-            var started = await StartDaemonAsync(ct).ConfigureAwait(false);
-            if (started.Subscription is null)
-            {
-                if (started.Problem is null)
-                {
-                    return;
-                }
-
-                _lastProblem = started.Problem;
-                _log.Warn(started.Problem!);
-                if (started.Fatal)
-                {
-                    await FailAsync(started.Problem!, ct).ConfigureAwait(false);
-                }
-
-                return;
-            }
-
-            subscription = started.Subscription;
+            return;
         }
 
         await using (subscription.ConfigureAwait(false))
         {
-            var response = subscription.Response;
-            if (!response.Ok || response.Status is not { Protocol: IpcProtocol.Version } status)
+            if (!await AttachAsync(subscription, ct).ConfigureAwait(false))
             {
-                var pid = response.Status?.ProcessId ?? await TryGetProcessIdAsync(ct).ConfigureAwait(false);
-                var restart = NewRestartSignal();
-                SetLink(new DaemonLink(DaemonLinkState.VersionMismatch, response.Status, Strings.ProblemVersionMismatch));
-                await AwaitRestartAsync(restart, ct).ConfigureAwait(false);
-                await ReplaceAsync(pid, ct).ConfigureAwait(false);
                 return;
             }
-
-            _lastProblem = null;
-            _stopping = Signal();
-            _announcedStop = false;
-            SetLink(new DaemonLink(DaemonLinkState.Connected, status));
-            await PumpAsync(subscription, ct).ConfigureAwait(false);
         }
 
+        await OnDisconnectedAsync(ct).ConfigureAwait(false);
+    }
+
+    /// <summary>No config file yet: waits for the wizard's save or the next poll.</summary>
+    private async Task WaitForConfigAsync(Task saved, CancellationToken ct)
+    {
+        SetLink(new DaemonLink(DaemonLinkState.NotConfigured));
+        using var poll = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        await Task.WhenAny(saved, Task.Delay(_options.ConfigPollInterval, poll.Token)).ConfigureAwait(false);
+        await poll.CancelAsync().ConfigureAwait(false);
+        ct.ThrowIfCancellationRequested();
+    }
+
+    /// <summary>The running daemon's events, or those of a daemon started for them; null when this round ends without either.</summary>
+    private async Task<IpcSubscription?> ConnectOrStartAsync(CancellationToken ct)
+    {
+        if (await TryConnectAsync(ct).ConfigureAwait(false) is { } subscription)
+        {
+            return subscription;
+        }
+
+        if (!TakeStart())
+        {
+            await FailAsync(_lastProblem ?? UiText.Format(Strings.ProblemKeepsStopping, _logFile), ct).ConfigureAwait(false);
+            return null;
+        }
+
+        var started = await StartDaemonAsync(ct).ConfigureAwait(false);
+        if (started.Subscription is null && started.Problem is { } problem)
+        {
+            _lastProblem = problem;
+            _log.Warn(problem);
+            if (started.Fatal)
+            {
+                await FailAsync(problem, ct).ConfigureAwait(false);
+            }
+        }
+
+        return started.Subscription;
+    }
+
+    /// <summary>
+    /// Connected until the events stop; true then. A daemon that speaks another protocol shows as a mismatch until
+    /// "Restart daemon" replaces it; false then.
+    /// </summary>
+    private async Task<bool> AttachAsync(IpcSubscription subscription, CancellationToken ct)
+    {
+        var response = subscription.Response;
+        if (!response.Ok || response.Status is not { Protocol: IpcProtocol.Version } status)
+        {
+            var pid = response.Status?.ProcessId ?? await TryGetProcessIdAsync(ct).ConfigureAwait(false);
+            var restart = NewRestartSignal();
+            SetLink(new DaemonLink(DaemonLinkState.VersionMismatch, response.Status, Strings.ProblemVersionMismatch));
+            await AwaitRestartAsync(restart, ct).ConfigureAwait(false);
+            await ReplaceAsync(pid, ct).ConfigureAwait(false);
+            return false;
+        }
+
+        _lastProblem = null;
+        _stopping = Signal();
+        _announcedStop = false;
+        SetLink(new DaemonLink(DaemonLinkState.Connected, status));
+        await PumpAsync(subscription, ct).ConfigureAwait(false);
+        return true;
+    }
+
+    /// <summary>The events stopped: a daemon stopped on purpose fails the link; one that went away is started again.</summary>
+    private async Task OnDisconnectedAsync(CancellationToken ct)
+    {
         if (_quitting || ct.IsCancellationRequested)
         {
             return;
@@ -319,12 +346,12 @@ public sealed class DaemonSupervisor : IDaemonChannel, IAsyncDisposable
 
             if (process.Exited.IsCompleted)
             {
-                return new StartResult(null, Format(Strings.ProblemExitedWhileStarting, await process.Exited.ConfigureAwait(false), _logFile));
+                return new StartResult(null, UiText.Format(Strings.ProblemExitedWhileStarting, await process.Exited.ConfigureAwait(false), _logFile));
             }
 
             if (waited.Elapsed >= _options.StartTimeout)
             {
-                return new StartResult(null, Format(Strings.ProblemStartTimeout, _options.StartTimeout.TotalSeconds, _logFile));
+                return new StartResult(null, UiText.Format(Strings.ProblemStartTimeout, _options.StartTimeout.TotalSeconds, _logFile));
             }
         }
     }
@@ -488,6 +515,4 @@ public sealed class DaemonSupervisor : IDaemonChannel, IAsyncDisposable
             _log.Error($"A daemon event handler failed: {ex.Message}", ex);
         }
     }
-
-    private static string Format(string format, params object[] args) => string.Format(CultureInfo.CurrentCulture, format, args);
 }

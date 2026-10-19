@@ -1,4 +1,3 @@
-using System.Globalization;
 using Dictum.App.Daemon;
 using Dictum.App.Resources;
 using Dictum.Core.Configuration;
@@ -72,7 +71,7 @@ public sealed class TrayState(TimeProvider time)
         var (glyph, tooltip, attention, activate) = Describe(time.GetUtcNow());
         if (_downloads is { } progress)
         {
-            tooltip = string.Format(CultureInfo.CurrentCulture, Strings.TrayTooltipDownloading, tooltip, progress);
+            tooltip = UiText.Format(Strings.TrayTooltipDownloading, tooltip, progress);
         }
 
         return new TrayView(glyph, Shorten(tooltip), attention, Menu(), activate);
@@ -103,7 +102,7 @@ public sealed class TrayState(TimeProvider time)
 
         if (_error is { } error && now - error.At < ErrorHold)
         {
-            return (TrayGlyph.Error, Format(Strings.TrayTooltipError, error.Message), true, TrayCommand.Settings);
+            return (TrayGlyph.Error, UiText.Format(Strings.TrayTooltipError, error.Message), true, TrayCommand.Settings);
         }
 
         if (_link.Status?.Paused == true)
@@ -114,8 +113,8 @@ public sealed class TrayState(TimeProvider time)
         var tooltip = SelectedProfile(_link.Status) switch
         {
             null => AppNames.Product,
-            { Hotkey: { } hotkey } profile => Format(Strings.TrayTooltipIdle, profile.Id, hotkey),
-            var profile => Format(Strings.TrayTooltipIdleNoHotkey, profile.Id),
+            { Hotkey: { } hotkey } profile => UiText.Format(Strings.TrayTooltipIdle, profile.Id, hotkey),
+            var profile => UiText.Format(Strings.TrayTooltipIdleNoHotkey, profile.Id),
         };
         return (TrayGlyph.Idle, tooltip, false, TrayCommand.Settings);
     }
@@ -157,8 +156,6 @@ public sealed class TrayState(TimeProvider time)
 
     private static ProfileStatus? SelectedProfile(DaemonStatus? status) =>
         status?.Profiles.FirstOrDefault(p => p.Id == status.SelectedProfile) ?? (status is { Profiles.Count: > 0 } ? status.Profiles[0] : null);
-
-    private static string Format(string format, params object[] args) => string.Format(CultureInfo.CurrentCulture, format, args);
 
     private static string Shorten(string text) =>
         text.Length <= MaxTooltip ? text : string.Concat(text.AsSpan(0, MaxTooltip - 1), "…");

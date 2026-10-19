@@ -116,6 +116,7 @@ public sealed partial class SetupModelStep : SetupStep
         }
         catch (Exception ex)
         {
+            // The probe runs native GPU code; whatever it throws, the step goes on as if there were no GPU.
             _services.Log.Warn($"GPU probe failed: {ex.Message}", ex);
             _hardware = new HardwareInfo(null, _services.FreeDiskBytes());
         }

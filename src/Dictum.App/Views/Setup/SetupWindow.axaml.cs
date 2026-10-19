@@ -7,7 +7,7 @@ using Dictum.App.ViewModels.Setup;
 namespace Dictum.App.Views.Setup;
 
 /// <summary>The setup wizard's dialog. Esc closes and keeps what was entered; Enter is Next when it is on.</summary>
-public partial class SetupWindow : Window
+public sealed partial class SetupWindow : Window
 {
     /// <summary>Windows 11's first build, the first with Mica.</summary>
     private const int Windows11Build = 22000;

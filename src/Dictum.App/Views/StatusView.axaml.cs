@@ -2,7 +2,7 @@ using Avalonia.Controls;
 
 namespace Dictum.App.Views;
 
-public partial class StatusView : UserControl
+public sealed partial class StatusView : UserControl
 {
     public StatusView() => InitializeComponent();
 }
