@@ -34,9 +34,11 @@ public sealed class ProcessorsPageTests : IDisposable
     }
 
     /// <summary>The page as the user meets it: on screen. <paramref name="shown"/> false is a window opened on another page.</summary>
-    private (ProcessorsPage Page, SettingsSession Session) Open(bool shown = true)
+    private (ProcessorsPage Page, SettingsSession Session) Open(bool shown = true, string? cleanupKey = null)
     {
-        Store.Save(ProfilesPageTests.Sample());
+        var config = ProfilesPageTests.Sample();
+        config.Processors["cleanup"] = (LlmProcessorConfig)config.Processors["cleanup"] with { ApiKey = cleanupKey };
+        Store.Save(config);
         var session = new SettingsSession(Store, _timers, NullLog.Instance);
         session.Load();
         var page = new ProcessorsPage(session, new ProcessorsServices(_runner, _secrets, _prompts, _timers, NullLog.Instance));
@@ -238,6 +240,31 @@ public sealed class ProcessorsPageTests : IDisposable
         Assert.Equal("sk-llm", _secrets.Values["dictum-processor-cleanup"]);
         Assert.Equal("secret:dictum-processor-cleanup", Llm(session).ApiKey);
         Assert.Equal("", page.Llm.KeyText);
+    }
+
+    [Fact]
+    public async Task ANewKeyOverTheOneInitStoredReplacesInitsEntry()
+    {
+        _secrets.Values["dictum-cleanup"] = "sk-old";
+        var (page, session) = Open(cleanupKey: "secret:dictum-cleanup");
+
+        page.Llm.KeyText = "sk-new";
+        await page.Llm.CommitKeyCommand.ExecuteAsync(null);
+
+        Assert.Equal("secret:dictum-processor-cleanup", Llm(session).ApiKey);
+        Assert.Equal(new Dictionary<string, string> { ["dictum-processor-cleanup"] = "sk-new" }, _secrets.Values);
+    }
+
+    [Fact]
+    public async Task RemovingTheKeyInitStoredDeletesInitsEntry()
+    {
+        _secrets.Values["dictum-cleanup"] = "sk-old";
+        var (page, session) = Open(cleanupKey: "secret:dictum-cleanup");
+
+        await page.Llm.RemoveKeyCommand.ExecuteAsync(null);
+
+        Assert.Null(Llm(session).ApiKey);
+        Assert.Empty(_secrets.Values);
     }
 
     [Fact]

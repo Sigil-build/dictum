@@ -482,7 +482,9 @@ public sealed partial class LlmEditor : ObservableObject, IDisposable
             KeyError = null;
         }
 
+        var previous = (_session.Config.Processors.GetValueOrDefault(id) as LlmProcessorConfig)?.ApiKey;
         EditLlm(id, l => l with { ApiKey = result.Value });
+        await ApiKeys.DeleteLegacyCleanupAsync(_services.Secrets, previous, _session.Config, _services.Log, CancellationToken.None);
     }
 
     private void LoadSettings(LlmProcessorConfig llm, string path)

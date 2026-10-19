@@ -69,6 +69,28 @@ public sealed class ApiKeysTests
         Assert.False(_secrets.Values.ContainsKey("dictum-stt-remote"));
     }
 
+    [Fact]
+    public async Task RemovingAKeyThatInitStoredDeletesItsEntry()
+    {
+        _secrets.Values["dictum-cleanup"] = "sk-123";
+
+        await ApiKeys.RemoveAsync(_secrets, "dictum-processor-cleanup", "secret:dictum-cleanup", new DictumConfig(), NullLog.Instance, _ct);
+
+        Assert.Empty(_secrets.Values);
+    }
+
+    [Fact]
+    public async Task AKeyThatInitStoredStaysWhileAnotherProviderUsesIt()
+    {
+        _secrets.Values["dictum-cleanup"] = "sk-123";
+        var config = new DictumConfig();
+        config.Stt["remote"] = new OpenAiCompatibleSttConfig { BaseUrl = "http://localhost:8080/v1", Model = "whisper-1", ApiKey = "secret:dictum-cleanup" };
+
+        await ApiKeys.RemoveAsync(_secrets, "dictum-processor-cleanup", "secret:dictum-cleanup", config, NullLog.Instance, _ct);
+
+        Assert.Equal("sk-123", _secrets.Values["dictum-cleanup"]);
+    }
+
     // Final review I3: another provider or processor still holds the reference.
     [Theory]
     [InlineData("stt")]

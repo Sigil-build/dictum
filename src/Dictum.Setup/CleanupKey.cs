@@ -15,15 +15,16 @@ public sealed record PendingSecret(string Name, string Value)
 /// </summary>
 public static class CleanupKey
 {
+    /// <param name="current">The config init starts from, which decides the clean-up processor and so the secret's name.</param>
     /// <returns>The config's apiKey value, and the key still to write; a reference is kept as given, with nothing to write.</returns>
-    public static (string Reference, PendingSecret? Pending) KeepOutOfConfig(string key)
+    public static (string Reference, PendingSecret? Pending) KeepOutOfConfig(string key, DictumConfig? current = null)
     {
         if (ConfigValueResolver.IsReference(key))
         {
             return (key, null);
         }
 
-        var pending = new PendingSecret(SecretNames.LegacyCleanup, key);
+        var pending = new PendingSecret(SetupPlanner.CleanupSecretName(current), key);
         return (ConfigValueResolver.SecretReference(pending.Name), pending);
     }
 }

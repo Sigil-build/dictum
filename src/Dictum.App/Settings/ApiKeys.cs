@@ -54,12 +54,27 @@ public static class ApiKeys
     };
 
     /// <summary>
-    /// Deletes the stored key when <paramref name="current"/> is this provider's own secret and nothing in
-    /// <paramref name="remaining"/>, the config after the change, still refers to it; a shared one stays.
+    /// Deletes the stored key when <paramref name="current"/> is this provider's own secret, or
+    /// <see cref="SecretNames.LegacyCleanup"/>, and nothing in <paramref name="remaining"/>, the config after the change,
+    /// still refers to it; a shared one stays.
     /// </summary>
-    public static async Task RemoveAsync(ISecretStore secrets, string secretName, string? current, DictumConfig remaining, ILog log, CancellationToken ct)
+    public static Task RemoveAsync(ISecretStore secrets, string secretName, string? current, DictumConfig remaining, ILog log, CancellationToken ct) =>
+        current == ConfigValueResolver.SecretReference(secretName)
+            ? DeleteUnusedAsync(secrets, secretName, remaining, log, ct)
+            : DeleteLegacyCleanupAsync(secrets, current, remaining, log, ct);
+
+    /// <summary>
+    /// After a typed key replaced <paramref name="previous"/>: deletes <see cref="SecretNames.LegacyCleanup"/> when
+    /// <paramref name="previous"/> referred to it and nothing in <paramref name="remaining"/> still does.
+    /// </summary>
+    public static Task DeleteLegacyCleanupAsync(ISecretStore secrets, string? previous, DictumConfig remaining, ILog log, CancellationToken ct) =>
+        previous == ConfigValueResolver.SecretReference(SecretNames.LegacyCleanup)
+            ? DeleteUnusedAsync(secrets, SecretNames.LegacyCleanup, remaining, log, ct)
+            : Task.CompletedTask;
+
+    private static async Task DeleteUnusedAsync(ISecretStore secrets, string secretName, DictumConfig remaining, ILog log, CancellationToken ct)
     {
-        if (current != ConfigValueResolver.SecretReference(secretName) || IsReferenced(remaining, current))
+        if (IsReferenced(remaining, ConfigValueResolver.SecretReference(secretName)))
         {
             return;
         }

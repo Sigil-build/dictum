@@ -66,7 +66,7 @@ internal static class InitCommand
             var sttAnswer = parse.GetValue(stt)
                 ?? (interactive ? ChooseModel(prompt, catalog, languageAnswer, defaults, recommended) : defaults.SpeechModel);
 
-            var (server, pendingSecret) = AskCleanup(context, prompt, interactive, parse.GetValue(llm), parse.GetValue(llmModel), parse.GetValue(llmApiKey), defaults.Server);
+            var (server, pendingSecret) = AskCleanup(context, prompt, interactive, parse.GetValue(llm), parse.GetValue(llmModel), parse.GetValue(llmApiKey), current, defaults.Server);
             var words = await AskWordsAsync(prompt, interactive, parse.GetValue(vocabFile), token).ConfigureAwait(false);
             var autostartAnswer = AskAutostart(context, prompt, interactive, parse.GetValue(autostart));
 
@@ -155,6 +155,7 @@ internal static class InitCommand
         string? llm,
         string? llmModel,
         string? llmApiKey,
+        DictumConfig? config,
         ExistingLlmServer? current)
     {
         if (llm is not null)
@@ -165,7 +166,7 @@ internal static class InitCommand
             }
 
             var model = llmModel ?? current?.Model ?? throw new ConfigException("Pass --llm-model with --llm <url>.");
-            var (key, pending) = llmApiKey is null ? (SetupPlanner.CarriedApiKey(current, llm), null) : KeepKeyOutOfConfig(context, llmApiKey);
+            var (key, pending) = llmApiKey is null ? (SetupPlanner.CarriedApiKey(current, llm), null) : KeepKeyOutOfConfig(context, llmApiKey, config);
             return (new ExistingLlmServer(llm, model, key), pending);
         }
 
@@ -204,7 +205,7 @@ internal static class InitCommand
         {
             try
             {
-                (apiKey, pendingSecret) = KeepKeyOutOfConfig(context, typed);
+                (apiKey, pendingSecret) = KeepKeyOutOfConfig(context, typed, config);
             }
             catch (ConfigException ex)
             {
@@ -235,7 +236,7 @@ internal static class InitCommand
     }
 
     /// <exception cref="ConfigException">A key given as a value, and no secret store to keep it in.</exception>
-    private static (string Reference, PendingSecret? Pending) KeepKeyOutOfConfig(CliContext context, string key)
+    private static (string Reference, PendingSecret? Pending) KeepKeyOutOfConfig(CliContext context, string key, DictumConfig? config)
     {
         if (!ConfigValueResolver.IsReference(key) && context.Platform.Secrets is UnavailableSecretStore)
         {
@@ -243,7 +244,7 @@ internal static class InitCommand
                 "This system has no secret store Dictum can use, and the key is not written to the config in plain text. Pass it as env:VAR instead.");
         }
 
-        return CleanupKey.KeepOutOfConfig(key);
+        return CleanupKey.KeepOutOfConfig(key, config);
     }
 
     /// <summary>Lists what the plan downloads and asks to go on; false when the answer is no.</summary>

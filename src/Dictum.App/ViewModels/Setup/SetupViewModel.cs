@@ -381,7 +381,7 @@ public sealed partial class SetupViewModel : ViewModelBase
 
             if (typed is not null)
             {
-                var stored = await ApiKeys.StoreAsync(_services.Secrets, SecretName(current), typed, CancellationToken.None);
+                var stored = await ApiKeys.StoreAsync(_services.Secrets, SetupPlanner.CleanupSecretName(current), typed, CancellationToken.None);
                 if (stored.Error is { } problem)
                 {
                     Error = string.Format(CultureInfo.CurrentCulture, Strings.SetupKeyFailed, problem);
@@ -461,11 +461,7 @@ public sealed partial class SetupViewModel : ViewModelBase
 
     private static string Snapshot(DictumConfig? config) => config is null ? "" : ConfigStore.Serialize(config);
 
-    /// <summary>The secret the clean-up key goes to: the Settings name, so Settings can replace or remove it.</summary>
-    private static string SecretName(DictumConfig? current) =>
-        SecretNames.Processor(SetupPlanner.CleanupProcessorId(current ?? DefaultConfig.Create()));
-
-    private static string SecretReference(DictumConfig? current) => ConfigValueResolver.SecretReference(SecretName(current));
+    private static string SecretReference(DictumConfig? current) => ConfigValueResolver.SecretReference(SetupPlanner.CleanupSecretName(current));
 
     private static string Describe(ConfigException ex) =>
         ex.Issues.Count == 0 ? ex.Message : $"{ex.Message} {string.Join(" ", ex.Issues.Select(i => $"{i.Path}: {i.Message}."))}";

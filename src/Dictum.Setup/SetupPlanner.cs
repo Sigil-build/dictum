@@ -115,6 +115,12 @@ public static class SetupPlanner
     public static string CleanupProcessorId(DictumConfig config) =>
         config.Processors.TryGetValue(CleanupId, out var named) && named is not LlmProcessorConfig ? LlmCleanupFallbackId : CleanupId;
 
+    /// <summary>
+    /// The secret a typed clean-up key goes to, for init and the wizard alike: the clean-up processor's, as Settings names
+    /// it, so Settings can replace or remove the key.
+    /// </summary>
+    public static string CleanupSecretName(DictumConfig? current) => SecretNames.Processor(CleanupProcessorId(current ?? DefaultConfig.Create()));
+
     private static ExistingLlmServer? CurrentServer(DictumConfig config) =>
         config.Profiles.FirstOrDefault() is { } first
         && first.Pipeline.Contains(CleanupProcessorId(config))
