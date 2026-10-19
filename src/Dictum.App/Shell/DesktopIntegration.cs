@@ -22,7 +22,7 @@ internal sealed class DesktopIntegration(DesktopEnvironment desktop, Func<Applic
     public string Name => desktop.Name;
 
     /// <summary>The OS page that shows a hidden tray icon: Windows' taskbar settings; none elsewhere.</summary>
-    private Action? OpenTaskbarSettings => desktop.Tray == TrayDesktop.Windows ? TrayVisibility.OpenTaskbarSettings : null;
+    private Action? OpenTaskbarSettings => desktop.Tray == TrayDesktop.Windows ? () => TrayVisibility.OpenTaskbarSettings(log) : null;
 
     /// <summary>The tray for this desktop: Avalonia's on Windows, our StatusNotifierItem on Linux, none elsewhere.</summary>
     public static async Task<ITrayPresenter?> CreateTrayAsync(DesktopEnvironment desktop, Application app, Func<bool> highContrast, AppPaths paths, ILog log)

@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Resources;
@@ -61,5 +62,18 @@ public static class TrayVisibility
         return null;
     }
 
-    public static void OpenTaskbarSettings() => Process.Start(new ProcessStartInfo("ms-settings:taskbar") { UseShellExecute = true })?.Dispose();
+    /// <summary>Opens Windows' taskbar settings, where the icon can be pinned.</summary>
+    /// <param name="start">Starts the settings page; <see cref="Process.Start(ProcessStartInfo)"/> when left out.</param>
+    public static void OpenTaskbarSettings(ILog log, Func<ProcessStartInfo, Process?>? start = null)
+    {
+        try
+        {
+            (start ?? Process.Start)(new ProcessStartInfo("ms-settings:taskbar") { UseShellExecute = true })?.Dispose();
+        }
+        catch (Exception ex) when (ex is Win32Exception or InvalidOperationException)
+        {
+            // Some Windows editions (Server, LTSC) have no ms-settings: handler; the button then does nothing.
+            log.Warn($"Taskbar settings not opened: {ex.Message}");
+        }
+    }
 }

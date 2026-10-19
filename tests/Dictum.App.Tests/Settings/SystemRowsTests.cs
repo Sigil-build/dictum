@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.Core.Diagnostics;
@@ -17,6 +18,16 @@ public sealed class SystemRowsTests
         Assert.Equal(Strings.SettingsTrayOpen, row.FixLabel);
         row.Fix!.Execute(null);
         Assert.Equal(1, opened);
+    }
+
+    [Fact]
+    public void ATaskbarSettingsPageThatCannotOpenIsLoggedNotThrown()
+    {
+        var log = new ListLog();
+
+        TrayVisibility.OpenTaskbarSettings(log, _ => throw new Win32Exception(1155, "No application is associated with ms-settings:"));
+
+        Assert.Contains(log.Lines, l => l.Level == LogLevel.Warning && l.Message.Contains("No application is associated", StringComparison.Ordinal));
     }
 
     [Fact]
