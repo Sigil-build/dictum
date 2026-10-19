@@ -267,6 +267,73 @@ public sealed class DictationPipelineTests : IDisposable
         Assert.Equal(PipelineState.Idle, pipeline.State);
     }
 
+    [Fact]
+    public async Task TheAppFocusedWhenTheRecordingStopsReachesTheProcessors()
+    {
+        var lookup = new AppLookup("code");
+        var pipeline = new DictationPipeline(new FakeAudioSource(Clips.Seconds(1)), null, NullLog.Instance, activeApp: lookup.GetAsync);
+        var processor = new FakeProcessor("same", t => t);
+
+        await pipeline.StartRecordingAsync(null, _ct);
+        await pipeline.StopAsync(Profile(new FakeStt("привіт"), processor), null, _ct);
+
+        Assert.Equal(new ProcessingContext("p", "uk", "code"), processor.LastContext);
+        Assert.Equal([_ct], lookup.Tokens);
+    }
+
+    [Fact]
+    public async Task AnAppLookupThatFailsLeavesTheAppUnknownAndTheDictationGoesOn()
+    {
+        var lookup = new AppLookup(error: new InvalidOperationException("xprop crashed"));
+        var pipeline = new DictationPipeline(new FakeAudioSource(Clips.Seconds(1)), null, NullLog.Instance, activeApp: lookup.GetAsync);
+        var processor = new FakeProcessor("upper", t => t.ToUpperInvariant());
+
+        await pipeline.StartRecordingAsync(null, _ct);
+        var result = await pipeline.StopAsync(Profile(new FakeStt("привіт"), processor), null, _ct);
+
+        Assert.Equal("ПРИВІТ", result.Text);
+        Assert.Equal(new ProcessingContext("p", "uk", null), processor.LastContext);
+        Assert.Single(lookup.Tokens);
+    }
+
+    [Fact]
+    public async Task AClipThatWasNotRecordedHasNoApp()
+    {
+        var lookup = new AppLookup("code");
+        var pipeline = new DictationPipeline(new FakeAudioSource(Clips.Seconds(1)), null, NullLog.Instance, activeApp: lookup.GetAsync);
+        var processor = new FakeProcessor("same", t => t);
+
+        await pipeline.RunAsync(Clips.Seconds(1), Profile(new FakeStt("привіт"), processor), null, _ct);
+
+        Assert.Equal(new ProcessingContext("p", "uk", null), processor.LastContext);
+        Assert.Empty(lookup.Tokens);
+    }
+
+    [Fact]
+    public async Task AProfileWithoutProcessorsDoesNotAskForTheApp()
+    {
+        var lookup = new AppLookup("code");
+        var pipeline = new DictationPipeline(new FakeAudioSource(Clips.Seconds(1)), null, NullLog.Instance, activeApp: lookup.GetAsync);
+
+        await pipeline.StartRecordingAsync(null, _ct);
+        var result = await pipeline.StopAsync(Profile(new FakeStt("привіт")), null, _ct);
+
+        Assert.Equal("привіт", result.Text);
+        Assert.Empty(lookup.Tokens);
+    }
+
     private static DictationProfile Profile(ISpeechToText stt, params ITextProcessor[] processors) =>
         new("p", stt, new SttRequest("uk", null), processors);
+
+    /// <summary>The platform's focused-app lookup: answers <paramref name="app"/>, or fails with <paramref name="error"/>.</summary>
+    private sealed class AppLookup(string? app = null, Exception? error = null)
+    {
+        public List<CancellationToken> Tokens { get; } = [];
+
+        public ValueTask<string?> GetAsync(CancellationToken ct)
+        {
+            Tokens.Add(ct);
+            return error is null ? ValueTask.FromResult(app) : ValueTask.FromException<string?>(error);
+        }
+    }
 }

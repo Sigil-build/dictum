@@ -19,6 +19,7 @@ public sealed record ProcessingContext(string ProfileId, string? Language, strin
         ForProfile(profile.Id, language ?? profile.Language, VocabularyList.Normalize(profile.Vocabulary));
 
     /// <param name="vocabulary">The profile's normalized word list.</param>
-    public static ProcessingContext ForProfile(string profileId, string? language, IReadOnlyList<string>? vocabulary) =>
-        new(profileId, language, ActiveApp: null, VocabularyList.Render(vocabulary));
+    /// <param name="activeApp">The focused app's name, which a prompt's <c>{{app}}</c> shows; null when it is not known.</param>
+    public static ProcessingContext ForProfile(string profileId, string? language, IReadOnlyList<string>? vocabulary, string? activeApp = null) =>
+        new(profileId, language, activeApp, VocabularyList.Render(vocabulary));
 }

@@ -101,7 +101,7 @@ internal sealed class CliContext : IAsyncDisposable
 
     public DictumHost Host() => _host ??= CreateHost(TryLoadConfig());
 
-    public DictumHost CreateHost(DictumConfig? config) => DictumHost.Create(Paths, Log, config, Platform.Secrets);
+    public DictumHost CreateHost(DictumConfig? config) => DictumHost.Create(Paths, Log, config, Platform.Secrets, Platform.ActiveApp);
 
     public async ValueTask DisposeAsync()
     {

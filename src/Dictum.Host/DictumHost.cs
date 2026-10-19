@@ -10,6 +10,7 @@ using Dictum.Core.Pipeline;
 using Dictum.Core.Processing;
 using Dictum.Core.Stt;
 using Dictum.Host.Daemon;
+using Dictum.Platform.Injection;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Dictum.Host;
@@ -22,15 +23,17 @@ public sealed class DictumHost : IDictationEngine
 {
     private readonly ServiceProvider _services;
     private readonly ProviderFactory _providers;
+    private readonly IActiveAppProvider? _activeApp;
     private readonly ConcurrentDictionary<string, ISpeechToText> _stt = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, ITextProcessor> _processors = new(StringComparer.Ordinal);
     private DictationPipeline? _pipeline;
 
-    private DictumHost(AppPaths paths, ILog log, DictumConfig config, ISecretStore secrets)
+    private DictumHost(AppPaths paths, ILog log, DictumConfig config, ISecretStore secrets, IActiveAppProvider? activeApp)
     {
         Paths = paths;
         Log = log;
         Config = config;
+        _activeApp = activeApp;
 
         var services = new ServiceCollection();
         services.AddSingleton(_ => new HistoryStore(paths.HistoryFile, config.General.HistorySize));
@@ -53,8 +56,9 @@ public sealed class DictumHost : IDictationEngine
 
     /// <param name="config">Null when no config file exists; ad-hoc providers (e.g. <c>--model</c>) still work.</param>
     /// <param name="secrets">Backs <c>secret:</c> values; defaults to a store that explains it is unavailable.</param>
-    public static DictumHost Create(AppPaths paths, ILog log, DictumConfig? config, ISecretStore? secrets = null) =>
-        new(paths, log, config ?? new DictumConfig(), secrets ?? new UnavailableSecretStore());
+    /// <param name="activeApp">Names the focused app when a recording stops, for a prompt's <c>{{app}}</c>; none leaves it unknown.</param>
+    public static DictumHost Create(AppPaths paths, ILog log, DictumConfig? config, ISecretStore? secrets = null, IActiveAppProvider? activeApp = null) =>
+        new(paths, log, config ?? new DictumConfig(), secrets ?? new UnavailableSecretStore(), activeApp);
 
     /// <summary>The state cues on the default output device, for the daemon and the Settings sound test.</summary>
     public static ISoundPlayer CreateSoundPlayer(ILog log) => new SoundPlayer(log);
@@ -77,7 +81,7 @@ public sealed class DictumHost : IDictationEngine
         ProfileResolver.Resolve(Config, overrides, GetStt, GetProcessor, CreateAdHocStt);
 
     public DictationPipeline CreatePipeline() =>
-        new(Audio, History, Log, clip => SilenceTrimmer.Trim(GainNormalizer.Normalize(clip)));
+        new(Audio, History, Log, clip => SilenceTrimmer.Trim(GainNormalizer.Normalize(clip)), _activeApp is null ? null : _activeApp.GetActiveAppAsync);
 
     /// <summary>The long-lived pipeline used by the daemon.</summary>
     public DictationPipeline Pipeline => _pipeline ??= CreatePipeline();

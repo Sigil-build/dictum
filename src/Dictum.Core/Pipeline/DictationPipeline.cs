@@ -13,7 +13,16 @@ namespace Dictum.Core.Pipeline;
 /// Any failure returns to Idle; the raw text, if any, still goes to history so dictation is never lost.
 /// </summary>
 /// <param name="clipFilter">Applied to every clip before transcription, e.g. silence trimming.</param>
-public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? history, ILog log, Func<AudioClip, AudioClip>? clipFilter = null)
+/// <param name="activeApp">
+/// The focused app's name, asked when a recording stops so a prompt's <c>{{app}}</c> names the app being dictated into;
+/// null leaves it unknown.
+/// </param>
+public sealed partial class DictationPipeline(
+    IAudioSource audio,
+    HistoryStore? history,
+    ILog log,
+    Func<AudioClip, AudioClip>? clipFilter = null,
+    Func<CancellationToken, ValueTask<string?>>? activeApp = null)
 {
     /// <summary>A hint shorter than this may well be exactly what was said, so it is never treated as an echo.</summary>
     public const int MinHintEchoWords = 4;
@@ -34,6 +43,8 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
         "спасибо за просмотр", "продолжение следует", "субтитры сделал dimatorzok", "субтитры создавал dimatorzok",
         "thank you for watching", "thanks for watching", "you",
     };
+
+    private static readonly Task<string?> NoApp = Task.FromResult<string?>(null);
 
     private readonly Lock _gate = new();
     private readonly Stopwatch _recording = new();
@@ -87,7 +98,10 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
         }
 
         _recording.Stop();
-        return await RunCoreAsync(clip, profile, output, _recording.Elapsed, ct).ConfigureAwait(false);
+
+        // Asked now, while the app being dictated into still has the focus; only processing waits for the answer.
+        var app = activeApp is not null && profile.Processors.Count > 0 ? FocusedAppAsync(activeApp, ct) : NoApp;
+        return await RunCoreAsync(clip, profile, output, _recording.Elapsed, app, ct).ConfigureAwait(false);
     }
 
     /// <summary>Stops recording and discards the audio.</summary>
@@ -112,7 +126,7 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
     public Task<DictationResult> RunAsync(AudioClip clip, DictationProfile profile, ITextOutput? output, CancellationToken ct)
     {
         Transition(PipelineState.Idle, PipelineState.Transcribing);
-        return RunCoreAsync(clip, profile, output, recordElapsed: null, ct);
+        return RunCoreAsync(clip, profile, output, recordElapsed: null, NoApp, ct);
     }
 
     private async Task<DictationResult> RunCoreAsync(
@@ -120,6 +134,7 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
         DictationProfile profile,
         ITextOutput? output,
         TimeSpan? recordElapsed,
+        Task<string?> app,
         CancellationToken ct)
     {
         var progress = new RunProgress();
@@ -144,7 +159,7 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
 
             var (transcript, rawText) = await TranscribeAsync(clip, profile, progress, ct).ConfigureAwait(false);
             var language = transcript.Language ?? profile.Request.Language;
-            var text = await RunProcessorsAsync(rawText, language, profile, progress, ct).ConfigureAwait(false);
+            var text = await RunProcessorsAsync(rawText, language, profile, app, progress, ct).ConfigureAwait(false);
             if (output is not null && text.Length > 0)
             {
                 await WriteOutputAsync(output, text, progress, ct).ConfigureAwait(false);
@@ -216,6 +231,7 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
         string text,
         string? language,
         DictationProfile profile,
+        Task<string?> app,
         RunProgress progress,
         CancellationToken ct)
     {
@@ -225,8 +241,23 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
         }
 
         SetState(PipelineState.Processing);
-        var context = ProcessingContext.ForProfile(profile.Id, language, profile.Vocabulary);
+        var context = ProcessingContext.ForProfile(profile.Id, language, profile.Vocabulary, await app.ConfigureAwait(false));
         return await ProcessingChain.RunAsync(profile.Processors, text, context, progress, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>The focused app's name, or null when the platform cannot tell.</summary>
+    private async Task<string?> FocusedAppAsync(Func<CancellationToken, ValueTask<string?>> lookup, CancellationToken ct)
+    {
+        try
+        {
+            return await lookup(ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // The name only fills a prompt placeholder; a failed lookup must not cost the dictation.
+            log.Debug($"Could not tell the focused app: {ex.Message}");
+            return null;
+        }
     }
 
     private async Task WriteOutputAsync(ITextOutput output, string text, RunProgress progress, CancellationToken ct)

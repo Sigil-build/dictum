@@ -14,10 +14,11 @@ public static class WindowsPlatform
     {
         // One hook serves both the hotkeys and the "wait until modifiers are released" check.
         var hotkeys = new SharpHookHotkeyService(log, "low-level keyboard hook (SharpHook)");
+        var activeApp = new ForegroundAppProvider();
         var injector = new ClipboardPasteInjector(
             new Win32Clipboard(),
             new SharpHookKeystrokeSender("SendInput"),
-            new ForegroundAppProvider(),
+            activeApp,
             hotkeys,
             terminalApps,
             log);
@@ -29,7 +30,8 @@ public static class WindowsPlatform
             new CredentialManagerSecretStore(),
             new RunKeyAutostart(),
             NullNotifier.Instance,
-            _ => Task.FromResult<IReadOnlyList<PlatformCheck>>(Diagnose(hotkeys, injector)));
+            _ => Task.FromResult<IReadOnlyList<PlatformCheck>>(Diagnose(hotkeys, injector)),
+            ActiveApp: activeApp);
     }
 
     private static List<PlatformCheck> Diagnose(SharpHookHotkeyService hotkeys, ClipboardPasteInjector injector)

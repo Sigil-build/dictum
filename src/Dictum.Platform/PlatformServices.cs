@@ -12,6 +12,7 @@ public sealed record PlatformCheck(string Name, HealthStatus Status);
 /// <param name="CreateHotkeys">Hotkey backend; null when the platform has none.</param>
 /// <param name="Unsupported">Why hotkeys and injection are unavailable on this platform, if they are.</param>
 /// <param name="PrepareAsync">Slow setup to run when the daemon starts, e.g. a permission dialog.</param>
+/// <param name="ActiveApp">The focused app's name, for a prompt's <c>{{app}}</c>; null where the platform cannot tell.</param>
 public sealed record PlatformServices(
     string Name,
     Func<IHotkeyService>? CreateHotkeys,
@@ -21,7 +22,8 @@ public sealed record PlatformServices(
     INotifier Notifier,
     Func<CancellationToken, Task<IReadOnlyList<PlatformCheck>>> DiagnoseAsync,
     string? Unsupported = null,
-    Func<CancellationToken, Task>? PrepareAsync = null);
+    Func<CancellationToken, Task>? PrepareAsync = null,
+    IActiveAppProvider? ActiveApp = null);
 
 /// <summary>Config values the platform reads at use time (they can change on hot reload).</summary>
 /// <param name="TerminalApps">Apps that paste with Ctrl+Shift+V.</param>

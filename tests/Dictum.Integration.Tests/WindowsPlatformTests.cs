@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using Dictum.Core.Diagnostics;
 using Dictum.Platform;
 using Dictum.Platform.Windows;
 using Microsoft.Win32;
@@ -179,6 +180,18 @@ public class WindowsPlatformTests
         {
             OverlayTestWindow.Destroy(window);
         }
+    }
+
+    [Fact]
+    public void ThePlatformNamesTheFocusedAppForPrompts()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Windows only");
+            return;
+        }
+
+        Assert.IsType<ForegroundAppProvider>(WindowsPlatform.Create(NullLog.Instance, () => []).ActiveApp);
     }
 
     [Fact]
