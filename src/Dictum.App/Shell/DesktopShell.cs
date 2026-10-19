@@ -441,5 +441,10 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         {
             _log.Warn($"'{request.Command}' not sent: {ex.Message}");
         }
+        catch (Exception ex) when (IpcFailure.IsBadReply(ex))
+        {
+            // Nobody awaits a tray request, so an answer that cannot be read ends here.
+            _log.Warn($"'{request.Command}' got an answer that could not be read: {ex.Message}");
+        }
     }
 }

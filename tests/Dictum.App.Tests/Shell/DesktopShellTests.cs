@@ -1,3 +1,4 @@
+using System.Net.Sockets;
 using Avalonia;
 using Dictum.App.Daemon;
 using Dictum.App.Overlay;
@@ -365,6 +366,64 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         await shell.DisposeAsync();
         await launcher.DisposeAsync();
     });
+
+    // A tray request runs without anyone awaiting it: an answer that cannot be read must reach the log, not a faulted task.
+    [Fact]
+    public Task AnUnreadableAnswerToATrayRequestIsLogged() => fx.UiAsync(async () =>
+    {
+        Directory.CreateDirectory(_dir);
+        var socket = Path.Combine(_dir, "garbled.sock");
+        using var daemon = GarbledDaemon.Listen(socket);
+        var output = new StringWriter();
+        var log = new DictumLog(LogLevel.Warning, includeText: false, console: TextWriter.Synchronized(output), logsDirectory: null);
+        var paths = new AppPaths(Path.Combine(_dir, "config"), Path.Combine(_dir, "data"));
+        await using var launcher = new FakeLauncher(socket);
+        await using var shell = new DesktopShell(paths, log, new ConfigStore(paths.ConfigFile, log), socket, launcher,
+            (_, _) => Task.FromResult<ITrayPresenter?>(null));
+
+        shell.UseProfile("uk");
+
+        await WaitAsync(() => output.ToString().Contains($"'{IpcCommand.UseProfile}'", StringComparison.Ordinal));
+    });
+
+    /// <summary>Answers every request with a line that is not JSON.</summary>
+    private sealed class GarbledDaemon : IDisposable
+    {
+        private readonly Socket _listener;
+
+        private GarbledDaemon(Socket listener) => _listener = listener;
+
+        public static GarbledDaemon Listen(string path)
+        {
+            var listener = new Socket(AddressFamily.Unix, SocketType.Stream, ProtocolType.Unspecified);
+            listener.Bind(new UnixDomainSocketEndPoint(path));
+            listener.Listen();
+            var daemon = new GarbledDaemon(listener);
+            _ = Task.Run(daemon.ServeAsync);
+            return daemon;
+        }
+
+        public void Dispose() => _listener.Dispose();
+
+        private async Task ServeAsync()
+        {
+            try
+            {
+                while (true)
+                {
+                    using var client = await _listener.AcceptAsync();
+                    await using var stream = new NetworkStream(client);
+                    using var reader = new StreamReader(stream);
+                    await reader.ReadLineAsync();
+                    await stream.WriteAsync("not json\n"u8.ToArray());
+                }
+            }
+            catch (Exception ex) when (ex is SocketException or ObjectDisposedException)
+            {
+                // The test is over and closed the listener.
+            }
+        }
+    }
 
     private (DesktopShell Shell, FakeLauncher Launcher, TrayControllerTests.FakePresenter Presenter) Create(bool tray = true, bool config = true)
     {
