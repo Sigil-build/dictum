@@ -3,9 +3,8 @@ using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Processing;
 using Dictum.Core.Stt;
-using Dictum.Host;
 
-namespace Dictum.Integration.Tests;
+namespace Dictum.Host.Tests;
 
 public class ProfileResolverTests
 {

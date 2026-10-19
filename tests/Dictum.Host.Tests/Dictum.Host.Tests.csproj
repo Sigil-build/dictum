@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Host on fakes and temp folders: the daemon, IPC, doctor, the config watcher and the profile resolver. Also the pure
+    parts of Stt.Whisper, whose native runtimes Core.Tests leaves out and Host brings in anyway.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/Dictum.Host/Dictum.Host.csproj" />
+  </ItemGroup>
+
+</Project>

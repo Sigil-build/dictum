@@ -6,11 +6,11 @@ using Dictum.Core.Diagnostics;
 using Dictum.Core.Stt;
 using Dictum.Host.Diagnostics;
 using Dictum.Host.Ipc;
-using Dictum.Integration.Tests.Daemon;
+using Dictum.Host.Tests.Daemon;
 using Dictum.Platform;
 using Dictum.Setup;
 
-namespace Dictum.Integration.Tests;
+namespace Dictum.Host.Tests.Diagnostics;
 
 public sealed class DoctorChecksTests : IDisposable
 {

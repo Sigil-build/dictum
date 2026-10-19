@@ -9,7 +9,7 @@ using Dictum.Host.Ipc;
 using Dictum.Platform;
 using Dictum.Platform.Hotkeys;
 
-namespace Dictum.Integration.Tests.Daemon;
+namespace Dictum.Host.Tests.Daemon;
 
 public sealed class DictumDaemonTests : IAsyncDisposable
 {

@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
 using Dictum.Stt.Whisper;
 
-namespace Dictum.Integration.Tests;
+namespace Dictum.Host.Tests.Whisper;
 
 public class VulkanProbeTests
 {

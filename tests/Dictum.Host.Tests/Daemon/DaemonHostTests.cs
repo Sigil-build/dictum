@@ -5,7 +5,7 @@ using Dictum.Host.Daemon;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
 
-namespace Dictum.Integration.Tests.Daemon;
+namespace Dictum.Host.Tests.Daemon;
 
 public sealed class DaemonHostTests : IDisposable
 {

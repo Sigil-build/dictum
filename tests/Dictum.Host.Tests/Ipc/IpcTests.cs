@@ -2,7 +2,7 @@ using Dictum.Core.Diagnostics;
 using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 
-namespace Dictum.Integration.Tests;
+namespace Dictum.Host.Tests.Ipc;
 
 public sealed class IpcTests : IDisposable
 {

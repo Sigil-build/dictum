@@ -1,9 +1,8 @@
 using System.Threading.Channels;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
-using Dictum.Host;
 
-namespace Dictum.Integration.Tests;
+namespace Dictum.Host.Tests;
 
 public sealed class ConfigWatcherTests : IDisposable
 {

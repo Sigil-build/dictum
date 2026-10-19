@@ -1,6 +1,6 @@
 using Dictum.Stt.Whisper;
 
-namespace Dictum.Integration.Tests;
+namespace Dictum.Host.Tests.Whisper;
 
 /// <summary>Candidate checks run before Whisper is loaded, so no model is needed.</summary>
 public class WhisperCandidatesTests

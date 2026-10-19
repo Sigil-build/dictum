@@ -10,7 +10,7 @@ using Dictum.Platform;
 using Dictum.Platform.Hotkeys;
 using Dictum.Platform.Injection;
 
-namespace Dictum.Integration.Tests.Daemon;
+namespace Dictum.Host.Tests.Daemon;
 
 internal sealed class FakeAudio : IAudioSource
 {

@@ -1,4 +1,4 @@
-namespace Dictum.Integration.Tests;
+namespace Dictum.Host.Tests;
 
 /// <summary>A clock whose time and timers move only when the test calls <see cref="Advance"/>.</summary>
 internal sealed class ManualTimeProvider : TimeProvider
