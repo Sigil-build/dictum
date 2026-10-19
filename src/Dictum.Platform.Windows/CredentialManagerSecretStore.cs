@@ -60,9 +60,13 @@ public sealed unsafe class CredentialManagerSecretStore : ISecretStore
 
     public Task DeleteAsync(string key, CancellationToken ct)
     {
-        if (!Win32.CredDelete(Prefix + key, Win32.CredTypeGeneric, 0) && Marshal.GetLastPInvokeError() != Win32.ErrorNotFound)
+        if (!Win32.CredDelete(Prefix + key, Win32.CredTypeGeneric, 0))
         {
-            throw new Win32Exception(Marshal.GetLastPInvokeError(), "Deleting from Credential Manager failed");
+            var error = Marshal.GetLastPInvokeError();
+            if (error != Win32.ErrorNotFound)
+            {
+                throw new Win32Exception(error, "Deleting from Credential Manager failed");
+            }
         }
 
         return Task.CompletedTask;

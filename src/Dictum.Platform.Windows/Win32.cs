@@ -18,12 +18,6 @@ internal static unsafe partial class Win32
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool OpenClipboard(nint newOwner);
 
-    [LibraryImport("user32")]
-    public static partial int GetSystemMetricsForDpi(int index, uint dpi);
-
-    [LibraryImport("user32")]
-    public static partial uint GetDpiForSystem();
-
     [LibraryImport("user32", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool CloseClipboard();
@@ -53,13 +47,6 @@ internal static unsafe partial class Win32
     [LibraryImport("user32")]
     public static partial uint GetWindowThreadProcessId(nint window, out uint processId);
 
-    [StructLayout(LayoutKind.Sequential)]
-    public struct Point32
-    {
-        public int X;
-        public int Y;
-    }
-
     [LibraryImport("user32", EntryPoint = "GetWindowLongPtrW")]
     public static partial nint GetWindowLongPtr(nint window, int index);
 
@@ -69,6 +56,12 @@ internal static unsafe partial class Win32
     [LibraryImport("user32", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool SetLayeredWindowAttributes(nint window, uint colourKey, byte alpha, uint flags);
+
+    [LibraryImport("user32")]
+    public static partial int GetSystemMetricsForDpi(int index, uint dpi);
+
+    [LibraryImport("user32")]
+    public static partial uint GetDpiForSystem();
 
     [LibraryImport("user32")]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -116,6 +109,14 @@ internal static unsafe partial class Win32
 
     [LibraryImport("advapi32")]
     public static partial void CredFree(void* buffer);
+
+    /// <summary>POINT.</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct Point32
+    {
+        public int X;
+        public int Y;
+    }
 
     /// <summary>CREDENTIALW.</summary>
     [StructLayout(LayoutKind.Sequential)]
