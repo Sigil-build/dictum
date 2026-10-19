@@ -21,7 +21,7 @@ public sealed class SystemPageTests
     private SystemPage Page() => new(new SystemServices(_channel, _service, () => _overlay, () => _tray, _timers, _clock, "Windows 11"));
 
     private void Doctor(params PlatformCheck[] checks) =>
-        _channel.Answer = request => request.Command == "doctor" ? new IpcResponse(true, Checks: checks) : new IpcResponse(true);
+        _channel.Answer = request => request.Command == IpcCommand.Doctor ? new IpcResponse(true, Checks: checks) : new IpcResponse(true);
 
     [Fact]
     public void TheChecksBecomeRowsFollowedByTheAppsOwn()
@@ -106,7 +106,7 @@ public sealed class SystemPageTests
 
         await page.CheckAgainCommand.ExecuteAsync(null);
 
-        Assert.Equal(2, _channel.Commands.Count(c => c == "doctor"));
+        Assert.Equal(2, _channel.Commands.Count(c => c == IpcCommand.Doctor));
         Assert.Equal(HealthLevel.Warning, page.Rows[^1].Level);
     }
 

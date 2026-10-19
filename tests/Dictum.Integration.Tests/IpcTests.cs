@@ -30,7 +30,7 @@ public sealed class IpcTests : IDisposable
         await using var server = new IpcServer(SocketPath, NullLog.Instance);
         server.Start((request, _) => Task.FromResult(IpcResponse.Success(Status($"{request.Command}:{request.Profile}"))));
 
-        var response = await new IpcClient(SocketPath).SendAsync(new IpcRequest("toggle", "dictate-uk"), _ct);
+        var response = await new IpcClient(SocketPath).SendAsync(new IpcRequest(IpcCommand.Toggle, "dictate-uk"), _ct);
 
         Assert.True(response.Ok);
         Assert.Equal("toggle:dictate-uk", response.Status!.State);
@@ -46,7 +46,7 @@ public sealed class IpcTests : IDisposable
 
         for (var i = 1; i <= 3; i++)
         {
-            Assert.Equal($"{i}", (await client.SendAsync(new IpcRequest("status"), _ct)).Status!.State);
+            Assert.Equal($"{i}", (await client.SendAsync(new IpcRequest(IpcCommand.Status), _ct)).Status!.State);
         }
     }
 
@@ -63,7 +63,7 @@ public sealed class IpcTests : IDisposable
 
     [Fact]
     public async Task ClientWithoutServerReportsDaemonNotRunning() =>
-        await Assert.ThrowsAsync<DaemonNotRunningException>(() => new IpcClient(SocketPath).SendAsync(new IpcRequest("status"), _ct));
+        await Assert.ThrowsAsync<DaemonNotRunningException>(() => new IpcClient(SocketPath).SendAsync(new IpcRequest(IpcCommand.Status), _ct));
 
     [Fact]
     public async Task StaleSocketFileIsReplaced()
@@ -73,7 +73,7 @@ public sealed class IpcTests : IDisposable
 
         server.Start((_, _) => Task.FromResult(IpcResponse.Success(Status("fresh"))));
 
-        Assert.Equal("fresh", (await new IpcClient(SocketPath).SendAsync(new IpcRequest("status"), _ct)).Status!.State);
+        Assert.Equal("fresh", (await new IpcClient(SocketPath).SendAsync(new IpcRequest(IpcCommand.Status), _ct)).Status!.State);
     }
 
     [Fact]
@@ -95,7 +95,7 @@ public sealed class IpcTests : IDisposable
         var ct = TestContext.Current.CancellationToken;
         var hub = new IpcEventHub();
         await using var server = new IpcServer(SocketPath, NullLog.Instance, hub);
-        server.Start((_, _) => Task.FromResult(IpcResponse.Success(Status("Idle"))));
+        server.Start((_, _) => Task.FromResult(IpcResponse.Success(Status(nameof(PipelineState.Idle)))));
 
         await using var subscription = await new IpcClient(SocketPath).SubscribeAsync(ct);
         Assert.True(subscription.Response.Ok);
@@ -114,8 +114,8 @@ public sealed class IpcTests : IDisposable
             }
         }
 
-        Assert.Equal(("state", "Recording"), (events[0].Event, events[0].State));
-        Assert.Equal(("finished", "pasted", 6100L), (events[1].Event, events[1].Outcome, events[1].TranscribeMs));
+        Assert.Equal((IpcEventKind.State, nameof(PipelineState.Recording)), (events[0].Event, events[0].State));
+        Assert.Equal((IpcEventKind.Finished, DictationOutcome.Pasted, 6100L), (events[1].Event, events[1].Outcome, events[1].TranscribeMs));
     }
 
     [Fact(Timeout = 10_000)]
@@ -124,7 +124,7 @@ public sealed class IpcTests : IDisposable
         var ct = TestContext.Current.CancellationToken;
         var hub = new IpcEventHub();
         await using var server = new IpcServer(SocketPath, NullLog.Instance, hub);
-        server.Start((_, _) => Task.FromResult(IpcResponse.Success(Status("Idle"))));
+        server.Start((_, _) => Task.FromResult(IpcResponse.Success(Status(nameof(PipelineState.Idle)))));
 
         var subscription = await new IpcClient(SocketPath).SubscribeAsync(ct);
         Assert.Equal(1, hub.SubscriberCount);
@@ -142,7 +142,7 @@ public sealed class IpcTests : IDisposable
         var ct = TestContext.Current.CancellationToken;
         var hub = new IpcEventHub();
         await using var server = new IpcServer(SocketPath, NullLog.Instance, hub, writeTimeout: TimeSpan.FromMilliseconds(200));
-        server.Start((_, _) => Task.FromResult(IpcResponse.Success(Status("Idle"))));
+        server.Start((_, _) => Task.FromResult(IpcResponse.Success(Status(nameof(PipelineState.Idle)))));
 
         await using var neverReads = await new IpcClient(SocketPath).SubscribeAsync(ct);
         var big = IpcEvent.ForStatus(Status(new string('x', 2000)));
@@ -163,10 +163,10 @@ public sealed class IpcTests : IDisposable
         var ct = TestContext.Current.CancellationToken;
         var hub = new IpcEventHub();
         var server = new IpcServer(SocketPath, NullLog.Instance, hub);
-        server.Start((_, _) => Task.FromResult(IpcResponse.Success(Status("Idle"))));
+        server.Start((_, _) => Task.FromResult(IpcResponse.Success(Status(nameof(PipelineState.Idle)))));
         await using var subscription = await new IpcClient(SocketPath).SubscribeAsync(ct);
 
-        hub.Publish(IpcEvent.Stopping("shutdown"));
+        hub.Publish(IpcEvent.Stopping(StoppingReason.Shutdown));
         Assert.True(await hub.WhenDeliveredAsync(TimeSpan.FromSeconds(2)));
         await server.DisposeAsync();
 
@@ -176,7 +176,7 @@ public sealed class IpcTests : IDisposable
             events.Add(e);
         }
 
-        Assert.Equal(("stopping", "shutdown"), (events.Single().Event, events.Single().Reason));
+        Assert.Equal((IpcEventKind.Stopping, StoppingReason.Shutdown), (events.Single().Event, events.Single().Reason));
     }
 
     [Fact(Timeout = 10_000)]
@@ -186,7 +186,7 @@ public sealed class IpcTests : IDisposable
         await using var server = new IpcServer(SocketPath, NullLog.Instance);
         server.Start((_, _) => throw new InvalidDataException("broken handler"));
 
-        var response = await new IpcClient(SocketPath).SendAsync(new IpcRequest("status"), ct);
+        var response = await new IpcClient(SocketPath).SendAsync(new IpcRequest(IpcCommand.Status), ct);
 
         Assert.False(response.Ok);
         Assert.Contains("broken handler", response.Error);
@@ -202,18 +202,18 @@ public sealed class IpcTests : IDisposable
         await using var server = new IpcServer(SocketPath, NullLog.Instance, hub);
         server.Start((request, _) =>
         {
-            if (request.Command == "subscribe")
+            if (request.Command == IpcCommand.Subscribe)
             {
-                hub.Publish(IpcEvent.ForStatus(Status("Recording")));
+                hub.Publish(IpcEvent.ForStatus(Status(nameof(PipelineState.Recording))));
             }
 
-            return Task.FromResult(IpcResponse.Success(Status("Idle")));
+            return Task.FromResult(IpcResponse.Success(Status(nameof(PipelineState.Idle))));
         });
 
         await using var subscription = await new IpcClient(SocketPath).SubscribeAsync(ct);
         await foreach (var e in subscription.ReadEventsAsync(ct))
         {
-            Assert.Equal(("status", "Recording"), (e.Event, e.Status?.State));
+            Assert.Equal((IpcEventKind.Status, nameof(PipelineState.Recording)), (e.Event, e.Status?.State));
             break;
         }
     }
@@ -227,7 +227,7 @@ public sealed class IpcTests : IDisposable
         await using var server = new IpcServer(SocketPath, NullLog.Instance, hub);
         server.Start((_, _) => Task.FromResult(IpcResponse.Failure("No.")));
 
-        var response = await new IpcClient(SocketPath).SendAsync(new IpcRequest("subscribe"), ct);
+        var response = await new IpcClient(SocketPath).SendAsync(new IpcRequest(IpcCommand.Subscribe), ct);
 
         Assert.False(response.Ok);
         Assert.Equal(0, hub.SubscriberCount);

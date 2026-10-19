@@ -132,7 +132,7 @@ public sealed partial class SystemPage : SettingsPage
         var run = ++_run;
         Checking = true;
         UpdateHeader();
-        var answer = await _services.Channel.TrySendAsync(new IpcRequest("doctor"), CancellationToken.None, DoctorTimeout);
+        var answer = await _services.Channel.TrySendAsync(new IpcRequest(IpcCommand.Doctor), CancellationToken.None, DoctorTimeout);
         if (run != _run)
         {
             return;

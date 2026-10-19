@@ -41,13 +41,13 @@ public sealed class TrayState(TimeProvider time)
     {
         switch (message.Event)
         {
-            case "state" when message.State is { } state:
+            case IpcEventKind.State when message.State is { } state:
                 _pipeline = state;
                 break;
-            case "finished" when message.Outcome == DictationOutcome.Error:
+            case IpcEventKind.Finished when message.Outcome == DictationOutcome.Error:
                 _error = (message.Message ?? Strings.TrayErrorUnknown, time.GetUtcNow());
                 break;
-            case "finished" when message.Outcome is DictationOutcome.Pasted or DictationOutcome.Copied:
+            case IpcEventKind.Finished when message.Outcome is DictationOutcome.Pasted or DictationOutcome.Copied:
                 _error = null;
                 break;
         }

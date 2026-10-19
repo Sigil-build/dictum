@@ -105,15 +105,15 @@ public sealed partial class SetupReadyStep(TrayHint tray, IDaemonChannel daemon,
     /// <summary>A pipeline state or a finished dictation; frames never come here. Any profile's dictation counts.</summary>
     public void OnEvent(IpcEvent message) => TryResult = message switch
     {
-        { Event: "state", State: nameof(PipelineState.Recording) } => Strings.OverlayListening,
-        { Event: "state", State: nameof(PipelineState.Transcribing) } => Strings.OverlayTranscribing,
-        { Event: "state", State: nameof(PipelineState.Processing) } => Strings.OverlayCleaningUp,
-        { Event: "finished", Outcome: DictationOutcome.Pasted } => Strings.SetupReadyPasted,
-        { Event: "finished", Outcome: DictationOutcome.Copied } => Strings.SetupReadyCopied,
-        { Event: "finished", Outcome: DictationOutcome.Empty } => Strings.SetupReadyEmpty,
-        { Event: "finished", Outcome: DictationOutcome.Cancelled } => Strings.OverlayCancelled,
-        { Event: "finished", Outcome: DictationOutcome.Error, Message: { } why } => UiText.Format(Strings.SetupReadyDictationFailed, why),
-        { Event: "finished", Outcome: DictationOutcome.Error } => Strings.OverlayFailed,
+        { Event: IpcEventKind.State, State: nameof(PipelineState.Recording) } => Strings.OverlayListening,
+        { Event: IpcEventKind.State, State: nameof(PipelineState.Transcribing) } => Strings.OverlayTranscribing,
+        { Event: IpcEventKind.State, State: nameof(PipelineState.Processing) } => Strings.OverlayCleaningUp,
+        { Event: IpcEventKind.Finished, Outcome: DictationOutcome.Pasted } => Strings.SetupReadyPasted,
+        { Event: IpcEventKind.Finished, Outcome: DictationOutcome.Copied } => Strings.SetupReadyCopied,
+        { Event: IpcEventKind.Finished, Outcome: DictationOutcome.Empty } => Strings.SetupReadyEmpty,
+        { Event: IpcEventKind.Finished, Outcome: DictationOutcome.Cancelled } => Strings.OverlayCancelled,
+        { Event: IpcEventKind.Finished, Outcome: DictationOutcome.Error, Message: { } why } => UiText.Format(Strings.SetupReadyDictationFailed, why),
+        { Event: IpcEventKind.Finished, Outcome: DictationOutcome.Error } => Strings.OverlayFailed,
         _ => TryResult,
     };
 

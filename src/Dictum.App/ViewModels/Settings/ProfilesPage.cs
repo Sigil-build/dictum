@@ -255,7 +255,7 @@ public sealed partial class ProfilesPage : SettingsPage
             if (!_pausedByUs && _channel.Link is { State: DaemonLinkState.Connected, Status.Paused: false })
             {
                 _pausedByUs = true;
-                Send("pause-hotkeys");
+                Send(IpcCommand.PauseHotkeys);
             }
         }
         else if (_pausedByUs && _channel.Link.State == DaemonLinkState.Connected)
@@ -414,7 +414,7 @@ public sealed partial class ProfilesPage : SettingsPage
     private void ResumeHotkeys()
     {
         _pausedByUs = false;
-        Send("resume-hotkeys");
+        Send(IpcCommand.ResumeHotkeys);
     }
 
     /// <summary>Pause and resume go one after another, so the daemon ends in the state sent last.</summary>

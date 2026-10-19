@@ -128,7 +128,7 @@ public sealed class SingleInstance : IAsyncDisposable
                 && await DaemonProcessAsync(daemonSocket, ct).ConfigureAwait(false) is { } daemon
                 && running.Contains(daemon))
             {
-                await TryAsync(daemonSocket, "shutdown", RequestTimeout, ct).ConfigureAwait(false);
+                await TryAsync(daemonSocket, IpcCommand.Shutdown, RequestTimeout, ct).ConfigureAwait(false);
             }
 
             while (processes.RunningFrom(folder).Count > 0)
@@ -161,7 +161,7 @@ public sealed class SingleInstance : IAsyncDisposable
     {
         try
         {
-            var response = await new IpcClient(socket).SendAsync(new IpcRequest("status"), ct, ProbeTimeout).ConfigureAwait(false);
+            var response = await new IpcClient(socket).SendAsync(new IpcRequest(IpcCommand.Status), ct, ProbeTimeout).ConfigureAwait(false);
             return response.Status?.ProcessId;
         }
         catch (DaemonNotRunningException)

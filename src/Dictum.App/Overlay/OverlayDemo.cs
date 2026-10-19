@@ -127,7 +127,7 @@ public sealed class OverlayDemo
         var elapsed = (now - _start).TotalSeconds;
         if (elapsed < _playFor && _recording.At(TimeSpan.FromSeconds(elapsed)) is { } frame)
         {
-            _controller.OnFrame(new IpcEvent("frame", T: frame.T, Rms: frame.Rms, Bands: frame.Bands));
+            _controller.OnFrame(new IpcEvent(IpcEventKind.Frame, T: frame.T, Rms: frame.Rms, Bands: frame.Bands));
         }
 
         while (_sent < _script.Count && _script[_sent].At <= elapsed)
@@ -155,7 +155,7 @@ public sealed class OverlayDemo
     private static (IReadOnlyList<(double, IpcEvent)> Script, double PlayFor) Script(string state, double duration)
     {
         static IpcEvent State(PipelineState state) => IpcEvent.ForState(state, Profile, nameof(HotkeyMode.Toggle));
-        static IpcEvent Finished(string outcome, string? message = null) => new("finished", Outcome: outcome, Message: message, Language: PickedLanguage);
+        static IpcEvent Finished(string outcome, string? message = null) => new(IpcEventKind.Finished, Outcome: outcome, Message: message, Language: PickedLanguage);
 
         var events = new List<(double, IpcEvent)> { (0, State(PipelineState.Recording)) };
         var listen = state switch { ListeningState => duration, SilenceState => SilenceFor, _ => 0 };

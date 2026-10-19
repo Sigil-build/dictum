@@ -95,7 +95,7 @@ public sealed class GeneralPageTests : IDisposable
         page.Microphone = page.Microphones.Single(m => m.Value == "Webcam C920");
 
         Assert.Equal("Webcam C920", session.Config.General.AudioDevice);
-        Assert.Equal(["monitor-stop", "monitor-start"], _channel.Commands);
+        Assert.Equal([IpcCommand.MonitorStop, IpcCommand.MonitorStart], _channel.Commands);
         Assert.Equal("Webcam C920", _channel.Sent[^1].Device);
     }
 
@@ -105,10 +105,10 @@ public sealed class GeneralPageTests : IDisposable
         var (page, _, _) = Open();
 
         page.OnShown();
-        Assert.Equal(["devices", "monitor-start"], _channel.Commands);
+        Assert.Equal([IpcCommand.Devices, IpcCommand.MonitorStart], _channel.Commands);
 
         _timers.Fire();
-        Assert.Equal(2, _channel.Commands.Count(c => c == "monitor-start"));
+        Assert.Equal(2, _channel.Commands.Count(c => c == IpcCommand.MonitorStart));
     }
 
     // Review focus 5.
@@ -120,7 +120,7 @@ public sealed class GeneralPageTests : IDisposable
 
         page.OnHidden();
 
-        Assert.Equal("monitor-stop", _channel.Commands.Last());
+        Assert.Equal(IpcCommand.MonitorStop, _channel.Commands.Last());
         Assert.Equal(0, _timers.Pending);
         Assert.Equal(0, page.MeterLevel);
     }
@@ -149,14 +149,14 @@ public sealed class GeneralPageTests : IDisposable
         page.OnLink(_channel.Link);
 
         Assert.Null(page.MeterNote);
-        Assert.Equal("monitor-start", _channel.Commands.Last());
+        Assert.Equal(IpcCommand.MonitorStart, _channel.Commands.Last());
         Assert.Equal(3, page.Microphones.Count);
     }
 
     [Fact]
     public void ARefusedMeterShowsTheDaemonsReason()
     {
-        _channel.Answer = request => request.Command == "monitor-start"
+        _channel.Answer = request => request.Command == IpcCommand.MonitorStart
             ? IpcResponse.Failure("A dictation is running; the level meter can start when it has finished.")
             : new IpcResponse(true);
         var (page, _, _) = Open();
@@ -174,7 +174,7 @@ public sealed class GeneralPageTests : IDisposable
 
         for (var i = 0; i < 40; i++)
         {
-            frames.Publish(new IpcEvent("frame", Rms: (float)Math.Pow(10, -31 / 20.0)));
+            frames.Publish(new IpcEvent(IpcEventKind.Frame, Rms: (float)Math.Pow(10, -31 / 20.0)));
             _clock.Advance(GeneralPage.MeterTick);
             _timers.Fire();
         }
@@ -330,16 +330,16 @@ public sealed class GeneralPageTests : IDisposable
     public void SwitchingWhileAStartIsOutStopsItFirst()
     {
         var start = new TaskCompletionSource<IpcResponse>();
-        _channel.Held["monitor-start"] = start;
+        _channel.Held[IpcCommand.MonitorStart] = start;
         var (page, _, _) = Open();
         page.OnShown();
 
         page.Microphone = page.Microphones.Single(m => m.Value == "Webcam C920");
-        Assert.Equal(["devices", "monitor-start"], _channel.Commands);
+        Assert.Equal([IpcCommand.Devices, IpcCommand.MonitorStart], _channel.Commands);
 
         start.SetResult(new IpcResponse(true));
 
-        Assert.Equal(["devices", "monitor-start", "monitor-stop", "monitor-start"], _channel.Commands);
+        Assert.Equal([IpcCommand.Devices, IpcCommand.MonitorStart, IpcCommand.MonitorStop, IpcCommand.MonitorStart], _channel.Commands);
         Assert.Equal("Webcam C920", _channel.Sent[^1].Device);
     }
 
@@ -350,14 +350,14 @@ public sealed class GeneralPageTests : IDisposable
         var (page, _, _) = Open();
         page.OnShown();
         var stop = new TaskCompletionSource<IpcResponse>();
-        _channel.Held["monitor-stop"] = stop;
+        _channel.Held[IpcCommand.MonitorStop] = stop;
         _channel.Sent.Clear();
 
         page.Microphone = page.Microphones.Single(m => m.Value == "Webcam C920");
-        Assert.Equal(["monitor-stop"], _channel.Commands);
+        Assert.Equal([IpcCommand.MonitorStop], _channel.Commands);
 
         stop.SetResult(new IpcResponse(true));
-        Assert.Equal(["monitor-stop", "monitor-start"], _channel.Commands);
+        Assert.Equal([IpcCommand.MonitorStop, IpcCommand.MonitorStart], _channel.Commands);
     }
 
     // Final review M5: hidden while a start is out, the monitor it opened is closed once the answer comes.
@@ -365,14 +365,14 @@ public sealed class GeneralPageTests : IDisposable
     public void HidingWhileAStartIsOutClosesTheMonitorItOpened()
     {
         var start = new TaskCompletionSource<IpcResponse>();
-        _channel.Held["monitor-start"] = start;
+        _channel.Held[IpcCommand.MonitorStart] = start;
         var (page, _, _) = Open();
         page.OnShown();
 
         page.OnHidden();
         start.SetResult(new IpcResponse(true));
 
-        Assert.Equal("monitor-stop", _channel.Commands.Last());
+        Assert.Equal(IpcCommand.MonitorStop, _channel.Commands.Last());
     }
 
     // Final review M6: without a device list nothing is known to be missing.

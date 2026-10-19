@@ -327,7 +327,7 @@ public sealed partial class GeneralPage : SettingsPage
 
     private async Task RefreshAsync()
     {
-        if (await _services.Channel.TrySendAsync(new IpcRequest("devices"), CancellationToken.None) is { Ok: true, Devices: { } devices })
+        if (await _services.Channel.TrySendAsync(new IpcRequest(IpcCommand.Devices), CancellationToken.None) is { Ok: true, Devices: { } devices })
         {
             _devices = devices;
             _devicesKnown = true;
@@ -350,7 +350,7 @@ public sealed partial class GeneralPage : SettingsPage
             return;
         }
 
-        var request = new IpcRequest("monitor-start", Device: _session.Config.General.AudioDevice);
+        var request = new IpcRequest(IpcCommand.MonitorStart, Device: _session.Config.General.AudioDevice);
         var answer = await _services.Channel.TrySendAsync(request, CancellationToken.None);
 
         // Hidden while the request was out: the stop queued behind it closes what it opened.
@@ -369,7 +369,7 @@ public sealed partial class GeneralPage : SettingsPage
         }
 
         _monitoring = false;
-        await _services.Channel.TrySendAsync(new IpcRequest("monitor-stop"), CancellationToken.None);
+        await _services.Channel.TrySendAsync(new IpcRequest(IpcCommand.MonitorStop), CancellationToken.None);
     }
 
     private void Tick()

@@ -4,6 +4,7 @@ using Dictum.App.Settings;
 using Dictum.App.ViewModels.Settings;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 
 namespace Dictum.App.Tests.Settings;
@@ -60,7 +61,7 @@ public sealed class ProfilesPageTests : IDisposable
     private static ProfileConfig Saved(SettingsSession session, string id) => session.Config.Profiles.Single(p => p.Id == id);
 
     private static DaemonLink Linked(bool paused, bool registered) => new(DaemonLinkState.Connected,
-        new DaemonStatus("Idle", null, [new ProfileStatus("work", "Ctrl+Alt+Space", "PushToTalk", registered)], "hook", "paste", 4242, Paused: paused));
+        new DaemonStatus(nameof(PipelineState.Idle), null, [new ProfileStatus("work", "Ctrl+Alt+Space", "PushToTalk", registered)], "hook", "paste", 4242, Paused: paused));
 
     [Fact]
     public void TheListShowsNamesWithLanguagesAndHotkeys()
@@ -147,10 +148,10 @@ public sealed class ProfilesPageTests : IDisposable
         var (page, _) = Open();
 
         page.IsRecording = true;
-        Assert.Equal(["pause-hotkeys"], _channel.Commands);
+        Assert.Equal([IpcCommand.PauseHotkeys], _channel.Commands);
 
         page.IsRecording = false;
-        Assert.Equal(["pause-hotkeys", "resume-hotkeys"], _channel.Commands);
+        Assert.Equal([IpcCommand.PauseHotkeys, IpcCommand.ResumeHotkeys], _channel.Commands);
     }
 
     // Review focus 1.
@@ -176,22 +177,22 @@ public sealed class ProfilesPageTests : IDisposable
         page.OnHidden();
 
         Assert.False(page.IsRecording);
-        Assert.Equal("resume-hotkeys", _channel.Commands.Last());
+        Assert.Equal(IpcCommand.ResumeHotkeys, _channel.Commands.Last());
     }
 
     [Fact]
     public void ResumeWaitsForThePausesAnswer()
     {
         var pause = new TaskCompletionSource<IpcResponse>();
-        _channel.Held["pause-hotkeys"] = pause;
+        _channel.Held[IpcCommand.PauseHotkeys] = pause;
         var (page, _) = Open();
 
         page.IsRecording = true;
         page.IsRecording = false;
-        Assert.Equal(["pause-hotkeys"], _channel.Commands);
+        Assert.Equal([IpcCommand.PauseHotkeys], _channel.Commands);
 
         pause.SetResult(new IpcResponse(true));
-        Assert.Equal(["pause-hotkeys", "resume-hotkeys"], _channel.Commands);
+        Assert.Equal([IpcCommand.PauseHotkeys, IpcCommand.ResumeHotkeys], _channel.Commands);
     }
 
     [Fact]
@@ -374,10 +375,10 @@ public sealed class ProfilesPageTests : IDisposable
         _channel.Link = new DaemonLink(DaemonLinkState.Restarting);
         page.OnLink(_channel.Link);
         page.IsRecording = false;
-        Assert.Equal(["pause-hotkeys"], _channel.Commands);
+        Assert.Equal([IpcCommand.PauseHotkeys], _channel.Commands);
 
         _channel.Link = FakeChannel.Connected();
         page.OnLink(_channel.Link);
-        Assert.Equal(["pause-hotkeys", "resume-hotkeys"], _channel.Commands);
+        Assert.Equal([IpcCommand.PauseHotkeys, IpcCommand.ResumeHotkeys], _channel.Commands);
     }
 }

@@ -3,6 +3,7 @@ using Dictum.App.Tests.Settings;
 using Dictum.App.ViewModels.Setup;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
 using Dictum.Setup;
@@ -362,8 +363,8 @@ public sealed class SetupViewModelTests : IDisposable
         var profile = _fx.Store.Load().Profiles[0];
 
         wizard.OnLink(new DaemonLink(DaemonLinkState.Connected, new DaemonStatus(
-            "Idle", null, [new ProfileStatus(profile.Id, profile.Hotkey, "PushToTalk", true)], "hook", "paste", 4242, WarmedUp: true)));
-        wizard.OnEvent(new IpcEvent("finished", Outcome: DictationOutcome.Copied));
+            nameof(PipelineState.Idle), null, [new ProfileStatus(profile.Id, profile.Hotkey, "PushToTalk", true)], "hook", "paste", 4242, WarmedUp: true)));
+        wizard.OnEvent(new IpcEvent(IpcEventKind.Finished, Outcome: DictationOutcome.Copied));
 
         Assert.Equal("Dictum is running. Try it in the box below.", wizard.Ready.DaemonText);
         Assert.Equal("Done. The text is on the clipboard: this profile copies instead of pasting.", wizard.Ready.TryResult);
@@ -457,7 +458,7 @@ public sealed class SetupViewModelTests : IDisposable
         _fx.InstallAll();
         var wizard = Open();
         await WalkTo(wizard, 3);
-        wizard.OnEvent(new IpcEvent("finished", Outcome: DictationOutcome.Pasted));
+        wizard.OnEvent(new IpcEvent(IpcEventKind.Finished, Outcome: DictationOutcome.Pasted));
 
         await WalkTo(wizard, 7);
 

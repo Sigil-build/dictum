@@ -111,7 +111,7 @@ public sealed class DaemonSupervisor : IDaemonChannel, IAsyncDisposable
             using var timeout = new CancellationTokenSource(_options.QuitTimeout);
             try
             {
-                await SendAsync(new IpcRequest("shutdown"), timeout.Token, _options.QuitTimeout).ConfigureAwait(false);
+                await SendAsync(new IpcRequest(IpcCommand.Shutdown), timeout.Token, _options.QuitTimeout).ConfigureAwait(false);
                 await _stopping.Task.WaitAsync(timeout.Token).ConfigureAwait(false);
             }
             catch (Exception ex) when (ex is DaemonNotRunningException or IOException or SocketException or OperationCanceledException)
@@ -434,7 +434,7 @@ public sealed class DaemonSupervisor : IDaemonChannel, IAsyncDisposable
     {
         try
         {
-            return (await SendAsync(new IpcRequest("status"), ct).ConfigureAwait(false)).Status?.ProcessId;
+            return (await SendAsync(new IpcRequest(IpcCommand.Status), ct).ConfigureAwait(false)).Status?.ProcessId;
         }
         catch (Exception ex) when (ex is DaemonNotRunningException or IOException or SocketException or JsonException or InvalidOperationException
                                        || ex is OperationCanceledException && !ct.IsCancellationRequested)
@@ -450,7 +450,7 @@ public sealed class DaemonSupervisor : IDaemonChannel, IAsyncDisposable
     {
         try
         {
-            var answer = await SendAsync(new IpcRequest("shutdown"), ct, _options.QuitTimeout).ConfigureAwait(false);
+            var answer = await SendAsync(new IpcRequest(IpcCommand.Shutdown), ct, _options.QuitTimeout).ConfigureAwait(false);
             if (!answer.Ok)
             {
                 _log.Info($"The other daemon refused 'shutdown': {answer.Error}");
@@ -474,11 +474,11 @@ public sealed class DaemonSupervisor : IDaemonChannel, IAsyncDisposable
         {
             await foreach (var message in subscription.ReadEventsAsync(ct).ConfigureAwait(false))
             {
-                if (message is { Event: "status", Status: { } status })
+                if (message is { Event: IpcEventKind.Status, Status: { } status })
                 {
                     SetLink(new DaemonLink(DaemonLinkState.Connected, status));
                 }
-                else if (message.Event == "stopping")
+                else if (message.Event == IpcEventKind.Stopping)
                 {
                     _announcedStop = true;
                     _stopping.TrySetResult();

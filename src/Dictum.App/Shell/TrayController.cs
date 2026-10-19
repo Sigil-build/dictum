@@ -51,7 +51,7 @@ public sealed class TrayController(TrayState state, ITrayCommands commands, Time
     public void OnEvent(IpcEvent message)
     {
         // Frames come 50 times a second and change nothing in the tray.
-        if (message.Event == "frame")
+        if (message.Event == IpcEventKind.Frame)
         {
             return;
         }

@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net.Sockets;
 using Dictum.App.Shell;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 
 namespace Dictum.App.Tests.Shell;
@@ -244,7 +245,7 @@ public sealed class SingleInstanceTests : IDisposable
             _server = new IpcServer(socket, NullLog.Instance);
             _server.Start((request, _) =>
             {
-                if (request.Command == "shutdown")
+                if (request.Command == IpcCommand.Shutdown)
                 {
                     ShutdownAsked = true;
                     if (exitsOnShutdown)
@@ -253,7 +254,7 @@ public sealed class SingleInstanceTests : IDisposable
                     }
                 }
 
-                return Task.FromResult(IpcResponse.Success(new DaemonStatus("Idle", null, [], "hook", "paste", pid)));
+                return Task.FromResult(IpcResponse.Success(new DaemonStatus(nameof(PipelineState.Idle), null, [], "hook", "paste", pid)));
             });
         }
 

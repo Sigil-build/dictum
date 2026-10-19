@@ -38,13 +38,13 @@ public sealed class OverlayController(
         var now = Now();
         switch (message.Event)
         {
-            case "state":
+            case IpcEventKind.State:
                 OnState(message.State, message.Profile, now);
                 break;
-            case "finished":
+            case IpcEventKind.Finished:
                 Finished(message, now);
                 break;
-            case "stopping":
+            case IpcEventKind.Stopping:
                 Hide();
                 break;
         }

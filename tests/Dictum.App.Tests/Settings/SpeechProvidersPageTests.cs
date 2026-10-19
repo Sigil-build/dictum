@@ -224,7 +224,7 @@ public sealed class SpeechProvidersPageTests : IDisposable
         await card.TestCommand.ExecuteAsync(null);
 
         Assert.Equal([(ProviderCard.ReloadWait, "http://gpu-box:9000/v1")], _waits);
-        var test = _channel.Sent.Single(r => r.Command == "test-stt");
+        var test = _channel.Sent.Single(r => r.Command == IpcCommand.TestStt);
         Assert.Equal(("remote", (int?)5, (bool?)null), (test.Stt, test.Seconds, test.Sample));
         Assert.Equal(TimeSpan.FromSeconds(125), _channel.LastTimeout);
     }
@@ -250,14 +250,14 @@ public sealed class SpeechProvidersPageTests : IDisposable
         Assert.False(card.CanTest);
         await card.TestSampleCommand.ExecuteAsync(null);
 
-        Assert.DoesNotContain(_channel.Commands, c => c == "test-stt");
+        Assert.DoesNotContain(_channel.Commands, c => c == IpcCommand.TestStt);
         Assert.Equal((HealthLevel.Error, Strings.SettingsProvidersFixFirst), (card.Result?.Level, card.Result?.Status));
     }
 
     [Fact]
     public async Task ASuccessfulTestShowsTheTextAndTheLatency()
     {
-        _channel.Answer = request => request.Command == "test-stt"
+        _channel.Answer = request => request.Command == IpcCommand.TestStt
             ? new IpcResponse(true, Test: new SttTestResult("привіт, світ", "uk", 812, "Vulkan", "ggml-large-v3-turbo-q8_0.bin"))
             : new IpcResponse(true);
         var (page, _) = Open();
@@ -266,13 +266,13 @@ public sealed class SpeechProvidersPageTests : IDisposable
 
         var result = Card(page, "local").Result;
         Assert.Equal((HealthLevel.Ok, "Recognised in 812 ms", "привіт, світ"), (result?.Level, result?.Status, result?.Detail));
-        Assert.Equal((bool?)true, _channel.Sent.Single(r => r.Command == "test-stt").Sample);
+        Assert.Equal((bool?)true, _channel.Sent.Single(r => r.Command == IpcCommand.TestStt).Sample);
     }
 
     [Fact]
     public async Task AFailedTestShowsTheDaemonsReason()
     {
-        _channel.Answer = request => request.Command == "test-stt"
+        _channel.Answer = request => request.Command == IpcCommand.TestStt
             ? IpcResponse.Failure("Dictum is busy; test the provider when the dictation or level meter has finished.")
             : new IpcResponse(true);
         var (page, _) = Open();
@@ -297,14 +297,14 @@ public sealed class SpeechProvidersPageTests : IDisposable
     public void TheMeterMovesWhileATestRecords()
     {
         var answer = new TaskCompletionSource<IpcResponse>();
-        _channel.Held["test-stt"] = answer;
+        _channel.Held[IpcCommand.TestStt] = answer;
         var (page, _) = Open();
         var card = Card(page, "local");
 
         var run = card.TestCommand.ExecuteAsync(null);
         for (var i = 0; i < 10; i++)
         {
-            _frames.Publish(new IpcEvent("frame", Rms: 0.05f));
+            _frames.Publish(new IpcEvent(IpcEventKind.Frame, Rms: 0.05f));
             _clock.Advance(GeneralPage.MeterTick);
             _timers.Fire();
         }
@@ -357,7 +357,7 @@ public sealed class SpeechProvidersPageTests : IDisposable
         string? keyAtTest = null;
         _channel.Answer = request =>
         {
-            if (request.Command == "test-stt")
+            if (request.Command == IpcCommand.TestStt)
             {
                 keyAtTest = ((OpenAiCompatibleSttConfig)Store.Load().Stt["remote"]).ApiKey;
             }
@@ -372,7 +372,7 @@ public sealed class SpeechProvidersPageTests : IDisposable
 
         var commit = card.CommitKeyCommand.ExecuteAsync(null);
         var test = card.TestCommand.ExecuteAsync(null);
-        Assert.DoesNotContain(_channel.Commands, c => c == "test-stt");
+        Assert.DoesNotContain(_channel.Commands, c => c == IpcCommand.TestStt);
 
         held.SetResult();
         await commit;

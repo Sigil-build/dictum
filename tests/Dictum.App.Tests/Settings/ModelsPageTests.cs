@@ -430,7 +430,7 @@ public sealed class ModelsPageTests : IDisposable
     {
         Install(TurboFile, TurboData);
         var runs = 0;
-        _channel.Answer = request => request.Command == "test-stt"
+        _channel.Answer = request => request.Command == IpcCommand.TestStt
             ? new IpcResponse(true, Test: new SttTestResult("тестовий запис", "uk", ++runs == 1 ? 9_000 : 6_884, "vulkan", TurboFile, 6.884))
             : new IpcResponse(true);
         var (page, _) = Open();
@@ -439,7 +439,7 @@ public sealed class ModelsPageTests : IDisposable
 
         await turbo.MeasureCommand.ExecuteAsync(null);
 
-        Assert.Equal(2, _channel.Sent.Count(r => r is { Command: "test-stt", Stt: "local", Sample: true }));
+        Assert.Equal(2, _channel.Sent.Count(r => r is { Command: IpcCommand.TestStt, Stt: "local", Sample: true }));
         Assert.Equal(1.0, _measurements.Ratios[TurboFile], 6);
         Assert.Equal(("~5 s for 5 s of speech, measured", (string?)null, (string?)null), (turbo.SpeedText, turbo.Error, turbo.CheckText));
     }
@@ -534,7 +534,7 @@ public sealed class ModelsPageTests : IDisposable
     public async Task AMeasureOfAnotherModelIsNotKept()
     {
         Install(TurboFile, TurboData);
-        _channel.Answer = request => request.Command == "test-stt"
+        _channel.Answer = request => request.Command == IpcCommand.TestStt
             ? new IpcResponse(true, Test: new SttTestResult("тестовий запис", "uk", 6_884, "vulkan", SmallFile, 6.884))
             : new IpcResponse(true);
         var (page, _) = Open();

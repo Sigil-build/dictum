@@ -1,6 +1,7 @@
 using Dictum.App.Daemon;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 
 namespace Dictum.App.Tests.Daemon;
@@ -68,11 +69,11 @@ public sealed class RealDaemonTests : IAsyncDisposable
         _supervisor.Start();
         await Eventually.WaitForAsync(() => _supervisor.Link.State == DaemonLinkState.Connected, "the daemon", TimeSpan.FromSeconds(30));
 
-        await _supervisor.SendAsync(new IpcRequest("start", "test"), _ct);
-        await Eventually.WaitForAsync(() => Has(events, e => e is { Event: "state", State: "Recording" }), "Recording");
-        await _supervisor.SendAsync(new IpcRequest("cancel"), _ct);
-        await Eventually.WaitForAsync(() => Has(events, e => e is { Event: "finished", Outcome: DictationOutcome.Cancelled }), "finished: cancelled");
-        var test = await _supervisor.SendAsync(new IpcRequest("test-stt", Stt: "local", Sample: true), _ct, TimeSpan.FromMinutes(2));
+        await _supervisor.SendAsync(new IpcRequest(IpcCommand.Start, "test"), _ct);
+        await Eventually.WaitForAsync(() => Has(events, e => e is { Event: IpcEventKind.State, State: nameof(PipelineState.Recording) }), "Recording");
+        await _supervisor.SendAsync(new IpcRequest(IpcCommand.Cancel), _ct);
+        await Eventually.WaitForAsync(() => Has(events, e => e is { Event: IpcEventKind.Finished, Outcome: DictationOutcome.Cancelled }), "finished: cancelled");
+        var test = await _supervisor.SendAsync(new IpcRequest(IpcCommand.TestStt, Stt: "local", Sample: true), _ct, TimeSpan.FromMinutes(2));
 
         Assert.True(test.Ok, test.Error);
         Assert.False(string.IsNullOrWhiteSpace(test.Test!.Text));

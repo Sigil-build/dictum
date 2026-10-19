@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Dictum.App.Daemon;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 
 namespace Dictum.App.Tests.Daemon;
@@ -43,7 +44,7 @@ internal sealed class FakeDaemon : IAsyncDisposable
     }
 
     public DaemonStatus Status() => new(
-        "Idle",
+        nameof(PipelineState.Idle),
         null,
         [new ProfileStatus("uk", "Ctrl+Alt+Space", "PushToTalk", true)],
         "fake hotkeys",
@@ -71,11 +72,11 @@ internal sealed class FakeDaemon : IAsyncDisposable
         Commands.Enqueue(request.Command);
         switch (request.Command)
         {
-            case "subscribe" when !_options.Subscribes:
-            case "shutdown" when !_options.StopsOnShutdown:
+            case IpcCommand.Subscribe when !_options.Subscribes:
+            case IpcCommand.Shutdown when !_options.StopsOnShutdown:
                 return Task.FromResult(IpcResponse.Failure($"Unknown command '{request.Command}'."));
-            case "shutdown":
-                Events.Publish(IpcEvent.Stopping("shutdown"));
+            case IpcCommand.Shutdown:
+                Events.Publish(IpcEvent.Stopping(StoppingReason.Shutdown));
                 _ = Task.Run(async () =>
                 {
                     await Events.WhenDeliveredAsync(TimeSpan.FromSeconds(1));

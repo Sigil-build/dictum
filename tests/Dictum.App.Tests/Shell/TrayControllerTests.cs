@@ -1,6 +1,7 @@
 using Dictum.App.Daemon;
 using Dictum.App.Shell;
 using Dictum.App.Tray;
+using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 
 namespace Dictum.App.Tests.Shell;
@@ -69,7 +70,7 @@ public sealed class TrayControllerTests : IAsyncDisposable
         var controller = Attached();
         var before = _presenter.Shown.Count;
 
-        controller.OnEvent(new IpcEvent("frame", Rms: 0.1f));
+        controller.OnEvent(new IpcEvent(IpcEventKind.Frame, Rms: 0.1f));
 
         Assert.Equal(before, _presenter.Shown.Count);
     }
@@ -101,7 +102,7 @@ public sealed class TrayControllerTests : IAsyncDisposable
     }
 
     private static DaemonLink Connected() => new(DaemonLinkState.Connected, new DaemonStatus(
-        "Idle", null, [new ProfileStatus("uk", "Ctrl+Alt+Space", "PushToTalk", true), new ProfileStatus("en", null, "Toggle", true)], "h", "p", 7));
+        nameof(PipelineState.Idle), null, [new ProfileStatus("uk", "Ctrl+Alt+Space", "PushToTalk", true), new ProfileStatus("en", null, "Toggle", true)], "h", "p", 7));
 
     internal sealed class FakePresenter : ITrayPresenter
     {

@@ -11,6 +11,7 @@ using Dictum.App.Views.Setup;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 using Dictum.Setup;
 
@@ -43,7 +44,7 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         presenter.Click(presenter.Shown[^1].Menu.First(i => i.Command == TrayCommand.Quit));
         await WaitAsync(() => exitCode == 0);
 
-        Assert.Contains("shutdown", launcher.Current!.Commands);
+        Assert.Contains(IpcCommand.Shutdown, launcher.Current!.Commands);
         await shell.DisposeAsync();
         await launcher.DisposeAsync();
     });
@@ -108,7 +109,7 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         shell.Start(Application.Current!, _ => { });
         await WaitAsync(() => shell.Supervisor.Link.State == DaemonLinkState.Connected);
 
-        launcher.Current!.Events.Publish(new IpcEvent("frame", Rms: 0.1f));
+        launcher.Current!.Events.Publish(new IpcEvent(IpcEventKind.Frame, Rms: 0.1f));
 
         await WaitAsync(() => shell.Frames.Rms(TimeSpan.FromSeconds(10)) > 0);
         await shell.DisposeAsync();
@@ -142,10 +143,10 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         shell.Start(Application.Current!, _ => { });
         await WaitAsync(() => shell.Supervisor.Link.State == DaemonLinkState.Connected);
 
-        launcher.Current!.Events.Publish(new IpcEvent("state", State: "Recording", Profile: "dictate"));
+        launcher.Current!.Events.Publish(new IpcEvent(IpcEventKind.State, State: nameof(PipelineState.Recording), Profile: "dictate"));
         await WaitAsync(() => shell.Overlay.Phase == OverlayPhase.Listening);
 
-        launcher.Current!.Events.Publish(new IpcEvent("stopping", Reason: "shutdown"));
+        launcher.Current!.Events.Publish(new IpcEvent(IpcEventKind.Stopping, Reason: StoppingReason.Shutdown));
         await WaitAsync(() => shell.Overlay.Phase == OverlayPhase.Hidden);
 
         await shell.DisposeAsync();
@@ -256,7 +257,7 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         shell.ShowSetup();
         var wizard = (SetupViewModel)SetupWindow.Open[0].DataContext!;
 
-        launcher.Current!.Events.Publish(new IpcEvent("finished", Outcome: DictationOutcome.Empty));
+        launcher.Current!.Events.Publish(new IpcEvent(IpcEventKind.Finished, Outcome: DictationOutcome.Empty));
 
         await WaitAsync(() => wizard.Ready.TryResult == "Nothing was recognised. Speak a little closer to the microphone and try again.");
         CloseSetup();
@@ -344,7 +345,7 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         shell.OnCommand(SingleInstance.Quit);
 
         await WaitAsync(() => exitCode == 0);
-        Assert.Contains("shutdown", launcher.Current!.Commands);
+        Assert.Contains(IpcCommand.Shutdown, launcher.Current!.Commands);
         await shell.DisposeAsync();
         await launcher.DisposeAsync();
     });

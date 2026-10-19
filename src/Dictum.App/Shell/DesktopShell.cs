@@ -220,7 +220,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         Supervisor.EventReceived += message =>
         {
             // Frames come every 20 ms: the overlay keeps the newest one without a trip through the UI thread.
-            if (message.Event == "frame")
+            if (message.Event == IpcEventKind.Frame)
             {
                 Overlay.OnFrame(message);
                 Frames.Publish(message);
@@ -266,11 +266,11 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         }
     }
 
-    public void UseProfile(string profile) => Send(new IpcRequest("use-profile", profile));
+    public void UseProfile(string profile) => Send(new IpcRequest(IpcCommand.UseProfile, profile));
 
-    public void PauseHotkeys() => Send(new IpcRequest("pause-hotkeys"));
+    public void PauseHotkeys() => Send(new IpcRequest(IpcCommand.PauseHotkeys));
 
-    public void ResumeHotkeys() => Send(new IpcRequest("resume-hotkeys"));
+    public void ResumeHotkeys() => Send(new IpcRequest(IpcCommand.ResumeHotkeys));
 
     public void RestartDaemon() => Supervisor.Restart();
 

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using Dictum.App.Daemon;
+using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 
 namespace Dictum.App.Tests.Daemon;
@@ -73,12 +74,12 @@ public sealed class DaemonSupervisorTests : IAsyncDisposable
         await WaitForAsync(DaemonLinkState.Connected);
         var daemon = _launcher.Current!;
 
-        daemon.Events.Publish(new IpcEvent("state", State: "Recording", Profile: "uk"));
+        daemon.Events.Publish(new IpcEvent(IpcEventKind.State, State: nameof(PipelineState.Recording), Profile: "uk"));
         daemon.Paused = true;
         daemon.Events.Publish(IpcEvent.ForStatus(daemon.Status()));
 
         await Eventually.WaitForAsync(() => supervisor.Link.Status?.Paused == true, "the paused status");
-        Assert.Contains(events, e => e is { Event: "state", State: "Recording" });
+        Assert.Contains(events, e => e is { Event: IpcEventKind.State, State: nameof(PipelineState.Recording) });
     }
 
     [Fact]
@@ -179,7 +180,7 @@ public sealed class DaemonSupervisorTests : IAsyncDisposable
 
         await Eventually.WaitForAsync(() => _launcher.Launches == 1 && supervisor.Link.State == DaemonLinkState.Connected, "our daemon");
         Assert.Equal([77], _launcher.Ended);
-        Assert.Contains("shutdown", old.Commands);
+        Assert.Contains(IpcCommand.Shutdown, old.Commands);
     }
 
     [Fact]
@@ -224,7 +225,7 @@ public sealed class DaemonSupervisorTests : IAsyncDisposable
         await supervisor.QuitAsync();
 
         Assert.Equal(DaemonLinkState.Stopped, supervisor.Link.State);
-        Assert.Contains("shutdown", daemon.Commands);
+        Assert.Contains(IpcCommand.Shutdown, daemon.Commands);
         Assert.Equal(0, await daemon.Exited.WaitAsync(TimeSpan.FromSeconds(5), _ct));
         await Task.Delay(200, _ct);
         Assert.Equal(1, _launcher.Launches);
@@ -252,10 +253,10 @@ public sealed class DaemonSupervisorTests : IAsyncDisposable
         var supervisor = Start();
         await WaitForAsync(DaemonLinkState.Connected);
 
-        var answer = await supervisor.SendAsync(new IpcRequest("use-profile", "uk"), _ct);
+        var answer = await supervisor.SendAsync(new IpcRequest(IpcCommand.UseProfile, "uk"), _ct);
 
         Assert.True(answer.Ok);
-        Assert.Contains("use-profile", _launcher.Current!.Commands);
+        Assert.Contains(IpcCommand.UseProfile, _launcher.Current!.Commands);
     }
 
     [Fact]
@@ -266,7 +267,7 @@ public sealed class DaemonSupervisorTests : IAsyncDisposable
         await WaitForAsync(DaemonLinkState.Connected);
         var daemon = _launcher.Current!;
 
-        daemon.Events.Publish(new IpcEvent("state", State: "Recording"));
+        daemon.Events.Publish(new IpcEvent(IpcEventKind.State, State: nameof(PipelineState.Recording)));
         daemon.Paused = true;
         daemon.Events.Publish(IpcEvent.ForStatus(daemon.Status()));
 
@@ -281,7 +282,7 @@ public sealed class DaemonSupervisorTests : IAsyncDisposable
         await WaitForAsync(DaemonLinkState.Connected);
 
         // What 'dictum shutdown' does: the daemon announces that it is stopping, then exits.
-        await supervisor.SendAsync(new IpcRequest("shutdown"), _ct);
+        await supervisor.SendAsync(new IpcRequest(IpcCommand.Shutdown), _ct);
 
         await WaitForAsync(DaemonLinkState.Failed);
         await Task.Delay(300, _ct);

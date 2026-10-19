@@ -24,7 +24,7 @@ public sealed class SetupReadyStepTests
 
     private DaemonLink Connected(bool registered = true, bool? warmedUp = true, bool paused = false, string? warning = null) =>
         new(DaemonLinkState.Connected, new DaemonStatus(
-            "Idle", null, [new ProfileStatus(_config.Profiles[0].Id, _config.Profiles[0].Hotkey, "PushToTalk", registered)],
+            nameof(PipelineState.Idle), null, [new ProfileStatus(_config.Profiles[0].Id, _config.Profiles[0].Hotkey, "PushToTalk", registered)],
             "hook", "paste", 4242, Warning: warning, Paused: paused, WarmedUp: warmedUp));
 
     private static (string, bool, bool, bool) Line(SetupReadyStep step) => (step.DaemonText, step.IsReady, step.HasProblem, step.CanRestart);
@@ -134,11 +134,11 @@ public sealed class SetupReadyStepTests
         Assert.Equal("Transcribing…", step.TryResult);
         step.OnEvent(IpcEvent.ForState(PipelineState.Idle, "dictate", "PushToTalk"));
         Assert.Equal("Transcribing…", step.TryResult);
-        step.OnEvent(new IpcEvent("finished", Outcome: DictationOutcome.Pasted));
+        step.OnEvent(new IpcEvent(IpcEventKind.Finished, Outcome: DictationOutcome.Pasted));
         Assert.Equal("Done. The text went where the cursor was.", step.TryResult);
-        step.OnEvent(new IpcEvent("finished", Outcome: DictationOutcome.Empty));
+        step.OnEvent(new IpcEvent(IpcEventKind.Finished, Outcome: DictationOutcome.Empty));
         Assert.Equal("Nothing was recognised. Speak a little closer to the microphone and try again.", step.TryResult);
-        step.OnEvent(new IpcEvent("finished", Outcome: DictationOutcome.Error, Message: "The microphone is busy."));
+        step.OnEvent(new IpcEvent(IpcEventKind.Finished, Outcome: DictationOutcome.Error, Message: "The microphone is busy."));
         Assert.Equal("The dictation failed: The microphone is busy.", step.TryResult);
     }
 

@@ -61,11 +61,11 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     {
         await using var daemon = await StartAsync(Config(), withHotkeys: false);
 
-        var started = await daemon.HandleAsync(new IpcRequest("toggle", "en"), _ct);
-        Assert.Equal("Recording", started.Status!.State);
+        var started = await daemon.HandleAsync(new IpcRequest(IpcCommand.Toggle, "en"), _ct);
+        Assert.Equal(nameof(PipelineState.Recording), started.Status!.State);
         Assert.Equal("en", started.Status.ActiveProfile);
 
-        await daemon.HandleAsync(new IpcRequest("toggle"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Toggle), _ct);
         await WaitForAsync(() => _injector.Injected.Count == 1);
         Assert.StartsWith("none", daemon.Status().HotkeyBackend);
     }
@@ -74,11 +74,11 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     public async Task CancelDiscardsTheRecording()
     {
         await using var daemon = await StartAsync(Config());
-        await daemon.HandleAsync(new IpcRequest("start"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Start), _ct);
 
-        var response = await daemon.HandleAsync(new IpcRequest("cancel"), _ct);
+        var response = await daemon.HandleAsync(new IpcRequest(IpcCommand.Cancel), _ct);
 
-        Assert.Equal("Idle", response.Status!.State);
+        Assert.Equal(nameof(PipelineState.Idle), response.Status!.State);
         Assert.Empty(_injector.Injected);
     }
 
@@ -87,11 +87,11 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     {
         _stt.Gate = new TaskCompletionSource();
         await using var daemon = await StartAsync(Config());
-        await daemon.HandleAsync(new IpcRequest("start"), _ct);
-        await daemon.HandleAsync(new IpcRequest("stop"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Start), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Stop), _ct);
         await WaitForAsync(() => daemon.State == PipelineState.Transcribing);
 
-        await daemon.HandleAsync(new IpcRequest("cancel"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Cancel), _ct);
         await WaitForAsync(() => daemon.State == PipelineState.Idle);
 
         Assert.Empty(_injector.Injected);
@@ -169,7 +169,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         await WaitForAsync(() => _notifier.Shown.Count == 1);
 
         Assert.Contains("not allowed", _notifier.Shown[0]);
-        Assert.True((await daemon.HandleAsync(new IpcRequest("status"), _ct)).Ok);
+        Assert.True((await daemon.HandleAsync(new IpcRequest(IpcCommand.Status), _ct)).Ok);
     }
 
     [Fact]
@@ -180,7 +180,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         await daemon.StartAsync(_ct);
 
         Assert.Equal("Not yet.", daemon.Status().Warning);
-        Assert.True((await daemon.HandleAsync(new IpcRequest("status"), _ct)).Ok);
+        Assert.True((await daemon.HandleAsync(new IpcRequest(IpcCommand.Status), _ct)).Ok);
     }
 
     [Fact]
@@ -192,12 +192,12 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         _hotkeys.Raise("uk", HotkeyPhase.Pressed);
         await WaitForAsync(() => daemon.State == PipelineState.Recording);
         _hotkeys.Raise("uk", HotkeyPhase.Released);
-        var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == "finished"));
+        var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == IpcEventKind.Finished));
 
-        var recording = events.First(e => e is { Event: "state", State: "Recording" });
+        var recording = events.First(e => e is { Event: IpcEventKind.State, State: nameof(PipelineState.Recording) });
         Assert.Equal(("uk", "PushToTalk"), (recording.Profile, recording.Mode));
-        Assert.Contains(events, e => e is { Event: "state", State: "Transcribing" });
-        var finished = Assert.Single(events, e => e.Event == "finished");
+        Assert.Contains(events, e => e is { Event: IpcEventKind.State, State: nameof(PipelineState.Transcribing) });
+        var finished = Assert.Single(events, e => e.Event == IpcEventKind.Finished);
         Assert.Equal((DictationOutcome.Pasted, "uk"), (finished.Outcome, finished.Language));
     }
 
@@ -209,17 +209,17 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         await using var daemon = await StartAsync(config);
         using var subscriber = _events.Subscribe();
 
-        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
-        await daemon.HandleAsync(new IpcRequest("stop"), _ct);
-        var first = await CollectAsync(subscriber, e => e.Any(x => x.Event == "finished"));
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "uk"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Stop), _ct);
+        var first = await CollectAsync(subscriber, e => e.Any(x => x.Event == IpcEventKind.Finished));
         _stt.Text = "";
         await WaitForAsync(() => daemon.State == PipelineState.Idle);
-        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
-        await daemon.HandleAsync(new IpcRequest("stop"), _ct);
-        var second = await CollectAsync(subscriber, e => e.Any(x => x.Event == "finished"));
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "uk"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Stop), _ct);
+        var second = await CollectAsync(subscriber, e => e.Any(x => x.Event == IpcEventKind.Finished));
 
-        Assert.Equal(DictationOutcome.Copied, first.Single(e => e.Event == "finished").Outcome);
-        Assert.Equal(DictationOutcome.Empty, second.Single(e => e.Event == "finished").Outcome);
+        Assert.Equal(DictationOutcome.Copied, first.Single(e => e.Event == IpcEventKind.Finished).Outcome);
+        Assert.Equal(DictationOutcome.Empty, second.Single(e => e.Event == IpcEventKind.Finished).Outcome);
     }
 
     [Fact]
@@ -229,9 +229,9 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         await using var daemon = await StartAsync(Config());
         using var subscriber = _events.Subscribe();
 
-        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
-        await daemon.HandleAsync(new IpcRequest("stop"), _ct);
-        var finished = (await CollectAsync(subscriber, e => e.Any(x => x.Event == "finished"))).Single(e => e.Event == "finished");
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "uk"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Stop), _ct);
+        var finished = (await CollectAsync(subscriber, e => e.Any(x => x.Event == IpcEventKind.Finished))).Single(e => e.Event == IpcEventKind.Finished);
 
         Assert.Equal(DictationOutcome.Error, finished.Outcome);
         Assert.Contains("no paste here", finished.Message);
@@ -243,15 +243,15 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         await using var daemon = await StartAsync(Config());
         using var subscriber = _events.Subscribe();
 
-        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
-        var stop = daemon.HandleAsync(new IpcRequest("stop"), _ct);
-        await daemon.HandleAsync(new IpcRequest("cancel"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "uk"), _ct);
+        var stop = daemon.HandleAsync(new IpcRequest(IpcCommand.Stop), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Cancel), _ct);
         await stop;
-        var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == "finished"));
+        var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == IpcEventKind.Finished));
         await Task.Delay(200, _ct);
         events.AddRange(await DrainAsync(subscriber));
 
-        Assert.Single(events, e => e.Event == "finished");
+        Assert.Single(events, e => e.Event == IpcEventKind.Finished);
         Assert.Empty(_notifier.Shown);
     }
 
@@ -263,11 +263,11 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         var audio = _engines[^1].Audio;
 
         audio.Raise(new AudioFrame(0.2f, new float[24], TimeSpan.FromSeconds(1)));
-        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "uk"), _ct);
         audio.Raise(new AudioFrame(0.3f, new float[24], TimeSpan.FromSeconds(2)));
-        var events = await CollectAsync(subscriber, e => e.Any(x => x is { Event: "frame", Rms: 0.3f }));
+        var events = await CollectAsync(subscriber, e => e.Any(x => x is { Event: IpcEventKind.Frame, Rms: 0.3f }));
 
-        Assert.DoesNotContain(events, e => e is { Event: "frame", Rms: 0.2f });
+        Assert.DoesNotContain(events, e => e is { Event: IpcEventKind.Frame, Rms: 0.2f });
     }
 
     [Fact]
@@ -278,12 +278,12 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         using var subscriber = _events.Subscribe();
         var (old, current) = (_engines[0].Audio, _engines[1].Audio);
 
-        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "uk"), _ct);
         old.Raise(new AudioFrame(0.4f, new float[24], TimeSpan.FromSeconds(1)));
         current.Raise(new AudioFrame(0.5f, new float[24], TimeSpan.FromSeconds(1)));
-        var events = await CollectAsync(subscriber, e => e.Any(x => x is { Event: "frame", Rms: 0.5f }));
+        var events = await CollectAsync(subscriber, e => e.Any(x => x is { Event: IpcEventKind.Frame, Rms: 0.5f }));
 
-        Assert.DoesNotContain(events, e => e is { Event: "frame", Rms: 0.4f });
+        Assert.DoesNotContain(events, e => e is { Event: IpcEventKind.Frame, Rms: 0.4f });
     }
 
     [Fact]
@@ -293,10 +293,10 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         using var subscriber = _events.Subscribe();
 
         await daemon.ApplyConfigAsync(Config(), _ct, [new ConfigIssue(ConfigIssueSeverity.Warning, "profiles[0].language", "sounds alike")]);
-        var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == "status"));
+        var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == IpcEventKind.Status));
 
         Assert.Equal(["profiles[0].language: sounds alike"], daemon.Status().ConfigWarnings!);
-        Assert.Equal(daemon.Status().ConfigWarnings, events.Last(e => e.Event == "status").Status!.ConfigWarnings);
+        Assert.Equal(daemon.Status().ConfigWarnings, events.Last(e => e.Event == IpcEventKind.Status).Status!.ConfigWarnings);
     }
 
     [Fact]
@@ -304,7 +304,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     {
         await using var daemon = await StartAsync(Config());
 
-        var response = await daemon.HandleAsync(new IpcRequest("subscribe"), _ct);
+        var response = await daemon.HandleAsync(new IpcRequest(IpcCommand.Subscribe), _ct);
 
         Assert.Equal((true, IpcProtocol.Version), (response.Ok, response.Status!.Protocol));
     }
@@ -326,9 +326,9 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     public async Task ShutdownCancelsTheDictationAndCompletesShutdownRequested()
     {
         await using var daemon = await StartAsync(Config());
-        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "uk"), _ct);
 
-        Assert.True((await daemon.HandleAsync(new IpcRequest("shutdown"), _ct)).Ok);
+        Assert.True((await daemon.HandleAsync(new IpcRequest(IpcCommand.Shutdown), _ct)).Ok);
 
         await daemon.ShutdownRequested.WaitAsync(TimeSpan.FromSeconds(5), _ct);
         Assert.Equal(PipelineState.Idle, daemon.State);
@@ -340,12 +340,12 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         await using var daemon = await StartAsync(Config());
         using var subscriber = _events.Subscribe();
 
-        var paused = await daemon.HandleAsync(new IpcRequest("pause-hotkeys"), _ct);
+        var paused = await daemon.HandleAsync(new IpcRequest(IpcCommand.PauseHotkeys), _ct);
         Assert.Empty(_hotkeys.Bindings);
         Assert.True(paused.Status!.Paused);
-        Assert.Contains(await CollectAsync(subscriber, e => e.Any(x => x.Event == "status")), e => e.Status!.Paused);
+        Assert.Contains(await CollectAsync(subscriber, e => e.Any(x => x.Event == IpcEventKind.Status)), e => e.Status!.Paused);
 
-        await daemon.HandleAsync(new IpcRequest("resume-hotkeys"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.ResumeHotkeys), _ct);
         Assert.Equal(2, _hotkeys.Bindings.Count);
         Assert.False(daemon.Status().Paused);
     }
@@ -354,7 +354,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     public async Task ReloadWhilePausedKeepsHotkeysOff()
     {
         await using var daemon = await StartAsync(Config());
-        await daemon.HandleAsync(new IpcRequest("pause-hotkeys"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.PauseHotkeys), _ct);
 
         await daemon.ApplyConfigAsync(Config(), _ct);
 
@@ -367,18 +367,18 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     {
         await using var daemon = await StartAsync(Config(), withHotkeys: false);
 
-        await daemon.HandleAsync(new IpcRequest("use-profile", "en"), _ct);
-        var started = await daemon.HandleAsync(new IpcRequest("toggle"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.UseProfile, "en"), _ct);
+        var started = await daemon.HandleAsync(new IpcRequest(IpcCommand.Toggle), _ct);
 
         Assert.Equal(("en", "en"), (started.Status!.ActiveProfile, started.Status.SelectedProfile));
-        Assert.False((await daemon.HandleAsync(new IpcRequest("use-profile", "nope"), _ct)).Ok);
+        Assert.False((await daemon.HandleAsync(new IpcRequest(IpcCommand.UseProfile, "nope"), _ct)).Ok);
     }
 
     [Fact]
     public async Task ReloadRunsTheHandlerAndFailsWithoutOne()
     {
         await using var daemon = await StartAsync(Config());
-        Assert.False((await daemon.HandleAsync(new IpcRequest("reload"), _ct)).Ok);
+        Assert.False((await daemon.HandleAsync(new IpcRequest(IpcCommand.Reload), _ct)).Ok);
 
         var reloaded = false;
         daemon.ReloadHandler = _ =>
@@ -387,7 +387,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
             return Task.CompletedTask;
         };
 
-        Assert.True((await daemon.HandleAsync(new IpcRequest("reload"), _ct)).Ok);
+        Assert.True((await daemon.HandleAsync(new IpcRequest(IpcCommand.Reload), _ct)).Ok);
         Assert.True(reloaded);
     }
 
@@ -397,7 +397,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         await using var daemon = await StartAsync(Config());
         _engines[^1].Audio.Devices = [new AudioDevice("3", "Arctis Nova 5", "WASAPI", 1, 48_000, IsDefault: true)];
 
-        var response = await daemon.HandleAsync(new IpcRequest("devices"), _ct);
+        var response = await daemon.HandleAsync(new IpcRequest(IpcCommand.Devices), _ct);
 
         Assert.Equal("Arctis Nova 5", Assert.Single(response.Devices!).Name);
     }
@@ -408,7 +408,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         await using var daemon = await StartAsync(Config());
         _engines[^1].Audio.FailWith = new AudioDeviceException("Microphone not found.", "Run 'dictum devices'.");
 
-        var response = await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+        var response = await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "uk"), _ct);
 
         Assert.False(response.Ok);
         Assert.Contains("Microphone not found", response.Error);
@@ -421,12 +421,12 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         using var subscriber = _events.Subscribe();
         var audio = _engines[^1].Audio;
 
-        Assert.True((await Send(daemon, "monitor-start")).Ok);
+        Assert.True((await Send(daemon, IpcCommand.MonitorStart)).Ok);
         audio.Raise(new AudioFrame(0.25f, new float[24], TimeSpan.FromSeconds(1)));
-        await CollectAsync(subscriber, e => e.Any(x => x is { Event: "frame", Rms: 0.25f }));
+        await CollectAsync(subscriber, e => e.Any(x => x is { Event: IpcEventKind.Frame, Rms: 0.25f }));
 
         Assert.Equal((1, PipelineState.Idle), (audio.Starts, daemon.State));
-        await Send(daemon, "monitor-stop");
+        await Send(daemon, IpcCommand.MonitorStop);
         Assert.Equal(1, audio.Stops);
     }
 
@@ -435,7 +435,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     {
         await using var daemon = await StartAsync(Config(), monitorLifetime: TimeSpan.FromMilliseconds(200));
 
-        await Send(daemon, "monitor-start");
+        await Send(daemon, IpcCommand.MonitorStart);
 
         await WaitForAsync(() => _engines[^1].Audio.Stops == 1);
     }
@@ -447,7 +447,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
 
         for (var i = 0; i < 6; i++)
         {
-            await Send(daemon, "monitor-start");
+            await Send(daemon, IpcCommand.MonitorStart);
             await Task.Delay(100, _ct);
         }
 
@@ -458,18 +458,18 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     public async Task MonitorIsRefusedDuringADictation()
     {
         await using var daemon = await StartAsync(Config());
-        await Send(daemon, "start", "uk");
+        await Send(daemon, IpcCommand.Start, "uk");
 
-        Assert.False((await Send(daemon, "monitor-start")).Ok);
+        Assert.False((await Send(daemon, IpcCommand.MonitorStart)).Ok);
     }
 
     [Fact]
     public async Task DictationStopsARunningMonitor()
     {
         await using var daemon = await StartAsync(Config());
-        await Send(daemon, "monitor-start");
+        await Send(daemon, IpcCommand.MonitorStart);
 
-        await Send(daemon, "start", "uk");
+        await Send(daemon, IpcCommand.Start, "uk");
 
         var audio = _engines[^1].Audio;
         Assert.Equal((2, 1, PipelineState.Recording), (audio.Starts, audio.Stops, daemon.State));
@@ -483,7 +483,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     {
         await using var daemon = await StartAsync(Config());
 
-        var response = await daemon.HandleAsync(new IpcRequest("test-stt", Stt: "s", Sample: true), _ct);
+        var response = await daemon.HandleAsync(new IpcRequest(IpcCommand.TestStt, Stt: "s", Sample: true), _ct);
 
         Assert.True(response.Ok, response.Error);
         Assert.Equal("привіт світ", response.Test!.Text);
@@ -495,7 +495,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     {
         await using var daemon = await StartAsync(Config());
 
-        var response = await daemon.HandleAsync(new IpcRequest("test-stt", Stt: "s", Seconds: 1), _ct);
+        var response = await daemon.HandleAsync(new IpcRequest(IpcCommand.TestStt, Stt: "s", Seconds: 1), _ct);
 
         Assert.True(response.Ok, response.Error);
         Assert.Equal((1, 1), (_engines[^1].Audio.Starts, _engines[^1].Audio.Stops));
@@ -506,21 +506,21 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     public async Task TestSttIsRefusedWhileBusyAndForAnUnknownProvider()
     {
         await using var daemon = await StartAsync(Config());
-        Assert.False((await daemon.HandleAsync(new IpcRequest("test-stt", Stt: "nope", Sample: true), _ct)).Ok);
+        Assert.False((await daemon.HandleAsync(new IpcRequest(IpcCommand.TestStt, Stt: "nope", Sample: true), _ct)).Ok);
 
-        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "uk"), _ct);
 
-        Assert.False((await daemon.HandleAsync(new IpcRequest("test-stt", Stt: "s", Seconds: 1), _ct)).Ok);
+        Assert.False((await daemon.HandleAsync(new IpcRequest(IpcCommand.TestStt, Stt: "s", Seconds: 1), _ct)).Ok);
     }
 
     [Fact]
     public async Task DoctorAnswersWithTheHandlersChecksAndFailsWithoutOne()
     {
         await using var daemon = await StartAsync(Config());
-        Assert.False((await daemon.HandleAsync(new IpcRequest("doctor"), _ct)).Ok);
+        Assert.False((await daemon.HandleAsync(new IpcRequest(IpcCommand.Doctor), _ct)).Ok);
 
         daemon.DoctorHandler = _ => Task.FromResult<IReadOnlyList<PlatformCheck>>([new PlatformCheck("daemon", HealthStatus.Ok("this process"))]);
-        var response = await daemon.HandleAsync(new IpcRequest("doctor"), _ct);
+        var response = await daemon.HandleAsync(new IpcRequest(IpcCommand.Doctor), _ct);
 
         Assert.Equal("daemon", Assert.Single(response.Checks!).Name);
     }
@@ -530,13 +530,13 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     {
         var daemon = await StartAsync(Config());
         using var subscriber = _events.Subscribe();
-        await daemon.HandleAsync(new IpcRequest("shutdown"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Shutdown), _ct);
 
         await daemon.AnnounceStoppingAsync(TimeSpan.FromMilliseconds(50));
         await daemon.DisposeAsync();
         var events = await DrainAsync(subscriber);
 
-        Assert.Equal("shutdown", Assert.Single(events, e => e.Event == "stopping").Reason);
+        Assert.Equal(StoppingReason.Shutdown, Assert.Single(events, e => e.Event == IpcEventKind.Stopping).Reason);
     }
 
     [Fact]
@@ -545,9 +545,9 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         await using var daemon = await StartAsync(Config());
         _engines[^1].Audio.FailOnStop = new AudioDeviceException("Recording failed: device lost");
 
-        var test = await daemon.HandleAsync(new IpcRequest("test-stt", Stt: "s", Seconds: 1), _ct);
+        var test = await daemon.HandleAsync(new IpcRequest(IpcCommand.TestStt, Stt: "s", Seconds: 1), _ct);
         _engines[^1].Audio.FailOnStop = null;
-        var start = await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+        var start = await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "uk"), _ct);
 
         Assert.False(test.Ok);
         Assert.True(start.Ok, start.Error);
@@ -559,7 +559,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         await using var daemon = await StartAsync(Config());
         _stt.FailWith = new ProviderUnavailableException("The server at http://localhost:9 is not answering.");
 
-        var response = await daemon.HandleAsync(new IpcRequest("test-stt", Stt: "s", Sample: true), _ct);
+        var response = await daemon.HandleAsync(new IpcRequest(IpcCommand.TestStt, Stt: "s", Sample: true), _ct);
 
         Assert.False(response.Ok);
         Assert.Contains("not answering", response.Error);
@@ -570,9 +570,9 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     {
         await using var daemon = await StartAsync(Config());
 
-        var unknown = await daemon.HandleAsync(new IpcRequest("start", "nope"), _ct);
-        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
-        await daemon.HandleAsync(new IpcRequest("stop"), _ct);
+        var unknown = await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "nope"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "uk"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Stop), _ct);
         await WaitForAsync(() => _injector.Injected.Count == 1);
 
         Assert.False(unknown.Ok);
@@ -585,10 +585,10 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         using var subscriber = _events.Subscribe();
         _engines[^1].Audio.FailWith = new AudioDeviceException("Microphone not found.");
 
-        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
-        var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == "finished"));
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "uk"), _ct);
+        var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == IpcEventKind.Finished));
 
-        var finished = Assert.Single(events, e => e.Event == "finished");
+        var finished = Assert.Single(events, e => e.Event == IpcEventKind.Finished);
         Assert.Equal(DictationOutcome.Error, finished.Outcome);
         Assert.Contains("Microphone not found", finished.Message);
     }
@@ -600,15 +600,15 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         await using var daemon = await StartAsync(Config());
         using var subscriber = _events.Subscribe();
 
-        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
-        await daemon.HandleAsync(new IpcRequest("stop"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "uk"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Stop), _ct);
         await WaitForAsync(() => daemon.State == PipelineState.Transcribing);
-        await daemon.HandleAsync(new IpcRequest("cancel"), _ct);
-        var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == "finished"));
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Cancel), _ct);
+        var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == IpcEventKind.Finished));
         await Task.Delay(200, _ct);
         events.AddRange(await DrainAsync(subscriber));
 
-        Assert.Equal(DictationOutcome.Cancelled, Assert.Single(events, e => e.Event == "finished").Outcome);
+        Assert.Equal(DictationOutcome.Cancelled, Assert.Single(events, e => e.Event == IpcEventKind.Finished).Outcome);
         Assert.Empty(_injector.Injected);
     }
 
@@ -618,11 +618,11 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         await using var daemon = await StartAsync(Config());
         using var subscriber = _events.Subscribe();
 
-        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
-        await daemon.HandleAsync(new IpcRequest("cancel"), _ct);
-        var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == "finished"));
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "uk"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Cancel), _ct);
+        var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == IpcEventKind.Finished));
 
-        Assert.Equal(DictationOutcome.Cancelled, Assert.Single(events, e => e.Event == "finished").Outcome);
+        Assert.Equal(DictationOutcome.Cancelled, Assert.Single(events, e => e.Event == IpcEventKind.Finished).Outcome);
     }
 
     [Fact]
@@ -630,15 +630,15 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     {
         await using var daemon = await StartAsync(Config());
         using var subscriber = _events.Subscribe();
-        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "uk"), _ct);
 
         await daemon.ApplyConfigAsync(Config(), _ct);
         Assert.Single(_engines);
-        await daemon.HandleAsync(new IpcRequest("stop"), _ct);
-        var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == "finished"));
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Stop), _ct);
+        var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == IpcEventKind.Finished));
         await WaitForAsync(() => _engines.Count == 2);
 
-        Assert.Equal(DictationOutcome.Pasted, events.Single(e => e.Event == "finished").Outcome);
+        Assert.Equal(DictationOutcome.Pasted, events.Single(e => e.Event == IpcEventKind.Finished).Outcome);
         Assert.True(_engines[0].Disposed);
     }
 
@@ -648,9 +648,9 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         await using var daemon = await StartAsync(Config());
         var audio = _engines[^1].Audio;
 
-        await daemon.HandleAsync(new IpcRequest("monitor-start"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.MonitorStart), _ct);
         var monitorKept = audio.LastKeepSamples;
-        await daemon.HandleAsync(new IpcRequest("start", "uk"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "uk"), _ct);
 
         Assert.Equal((false, true), (monitorKept, audio.LastKeepSamples));
     }
@@ -682,8 +682,8 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         using var subscriber = _events.Subscribe();
 
         await daemon.ApplyConfigAsync(Config(), _ct);
-        var reloaded = await CollectAsync(subscriber, e => e.Any(x => x.Event == "status"));
-        Assert.False(reloaded.First(e => e.Event == "status").Status!.WarmedUp);
+        var reloaded = await CollectAsync(subscriber, e => e.Any(x => x.Event == IpcEventKind.Status));
+        Assert.False(reloaded.First(e => e.Event == IpcEventKind.Status).Status!.WarmedUp);
 
         warmUp.SetResult();
         await CollectAsync(subscriber, e => e.Any(x => x.Status?.WarmedUp == true));
@@ -759,7 +759,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     {
         await using var daemon = await StartAsync(Config());
 
-        var response = await daemon.HandleAsync(new IpcRequest("test-stt", Stt: "s", Sample: true), _ct);
+        var response = await daemon.HandleAsync(new IpcRequest(IpcCommand.TestStt, Stt: "s", Sample: true), _ct);
 
         Assert.True(response.Ok, response.Error);
         Assert.InRange(response.Test!.AudioSeconds.GetValueOrDefault(), 6.8, 7.0);

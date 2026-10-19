@@ -23,7 +23,7 @@ public class IpcEventHubTests
         hub.Publish(IpcEvent.ForState(PipelineState.Transcribing, "uk", "PushToTalk"));
 
         var batch = await subscriber.NextAsync(_ct);
-        Assert.Equal(["state", "state", "frame"], batch.Select(e => e.Event));
+        Assert.Equal([IpcEventKind.State, IpcEventKind.State, IpcEventKind.Frame], batch.Select(e => e.Event));
         Assert.Equal(1.98, batch[2].T);
     }
 
@@ -60,7 +60,7 @@ public class IpcEventHubTests
     {
         var hub = new IpcEventHub();
         using var subscriber = hub.Subscribe();
-        hub.Publish(IpcEvent.Stopping("shutdown"));
+        hub.Publish(IpcEvent.Stopping(StoppingReason.Shutdown));
 
         Assert.False(await hub.WhenDeliveredAsync(TimeSpan.FromMilliseconds(50)));
         await subscriber.NextAsync(_ct);

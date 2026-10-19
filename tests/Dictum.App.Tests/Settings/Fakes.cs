@@ -3,6 +3,7 @@ using Dictum.App.Settings;
 using Dictum.Audio.PortAudio;
 using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
+using Dictum.Core.Pipeline;
 using Dictum.Core.Processing;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
@@ -31,12 +32,12 @@ internal sealed class FakeChannel : IDaemonChannel
 
     public Func<IpcRequest, IpcResponse> Answer { get; set; } = request => request.Command switch
     {
-        "devices" => new IpcResponse(true, Devices: [HyperX, Webcam]),
+        IpcCommand.Devices => new IpcResponse(true, Devices: [HyperX, Webcam]),
         _ => new IpcResponse(true),
     };
 
     public static DaemonLink Connected() =>
-        new(DaemonLinkState.Connected, new DaemonStatus("Idle", null, [], "hook", "paste", 4242));
+        new(DaemonLinkState.Connected, new DaemonStatus(nameof(PipelineState.Idle), null, [], "hook", "paste", 4242));
 
     public Task<IpcResponse> SendAsync(IpcRequest request, CancellationToken ct, TimeSpan? timeout = null)
     {

@@ -2,6 +2,7 @@ using Dictum.App.Daemon;
 using Dictum.App.Overlay;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 
 namespace Dictum.App.Tests.Overlay;
@@ -25,10 +26,10 @@ public class OverlayControllerTests
         return controller;
     }
 
-    private static IpcEvent State(string state, string? profile = "dictate") => new("state", State: state, Profile: profile);
+    private static IpcEvent State(PipelineState state, string? profile = "dictate") => IpcEvent.ForState(state, profile, mode: null);
 
     private static IpcEvent Finished(string outcome, string? message = null, string? language = null) =>
-        new("finished", Outcome: outcome, Message: message, Language: language);
+        new(IpcEventKind.Finished, Outcome: outcome, Message: message, Language: language);
 
     private static DictumConfig WithOverlay(OverlaySettings overlay) => new() { General = new GeneralSettings { Overlay = overlay } };
 
@@ -44,7 +45,7 @@ public class OverlayControllerTests
     {
         var controller = Create();
 
-        controller.OnEvent(State("Recording"));
+        controller.OnEvent(State(PipelineState.Recording));
 
         var shown = Assert.Single(_surface.Presented);
         Assert.True(shown.X >= 2560, $"on DP-2: {shown}");
@@ -57,7 +58,7 @@ public class OverlayControllerTests
         _probe = OverlayProbe.Unknown;
         var controller = Create();
 
-        controller.OnEvent(State("Recording"));
+        controller.OnEvent(State(PipelineState.Recording));
 
         Assert.True(Assert.Single(_surface.Presented).X < 2560);
     }
@@ -68,7 +69,7 @@ public class OverlayControllerTests
         _desktop.Slow = true;
         var controller = Create();
 
-        controller.OnEvent(State("Recording"));
+        controller.OnEvent(State(PipelineState.Recording));
 
         Assert.True(Assert.Single(_surface.Presented).X < 2560);
     }
@@ -77,16 +78,16 @@ public class OverlayControllerTests
     public void TheOverlayFollowsTheDictationAndHides()
     {
         var controller = Create();
-        controller.OnEvent(State("Recording"));
+        controller.OnEvent(State(PipelineState.Recording));
 
-        controller.OnEvent(State("Transcribing"));
+        controller.OnEvent(State(PipelineState.Transcribing));
         Assert.Equal(OverlayPhase.Transcribing, Frame(0.1).Phase);
 
-        controller.OnEvent(State("Processing"));
+        controller.OnEvent(State(PipelineState.Processing));
         Assert.Equal(OverlayPhase.CleaningUp, Frame(0.1).Phase);
 
-        controller.OnEvent(State("Output"));
-        controller.OnEvent(State("Idle"));
+        controller.OnEvent(State(PipelineState.Output));
+        controller.OnEvent(State(PipelineState.Idle));
         controller.OnEvent(Finished(DictationOutcome.Pasted));
         Assert.Equal(OverlayPhase.Done, Frame(0.1).Phase);
         Assert.Equal(OverlayPhase.Hidden, Frame(0.3).Phase);
@@ -96,12 +97,12 @@ public class OverlayControllerTests
     public void FramesFeedTheWavesWhileListening()
     {
         var controller = Create();
-        controller.OnEvent(State("Recording"));
+        controller.OnEvent(State(PipelineState.Recording));
 
         var scene = OverlayScene.Hidden;
         for (var i = 0; i < 20; i++)
         {
-            controller.OnFrame(new IpcEvent("frame", Rms: Loud, Bands: new float[24]));
+            controller.OnFrame(new IpcEvent(IpcEventKind.Frame, Rms: Loud, Bands: new float[24]));
             scene = Frame(0.02);
         }
 
@@ -114,11 +115,11 @@ public class OverlayControllerTests
     {
         var controller = Create();
 
-        controller.OnFrame(new IpcEvent("frame", Rms: Loud, Bands: new float[24]));
-        controller.OnEvent(State("Idle"));
+        controller.OnFrame(new IpcEvent(IpcEventKind.Frame, Rms: Loud, Bands: new float[24]));
+        controller.OnEvent(State(PipelineState.Idle));
         Assert.Empty(_surface.Presented);
 
-        controller.OnEvent(State("Recording"));
+        controller.OnEvent(State(PipelineState.Recording));
         Assert.Equal(0, Frame(0.02).Level);
     }
 
@@ -127,7 +128,7 @@ public class OverlayControllerTests
     public void ALostLinkHidesTheOverlay()
     {
         var controller = Create();
-        controller.OnEvent(State("Recording"));
+        controller.OnEvent(State(PipelineState.Recording));
 
         controller.OnLink(new DaemonLink(DaemonLinkState.Restarting));
 
@@ -139,9 +140,9 @@ public class OverlayControllerTests
     public void StoppingHidesTheOverlay()
     {
         var controller = Create();
-        controller.OnEvent(State("Recording"));
+        controller.OnEvent(State(PipelineState.Recording));
 
-        controller.OnEvent(new IpcEvent("stopping", Reason: "shutdown"));
+        controller.OnEvent(new IpcEvent(IpcEventKind.Stopping, Reason: StoppingReason.Shutdown));
 
         Assert.Equal(1, _surface.Dismissed);
         Assert.Equal(OverlayPhase.Hidden, controller.Phase);
@@ -152,10 +153,10 @@ public class OverlayControllerTests
     public void TurningTheOverlayOffHidesItAndKeepsItHidden()
     {
         var controller = Create();
-        controller.OnEvent(State("Recording"));
+        controller.OnEvent(State(PipelineState.Recording));
 
         controller.OnConfig(WithOverlay(new OverlaySettings { Enabled = false }));
-        controller.OnEvent(State("Recording"));
+        controller.OnEvent(State(PipelineState.Recording));
 
         Assert.Equal(1, _surface.Dismissed);
         Assert.Single(_surface.Presented);
@@ -170,8 +171,8 @@ public class OverlayControllerTests
     public void ErrorsShowTheirMessage(string outcome, string? message, string shown)
     {
         var controller = Create();
-        controller.OnEvent(State("Recording"));
-        controller.OnEvent(State("Idle"));
+        controller.OnEvent(State(PipelineState.Recording));
+        controller.OnEvent(State(PipelineState.Idle));
 
         controller.OnEvent(Finished(outcome, message));
 
@@ -184,8 +185,8 @@ public class OverlayControllerTests
     public void CancelledShowsCancelled()
     {
         var controller = Create();
-        controller.OnEvent(State("Recording"));
-        controller.OnEvent(State("Idle"));
+        controller.OnEvent(State(PipelineState.Recording));
+        controller.OnEvent(State(PipelineState.Idle));
 
         controller.OnEvent(Finished(DictationOutcome.Cancelled));
 
@@ -197,10 +198,10 @@ public class OverlayControllerTests
     {
         var controller = Create(new DictumConfig { Profiles = [new ProfileConfig { Id = "both", Stt = "local", Language = "uk, en" }] });
 
-        controller.OnEvent(State("Recording", "both"));
+        controller.OnEvent(State(PipelineState.Recording, "both"));
         Assert.Equal("UK/EN", Frame(0.02).Chip);
 
-        controller.OnEvent(State("Idle", "both"));
+        controller.OnEvent(State(PipelineState.Idle, "both"));
         controller.OnEvent(Finished(DictationOutcome.Pasted, language: "uk"));
         Assert.Equal("UK", Frame(0.02).Chip);
     }
@@ -209,7 +210,7 @@ public class OverlayControllerTests
     public void ThePaletteComesFromTheConfigAndHighContrastForcesMist()
     {
         var controller = Create(WithOverlay(new OverlaySettings { Palette = OverlayPalette.Ember }));
-        controller.OnEvent(State("Recording"));
+        controller.OnEvent(State(PipelineState.Recording));
         Assert.Equal(OverlayPalette.Ember, Frame(0.02).Palette);
 
         _highContrast = true;
@@ -223,7 +224,7 @@ public class OverlayControllerTests
         _probe = _probe with { ReducedMotion = true };
         var controller = Create();
 
-        controller.OnEvent(State("Recording"));
+        controller.OnEvent(State(PipelineState.Recording));
 
         Assert.True(Frame(0.02).ReducedMotion);
     }
@@ -232,7 +233,7 @@ public class OverlayControllerTests
     public void SettingsChangesMoveAVisibleOverlay()
     {
         var controller = Create();
-        controller.OnEvent(State("Recording"));
+        controller.OnEvent(State(PipelineState.Recording));
 
         controller.OnConfig(WithOverlay(new OverlaySettings { Position = OverlayPosition.Top, Size = OverlaySize.Large, Opacity = 0.5 }));
 
@@ -246,7 +247,7 @@ public class OverlayControllerTests
     public void ScreenChangesPlaceAVisibleOverlayAgain()
     {
         var controller = Create();
-        controller.OnEvent(State("Recording"));
+        controller.OnEvent(State(PipelineState.Recording));
 
         _surface.ChangeScreens();
         Assert.Equal(2, _surface.Presented.Count);
@@ -261,7 +262,7 @@ public class OverlayControllerTests
     {
         var controller = Create();
 
-        controller.OnLink(new DaemonLink(DaemonLinkState.Connected, new DaemonStatus("Recording", "dictate", [], "portal", "portal", 42)));
+        controller.OnLink(new DaemonLink(DaemonLinkState.Connected, new DaemonStatus(nameof(PipelineState.Recording), "dictate", [], "portal", "portal", 42)));
 
         Assert.Single(_surface.Presented);
         Assert.Equal(OverlayPhase.Listening, controller.Phase);

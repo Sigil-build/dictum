@@ -1,5 +1,6 @@
 using Dictum.App.Daemon;
 using Dictum.App.ViewModels;
+using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 
 namespace Dictum.App.Tests.ViewModels;
@@ -12,7 +13,7 @@ public class StatusViewModelTests
         var model = Model();
 
         model.OnLink(new DaemonLink(DaemonLinkState.Connected, new DaemonStatus(
-            "Idle", null, [new ProfileStatus("uk", "Ctrl+Alt+Space", "PushToTalk", true), new ProfileStatus("en", null, "Toggle", true)], "h", "p", 4242)));
+            nameof(PipelineState.Idle), null, [new ProfileStatus("uk", "Ctrl+Alt+Space", "PushToTalk", true), new ProfileStatus("en", null, "Toggle", true)], "h", "p", 4242)));
 
         Assert.Equal("Connected to the daemon (pid 4242)", model.Headline);
         Assert.Equal(["uk · Ctrl+Alt+Space", "en"], model.Profiles);

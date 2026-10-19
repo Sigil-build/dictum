@@ -1,6 +1,7 @@
 using Dictum.App.Daemon;
 using Dictum.App.Tray;
 using Dictum.Core.Configuration;
+using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 
 namespace Dictum.App.Tests.Tray;
@@ -46,16 +47,16 @@ public class TrayStateTests
     }
 
     [Theory]
-    [InlineData("Recording", TrayGlyph.Recording, "Dictum · Recording", true)]
-    [InlineData("Transcribing", TrayGlyph.Processing, "Dictum · Transcribing…", false)]
-    [InlineData("Processing", TrayGlyph.Processing, "Dictum · Transcribing…", false)]
-    [InlineData("Output", TrayGlyph.Processing, "Dictum · Transcribing…", false)]
-    [InlineData("Idle", TrayGlyph.Idle, "Dictum · uk · Ctrl+Alt+Space", false)]
+    [InlineData(nameof(PipelineState.Recording), TrayGlyph.Recording, "Dictum · Recording", true)]
+    [InlineData(nameof(PipelineState.Transcribing), TrayGlyph.Processing, "Dictum · Transcribing…", false)]
+    [InlineData(nameof(PipelineState.Processing), TrayGlyph.Processing, "Dictum · Transcribing…", false)]
+    [InlineData(nameof(PipelineState.Output), TrayGlyph.Processing, "Dictum · Transcribing…", false)]
+    [InlineData(nameof(PipelineState.Idle), TrayGlyph.Idle, "Dictum · uk · Ctrl+Alt+Space", false)]
     public void StateEventsSetTheGlyph(string state, TrayGlyph glyph, string tooltip, bool attention)
     {
         var tray = Connected(Status());
 
-        tray.OnEvent(new IpcEvent("state", State: state, Profile: "uk"));
+        tray.OnEvent(new IpcEvent(IpcEventKind.State, State: state, Profile: "uk"));
         var view = tray.View();
 
         Assert.Equal((glyph, tooltip, attention), (view.Glyph, view.Tooltip, view.Attention));
@@ -105,7 +106,7 @@ public class TrayStateTests
         var tray = Connected(Status());
         tray.OnEvent(IpcEvent.Finished(DictationOutcome.Error, "boom", null, 0, null));
 
-        tray.OnEvent(new IpcEvent("state", State: "Recording"));
+        tray.OnEvent(new IpcEvent(IpcEventKind.State, State: nameof(PipelineState.Recording)));
 
         Assert.Equal(TrayGlyph.Recording, tray.View().Glyph);
     }
@@ -155,7 +156,7 @@ public class TrayStateTests
     public void ALostLinkForgetsTheRecordingState()
     {
         var tray = Connected(Status());
-        tray.OnEvent(new IpcEvent("state", State: "Recording"));
+        tray.OnEvent(new IpcEvent(IpcEventKind.State, State: nameof(PipelineState.Recording)));
 
         tray.OnLink(new DaemonLink(DaemonLinkState.Restarting));
         tray.OnLink(new DaemonLink(DaemonLinkState.Connected, Status()));
@@ -215,7 +216,7 @@ public class TrayStateTests
     }
 
     private static DaemonStatus Status(string? selected = null, bool paused = false) => new(
-        "Idle",
+        nameof(PipelineState.Idle),
         null,
         [new ProfileStatus("uk", "Ctrl+Alt+Space", "PushToTalk", true), new ProfileStatus("en", "Ctrl+Alt+E", "Toggle", true)],
         "test hotkeys",

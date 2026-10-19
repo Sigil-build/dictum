@@ -218,7 +218,7 @@ public sealed partial class ModelsPage : SettingsPage
             double? best = null;
             for (var run = 0; run < MeasureRuns; run++)
             {
-                var answer = await _services.Channel.TrySendAsync(new IpcRequest("test-stt", Stt: profile.Provider, Sample: true), CancellationToken.None, MeasureTimeout);
+                var answer = await _services.Channel.TrySendAsync(new IpcRequest(IpcCommand.TestStt, Stt: profile.Provider, Sample: true), CancellationToken.None, MeasureTimeout);
                 if (answer is not { Ok: true, Test: { AudioSeconds: > 0 } test })
                 {
                     card.CheckText = null;

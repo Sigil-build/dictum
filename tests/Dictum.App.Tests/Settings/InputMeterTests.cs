@@ -78,8 +78,8 @@ public sealed class InputMeterTests
         var hub = new FrameHub(clock);
         Assert.Equal(0f, hub.Rms(InputMeter.Stale));
 
-        hub.Publish(new IpcEvent("frame", Rms: 0.1f));
-        hub.Publish(new IpcEvent("frame", Rms: 0.2f));
+        hub.Publish(new IpcEvent(IpcEventKind.Frame, Rms: 0.1f));
+        hub.Publish(new IpcEvent(IpcEventKind.Frame, Rms: 0.2f));
         Assert.Equal(0.2f, hub.Rms(InputMeter.Stale));
 
         clock.Advance(TimeSpan.FromMilliseconds(300));

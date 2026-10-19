@@ -332,7 +332,7 @@ public sealed partial class ProviderCard : ObservableObject
                 tick = _services.Timers.Every(GeneralPage.MeterTick, Tick);
             }
 
-            var request = new IpcRequest("test-stt", Stt: Id, Seconds: sample ? null : TestSeconds, Sample: sample ? true : null);
+            var request = new IpcRequest(IpcCommand.TestStt, Stt: Id, Seconds: sample ? null : TestSeconds, Sample: sample ? true : null);
             var answer = await _services.Channel.TrySendAsync(request, CancellationToken.None, TestTimeout);
             Result = answer switch
             {

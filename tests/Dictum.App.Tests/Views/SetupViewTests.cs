@@ -8,6 +8,7 @@ using Dictum.App.Resources;
 using Dictum.App.Tests.Setup;
 using Dictum.App.ViewModels.Setup;
 using Dictum.App.Views.Setup;
+using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 
 namespace Dictum.App.Tests.Views;
@@ -174,7 +175,7 @@ public sealed class SetupViewTests(AvaloniaFixture fx) : IDisposable
 
         var profile = _setup.Store.Load().Profiles[0];
         wizard.OnLink(new DaemonLink(DaemonLinkState.Connected, new DaemonStatus(
-            "Idle", null, [new ProfileStatus(profile.Id, profile.Hotkey, "PushToTalk", true)], "hook", "paste", 4242, WarmedUp: true)));
+            nameof(PipelineState.Idle), null, [new ProfileStatus(profile.Id, profile.Hotkey, "PushToTalk", true)], "hook", "paste", 4242, WarmedUp: true)));
         Dispatcher.UIThread.RunJobs();
 
         var focused = TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement();
