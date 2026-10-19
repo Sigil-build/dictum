@@ -11,9 +11,11 @@ namespace Dictum.App.Views.Settings;
 /// </summary>
 internal static class Pickers
 {
+    private const string PickerClass = "picker";
+
     public static void ClearAfterPick(Control root) => root.AddHandler(SelectingItemsControl.SelectionChangedEvent, (_, e) =>
     {
-        if (e.Source is ComboBox { SelectedItem: not null } picker && picker.Classes.Contains("picker"))
+        if (e.Source is ComboBox { SelectedItem: not null } picker && picker.Classes.Contains(PickerClass))
         {
             Dispatcher.UIThread.Post(() => picker.SelectedItem = null);
         }

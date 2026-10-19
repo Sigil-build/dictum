@@ -14,6 +14,9 @@ namespace Dictum.App.ViewModels.Settings;
 /// </summary>
 public sealed partial class OverlayPage : SettingsPage
 {
+    /// <summary>The lowest opacity the validator accepts; the preview never goes below it.</summary>
+    private const double MinOpacity = 0.3;
+
     private readonly SettingsSession _session;
     private bool _loading;
 
@@ -134,7 +137,7 @@ public sealed partial class OverlayPage : SettingsPage
             OpacityText = string.Format(CultureInfo.CurrentCulture, Strings.SettingsOverlayOpacityValue, Opacity);
             PreviewPalette = overlay.Palette;
             PreviewZoom = OverlayTokens.SizeScale(overlay.Size);
-            PreviewOpacity = Math.Clamp(overlay.Opacity, 0.3, 1);
+            PreviewOpacity = Math.Clamp(overlay.Opacity, MinOpacity, 1);
         }
         finally
         {

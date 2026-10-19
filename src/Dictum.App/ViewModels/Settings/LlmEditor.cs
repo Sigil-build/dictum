@@ -23,6 +23,12 @@ public sealed partial class LlmEditor : ObservableObject
     public static readonly TimeSpan PromptSaveDelay = TimeSpan.FromMilliseconds(500);
     public static readonly TimeSpan PreviewDelay = TimeSpan.FromMilliseconds(600);
 
+    /// <summary>LlmProcessorConfig's defaults, for a processor that is not on disk yet.</summary>
+    private const double DefaultTemperature = 0.2;
+    private const int DefaultTimeoutMs = 4_000;
+
+    private static readonly string[] SampleLanguages = ["uk", "en"];
+
     /// <summary>Raw dictation as Whisper writes it: no capitals, fillers, a code word.</summary>
     public static readonly IReadOnlyDictionary<string, string> Samples = new Dictionary<string, string>
     {
@@ -56,9 +62,9 @@ public sealed partial class LlmEditor : ObservableObject
             new((bool?)true, Strings.SettingsLlmWordingKeep),
             new((bool?)false, Strings.SettingsLlmWordingFree),
         ];
-        Languages = [new("uk", WhisperLanguages.Name("uk")), new("en", WhisperLanguages.Name("en"))];
+        Languages = [.. SampleLanguages.Select(code => new Option<string>(code, WhisperLanguages.Name(code)))];
         SampleLanguage = Languages[0];
-        SampleText = Samples["uk"];
+        SampleText = Samples[SampleLanguages[0]];
     }
 
     public IReadOnlyList<Option<LlmErrorMode>> ErrorModes { get; }
@@ -210,7 +216,7 @@ public sealed partial class LlmEditor : ObservableObject
 
             if (!_timeoutEmpty)
             {
-                TimeoutSeconds = llm.TimeoutMs / 1000m;
+                TimeoutSeconds = TimeoutFields.Seconds(llm.TimeoutMs);
                 TimeoutError = _session.IssueAt($"{path}.timeoutMs");
             }
 
@@ -320,7 +326,7 @@ public sealed partial class LlmEditor : ObservableObject
         {
             // As General's History field: nothing typed on the way to empty is saved.
             _temperatureEmpty = true;
-            var saved = (_session.OnDisk.Processors.GetValueOrDefault(_id ?? "") as LlmProcessorConfig)?.Temperature ?? 0.2;
+            var saved = (_session.OnDisk.Processors.GetValueOrDefault(_id ?? "") as LlmProcessorConfig)?.Temperature ?? DefaultTemperature;
             EditLlm(l => l with { Temperature = saved });
             TemperatureError = Strings.SettingsNumberRequired;
             return;
@@ -340,14 +346,14 @@ public sealed partial class LlmEditor : ObservableObject
         if (value is not { } seconds)
         {
             _timeoutEmpty = true;
-            var saved = (_session.OnDisk.Processors.GetValueOrDefault(_id ?? "") as LlmProcessorConfig)?.TimeoutMs ?? 4_000;
+            var saved = (_session.OnDisk.Processors.GetValueOrDefault(_id ?? "") as LlmProcessorConfig)?.TimeoutMs ?? DefaultTimeoutMs;
             EditLlm(l => l with { TimeoutMs = saved });
             TimeoutError = Strings.SettingsNumberRequired;
             return;
         }
 
         _timeoutEmpty = false;
-        EditLlm(l => l with { TimeoutMs = (int)decimal.Truncate(seconds * 1000) });
+        EditLlm(l => l with { TimeoutMs = TimeoutFields.Milliseconds(seconds) });
     }
 
     partial void OnOnErrorChanged(Option<LlmErrorMode>? value)

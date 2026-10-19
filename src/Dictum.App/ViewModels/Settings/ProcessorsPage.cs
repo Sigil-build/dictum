@@ -23,6 +23,14 @@ public sealed record ProcessorItem(string Id, string Caption)
 /// </summary>
 public sealed partial class ProcessorsPage : SettingsPage
 {
+    /// <summary>Where llama-server listens by default.</summary>
+    private const string DefaultServerUrl = "http://localhost:8080/v1";
+
+    /// <summary>llama-server answers to any model name.</summary>
+    private const string DefaultModel = "local";
+
+    private const string CleanupPrompt = "cleanup";
+
     private readonly SettingsSession _session;
     private readonly ProcessorsServices _services;
     private string? _id;
@@ -96,8 +104,8 @@ public sealed partial class ProcessorsPage : SettingsPage
         {
             c.Processors[id] = new LlmProcessorConfig
             {
-                BaseUrl = model?.BaseUrl ?? "http://localhost:8080/v1",
-                Model = model?.Model ?? "local",
+                BaseUrl = model?.BaseUrl ?? DefaultServerUrl,
+                Model = model?.Model ?? DefaultModel,
                 Prompt = prompt,
                 ApiKey = model?.ApiKey,
             };
@@ -204,13 +212,13 @@ public sealed partial class ProcessorsPage : SettingsPage
 
         try
         {
-            _services.Prompts.Write(name, _services.Prompts.Read("cleanup"));
+            _services.Prompts.Write(name, _services.Prompts.Read(CleanupPrompt));
             return name;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _services.Log.Warn($"could not write prompts/{name}.md for the new processor; it shares cleanup", ex);
-            return "cleanup";
+            _services.Log.Warn($"could not write prompts/{name}.md for the new processor; it shares {CleanupPrompt}", ex);
+            return CleanupPrompt;
         }
     }
 

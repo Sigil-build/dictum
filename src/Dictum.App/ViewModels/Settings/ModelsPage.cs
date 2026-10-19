@@ -44,6 +44,10 @@ public sealed partial class ModelsPage : SettingsPage
     /// <summary>Two runs of the 6.9 s sample on a slow CPU, a model load included.</summary>
     public static readonly TimeSpan MeasureTimeout = TimeSpan.FromMinutes(2);
 
+    private static readonly TimeSpan DownloadTick = TimeSpan.FromSeconds(1);
+
+    private const int MeasureRuns = 2;
+
     private readonly SettingsSession _session;
     private readonly ModelsServices _services;
     private readonly DownloadRate _rate;
@@ -215,7 +219,7 @@ public sealed partial class ModelsPage : SettingsPage
             }
 
             double? best = null;
-            for (var run = 0; run < 2; run++)
+            for (var run = 0; run < MeasureRuns; run++)
             {
                 var answer = await _services.Channel.TrySendAsync(new IpcRequest("test-stt", Stt: profile.Provider, Sample: true), CancellationToken.None, MeasureTimeout);
                 if (answer is not { Ok: true, Test: { AudioSeconds: > 0 } test })
@@ -235,7 +239,7 @@ public sealed partial class ModelsPage : SettingsPage
                     return;
                 }
 
-                var ratio = test.LatencyMs / 1000.0 / test.AudioSeconds.GetValueOrDefault();
+                var ratio = test.LatencyMs / (double)TimeSpan.MillisecondsPerSecond / test.AudioSeconds.GetValueOrDefault();
                 best = Math.Min(best ?? ratio, ratio);
             }
 
@@ -364,7 +368,7 @@ public sealed partial class ModelsPage : SettingsPage
         var downloading = _listening && items.Any(i => i.State == DownloadState.Downloading);
         if (downloading && _tick is null)
         {
-            _tick = _services.Timers.Every(TimeSpan.FromSeconds(1), () => Refresh(sample: true));
+            _tick = _services.Timers.Every(DownloadTick, () => Refresh(sample: true));
         }
         else if (!downloading && _tick is not null)
         {

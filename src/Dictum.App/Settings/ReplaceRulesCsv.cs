@@ -19,7 +19,11 @@ namespace Dictum.App.Settings;
 /// </summary>
 public static class ReplaceRulesCsv
 {
+    /// <summary>For <see cref="CodePagesEncodingProvider"/>, the system's active ANSI code page.</summary>
+    private const int ActiveCodePage = 0;
+
     private static readonly string[] Yes = ["true", "yes", "1", "x", "так", "+"];
+    private static readonly string[] FindHeaders = ["find", "знайти"];
     private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
 
     /// <summary>The file's text, with <see cref="AnsiEncoding"/> as the last resort.</summary>
@@ -53,7 +57,7 @@ public static class ReplaceRulesCsv
     /// </summary>
     public static Encoding AnsiEncoding()
     {
-        var codePage = OperatingSystem.IsWindows() ? 0 : CultureInfo.CurrentCulture.TextInfo.ANSICodePage;
+        var codePage = OperatingSystem.IsWindows() ? ActiveCodePage : CultureInfo.CurrentCulture.TextInfo.ANSICodePage;
         return CodePagesEncodingProvider.Instance.GetEncoding(codePage) ?? Encoding.Latin1;
     }
 
@@ -78,8 +82,7 @@ public static class ReplaceRulesCsv
                 continue;
             }
 
-            if (rules.Count == 0 && problems.Count == 0 && cells[0].Trim() is var head
-                && (head.Equals("find", StringComparison.OrdinalIgnoreCase) || head.Equals("знайти", StringComparison.OrdinalIgnoreCase)))
+            if (rules.Count == 0 && problems.Count == 0 && FindHeaders.Contains(cells[0].Trim(), StringComparer.OrdinalIgnoreCase))
             {
                 continue;
             }

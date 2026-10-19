@@ -24,6 +24,9 @@ public enum SettingsPageKey
 /// </summary>
 public sealed partial class SettingsViewModel : ViewModelBase
 {
+    /// <summary>The informational version ends in "+commit"; the window shows the version before it.</summary>
+    private const char BuildMetadataSeparator = '+';
+
     private readonly Dictionary<SettingsPageKey, SettingsPage> _byKey;
     private readonly HashSet<SettingsPage> _followed = [];
 
@@ -119,5 +122,5 @@ public sealed partial class SettingsViewModel : ViewModelBase
         session.Problem ?? session.SaveError ?? (session.HasErrors ? Strings.SettingsNotSaved : null);
 
     private static string AppVersion() =>
-        (typeof(SettingsViewModel).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "?").Split('+')[0];
+        (typeof(SettingsViewModel).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "?").Split(BuildMetadataSeparator)[0];
 }

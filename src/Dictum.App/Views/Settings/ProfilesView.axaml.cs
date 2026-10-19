@@ -13,11 +13,17 @@ namespace Dictum.App.Views.Settings;
 
 /// <summary>
 /// The chain reorder. Dragging a row by its handle, or Alt+↑ / Alt+↓ on a focused row, moves the step
-/// through <see cref="ProfilesPage.MoveStep"/>, and focus follows the moved row. Rows are 36 px plus a 4 px gap.
+/// through <see cref="ProfilesPage.MoveStep"/>, and focus follows the moved row.
 /// </summary>
 public partial class ProfilesView : UserControl
 {
+    /// <summary>A chain row is 36 px high, plus a 4 px gap.</summary>
     private const double RowPitch = 40;
+
+    private const string ChainRowClass = "chainRow";
+    private const string HandleClass = "handle";
+    private const string DraggedClass = "dragged";
+
     private int? _dragFrom;
     private double _dragStart;
     private Border? _dragged;
@@ -74,11 +80,11 @@ public partial class ProfilesView : UserControl
     private ProfilesPage? Page => DataContext as ProfilesPage;
 
     private static Border? Row(object? source) =>
-        (source as Visual)?.GetSelfAndVisualAncestors().OfType<Border>().FirstOrDefault(b => b.Classes.Contains("chainRow"));
+        (source as Visual)?.GetSelfAndVisualAncestors().OfType<Border>().FirstOrDefault(b => b.Classes.Contains(ChainRowClass));
 
     private void OnPressed(object? sender, PointerPressedEventArgs e)
     {
-        var handle = (e.Source as Visual)?.GetSelfAndVisualAncestors().OfType<Border>().FirstOrDefault(b => b.Classes.Contains("handle"));
+        var handle = (e.Source as Visual)?.GetSelfAndVisualAncestors().OfType<Border>().FirstOrDefault(b => b.Classes.Contains(HandleClass));
         if (handle is null || Row(handle) is not { DataContext: ChainStep step } row)
         {
             return;
@@ -87,7 +93,7 @@ public partial class ProfilesView : UserControl
         _dragFrom = step.Position - 1;
         _dragStart = e.GetPosition(ChainList).Y;
         _dragged = row;
-        row.Classes.Add("dragged");
+        row.Classes.Add(DraggedClass);
         e.Pointer.Capture(handle);
         e.Handled = true;
     }
@@ -109,7 +115,7 @@ public partial class ProfilesView : UserControl
 
         var count = Page?.Chain.Count ?? 0;
         var to = Math.Clamp(from + (int)Math.Round((e.GetPosition(ChainList).Y - _dragStart) / RowPitch), 0, Math.Max(count - 1, 0));
-        _dragged.Classes.Remove("dragged");
+        _dragged.Classes.Remove(DraggedClass);
         _dragged.RenderTransform = null;
         _dragFrom = null;
         _dragged = null;
@@ -141,6 +147,6 @@ public partial class ProfilesView : UserControl
 
         // The rows are rebuilt from the new chain; focus the moved one once they exist.
         Dispatcher.UIThread.Post(() => Row(ChainList.ContainerFromIndex(to)?.GetVisualDescendants().OfType<Border>()
-            .FirstOrDefault(b => b.Classes.Contains("chainRow")))?.Focus(), DispatcherPriority.Loaded);
+            .FirstOrDefault(b => b.Classes.Contains(ChainRowClass)))?.Focus(), DispatcherPriority.Loaded);
     }
 }

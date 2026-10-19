@@ -34,6 +34,12 @@ public sealed partial class SystemPage : SettingsPage
     /// <summary>Each provider check may take 15 s.</summary>
     public static readonly TimeSpan DoctorTimeout = TimeSpan.FromMinutes(2);
 
+    /// <summary>The header's "checked N s ago" counts seconds.</summary>
+    private static readonly TimeSpan ClockTick = TimeSpan.FromSeconds(1);
+
+    private const string SttCheckPrefix = "stt:";
+    private const string ProcessorCheckPrefix = "processor:";
+
     private readonly SystemServices _services;
     private IDisposable? _clock;
     private DateTimeOffset? _checkedAt;
@@ -89,17 +95,17 @@ public sealed partial class SystemPage : SettingsPage
         "secrets" => Strings.SettingsCheckSecrets,
         "elevation" => Strings.SettingsCheckElevation,
         "daemon" => Strings.SettingsCheckDaemon,
-        _ when name.StartsWith("stt:", StringComparison.Ordinal) =>
-            string.Format(CultureInfo.CurrentCulture, Strings.SettingsCheckStt, name["stt:".Length..]),
-        _ when name.StartsWith("processor:", StringComparison.Ordinal) =>
-            string.Format(CultureInfo.CurrentCulture, Strings.SettingsCheckProcessor, name["processor:".Length..]),
+        _ when name.StartsWith(SttCheckPrefix, StringComparison.Ordinal) =>
+            string.Format(CultureInfo.CurrentCulture, Strings.SettingsCheckStt, name[SttCheckPrefix.Length..]),
+        _ when name.StartsWith(ProcessorCheckPrefix, StringComparison.Ordinal) =>
+            string.Format(CultureInfo.CurrentCulture, Strings.SettingsCheckProcessor, name[ProcessorCheckPrefix.Length..]),
         _ => name,
     };
 
     public override void OnShown()
     {
         _shown = true;
-        _clock = _services.Timers.Every(TimeSpan.FromSeconds(1), UpdateHeader);
+        _clock = _services.Timers.Every(ClockTick, UpdateHeader);
         _ = CheckAsync();
     }
 

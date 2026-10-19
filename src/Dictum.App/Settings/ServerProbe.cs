@@ -17,13 +17,25 @@ public interface IServerProbe
 }
 
 /// <summary>
-/// Tests an OpenAI-compatible server as clean-up will use it: <c>GET {url}/models</c> with the key, within 5 s, timed.
+/// Tests an OpenAI-compatible server as clean-up will use it: <c>GET {url}/models</c> with the key, timed, within
+/// <see cref="DefaultTimeout"/> unless the caller gives another limit.
 /// When the server lists several models, the chosen one must be there, so a typo does not make clean-up fail later in
 /// silence. A server that lists none (some proxies) or one (llama-server serves its model under any name) passes, and
 /// an Ollama name without its tag matches the <c>:latest</c> one.
 /// </summary>
 public sealed class ServerProbe(HttpClient http, ISecretStore secrets, TimeProvider time, TimeSpan? timeout = null) : IServerProbe
 {
+    private const string ModelsPath = "/models";
+
+    /// <summary>The tag Ollama gives a model pulled without one.</summary>
+    private const string OllamaDefaultTag = ":latest";
+
+    /// <summary>How many of the server's models the "no such model" message names.</summary>
+    private const int ModelsNamed = 8;
+
+    private const string DataProperty = "data";
+    private const string IdProperty = "id";
+
     public static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(5);
 
     public async Task<ServerCheck> CheckAsync(string baseUrl, string model, string? apiKey, CancellationToken ct)
@@ -51,7 +63,7 @@ public sealed class ServerProbe(HttpClient http, ISecretStore secrets, TimeProvi
             return new ServerCheck(false, Format(Strings.SetupServerKeyUnreadable, ex.Message));
         }
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, url.TrimEnd('/') + "/models");
+        using var request = new HttpRequestMessage(HttpMethod.Get, url.TrimEnd('/') + ModelsPath);
         if (!string.IsNullOrEmpty(key))
         {
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
@@ -75,8 +87,8 @@ public sealed class ServerProbe(HttpClient http, ISecretStore secrets, TimeProvi
             }
 
             var models = await ModelIdsAsync(response, limit.Token);
-            return models.Count > 1 && !models.Contains(name, StringComparer.Ordinal) && !models.Contains(name + ":latest", StringComparer.Ordinal)
-                ? new ServerCheck(false, Format(Strings.SetupServerNoModel, name, string.Join(", ", models.Take(8))))
+            return models.Count > 1 && !models.Contains(name, StringComparer.Ordinal) && !models.Contains(name + OllamaDefaultTag, StringComparer.Ordinal)
+                ? new ServerCheck(false, Format(Strings.SetupServerNoModel, name, string.Join(", ", models.Take(ModelsNamed))))
                 : new ServerCheck(true, Format(Strings.SetupServerReachable, milliseconds));
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
@@ -97,7 +109,7 @@ public sealed class ServerProbe(HttpClient http, ISecretStore secrets, TimeProvi
             await using var body = await response.Content.ReadAsStreamAsync(ct);
             using var document = await JsonDocument.ParseAsync(body, cancellationToken: ct);
             if (document.RootElement.ValueKind != JsonValueKind.Object
-                || !document.RootElement.TryGetProperty("data", out var data)
+                || !document.RootElement.TryGetProperty(DataProperty, out var data)
                 || data.ValueKind != JsonValueKind.Array)
             {
                 return [];
@@ -106,8 +118,10 @@ public sealed class ServerProbe(HttpClient http, ISecretStore secrets, TimeProvi
             return
             [
                 .. data.EnumerateArray()
-                    .Where(m => m.ValueKind == JsonValueKind.Object && m.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.String)
-                    .Select(m => m.GetProperty("id").GetString()!),
+                    .Select(m => m.ValueKind == JsonValueKind.Object && m.TryGetProperty(IdProperty, out var id) && id.ValueKind == JsonValueKind.String
+                        ? id.GetString()
+                        : null)
+                    .OfType<string>(),
             ];
         }
         catch (JsonException)

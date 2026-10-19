@@ -8,6 +8,11 @@ public sealed class DownloadRate(TimeProvider time)
 {
     public static readonly TimeSpan Window = TimeSpan.FromSeconds(5);
 
+    /// <summary>A rate needs two samples at least a second apart.</summary>
+    private const int MinSamples = 2;
+
+    private static readonly TimeSpan MinSpan = TimeSpan.FromSeconds(1);
+
     private readonly Queue<(DateTimeOffset At, long Bytes)> _samples = new();
 
     /// <summary>The download the samples belong to.</summary>
@@ -18,15 +23,15 @@ public sealed class DownloadRate(TimeProvider time)
     {
         get
         {
-            if (_samples.Count < 2)
+            if (_samples.Count < MinSamples)
             {
                 return null;
             }
 
             var (firstAt, firstBytes) = _samples.Peek();
             var (lastAt, lastBytes) = _samples.Last();
-            var seconds = (lastAt - firstAt).TotalSeconds;
-            return seconds < 1 ? null : (lastBytes - firstBytes) / seconds;
+            var span = lastAt - firstAt;
+            return span < MinSpan ? null : (lastBytes - firstBytes) / span.TotalSeconds;
         }
     }
 
@@ -41,7 +46,7 @@ public sealed class DownloadRate(TimeProvider time)
 
         var now = time.GetUtcNow();
         _samples.Enqueue((now, bytes));
-        while (_samples.Count > 2 && now - _samples.Peek().At > Window)
+        while (_samples.Count > MinSamples && now - _samples.Peek().At > Window)
         {
             _samples.Dequeue();
         }

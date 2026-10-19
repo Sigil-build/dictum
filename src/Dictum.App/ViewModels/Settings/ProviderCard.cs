@@ -47,6 +47,12 @@ public sealed partial class ProviderCard : ObservableObject
 
     public const int TestSeconds = 5;
 
+    /// <summary>The recording, then two minutes for the daemon to load the model and transcribe.</summary>
+    private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(TestSeconds) + TimeSpan.FromMinutes(2);
+
+    /// <summary>OpenAiCompatibleSttConfig's default, for a provider that is not on disk yet.</summary>
+    private const int DefaultTimeoutMs = 60_000;
+
     private readonly SettingsSession _session;
     private readonly SpeechServices _services;
     private readonly Action<ProviderCard> _remove;
@@ -219,7 +225,7 @@ public sealed partial class ProviderCard : ObservableObject
                     };
                     if (!_timeoutEmpty)
                     {
-                        TimeoutSeconds = remote.TimeoutMs / 1000m;
+                        TimeoutSeconds = TimeoutFields.Seconds(remote.TimeoutMs);
                         TimeoutError = _session.IssueAt($"{path}.timeoutMs");
                     }
 
@@ -268,14 +274,14 @@ public sealed partial class ProviderCard : ObservableObject
         {
             // As General's History field: nothing typed on the way to empty is saved.
             _timeoutEmpty = true;
-            var saved = (_session.OnDisk.Stt.GetValueOrDefault(Id) as OpenAiCompatibleSttConfig)?.TimeoutMs ?? 60_000;
+            var saved = (_session.OnDisk.Stt.GetValueOrDefault(Id) as OpenAiCompatibleSttConfig)?.TimeoutMs ?? DefaultTimeoutMs;
             EditRemote(r => r with { TimeoutMs = saved });
             TimeoutError = Strings.SettingsNumberRequired;
             return;
         }
 
         _timeoutEmpty = false;
-        EditRemote(r => r with { TimeoutMs = (int)decimal.Truncate(seconds * 1000) });
+        EditRemote(r => r with { TimeoutMs = TimeoutFields.Milliseconds(seconds) });
     }
 
     [RelayCommand(CanExecute = nameof(CanRemove))]
@@ -357,7 +363,7 @@ public sealed partial class ProviderCard : ObservableObject
             }
 
             var request = new IpcRequest("test-stt", Stt: Id, Seconds: sample ? null : TestSeconds, Sample: sample ? true : null);
-            var answer = await _services.Channel.TrySendAsync(request, CancellationToken.None, TimeSpan.FromSeconds(TestSeconds + 120));
+            var answer = await _services.Channel.TrySendAsync(request, CancellationToken.None, TestTimeout);
             Result = answer switch
             {
                 null => new SystemRow(Strings.SettingsProvidersTest, HealthLevel.Error, Strings.SettingsProvidersNoDaemon),

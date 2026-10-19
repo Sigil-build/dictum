@@ -10,6 +10,9 @@ namespace Dictum.App.Settings;
 /// </summary>
 public sealed class PromptFiles(string directory)
 {
+    private const string Extension = ".md";
+    private const string TempSuffix = ".tmp";
+
     public IReadOnlyList<string> Names()
     {
         var names = new SortedSet<string>(PromptTemplates.BuiltIn, StringComparer.Ordinal);
@@ -17,7 +20,7 @@ public sealed class PromptFiles(string directory)
         {
             if (Directory.Exists(directory))
             {
-                names.UnionWith(Directory.EnumerateFiles(directory, "*.md").Select(Path.GetFileNameWithoutExtension).OfType<string>().Where(IsValidName));
+                names.UnionWith(Directory.EnumerateFiles(directory, "*" + Extension).Select(Path.GetFileNameWithoutExtension).OfType<string>().Where(IsValidName));
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -50,7 +53,7 @@ public sealed class PromptFiles(string directory)
     {
         Directory.CreateDirectory(directory);
         var path = PathOf(name);
-        var temp = path + ".tmp";
+        var temp = path + TempSuffix;
         File.WriteAllText(temp, text);
         File.Move(temp, path, overwrite: true);
     }
@@ -67,5 +70,5 @@ public sealed class PromptFiles(string directory)
         name.Length > 0 && name == name.Trim() && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0
         && name.IndexOfAny(['/', '\\']) < 0 && !name.Contains("..", StringComparison.Ordinal);
 
-    private string PathOf(string name) => Path.Combine(directory, name + ".md");
+    private string PathOf(string name) => Path.Combine(directory, name + Extension);
 }

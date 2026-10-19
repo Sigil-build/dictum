@@ -15,6 +15,14 @@ public sealed class InputMeter
     public const double FloorDb = -60;
     public const double CeilingDb = -10;
 
+    /// <summary>Amplitude to decibels: 20 · log10.</summary>
+    private const double DbPerDecade = 20;
+
+    /// <summary>The rms that counts as silence, −120 dBFS, so the logarithm stays finite.</summary>
+    private const double SilenceRms = 1e-6;
+
+    private const string TypographicMinus = "−";
+
     /// <summary>A frame older than this counts as silence: the monitor stopped, or frames were dropped.</summary>
     public static readonly TimeSpan Stale = TimeSpan.FromMilliseconds(250);
 
@@ -26,7 +34,7 @@ public sealed class InputMeter
     public int Db => (int)Math.Round(FloorDb + Level * (CeilingDb - FloorDb), MidpointRounding.AwayFromZero);
 
     public static double Target(float rms) =>
-        Math.Clamp((20 * Math.Log10(Math.Max(rms, 1e-6)) - FloorDb) / (CeilingDb - FloorDb), 0, 1);
+        Math.Clamp((DbPerDecade * Math.Log10(Math.Max(rms, SilenceRms)) - FloorDb) / (CeilingDb - FloorDb), 0, 1);
 
     public static int LitFor(double level) => (int)Math.Round(Math.Clamp(level, 0, 1) * Segments, MidpointRounding.AwayFromZero);
 
@@ -34,7 +42,7 @@ public sealed class InputMeter
     public static string Readout(int db)
     {
         var number = Math.Abs(db).ToString(CultureInfo.CurrentCulture);
-        return string.Format(CultureInfo.CurrentCulture, Strings.SettingsDbfs, db < 0 ? "−" + number : number);
+        return string.Format(CultureInfo.CurrentCulture, Strings.SettingsDbfs, db < 0 ? TypographicMinus + number : number);
     }
 
     public void Update(float rms, TimeSpan now)

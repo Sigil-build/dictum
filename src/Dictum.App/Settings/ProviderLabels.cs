@@ -7,6 +7,8 @@ namespace Dictum.App.Settings;
 /// <summary>How a speech provider reads in a dropdown: "Local Whisper · large-v3-turbo-q8_0", "Remote · home-server:9000".</summary>
 public static class ProviderLabels
 {
+    private const string GgmlPrefix = "ggml-";
+
     public static string For(SttConfig config) => config switch
     {
         WhisperLocalSttConfig local => string.Format(CultureInfo.CurrentCulture, Strings.SettingsProviderLocal, ModelName(local.Model)),
@@ -18,6 +20,6 @@ public static class ProviderLabels
     private static string ModelName(string model)
     {
         var name = Path.GetFileNameWithoutExtension(model);
-        return name.StartsWith("ggml-", StringComparison.OrdinalIgnoreCase) ? name["ggml-".Length..] : name;
+        return name.StartsWith(GgmlPrefix, StringComparison.OrdinalIgnoreCase) ? name[GgmlPrefix.Length..] : name;
     }
 }

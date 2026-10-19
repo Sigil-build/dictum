@@ -41,6 +41,8 @@ public sealed partial class GeneralPage : SettingsPage
     public static readonly TimeSpan MeterTick = TimeSpan.FromMilliseconds(50);
     public static readonly TimeSpan MonitorRenewal = TimeSpan.FromSeconds(10);
 
+    private const string HistorySizePath = "general.historySize";
+
     private readonly SettingsSession _session;
     private readonly GeneralServices _services;
     private readonly InputMeter _meter = new();
@@ -215,7 +217,7 @@ public sealed partial class GeneralPage : SettingsPage
 
         _historyEmpty = false;
         _session.Edit(c => c with { General = c.General with { HistorySize = (int)decimal.Truncate(size) } });
-        HistoryError = _session.IssueAt("general.historySize");
+        HistoryError = _session.IssueAt(HistorySizePath);
     }
 
     partial void OnUiLanguageChanged(Option<string?>? value)
@@ -258,7 +260,7 @@ public sealed partial class GeneralPage : SettingsPage
             if (!_historyEmpty)
             {
                 HistorySize = general.HistorySize;
-                HistoryError = _session.IssueAt("general.historySize");
+                HistoryError = _session.IssueAt(HistorySizePath);
             }
             UiLanguage = UiLanguages.FirstOrDefault(l => l.Value == general.UiLanguage) ?? UiLanguages[0];
             var microphones = MicrophoneList(_devices, _devicesKnown, general.AudioDevice);

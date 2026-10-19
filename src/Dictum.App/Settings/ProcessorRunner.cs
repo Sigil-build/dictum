@@ -29,7 +29,9 @@ public interface IProcessorRunner
 /// </summary>
 public sealed class ProcessorRunner(AppPaths paths, ISecretStore secrets, ILog log) : IProcessorRunner, IDisposable
 {
-    private readonly HttpClient _http = new(new SocketsHttpHandler { PooledConnectionLifetime = TimeSpan.FromMinutes(5) })
+    private static readonly TimeSpan ConnectionLifetime = TimeSpan.FromMinutes(5);
+
+    private readonly HttpClient _http = new(new SocketsHttpHandler { PooledConnectionLifetime = ConnectionLifetime })
     {
         // Each processor applies its own timeout from the config.
         Timeout = Timeout.InfiniteTimeSpan,
