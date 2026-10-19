@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -8,6 +7,7 @@ using Dictum.Core;
 using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Http;
 using Dictum.Core.Stt;
 
 namespace Dictum.Stt.OpenAi;
@@ -23,10 +23,12 @@ public sealed class OpenAiCompatibleStt(
     ConfigValueResolver values,
     ILog log) : ISpeechToText
 {
-    private const int SnippetLength = 300;
+    private const string TranscriptionsPath = "audio/transcriptions";
 
     /// <summary>Half a second of silence, the clip the health check sends to a server without <c>/models</c>.</summary>
     private const int ProbeClipSamples = AudioClip.WhisperSampleRate / 2;
+
+    private readonly OpenAiCompatibleServer _server = new(http, values, $"STT provider '{id}'", config.BaseUrl, config.ApiKey);
 
     public string Id => id;
 
@@ -34,25 +36,25 @@ public sealed class OpenAiCompatibleStt(
 
     public async Task<Transcript> TranscribeAsync(AudioClip clip, SttRequest request, CancellationToken ct)
     {
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeout.CancelAfter(config.TimeoutMs);
         var watch = Stopwatch.StartNew();
-
-        using var message = new HttpRequestMessage(HttpMethod.Post, Endpoint("audio/transcriptions"))
+        var answer = await _server.SendAsync(
+            () => new HttpRequestMessage(HttpMethod.Post, _server.Endpoint(TranscriptionsPath)) { Content = BuildForm(clip, request) },
+            config.TimeoutMs,
+            ct).ConfigureAwait(false);
+        if (!answer.IsSuccess)
         {
-            Content = BuildForm(clip, request),
-        };
-        await AuthorizeAsync(message, ct).ConfigureAwait(false);
+            throw new ProviderUnavailableException(
+                $"STT provider '{id}' answered {(int)answer.Status} {answer.ReasonPhrase}: {OpenAiCompatible.Snippet(answer.Body)}");
+        }
 
-        var body = await SendAsync(message, timeout, ct).ConfigureAwait(false);
         TranscriptionResponse? parsed;
         try
         {
-            parsed = JsonSerializer.Deserialize(body, OpenAiSttJsonContext.Default.TranscriptionResponse);
+            parsed = JsonSerializer.Deserialize(answer.Body, OpenAiSttJsonContext.Default.TranscriptionResponse);
         }
         catch (JsonException ex)
         {
-            throw new ProviderUnavailableException($"STT provider '{id}' returned invalid JSON: {Snippet(body)}", ex);
+            throw new ProviderUnavailableException($"STT provider '{id}' returned invalid JSON: {OpenAiCompatible.Snippet(answer.Body)}", ex);
         }
 
         log.Debug($"STT '{id}' answered in {watch.ElapsedMilliseconds} ms");
@@ -63,13 +65,8 @@ public sealed class OpenAiCompatibleStt(
     {
         try
         {
-            using var message = new HttpRequestMessage(HttpMethod.Get, Endpoint("models"));
-            await AuthorizeAsync(message, ct).ConfigureAwait(false);
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeout.CancelAfter(IHealthCheck.ServerTimeout);
-            using var response = await http.SendAsync(message, timeout.Token).ConfigureAwait(false);
-
-            if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            using var response = await _server.ProbeModelsAsync(ct).ConfigureAwait(false);
+            if (OpenAiCompatible.RejectsKey(response.StatusCode))
             {
                 return HealthStatus.Error($"{config.BaseUrl} rejected the API key ({(int)response.StatusCode})", "Check the apiKey reference in the config.");
             }
@@ -109,42 +106,6 @@ public sealed class OpenAiCompatibleStt(
 
         return form;
     }
-
-    private async Task<string> SendAsync(HttpRequestMessage message, CancellationTokenSource timeout, CancellationToken ct)
-    {
-        try
-        {
-            using var response = await http.SendAsync(message, timeout.Token).ConfigureAwait(false);
-            var body = await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false);
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new ProviderUnavailableException(
-                    $"STT provider '{id}' answered {(int)response.StatusCode} {response.ReasonPhrase}: {Snippet(body)}");
-            }
-
-            return body;
-        }
-        catch (OperationCanceledException ex) when (!ct.IsCancellationRequested)
-        {
-            throw new ProviderUnavailableException($"STT provider '{id}' did not answer within {config.TimeoutMs} ms.", ex);
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new ProviderUnavailableException($"STT provider '{id}' is unreachable at {config.BaseUrl}: {ex.Message}", ex);
-        }
-    }
-
-    private async Task AuthorizeAsync(HttpRequestMessage message, CancellationToken ct)
-    {
-        if (await values.ResolveAsync(config.ApiKey, ct).ConfigureAwait(false) is { } key)
-        {
-            message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
-        }
-    }
-
-    private Uri Endpoint(string path) => new($"{config.BaseUrl.TrimEnd('/')}/{path}");
-
-    private static string Snippet(string body) => body.Length <= SnippetLength ? body : body[..SnippetLength] + "…";
 }
 
 internal sealed record TranscriptionResponse(string? Text, string? Language);

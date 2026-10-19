@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Http;
 using Dictum.Core.Processing;
 using Dictum.Core.Text;
 using Dictum.Core.Vocabulary;
@@ -29,13 +30,7 @@ public interface IProcessorRunner
 /// </summary>
 public sealed class ProcessorRunner(AppPaths paths, ISecretStore secrets, ILog log) : IProcessorRunner, IDisposable
 {
-    private static readonly TimeSpan ConnectionLifetime = TimeSpan.FromMinutes(5);
-
-    private readonly HttpClient _http = new(new SocketsHttpHandler { PooledConnectionLifetime = ConnectionLifetime })
-    {
-        // Each processor applies its own timeout from the config.
-        Timeout = Timeout.InfiniteTimeSpan,
-    };
+    private readonly HttpClient _http = ProviderHttp.CreateClient();
 
     public static ProcessingContext ContextFor(ProfileConfig profile) =>
         new(profile.Id, profile.Language, ActiveApp: null, VocabularyList.Render(VocabularyList.Normalize(profile.Vocabulary)));

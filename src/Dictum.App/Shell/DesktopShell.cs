@@ -15,6 +15,7 @@ using Dictum.Audio;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Http;
 using Dictum.Host;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
@@ -390,7 +391,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         var setup = new SetupViewModel(new SetupServices(
             _paths, _store, Catalog.BuiltIn, _modelDownloads ?? IModelDownloads.None, Hardware, FreeDiskBytes,
             GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, Environment.ProcessorCount, _measurements,
-            new ServerProbe(_serverHttp ??= new HttpClient(), secrets, TimeProvider.System), secrets, _autostart, OwnExecutable(),
+            new ServerProbe(_serverHttp ??= ProviderHttp.CreateClient(), secrets, TimeProvider.System), secrets, _autostart, OwnExecutable(),
             SetupTray(), Supervisor, Supervisor.Restart, UiTimers.Instance, TimeProvider.System, _log),
             SavedSetupFile.Load(_paths, _log));
         setup.Finished += () =>

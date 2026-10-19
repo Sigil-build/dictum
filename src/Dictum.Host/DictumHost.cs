@@ -6,6 +6,7 @@ using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.History;
+using Dictum.Core.Http;
 using Dictum.Core.Pipeline;
 using Dictum.Core.Processing;
 using Dictum.Core.Stt;
@@ -23,9 +24,6 @@ namespace Dictum.Host;
 /// </summary>
 public sealed class DictumHost : IDictationEngine
 {
-    /// <summary>Pooled connections are renewed this often, so a provider whose address changes is found again.</summary>
-    private static readonly TimeSpan HttpConnectionLifetime = TimeSpan.FromMinutes(5);
-
     private readonly ServiceProvider _services;
     private readonly ProviderRegistry _registry;
     private readonly ConcurrentDictionary<string, ISpeechToText> _stt = new(StringComparer.Ordinal);
@@ -44,7 +42,7 @@ public sealed class DictumHost : IDictationEngine
         services.AddSingleton(config);
         services.AddSingleton(secrets);
         services.AddSingleton(sp => new ConfigValueResolver(sp.GetRequiredService<ISecretStore>()));
-        services.AddSingleton(_ => CreateHttpClient());
+        services.AddSingleton(_ => ProviderHttp.CreateClient());
         services.AddSingleton(_ => new PromptTemplates(paths.PromptsDirectory));
         services.AddSingleton(_ => new HistoryStore(paths.HistoryFile, config.General.HistorySize));
         services.AddSingleton<IAudioSource>(_ => Environment.GetEnvironmentVariable(DictumEnvironment.AudioFile) is { Length: > 0 } file
@@ -124,11 +122,4 @@ public sealed class DictumHost : IDictationEngine
 
         await _services.DisposeAsync().ConfigureAwait(false);
     }
-
-    private static HttpClient CreateHttpClient() =>
-        new(new SocketsHttpHandler { PooledConnectionLifetime = HttpConnectionLifetime })
-        {
-            // Each provider applies its own timeout from the config.
-            Timeout = Timeout.InfiniteTimeSpan,
-        };
 }

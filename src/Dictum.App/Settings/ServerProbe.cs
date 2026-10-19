@@ -1,10 +1,9 @@
 using System.Globalization;
-using System.Net;
-using System.Net.Http.Headers;
 using System.Text.Json;
 using Dictum.App.Resources;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Http;
 
 namespace Dictum.App.Settings;
 
@@ -26,8 +25,6 @@ public interface IServerProbe
 /// </summary>
 public sealed class ServerProbe(HttpClient http, ISecretStore secrets, TimeProvider time, TimeSpan? timeout = null) : IServerProbe
 {
-    private const string ModelsPath = "/models";
-
     /// <summary>The tag Ollama gives a model pulled without one.</summary>
     private const string OllamaDefaultTag = ":latest";
 
@@ -62,20 +59,14 @@ public sealed class ServerProbe(HttpClient http, ISecretStore secrets, TimeProvi
             return new ServerCheck(false, Format(Strings.SetupServerKeyUnreadable, ex.Message));
         }
 
-        using var request = new HttpRequestMessage(HttpMethod.Get, url.TrimEnd('/') + ModelsPath);
-        if (!string.IsNullOrEmpty(key))
-        {
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
-        }
-
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(ct);
         limit.CancelAfter(timeout ?? IHealthCheck.ServerTimeout);
         var started = time.GetTimestamp();
         try
         {
-            using var response = await http.SendAsync(request, limit.Token);
+            using var response = await OpenAiCompatible.GetModelsAsync(http, url, string.IsNullOrEmpty(key) ? null : key, limit.Token);
             var milliseconds = (long)time.GetElapsedTime(started).TotalMilliseconds;
-            if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            if (OpenAiCompatible.RejectsKey(response.StatusCode))
             {
                 return new ServerCheck(false, Strings.SetupServerKeyRejected);
             }

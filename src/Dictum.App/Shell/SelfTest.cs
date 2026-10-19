@@ -16,6 +16,7 @@ using Dictum.App.ViewModels.Setup;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Http;
 using Dictum.Host;
 using Dictum.Host.Ipc;
 using Dictum.Setup;
@@ -202,7 +203,7 @@ public static class SelfTest
                 new HistoryPage(session, paths.HistoryFile, new WindowClipboard(() => null), runner, NullLog.Instance),
             ];
             var locator = new ViewLocator();
-            using var http = new HttpClient();
+            using var http = ProviderHttp.CreateClient();
             var setup = new SetupViewModel(new SetupServices(paths, store, Catalog.BuiltIn, IModelDownloads.None,
                 () => Task.FromResult(new HardwareInfo(null, 0)), () => long.MaxValue, 0, 1, new SpeedMeasurements(),
                 new ServerProbe(http, new UnavailableSecretStore(), TimeProvider.System), new UnavailableSecretStore(), null, null,
