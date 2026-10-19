@@ -68,21 +68,7 @@ internal static class RecordCommand
             var pipeline = host.CreatePipeline();
             if (parse.GetValue(saveAudio) is { } savePath)
             {
-                pipeline.ClipRecorded += clip =>
-                {
-                    using (var file = File.Create(savePath))
-                    {
-                        Wav.WritePcm16(file, clip.Samples.Span, clip.SampleRate);
-                    }
-
-                    var peak = 0f;
-                    foreach (var s in clip.Samples.Span)
-                    {
-                        peak = Math.Max(peak, Math.Abs(s));
-                    }
-
-                    context.Error.WriteLine($"Saved {clip.Duration.TotalSeconds:F1} s to {savePath} (level {Levels.ToDb(Levels.Rms(clip.Samples.Span)):F0} dBFS RMS, peak {Levels.ToDb(peak):F0} dBFS)");
-                };
+                pipeline.ClipRecorded += clip => SaveClip(context, savePath, clip);
             }
 
             var stop = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -126,18 +112,12 @@ internal static class RecordCommand
 
             context.Error.WriteLine("Transcribing…");
             var target = parse.GetValue(output);
-            var sink = target == ToStdout ? null : InjectorOutput.For(
-                context.Platform.Injector,
-                target == ToPaste ? OutputMode.Paste : OutputMode.Clipboard,
-                context.TryLoadConfig()?.Profiles.FirstOrDefault(p => p.Id == profile.Id)?.PasteShortcut ?? PasteShortcut.Auto,
-                context.TryLoadConfig()?.General ?? new GeneralSettings());
+            var sink = CreateSink(context, target, profile.Id);
             var result = await pipeline.StopAsync(profile, sink, token).ConfigureAwait(false);
 
             if (parse.GetValue(dumpFrames) is { } dumpPath && frames is not null)
             {
-                var dump = new FrameDumpJson(FramesPerSecond, frames.FirstOrDefault()?.Bands.Length ?? 0, frames);
-                await File.WriteAllTextAsync(dumpPath, JsonSerializer.Serialize(dump, CliJsonContext.Readable.FrameDumpJson), token).ConfigureAwait(false);
-                context.Error.WriteLine($"Wrote {frames.Count} frames to {dumpPath}");
+                await WriteFrameDumpAsync(context, dumpPath, frames, token).ConfigureAwait(false);
             }
 
             if (sink is not null && !parse.GetValue(options.Json))
@@ -150,6 +130,37 @@ internal static class RecordCommand
         }, ct));
 
         return command;
+    }
+
+    private static void SaveClip(CliContext context, string path, AudioClip clip)
+    {
+        using (var file = File.Create(path))
+        {
+            Wav.WritePcm16(file, clip.Samples.Span, clip.SampleRate);
+        }
+
+        var peak = 0f;
+        foreach (var s in clip.Samples.Span)
+        {
+            peak = Math.Max(peak, Math.Abs(s));
+        }
+
+        context.Error.WriteLine($"Saved {clip.Duration.TotalSeconds:F1} s to {path} (level {Levels.ToDb(Levels.Rms(clip.Samples.Span)):F0} dBFS RMS, peak {Levels.ToDb(peak):F0} dBFS)");
+    }
+
+    /// <summary>Null for stdout; otherwise the injector, with the profile's paste shortcut when the config has one.</summary>
+    private static InjectorOutput? CreateSink(CliContext context, string? target, string profileId) =>
+        target == ToStdout ? null : InjectorOutput.For(
+            context.Platform.Injector,
+            target == ToPaste ? OutputMode.Paste : OutputMode.Clipboard,
+            context.TryLoadConfig()?.Profiles.FirstOrDefault(p => p.Id == profileId)?.PasteShortcut ?? PasteShortcut.Auto,
+            context.TryLoadConfig()?.General ?? new GeneralSettings());
+
+    private static async Task WriteFrameDumpAsync(CliContext context, string path, List<FrameJson> frames, CancellationToken ct)
+    {
+        var dump = new FrameDumpJson(FramesPerSecond, frames.FirstOrDefault()?.Bands.Length ?? 0, frames);
+        await File.WriteAllTextAsync(path, JsonSerializer.Serialize(dump, CliJsonContext.Readable.FrameDumpJson), ct).ConfigureAwait(false);
+        context.Error.WriteLine($"Wrote {frames.Count} frames to {path}");
     }
 
     /// <summary>Enter stops and transcribes, Esc cancels.</summary>

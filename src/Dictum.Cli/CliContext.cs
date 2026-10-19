@@ -81,6 +81,18 @@ internal sealed class CliContext : IAsyncDisposable
 
     public DictumConfig LoadConfig() => TryLoadConfig() ?? Store.Load();
 
+    /// <summary>Saves an edited config, refusing an edit that makes it invalid.</summary>
+    public void SaveValidated(DictumConfig config)
+    {
+        var errors = ConfigValidator.Validate(config).Where(i => i.Severity == ConfigIssueSeverity.Error).ToList();
+        if (errors.Count > 0)
+        {
+            throw new ConfigException("The change would make the config invalid.", errors);
+        }
+
+        Store.Save(config);
+    }
+
     /// <summary>Replaces the config seen by later platform calls (the daemon updates it on reload).</summary>
     public void UseConfig(DictumConfig config)
     {

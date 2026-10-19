@@ -67,13 +67,7 @@ internal static class ProfilesCommand
             }
 
             config.Profiles[index] = config.Profiles[index] with { Hotkey = hotkey.ToString() };
-            var errors = ConfigValidator.Validate(config).Where(i => i.Severity == ConfigIssueSeverity.Error).ToList();
-            if (errors.Count > 0)
-            {
-                throw new ConfigException("The change would make the config invalid.", errors);
-            }
-
-            context.Store.Save(config);
+            context.SaveValidated(config);
             context.Error.WriteLine($"{id}: {hotkey}");
             return Task.FromResult(ExitCodes.Success);
         }, ct));

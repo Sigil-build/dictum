@@ -80,14 +80,7 @@ internal static class VocabCommand
         var index = IndexOf(config, profileId);
         var updated = config.Profiles[index] with { Vocabulary = change(config.Profiles[index].Vocabulary) };
         config.Profiles[index] = updated;
-
-        var errors = ConfigValidator.Validate(config).Where(i => i.Severity == ConfigIssueSeverity.Error).ToList();
-        if (errors.Count > 0)
-        {
-            throw new ConfigException("The change would make the config invalid.", errors);
-        }
-
-        context.Store.Save(config);
+        context.SaveValidated(config);
         context.Error.WriteLine($"{updated.Id}: {updated.Vocabulary.Count} word(s)");
         WarnAboutDroppedTerms(context, updated);
         return ExitCodes.Success;

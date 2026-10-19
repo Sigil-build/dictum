@@ -2,9 +2,9 @@ using System.CommandLine;
 using System.Runtime.InteropServices;
 using Dictum.Audio.PortAudio;
 using Dictum.Core.Diagnostics;
+using Dictum.Host;
 using Dictum.Host.Daemon;
 using Dictum.Host.Diagnostics;
-using Dictum.Host;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
 
@@ -25,71 +25,77 @@ internal static class DaemonCommand
             uninstall,
         };
 
-        command.SetAction((parse, ct) => CliApp.RunAsync(parse, async (context, token) =>
-        {
-            if (parse.GetValue(install) || parse.GetValue(uninstall))
-            {
-                return await ConfigureAutostartAsync(context, parse.GetValue(install), token).ConfigureAwait(false);
-            }
-
-            var (config, warnings) = context.Store.LoadWithIssues();
-            context.UseConfig(config);
-            var platform = context.Platform;
-            var log = context.Log;
-
-            var events = new IpcEventHub();
-            await using var daemon = new DictumDaemon(config, context.CreateHost, platform, new SoundPlayer(log), log, events, warnings);
-            await using var server = new IpcServer(context.SocketPath, log, events);
-            await server.StartAsync(daemon.HandleAsync, token).ConfigureAwait(false);
-            await daemon.StartAsync(token).ConfigureAwait(false);
-            using var watcher = new ConfigWatcher(
-                context.Store,
-                async (changed, changedWarnings) =>
-                {
-                    context.UseConfig(changed);
-                    await daemon.ApplyConfigAsync(changed, token, changedWarnings).ConfigureAwait(false);
-                },
-                invalid => platform.Notifier.NotifyAsync("Dictum: config not applied", invalid.Message, NotificationKind.Error, token),
-                log);
-
-            daemon.ReloadHandler = async c =>
-            {
-                var (fresh, freshWarnings) = context.Store.LoadWithIssues();
-                context.UseConfig(fresh);
-                await daemon.ApplyConfigAsync(fresh, c, freshWarnings).ConfigureAwait(false);
-            };
-
-            // The daemon's own checks use its live engine: the Whisper model is already loaded, so the stt rows are cheap.
-            daemon.DoctorHandler = c => DoctorChecks.RunAsync(new DoctorInputs(
-                context.ConfigPath,
-                daemon.Config,
-                null,
-                daemon.ConfigWarnings,
-                context.Paths,
-                platform,
-                HardwareProbe.Detect(context.Paths),
-                () => daemon.Engine.Audio,
-                id => daemon.Engine.GetStt(id),
-                id => daemon.Engine.GetProcessor(id),
-                _ => Task.FromResult(HealthStatus.Ok($"running (pid {Environment.ProcessId}), answering this check"))), c);
-
-            PrintSummary(context, daemon.Status());
-
-            var terminated = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            using var sigterm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, signal =>
-            {
-                signal.Cancel = true;
-                terminated.TrySetResult();
-            });
-            await Task.WhenAny(Task.Delay(Timeout.Infinite, token), terminated.Task, daemon.ShutdownRequested).ConfigureAwait(false);
-
-            log.Info("Daemon stopping");
-            await daemon.AnnounceStoppingAsync(StoppingAnnounceTimeout).ConfigureAwait(false);
-            return ExitCodes.Success;
-        }, ct, consoleLevel: LogLevel.Info));
+        command.SetAction((parse, ct) => CliApp.RunAsync(parse, (context, token) =>
+            parse.GetValue(install) || parse.GetValue(uninstall)
+                ? ConfigureAutostartAsync(context, parse.GetValue(install), token)
+                : ServeAsync(context, token), ct, consoleLevel: LogLevel.Info));
 
         return command;
     }
+
+    private static async Task<int> ServeAsync(CliContext context, CancellationToken ct)
+    {
+        var (config, warnings) = context.Store.LoadWithIssues();
+        context.UseConfig(config);
+        var platform = context.Platform;
+        var log = context.Log;
+
+        var events = new IpcEventHub();
+        await using var daemon = new DictumDaemon(config, context.CreateHost, platform, new SoundPlayer(log), log, events, warnings);
+        await using var server = new IpcServer(context.SocketPath, log, events);
+        await server.StartAsync(daemon.HandleAsync, ct).ConfigureAwait(false);
+        await daemon.StartAsync(ct).ConfigureAwait(false);
+        using var watcher = new ConfigWatcher(
+            context.Store,
+            async (changed, changedWarnings) =>
+            {
+                context.UseConfig(changed);
+                await daemon.ApplyConfigAsync(changed, ct, changedWarnings).ConfigureAwait(false);
+            },
+            invalid => platform.Notifier.NotifyAsync("Dictum: config not applied", invalid.Message, NotificationKind.Error, ct),
+            log);
+
+        daemon.ReloadHandler = async c =>
+        {
+            var (fresh, freshWarnings) = context.Store.LoadWithIssues();
+            context.UseConfig(fresh);
+            await daemon.ApplyConfigAsync(fresh, c, freshWarnings).ConfigureAwait(false);
+        };
+        daemon.DoctorHandler = c => RunOwnChecksAsync(context, daemon, platform, c);
+
+        PrintSummary(context, daemon.Status());
+
+        var terminated = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var sigterm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, signal =>
+        {
+            signal.Cancel = true;
+            terminated.TrySetResult();
+        });
+        await Task.WhenAny(Task.Delay(Timeout.Infinite, ct), terminated.Task, daemon.ShutdownRequested).ConfigureAwait(false);
+
+        log.Info("Daemon stopping");
+        await daemon.AnnounceStoppingAsync(StoppingAnnounceTimeout).ConfigureAwait(false);
+        return ExitCodes.Success;
+    }
+
+    /// <summary>The checks run on the daemon's live engine: the Whisper model is already loaded, so the stt rows are cheap.</summary>
+    private static Task<IReadOnlyList<PlatformCheck>> RunOwnChecksAsync(
+        CliContext context,
+        DictumDaemon daemon,
+        PlatformServices platform,
+        CancellationToken ct) =>
+        DoctorChecks.RunAsync(new DoctorInputs(
+            context.ConfigPath,
+            daemon.Config,
+            null,
+            daemon.ConfigWarnings,
+            context.Paths,
+            platform,
+            HardwareProbe.Detect(context.Paths),
+            () => daemon.Engine.Audio,
+            id => daemon.Engine.GetStt(id),
+            id => daemon.Engine.GetProcessor(id),
+            _ => Task.FromResult(HealthStatus.Ok($"running (pid {Environment.ProcessId}), answering this check"))), ct);
 
     private static void PrintSummary(CliContext context, DaemonStatus status)
     {

@@ -13,17 +13,6 @@ using Dictum.Setup;
 
 namespace Dictum.Cli;
 
-internal static class ExitCodes
-{
-    public const int Success = 0;
-    public const int Error = 1;
-    public const int InvalidConfig = 2;
-    public const int ProviderUnavailable = 3;
-    public const int DaemonNotRunning = 4;
-    public const int DownloadFailed = 5;
-    public const int Interrupted = 130;
-}
-
 internal static class CliApp
 {
     public static readonly Option<string?> ConfigOption = new("--config")
@@ -96,7 +85,7 @@ internal static class CliApp
         }
     }
 
-    private static int WithHint(CliContext context, string message, string? hint)
+    private static int Fail(CliContext context, string message, int exitCode, string? hint = null)
     {
         context.Error.WriteLine($"error: {message}");
         if (hint is not null)
@@ -104,7 +93,7 @@ internal static class CliApp
             context.Error.WriteLine($"  hint: {hint}");
         }
 
-        return ExitCodes.Error;
+        return exitCode;
     }
 
     private static int Report(CliContext context, Exception ex)
@@ -122,24 +111,20 @@ internal static class CliApp
 
                 return ExitCodes.InvalidConfig;
             case ProviderUnavailableException or HttpRequestException:
-                context.Error.WriteLine($"error: {ex.Message}");
-                return ExitCodes.ProviderUnavailable;
+                return Fail(context, ex.Message, ExitCodes.ProviderUnavailable);
             case DaemonNotRunningException:
-                context.Error.WriteLine($"error: {inner.Message}");
-                return ExitCodes.DaemonNotRunning;
+                return Fail(context, inner.Message, ExitCodes.DaemonNotRunning);
             case AudioDeviceException audio:
-                return WithHint(context, audio.Message, audio.Hint);
+                return Fail(context, audio.Message, ExitCodes.Error, audio.Hint);
             case HotkeyUnavailableException hotkey:
-                return WithHint(context, hotkey.Message, hotkey.Hint);
+                return Fail(context, hotkey.Message, ExitCodes.Error, hotkey.Hint);
             case InjectionUnavailableException injection:
-                return WithHint(context, injection.Message, injection.Hint);
+                return Fail(context, injection.Message, ExitCodes.Error, injection.Hint);
             case DownloadException download:
-                context.Error.WriteLine($"error: {download.Message}");
-                return ExitCodes.DownloadFailed;
+                return Fail(context, download.Message, ExitCodes.DownloadFailed);
             case DaemonAlreadyRunningException:
             case WavFormatException or FileNotFoundException or DirectoryNotFoundException:
-                context.Error.WriteLine($"error: {ex.Message}");
-                return ExitCodes.Error;
+                return Fail(context, ex.Message, ExitCodes.Error);
             default:
                 context.Error.WriteLine($"error: {ex.Message}");
                 if (!context.Verbose)

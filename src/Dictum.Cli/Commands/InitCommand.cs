@@ -61,34 +61,14 @@ internal static class InitCommand
 
             var languageAnswer = parse.GetValue(language)
                 ?? (interactive ? AskLanguage(context, prompt, defaults.Language) : defaults.Language);
-            if (!ConfigValidator.IsValidLanguage(languageAnswer))
-            {
-                throw new ConfigException($"'{languageAnswer}' is not an ISO 639-1 language code, a comma-separated list of codes, or 'auto'.");
-            }
-
-            if (LanguageList.Parse(languageAnswer) is { } codes && LanguageList.SimilarWarning(codes) is { } similar)
-            {
-                context.Error.WriteLine($"warning: {similar}");
-            }
+            CheckLanguage(context, languageAnswer);
 
             var recommended = SetupPlanner.RecommendSpeechModel(hardware);
             var sttAnswer = parse.GetValue(stt)
                 ?? (interactive ? ChooseModel(prompt, catalog, languageAnswer, defaults, recommended) : defaults.SpeechModel);
 
             var (server, pendingSecret) = AskCleanup(context, prompt, interactive, parse.GetValue(llm), parse.GetValue(llmModel), parse.GetValue(llmApiKey), defaults.Server);
-
-            var words = new List<string>();
-            if (parse.GetValue(vocabFile) is { } file)
-            {
-                words.AddRange(VocabularyList.ParseLines(await File.ReadAllTextAsync(file, token).ConfigureAwait(false)));
-            }
-
-            if (interactive)
-            {
-                var typed = prompt.Ask("Names, apps and terms the recognizer gets wrong, comma-separated (Enter to skip)", null);
-                words.AddRange(typed.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
-            }
-
+            var words = await AskWordsAsync(prompt, interactive, parse.GetValue(vocabFile), token).ConfigureAwait(false);
             var autostartAnswer = AskAutostart(context, prompt, interactive, parse.GetValue(autostart));
 
             var answers = new SetupAnswers(
@@ -99,25 +79,9 @@ internal static class InitCommand
                 words,
                 ForceCpu: parse.GetValue(gpu) == GpuCpu);
             var plan = SetupPlanner.Plan(current, answers, catalog, e => ModelFiles.IsInstalled(context.Paths, e));
-
-            if (plan.Downloads.Count == 0)
+            if (!ConfirmDownloads(context, prompt, interactive, plan))
             {
-                context.Error.WriteLine("All model files are already in place.");
-            }
-            else
-            {
-                context.Error.WriteLine($"Dictum will download {SetupRunner.Format(plan.DownloadBytes)}:");
-                foreach (var download in plan.Downloads)
-                {
-                    context.Error.WriteLine($"  {download.Title}, {SetupRunner.Format(download.Size)}, {download.Licence.Name} licence");
-                    context.Error.WriteLine($"    from {download.Url}");
-                }
-
-                if (interactive && !prompt.Confirm("Continue?", defaultValue: true))
-                {
-                    context.Error.WriteLine("Nothing was changed.");
-                    return ExitCodes.Success;
-                }
+                return ExitCodes.Success;
             }
 
             if (server is not null)
@@ -125,15 +89,7 @@ internal static class InitCommand
                 await WarnIfUnreachableAsync(context, plan.Config, pendingSecret, token).ConfigureAwait(false);
             }
 
-            using (var http = FileDownloader.CreateHttpClient(CliApp.UserAgent))
-            using (var view = new SetupProgressView(context.Error, redraw: !Console.IsErrorRedirected))
-            {
-                await new SetupRunner(new FileDownloader(http), context.Paths)
-                    .RunAsync(plan, context.Store, hardware.FreeDiskBytes, view, token, beforeSave: pendingSecret is null
-                        ? null
-                        : c => context.Platform.Secrets.SetAsync(CleanupSecret, pendingSecret, c)).ConfigureAwait(false);
-            }
-
+            await RunSetupAsync(context, plan, hardware, pendingSecret, token).ConfigureAwait(false);
             await ApplyAutostartAsync(context, autostartAnswer, token).ConfigureAwait(false);
             await ReportReadinessAsync(context, autostartAnswer, token).ConfigureAwait(false);
             context.Error.WriteLine($"Add words any time: dictum vocab add --profile {plan.Config.Profiles[0].Id} \"Notepad++\" \"VS Code\"");
@@ -160,6 +116,19 @@ internal static class InitCommand
             }
 
             context.Error.WriteLine($"'{answer}' is not a language setting. Enter one code such as uk, codes separated by commas such as uk, en, or auto.");
+        }
+    }
+
+    private static void CheckLanguage(CliContext context, string language)
+    {
+        if (!ConfigValidator.IsValidLanguage(language))
+        {
+            throw ProfileResolver.InvalidLanguage(language);
+        }
+
+        if (LanguageList.Parse(language) is { } codes && LanguageList.SimilarWarning(codes) is { } similar)
+        {
+            context.Error.WriteLine($"warning: {similar}");
         }
     }
 
@@ -215,12 +184,13 @@ internal static class InitCommand
             return (null, null);
         }
 
-        var baseUrl = prompt.Ask("Server URL, including /v1", current?.BaseUrl ?? DefaultServerUrl);
+        var baseUrl = AskServerUrl();
         while (!ConfigValidator.IsHttpUrl(baseUrl))
         {
-            context.Error.WriteLine($"'{baseUrl}' is not a server URL; it starts with http:// or https://, e.g. http://localhost:8080/v1.");
-            baseUrl = prompt.Ask("Server URL, including /v1", current?.BaseUrl ?? DefaultServerUrl);
+            context.Error.WriteLine($"'{baseUrl}' is not a server URL; it starts with http:// or https://, e.g. {DefaultServerUrl}.");
+            baseUrl = AskServerUrl();
         }
+
         var modelName = prompt.Ask("Model name on that server", current?.Model);
         var apiKey = SetupPlanner.CarriedApiKey(current, baseUrl);
         string? pendingSecret = null;
@@ -244,6 +214,25 @@ internal static class InitCommand
         }
 
         return (new ExistingLlmServer(baseUrl, modelName, apiKey), pendingSecret);
+
+        string AskServerUrl() => prompt.Ask("Server URL, including /v1", current?.BaseUrl ?? DefaultServerUrl);
+    }
+
+    private static async Task<List<string>> AskWordsAsync(ConsolePrompt prompt, bool interactive, string? vocabFile, CancellationToken ct)
+    {
+        var words = new List<string>();
+        if (vocabFile is not null)
+        {
+            words.AddRange(VocabularyList.ParseLines(await File.ReadAllTextAsync(vocabFile, ct).ConfigureAwait(false)));
+        }
+
+        if (interactive)
+        {
+            var typed = prompt.Ask("Names, apps and terms the recognizer gets wrong, comma-separated (Enter to skip)", null);
+            words.AddRange(typed.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
+        }
+
+        return words;
     }
 
     /// <summary>
@@ -265,6 +254,41 @@ internal static class InitCommand
         }
 
         return ($"secret:{CleanupSecret}", key);
+    }
+
+    /// <summary>Lists what the plan downloads and asks to go on; false when the answer is no.</summary>
+    private static bool ConfirmDownloads(CliContext context, ConsolePrompt prompt, bool interactive, SetupPlan plan)
+    {
+        if (plan.Downloads.Count == 0)
+        {
+            context.Error.WriteLine("All model files are already in place.");
+            return true;
+        }
+
+        context.Error.WriteLine($"Dictum will download {SetupRunner.Format(plan.DownloadBytes)}:");
+        foreach (var download in plan.Downloads)
+        {
+            context.Error.WriteLine($"  {download.Title}, {SetupRunner.Format(download.Size)}, {download.Licence.Name} licence");
+            context.Error.WriteLine($"    from {download.Url}");
+        }
+
+        if (interactive && !prompt.Confirm("Continue?", defaultValue: true))
+        {
+            context.Error.WriteLine("Nothing was changed.");
+            return false;
+        }
+
+        return true;
+    }
+
+    private static async Task RunSetupAsync(CliContext context, SetupPlan plan, HardwareInfo hardware, string? pendingSecret, CancellationToken ct)
+    {
+        using var http = FileDownloader.CreateHttpClient(CliApp.UserAgent);
+        using var view = new SetupProgressView(context.Error, redraw: !Console.IsErrorRedirected);
+        await new SetupRunner(new FileDownloader(http), context.Paths)
+            .RunAsync(plan, context.Store, hardware.FreeDiskBytes, view, ct, beforeSave: pendingSecret is null
+                ? null
+                : c => context.Platform.Secrets.SetAsync(CleanupSecret, pendingSecret, c)).ConfigureAwait(false);
     }
 
     private static bool? AskAutostart(CliContext context, ConsolePrompt prompt, bool interactive, bool flag)

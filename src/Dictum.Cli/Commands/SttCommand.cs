@@ -3,6 +3,7 @@ using Dictum.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Stt;
+using Dictum.Host;
 
 namespace Dictum.Cli.Commands;
 
@@ -43,6 +44,7 @@ internal static class SttCommand
 
         command.SetAction((parse, ct) => CliApp.RunAsync(parse, async (context, token) =>
         {
+            // Without a config file this reports the missing file rather than an unknown provider.
             context.LoadConfig();
             var stt = context.Host().GetStt(parse.GetValue(id)!);
 
@@ -74,7 +76,7 @@ internal static class SttCommand
             }
 
             var request = SttRequest.ForSetting(parse.GetValue(language), null)
-                ?? throw new ConfigException($"'{parse.GetValue(language)}' is not an ISO 639-1 language code, a comma-separated list of codes, or 'auto'.");
+                ?? throw ProfileResolver.InvalidLanguage(parse.GetValue(language));
             var transcript = await stt.TranscribeAsync(clip, request, token).ConfigureAwait(false);
             context.Out.WriteLine(transcript.Text);
             context.Error.WriteLine(
