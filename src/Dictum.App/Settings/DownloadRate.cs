@@ -6,11 +6,10 @@ namespace Dictum.App.Settings;
 /// </summary>
 public sealed class DownloadRate(TimeProvider time)
 {
-    public static readonly TimeSpan Window = TimeSpan.FromSeconds(5);
-
     /// <summary>A rate needs two samples at least a second apart.</summary>
     private const int MinSamples = 2;
 
+    private static readonly TimeSpan Window = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan MinSpan = TimeSpan.FromSeconds(1);
 
     private readonly Queue<(DateTimeOffset At, long Bytes)> _samples = new();

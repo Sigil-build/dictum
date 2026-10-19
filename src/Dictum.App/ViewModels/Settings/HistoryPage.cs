@@ -66,12 +66,6 @@ public sealed partial class HistoryPage : SettingsPage, IDisposable
     [ObservableProperty]
     public partial string? Error { get; private set; }
 
-    public override void OnShown()
-    {
-        LoadChains();
-        Reload();
-    }
-
     [ObservableProperty]
     public partial IReadOnlyList<Option<string>> Chains { get; private set; } = [];
 
@@ -92,6 +86,12 @@ public sealed partial class HistoryPage : SettingsPage, IDisposable
 
     [ObservableProperty]
     public partial bool ReRunning { get; private set; }
+
+    public override void OnShown()
+    {
+        LoadChains();
+        Reload();
+    }
 
     public override void OnHidden() => _reRun?.Cancel();
 
@@ -127,6 +127,7 @@ public sealed partial class HistoryPage : SettingsPage, IDisposable
         }
         catch (Exception ex)
         {
+            // A busy clipboard throws; a command that throws would take dictum-gui down.
             Error = string.Format(CultureInfo.CurrentCulture, Strings.SettingsHistoryCopyFailed, ex.Message);
             _log.Warn($"Re-run result not copied: {ex.Message}");
         }

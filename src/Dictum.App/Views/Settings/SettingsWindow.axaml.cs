@@ -7,7 +7,7 @@ using Dictum.App.ViewModels.Settings;
 
 namespace Dictum.App.Views.Settings;
 
-public partial class SettingsWindow : Window
+public sealed partial class SettingsWindow : Window
 {
     /// <summary>Mica needs Windows 11, whose builds start here.</summary>
     private const int Windows11Build = 22000;

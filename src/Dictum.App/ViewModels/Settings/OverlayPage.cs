@@ -37,7 +37,6 @@ public sealed partial class OverlayPage : SettingsPage
             new(OverlayPalette.Ember, Strings.SettingsOverlayEmber),
             new(OverlayPalette.Mist, Strings.SettingsOverlayMist),
         ];
-        OpacityText = "";
         session.Changed += Load;
         Load();
     }
@@ -69,7 +68,7 @@ public sealed partial class OverlayPage : SettingsPage
     public partial double Opacity { get; set; }
 
     [ObservableProperty]
-    public partial string OpacityText { get; private set; }
+    public partial string OpacityText { get; private set; } = "";
 
     [ObservableProperty]
     public partial Option<OverlayPalette>? Palette { get; set; }
@@ -131,7 +130,7 @@ public sealed partial class OverlayPage : SettingsPage
             CanEdit = _session.CanEdit;
             Enabled = overlay.Enabled;
             Position = Positions.FirstOrDefault(p => p.Value == overlay.Position) ?? Positions[0];
-            Size = Sizes.FirstOrDefault(s => s.Value == overlay.Size) ?? Sizes[1];
+            Size = Sizes.FirstOrDefault(s => s.Value == overlay.Size) ?? Sizes.First(s => s.Value == OverlaySize.Medium);
             Opacity = Math.Round(overlay.Opacity * 100);
             Palette = Palettes.FirstOrDefault(p => p.Value == overlay.Palette) ?? Palettes[0];
             OpacityText = string.Format(CultureInfo.CurrentCulture, Strings.SettingsOverlayOpacityValue, Opacity);

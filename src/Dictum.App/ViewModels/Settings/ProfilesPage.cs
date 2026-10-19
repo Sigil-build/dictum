@@ -32,7 +32,7 @@ public sealed partial class ProfilesPage : SettingsPage
     private readonly SettingsSession _session;
     private readonly IDaemonChannel _channel;
     private readonly ILog _log;
-    private Task _requests = Task.CompletedTask;
+    private readonly RequestQueue _requests = new();
     private string? _id;
     private LanguageMode? _shownMode;
     private bool _pausedByUs;
@@ -213,8 +213,7 @@ public sealed partial class ProfilesPage : SettingsPage
         // A daemon that was restarted instead starts unpaused, and the resume does nothing.
         if (link.State == DaemonLinkState.Connected && _pausedByUs && !IsRecording)
         {
-            _pausedByUs = false;
-            Send("resume-hotkeys");
+            ResumeHotkeys();
         }
 
         HotkeyWarning = RegistrationWarning(link);
@@ -264,8 +263,7 @@ public sealed partial class ProfilesPage : SettingsPage
         }
         else if (_pausedByUs && _channel.Link.State == DaemonLinkState.Connected)
         {
-            _pausedByUs = false;
-            Send("resume-hotkeys");
+            ResumeHotkeys();
         }
     }
 
@@ -342,7 +340,8 @@ public sealed partial class ProfilesPage : SettingsPage
         }
 
         var source = Current;
-        var id = UniqueId(_session.Config, "profile");
+        var config = _session.Config;
+        var id = UniqueIds.For("profile", candidate => config.Profiles.Any(p => p.Id == candidate));
         IsRecording = false;
         _id = id;
         _shownMode = null;
@@ -415,14 +414,14 @@ public sealed partial class ProfilesPage : SettingsPage
         });
     }
 
-    /// <summary>Pause and resume go one after another: each request opens its own connection.</summary>
-    private void Send(string command) => _requests = After(_requests, () => _channel.TrySendAsync(new IpcRequest(command), CancellationToken.None));
-
-    private static async Task After(Task previous, Func<Task> step)
+    private void ResumeHotkeys()
     {
-        await previous;
-        await step();
+        _pausedByUs = false;
+        Send("resume-hotkeys");
     }
+
+    /// <summary>Pause and resume go one after another, so the daemon ends in the state sent last.</summary>
+    private void Send(string command) => _requests.Enqueue(() => _channel.TrySendAsync(new IpcRequest(command), CancellationToken.None));
 
     private string? RegistrationWarning(DaemonLink link) =>
         link is { State: DaemonLinkState.Connected, Status: { Paused: false } status }
@@ -484,7 +483,16 @@ public sealed partial class ProfilesPage : SettingsPage
         HotkeyError = _session.IssueAt($"{path}.hotkey") ?? DuplicateHotkey(config, index);
         HotkeyWarning = RegistrationWarning(_channel.Link);
         Mode = Modes.FirstOrDefault(m => m.Value == profile.Mode) ?? Modes[0];
+        LoadLanguages(profile, path);
+        LoadWords(profile, path);
+        SpeechHint = profile.SttPrompt ?? "";
+        LoadChain(config, profile, path);
+        LoadOutput(profile);
+        LoadProvider(config, profile, path);
+    }
 
+    private void LoadLanguages(ProfileConfig profile, string path)
+    {
         var setting = LanguageSetting.Parse(profile.Language, _shownMode);
         LanguagesMode = LanguageModes.Single(m => m.Value == setting.Mode);
         ShowsOneLanguage = setting.Mode == LanguageMode.One;
@@ -502,13 +510,18 @@ public sealed partial class ProfilesPage : SettingsPage
             : null;
         var similarText = LanguageList.SimilarWarning(setting.Codes);
         LanguageNote = _session.Issues.FirstOrDefault(i => i.Path == $"{path}.language" && i.Message != similarText)?.Message;
+    }
 
+    private void LoadWords(ProfileConfig profile, string path)
+    {
         Words = [.. profile.Vocabulary.Select(word => new WordChip(word,
             new RelayCommand(() => EditProfile(p => p with { Vocabulary = [.. p.Vocabulary.Where(w => w != word)] }))))];
         WordCount = string.Format(CultureInfo.CurrentCulture, Strings.SettingsProfilesWordCount, profile.Vocabulary.Count);
         WordsNote = _session.Issues.FirstOrDefault(i => i.Path.StartsWith($"{path}.vocabulary", StringComparison.Ordinal))?.Message;
-        SpeechHint = profile.SttPrompt ?? "";
+    }
 
+    private void LoadChain(DictumConfig config, ProfileConfig profile, string path)
+    {
         Chain = [.. profile.Pipeline.Select((id, i) => new ChainStep(id, Kind(config, id), i + 1,
             new RelayCommand(() => EditProfile(p => p with { Pipeline = [.. p.Pipeline.Where(s => s != id)] }))))];
         ChainEmpty = Chain.Count == 0;
@@ -517,12 +530,18 @@ public sealed partial class ProfilesPage : SettingsPage
         StepToAdd = null;
         CanAddStep = StepsToAdd.Count > 0;
         ChainNote = _session.IssueAt($"{path}.pipeline");
+    }
 
+    private void LoadOutput(ProfileConfig profile)
+    {
         OutputPaste = profile.Output == OutputMode.Paste;
         OutputType = profile.Output == OutputMode.Type;
         OutputClipboard = profile.Output == OutputMode.Clipboard;
         Shortcut = PasteShortcuts.FirstOrDefault(s => s.Value == profile.PasteShortcut) ?? PasteShortcuts[0];
+    }
 
+    private void LoadProvider(DictumConfig config, ProfileConfig profile, string path)
+    {
         List<Option<string>> providers = [.. config.Stt.Select(kv => new Option<string>(kv.Key, ProviderLabels.For(kv.Value)))];
         if (!config.Stt.ContainsKey(profile.Stt))
         {
@@ -573,21 +592,4 @@ public sealed partial class ProfilesPage : SettingsPage
         ReplaceProcessorConfig replace => string.Format(CultureInfo.CurrentCulture, Strings.SettingsChainRules, replace.Rules.Count),
         _ => Strings.SettingsChainMissing,
     };
-
-    private static string UniqueId(DictumConfig config, string stem)
-    {
-        bool Taken(string id) => config.Profiles.Any(p => p.Id == id);
-        if (!Taken(stem))
-        {
-            return stem;
-        }
-
-        for (var n = 2; ; n++)
-        {
-            if (!Taken($"{stem}-{n}"))
-            {
-                return $"{stem}-{n}";
-            }
-        }
-    }
 }

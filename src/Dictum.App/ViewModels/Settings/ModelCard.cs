@@ -205,9 +205,12 @@ public sealed partial class ModelCard : ObservableObject
 
         // A finished download is just an installed file.
         var download = state.Download is { State: not DownloadState.Done } item ? item : null;
-        // Used in the copy or on disk: an edit not saved yet, or one that cannot be saved, never frees the file.
-        var users = state.UsedBy.Concat(state.UsedOnDisk).DistinctBy(p => p.Id).Select(p => p.Name).ToList();
-        var used = users.Count > 0;
+        ShowState(state, download);
+        ShowActions(state, download);
+    }
+
+    private void ShowState(ModelCardState state, QueuedDownload? download)
+    {
         IsInstalled = state.Installed && download is null;
         IsActive = download?.State is DownloadState.Queued or DownloadState.Downloading;
         IsPaused = download?.State == DownloadState.Paused;
@@ -232,6 +235,13 @@ public sealed partial class ModelCard : ObservableObject
             _ => null,
         };
         IsTooSlow = state.Estimate?.Class == SpeedClass.TooSlow;
+    }
+
+    private void ShowActions(ModelCardState state, QueuedDownload? download)
+    {
+        // Used in the copy or on disk: an edit not saved yet, or one that cannot be saved, never frees the file.
+        var users = state.UsedBy.Concat(state.UsedOnDisk).DistinctBy(p => p.Id).Select(p => p.Name).ToList();
+        var used = users.Count > 0;
         var offered = (!state.Installed && download is null) || IsFailed;
         ShowDownload = offered && !IsTooSlow;
         ShowDownloadAnyway = offered && IsTooSlow;

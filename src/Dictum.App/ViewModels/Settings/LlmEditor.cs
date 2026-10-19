@@ -20,21 +20,20 @@ namespace Dictum.App.ViewModels.Settings;
 /// </summary>
 public sealed partial class LlmEditor : ObservableObject, IDisposable
 {
-    public static readonly TimeSpan PromptSaveDelay = TimeSpan.FromMilliseconds(500);
-    public static readonly TimeSpan PreviewDelay = TimeSpan.FromMilliseconds(600);
-
-    /// <summary>LlmProcessorConfig's defaults, for a processor that is not on disk yet.</summary>
-    private const double DefaultTemperature = 0.2;
-    private const int DefaultTimeoutMs = 4_000;
-
-    private static readonly string[] SampleLanguages = ["uk", "en"];
-
     /// <summary>Raw dictation as Whisper writes it: no capitals, fillers, a code word.</summary>
     public static readonly IReadOnlyDictionary<string, string> Samples = new Dictionary<string, string>
     {
         ["uk"] = "ну значить я хочу щоб ти перевірив цей код і запушив його в мейн до вечора добре",
         ["en"] = "so um i want you to like check this code and push it to main by the evening okay",
     };
+
+    /// <summary>LlmProcessorConfig's defaults, for a processor that is not on disk yet.</summary>
+    private const double DefaultTemperature = 0.2;
+    private const int DefaultTimeoutMs = 4_000;
+
+    private static readonly TimeSpan PromptSaveDelay = TimeSpan.FromMilliseconds(500);
+    private static readonly TimeSpan PreviewDelay = TimeSpan.FromMilliseconds(600);
+    private static readonly string[] SampleLanguages = ["uk", "en"];
 
     private readonly SettingsSession _session;
     private readonly ProcessorsServices _services;
@@ -194,62 +193,8 @@ public sealed partial class LlmEditor : ObservableObject, IDisposable
         _loading = true;
         try
         {
-            var path = $"processors.{id}";
-            Url = llm.BaseUrl;
-            UrlError = _session.IssueAt($"{path}.baseUrl");
-            Model = llm.Model;
-            ModelError = _session.IssueAt($"{path}.model");
-            HasKey = llm.ApiKey is not null;
-            KeyState = llm.ApiKey switch
-            {
-                null => Strings.SettingsProvidersNoKey,
-                var key when key.StartsWith(ApiKeys.SecretPrefix, StringComparison.Ordinal) => Strings.SettingsProvidersKeyStored,
-                var key when key.StartsWith("env:", StringComparison.Ordinal) =>
-                    string.Format(CultureInfo.CurrentCulture, Strings.SettingsProvidersKeyEnv, key["env:".Length..]),
-                _ => Strings.SettingsProvidersKeyPlain,
-            };
-            if (!_temperatureEmpty)
-            {
-                Temperature = (decimal)llm.Temperature;
-                TemperatureError = _session.IssueAt($"{path}.temperature");
-            }
-
-            if (!_timeoutEmpty)
-            {
-                TimeoutSeconds = TimeoutFields.Seconds(llm.TimeoutMs);
-                TimeoutError = _session.IssueAt($"{path}.timeoutMs");
-            }
-
-            OnError = ErrorModes.FirstOrDefault(m => m.Value == llm.OnError) ?? ErrorModes[0];
-            Wording = Wordings.FirstOrDefault(w => w.Value == llm.PreserveText) ?? Wordings[0];
-            MaxTokens = llm.MaxTokens;
-            MaxTokensError = _session.IssueAt($"{path}.maxTokens");
-            var names = _services.Prompts.Names();
-            if (!names.Contains(llm.Prompt))
-            {
-                names = [.. names, llm.Prompt];
-            }
-
-            if (!names.SequenceEqual(Prompts))
-            {
-                Prompts = names;
-            }
-
-            Prompt = llm.Prompt;
-            if (_loadedPrompt != llm.Prompt)
-            {
-                _loadedPrompt = llm.Prompt;
-                PromptText = ReadPrompt(llm.Prompt);
-            }
-
-            ShowPromptState(llm.Prompt);
-            var sharers = config.Processors
-                .Where(kv => kv.Key != id && kv.Value is LlmProcessorConfig other && other.Prompt == llm.Prompt)
-                .Select(kv => kv.Key)
-                .ToList();
-            PromptShared = sharers.Count == 0
-                ? null
-                : string.Format(CultureInfo.CurrentCulture, Strings.SettingsLlmPromptShared, string.Join(", ", sharers));
+            LoadSettings(llm, $"processors.{id}");
+            LoadPrompt(id, llm, config);
         }
         finally
         {
@@ -540,6 +485,62 @@ public sealed partial class LlmEditor : ObservableObject, IDisposable
         }
 
         EditLlm(id, l => l with { ApiKey = result.Value });
+    }
+
+    private void LoadSettings(LlmProcessorConfig llm, string path)
+    {
+        Url = llm.BaseUrl;
+        UrlError = _session.IssueAt($"{path}.baseUrl");
+        Model = llm.Model;
+        ModelError = _session.IssueAt($"{path}.model");
+        HasKey = llm.ApiKey is not null;
+        KeyState = ApiKeys.State(llm.ApiKey);
+        if (!_temperatureEmpty)
+        {
+            Temperature = (decimal)llm.Temperature;
+            TemperatureError = _session.IssueAt($"{path}.temperature");
+        }
+
+        if (!_timeoutEmpty)
+        {
+            TimeoutSeconds = TimeoutFields.Seconds(llm.TimeoutMs);
+            TimeoutError = _session.IssueAt($"{path}.timeoutMs");
+        }
+
+        OnError = ErrorModes.FirstOrDefault(m => m.Value == llm.OnError) ?? ErrorModes[0];
+        Wording = Wordings.FirstOrDefault(w => w.Value == llm.PreserveText) ?? Wordings[0];
+        MaxTokens = llm.MaxTokens;
+        MaxTokensError = _session.IssueAt($"{path}.maxTokens");
+    }
+
+    private void LoadPrompt(string id, LlmProcessorConfig llm, DictumConfig config)
+    {
+        var names = _services.Prompts.Names();
+        if (!names.Contains(llm.Prompt))
+        {
+            names = [.. names, llm.Prompt];
+        }
+
+        if (!names.SequenceEqual(Prompts))
+        {
+            Prompts = names;
+        }
+
+        Prompt = llm.Prompt;
+        if (_loadedPrompt != llm.Prompt)
+        {
+            _loadedPrompt = llm.Prompt;
+            PromptText = ReadPrompt(llm.Prompt);
+        }
+
+        ShowPromptState(llm.Prompt);
+        var sharers = config.Processors
+            .Where(kv => kv.Key != id && kv.Value is LlmProcessorConfig other && other.Prompt == llm.Prompt)
+            .Select(kv => kv.Key)
+            .ToList();
+        PromptShared = sharers.Count == 0
+            ? null
+            : string.Format(CultureInfo.CurrentCulture, Strings.SettingsLlmPromptShared, string.Join(", ", sharers));
     }
 
     /// <summary>The prompt's text; a file another program holds is shown as an error, not thrown.</summary>

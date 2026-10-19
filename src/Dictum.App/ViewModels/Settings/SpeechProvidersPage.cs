@@ -46,7 +46,7 @@ public sealed partial class SpeechProvidersPage : SettingsPage
     [RelayCommand]
     private void AddLocal()
     {
-        var id = UniqueId(_session.Config, "local");
+        var id = UniqueIds.For("local", _session.Config.Stt.ContainsKey);
         var model = _services.Models(null) is [var first, ..] ? first.Value : DefaultConfig.DefaultModel;
         _session.Edit(c =>
         {
@@ -58,7 +58,7 @@ public sealed partial class SpeechProvidersPage : SettingsPage
     [RelayCommand]
     private void AddRemote()
     {
-        var id = UniqueId(_session.Config, "remote");
+        var id = UniqueIds.For("remote", _session.Config.Stt.ContainsKey);
         _session.Edit(c =>
         {
             c.Stt[id] = new OpenAiCompatibleSttConfig { BaseUrl = DefaultServerUrl, Model = DefaultServerModel };
@@ -96,22 +96,6 @@ public sealed partial class SpeechProvidersPage : SettingsPage
         if (!cards.SequenceEqual(Cards))
         {
             Cards = cards;
-        }
-    }
-
-    private static string UniqueId(DictumConfig config, string stem)
-    {
-        if (!config.Stt.ContainsKey(stem))
-        {
-            return stem;
-        }
-
-        for (var n = 2; ; n++)
-        {
-            if (!config.Stt.ContainsKey($"{stem}-{n}"))
-            {
-                return $"{stem}-{n}";
-            }
         }
     }
 }

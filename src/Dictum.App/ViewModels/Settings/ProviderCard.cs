@@ -36,7 +36,7 @@ public enum ProviderKind
 /// <list type="bullet">
 /// <item>Local Whisper: model, runtime, threads, VAD.</item>
 /// <item>Remote server: URL, model, key, timeout.</item>
-/// <item>Both: Test, by a 5 s recording with the live meter or by the built-in sample.</item>
+/// <item>Both: Test, by a recording of <see cref="TestSeconds"/> seconds with the live meter or by the built-in sample.</item>
 /// </list>
 /// The daemon tests its own copy of the config, so Test saves pending edits first and gives the daemon time to reload.
 /// </summary>
@@ -45,13 +45,13 @@ public sealed partial class ProviderCard : ObservableObject
     /// <summary>The daemon's watcher waits 300 ms after a write, then applies the config.</summary>
     public static readonly TimeSpan ReloadWait = TimeSpan.FromMilliseconds(1500);
 
-    public const int TestSeconds = 5;
-
-    /// <summary>The recording, then two minutes for the daemon to load the model and transcribe.</summary>
-    private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(TestSeconds) + TimeSpan.FromMinutes(2);
+    private const int TestSeconds = 5;
 
     /// <summary>OpenAiCompatibleSttConfig's default, for a provider that is not on disk yet.</summary>
     private const int DefaultTimeoutMs = 60_000;
+
+    /// <summary>The recording, then two minutes for the daemon to load the model and transcribe.</summary>
+    private static readonly TimeSpan TestTimeout = TimeSpan.FromSeconds(TestSeconds) + TimeSpan.FromMinutes(2);
 
     private readonly SettingsSession _session;
     private readonly SpeechServices _services;
@@ -192,43 +192,10 @@ public sealed partial class ProviderCard : ObservableObject
             switch (stt)
             {
                 case WhisperLocalSttConfig local:
-                    var models = _services.Models(local.Model);
-                    if (!models.SequenceEqual(Models))
-                    {
-                        Models = models;
-                    }
-
-                    Model = Models.FirstOrDefault(m => string.Equals(m.Value, local.Model, StringComparison.OrdinalIgnoreCase));
-                    ModelError = _session.IssueAt($"{path}.model");
-                    Runtimes = RuntimesFor(local.Runtime);
-                    Runtime = Runtimes.First(r => r.Value == local.Runtime);
-                    Threads = local.Threads;
-                    ThreadsError = _session.IssueAt($"{path}.threads");
-                    Vad = local.Vad;
-                    VadNote = local.Vad && !_services.ModelPresent(local.VadModel)
-                        ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsProvidersVadMissing, local.VadModel)
-                        : null;
+                    LoadLocal(local, path);
                     break;
                 case OpenAiCompatibleSttConfig remote:
-                    Url = remote.BaseUrl;
-                    UrlError = _session.IssueAt($"{path}.baseUrl");
-                    ModelName = remote.Model;
-                    ModelNameError = _session.IssueAt($"{path}.model");
-                    HasKey = remote.ApiKey is not null;
-                    KeyState = remote.ApiKey switch
-                    {
-                        null => Strings.SettingsProvidersNoKey,
-                        var key when key.StartsWith(ApiKeys.SecretPrefix, StringComparison.Ordinal) => Strings.SettingsProvidersKeyStored,
-                        var key when key.StartsWith("env:", StringComparison.Ordinal) =>
-                            string.Format(CultureInfo.CurrentCulture, Strings.SettingsProvidersKeyEnv, key["env:".Length..]),
-                        _ => Strings.SettingsProvidersKeyPlain,
-                    };
-                    if (!_timeoutEmpty)
-                    {
-                        TimeoutSeconds = TimeoutFields.Seconds(remote.TimeoutMs);
-                        TimeoutError = _session.IssueAt($"{path}.timeoutMs");
-                    }
-
+                    LoadRemote(remote, path);
                     break;
             }
         }
@@ -237,6 +204,12 @@ public sealed partial class ProviderCard : ObservableObject
             _loading = false;
         }
     }
+
+    /// <summary>Waits until <see cref="ReloadWait"/> has passed since <paramref name="lastSave"/>, so the daemon tests the saved config.</summary>
+    internal static Task WaitForReloadAsync(DateTimeOffset? lastSave, TimeProvider time, Func<TimeSpan, Task> delay) =>
+        lastSave is { } saved && ReloadWait - (time.GetUtcNow() - saved) is var wait && wait > TimeSpan.Zero
+            ? delay(wait)
+            : Task.CompletedTask;
 
     partial void OnModelChanged(Option<string>? value)
     {
@@ -352,10 +325,7 @@ public sealed partial class ProviderCard : ObservableObject
         {
             // The daemon reloads after any write: the pending one flushed now, or a debounced one just before the click.
             _session.Flush();
-            if (_lastSave() is { } saved && ReloadWait - (_services.Time.GetUtcNow() - saved) is var wait && wait > TimeSpan.Zero)
-            {
-                await _services.Delay(wait);
-            }
+            await WaitForReloadAsync(_lastSave(), _services.Time, _services.Delay);
 
             if (!sample)
             {
@@ -390,6 +360,41 @@ public sealed partial class ProviderCard : ObservableObject
     }
 
     private void UpdateCanTest() => CanTest = _session.CanEdit && !_session.HasErrors && !Testing;
+
+    private void LoadLocal(WhisperLocalSttConfig local, string path)
+    {
+        var models = _services.Models(local.Model);
+        if (!models.SequenceEqual(Models))
+        {
+            Models = models;
+        }
+
+        Model = Models.FirstOrDefault(m => string.Equals(m.Value, local.Model, StringComparison.OrdinalIgnoreCase));
+        ModelError = _session.IssueAt($"{path}.model");
+        Runtimes = RuntimesFor(local.Runtime);
+        Runtime = Runtimes.First(r => r.Value == local.Runtime);
+        Threads = local.Threads;
+        ThreadsError = _session.IssueAt($"{path}.threads");
+        Vad = local.Vad;
+        VadNote = local.Vad && !_services.ModelPresent(local.VadModel)
+            ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsProvidersVadMissing, local.VadModel)
+            : null;
+    }
+
+    private void LoadRemote(OpenAiCompatibleSttConfig remote, string path)
+    {
+        Url = remote.BaseUrl;
+        UrlError = _session.IssueAt($"{path}.baseUrl");
+        ModelName = remote.Model;
+        ModelNameError = _session.IssueAt($"{path}.model");
+        HasKey = remote.ApiKey is not null;
+        KeyState = ApiKeys.State(remote.ApiKey);
+        if (!_timeoutEmpty)
+        {
+            TimeoutSeconds = TimeoutFields.Seconds(remote.TimeoutMs);
+            TimeoutError = _session.IssueAt($"{path}.timeoutMs");
+        }
+    }
 
     private IReadOnlyList<Option<WhisperRuntime>> RuntimesFor(WhisperRuntime current)
     {

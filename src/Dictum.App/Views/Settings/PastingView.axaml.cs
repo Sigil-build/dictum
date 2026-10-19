@@ -3,11 +3,11 @@ using Dictum.App.ViewModels.Settings;
 
 namespace Dictum.App.Views.Settings;
 
-public partial class PastingView : UserControl
+public sealed partial class PastingView : UserControl
 {
     public PastingView()
     {
         InitializeComponent();
-        AppBox.TextChanged += (_, _) => ProfilesView.Typed(AppBox, text => (DataContext as PastingPage)?.AddApps(text));
+        AppBox.TextChanged += (_, _) => TextBoxes.Typed(AppBox, text => (DataContext as PastingPage)?.AddApps(text));
     }
 }

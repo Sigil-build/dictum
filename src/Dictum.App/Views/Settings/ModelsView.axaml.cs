@@ -2,7 +2,7 @@ using Avalonia.Controls;
 
 namespace Dictum.App.Views.Settings;
 
-public partial class ModelsView : UserControl
+public sealed partial class ModelsView : UserControl
 {
     public ModelsView()
     {

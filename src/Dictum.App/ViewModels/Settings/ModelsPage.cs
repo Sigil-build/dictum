@@ -42,7 +42,7 @@ public sealed record ModelsServices(
 public sealed partial class ModelsPage : SettingsPage
 {
     /// <summary>Two runs of the 6.9 s sample on a slow CPU, a model load included.</summary>
-    public static readonly TimeSpan MeasureTimeout = TimeSpan.FromMinutes(2);
+    private static readonly TimeSpan MeasureTimeout = TimeSpan.FromMinutes(2);
 
     private static readonly TimeSpan DownloadTick = TimeSpan.FromSeconds(1);
 
@@ -213,10 +213,7 @@ public sealed partial class ModelsPage : SettingsPage
         {
             // The daemon reloads after a save; a test sent before that would run the previous model.
             _session.Flush();
-            if (_lastSave is { } saved && ProviderCard.ReloadWait - (_services.Time.GetUtcNow() - saved) is var wait && wait > TimeSpan.Zero)
-            {
-                await _services.Delay(wait);
-            }
+            await ProviderCard.WaitForReloadAsync(_lastSave, _services.Time, _services.Delay);
 
             double? best = null;
             for (var run = 0; run < MeasureRuns; run++)

@@ -96,7 +96,7 @@ public sealed partial class ProcessorsPage : SettingsPage
     [RelayCommand]
     private void AddLlm()
     {
-        var id = UniqueId(_session.Config, "llm");
+        var id = UniqueIds.For("llm", _session.Config.Processors.ContainsKey);
         var model = _session.Config.Processors.Values.OfType<LlmProcessorConfig>().FirstOrDefault();
         var prompt = NewPrompt(id);
         _id = id;
@@ -116,7 +116,7 @@ public sealed partial class ProcessorsPage : SettingsPage
     [RelayCommand]
     private void AddRules()
     {
-        var id = UniqueId(_session.Config, "rules");
+        var id = UniqueIds.For("rules", _session.Config.Processors.ContainsKey);
         _id = id;
         _session.Edit(c =>
         {
@@ -204,11 +204,7 @@ public sealed partial class ProcessorsPage : SettingsPage
         var taken = _services.Prompts.Names()
             .Concat(_session.Config.Processors.Values.OfType<LlmProcessorConfig>().Select(l => l.Prompt))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var name = id;
-        for (var n = 2; taken.Contains(name); n++)
-        {
-            name = $"{id}-{n}";
-        }
+        var name = UniqueIds.For(id, taken.Contains);
 
         try
         {
@@ -228,20 +224,4 @@ public sealed partial class ProcessorsPage : SettingsPage
         ReplaceProcessorConfig replace => string.Format(CultureInfo.CurrentCulture, Strings.SettingsChainRules, replace.Rules.Count),
         _ => Strings.SettingsChainMissing,
     };
-
-    private static string UniqueId(DictumConfig config, string stem)
-    {
-        if (!config.Processors.ContainsKey(stem))
-        {
-            return stem;
-        }
-
-        for (var n = 2; ; n++)
-        {
-            if (!config.Processors.ContainsKey($"{stem}-{n}"))
-            {
-                return $"{stem}-{n}";
-            }
-        }
-    }
 }

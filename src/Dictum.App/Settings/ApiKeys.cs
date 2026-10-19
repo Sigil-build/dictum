@@ -1,3 +1,5 @@
+using System.Globalization;
+using Dictum.App.Resources;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 
@@ -17,6 +19,8 @@ public sealed record KeyResult(string? Value, string? Error);
 public static class ApiKeys
 {
     public const string SecretPrefix = "secret:";
+
+    private const string EnvPrefix = "env:";
 
     public static string SecretName(string providerId) => $"dictum-stt-{providerId}";
 
@@ -46,6 +50,16 @@ public static class ApiKeys
             return new KeyResult(null, ex.Message);
         }
     }
+
+    /// <summary>What a key field says about the configured key, which it never shows.</summary>
+    public static string State(string? apiKey) => apiKey switch
+    {
+        null => Strings.SettingsProvidersNoKey,
+        var key when key.StartsWith(SecretPrefix, StringComparison.Ordinal) => Strings.SettingsProvidersKeyStored,
+        var key when key.StartsWith(EnvPrefix, StringComparison.Ordinal) =>
+            string.Format(CultureInfo.CurrentCulture, Strings.SettingsProvidersKeyEnv, key[EnvPrefix.Length..]),
+        _ => Strings.SettingsProvidersKeyPlain,
+    };
 
     /// <summary>
     /// Deletes the stored key when <paramref name="current"/> is this provider's own secret and nothing in

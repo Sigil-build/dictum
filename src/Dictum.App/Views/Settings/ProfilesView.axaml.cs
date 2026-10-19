@@ -14,7 +14,7 @@ namespace Dictum.App.Views.Settings;
 /// The chain reorder. Dragging a row by its handle, or Alt+↑ / Alt+↓ on a focused row, moves the step
 /// through <see cref="ProfilesPage.MoveStep"/>, and focus follows the moved row.
 /// </summary>
-public partial class ProfilesView : UserControl
+public sealed partial class ProfilesView : UserControl
 {
     /// <summary>A chain row is 36 px high, plus a 4 px gap.</summary>
     private const double RowPitch = 40;
@@ -38,7 +38,7 @@ public partial class ProfilesView : UserControl
 
         // The view owns the words box and the pickers: the page takes the text and gives back the part still being
         // typed; a picker clears itself once its pick has been taken.
-        WordBox.TextChanged += (_, _) => Typed(WordBox, text => Page?.AddWords(text));
+        WordBox.TextChanged += (_, _) => TextBoxes.Typed(WordBox, text => Page?.AddWords(text));
         Pickers.ClearAfterPick(this);
         DataContextChanged += (_, _) =>
         {
@@ -53,18 +53,6 @@ public partial class ProfilesView : UserControl
                 _page.PropertyChanged += OnPageChanged;
             }
         };
-    }
-
-    /// <summary>Puts the part still being typed back into <paramref name="box"/> after complete entries were taken.</summary>
-    internal static void Typed(TextBox box, Func<string, string?> take)
-    {
-        if (box.Text is not { Length: > 0 } text || take(text) is not { } rest || rest == text)
-        {
-            return;
-        }
-
-        box.Text = rest;
-        box.CaretIndex = rest.Length;
     }
 
     private void OnPageChanged(object? sender, PropertyChangedEventArgs e)

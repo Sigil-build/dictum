@@ -39,17 +39,18 @@ public sealed record GeneralServices(
 public sealed partial class GeneralPage : SettingsPage
 {
     public static readonly TimeSpan MeterTick = TimeSpan.FromMilliseconds(50);
-    public static readonly TimeSpan MonitorRenewal = TimeSpan.FromSeconds(10);
 
     private const string HistorySizePath = "general.historySize";
+
+    private static readonly TimeSpan MonitorRenewal = TimeSpan.FromSeconds(10);
 
     private readonly SettingsSession _session;
     private readonly GeneralServices _services;
     private readonly InputMeter _meter = new();
     private readonly DateTimeOffset _epoch;
+    private readonly RequestQueue _monitor = new();
     private IReadOnlyList<AudioDevice> _devices = [];
     private bool _devicesKnown;
-    private Task _monitor = Task.CompletedTask;
     private IDisposable? _tick;
     private IDisposable? _renew;
     private bool _shown;
@@ -124,6 +125,9 @@ public sealed partial class GeneralPage : SettingsPage
 
     [ObservableProperty]
     public partial Option<string?>? UiLanguage { get; set; }
+
+    /// <summary>General → "Run setup again": the shell opens the wizard with the current values.</summary>
+    public event Action? SetupRequested;
 
     public override void OnShown()
     {
@@ -235,6 +239,9 @@ public sealed partial class GeneralPage : SettingsPage
     private void OpenPasting() => Navigate(Pasting);
 
     [RelayCommand]
+    private void RunSetup() => SetupRequested?.Invoke();
+
+    [RelayCommand]
     private async Task PreviewAsync()
     {
         try
@@ -311,6 +318,7 @@ public sealed partial class GeneralPage : SettingsPage
         }
         catch (Exception ex)
         {
+            // Each OS stores the login item its own way (registry, autostart file, portal); any failure shows by the switch.
             _services.Log.Warn($"Login item not changed: {ex.Message}");
             StartAtLoginError = string.Format(CultureInfo.CurrentCulture, Strings.SettingsStartAtLoginFailed, ex.Message);
             ReadLoginItem();
@@ -330,16 +338,10 @@ public sealed partial class GeneralPage : SettingsPage
     }
 
     /// <summary>
-    /// Monitor requests go one after another. Each one opens its own connection, so a stop sent before a start could
-    /// reach the daemon after it, and a switch during a start in flight would send no stop at all.
+    /// Monitor requests go one after another: a stop sent before a start could otherwise reach the daemon after it, and
+    /// a switch during a start in flight would send no stop at all.
     /// </summary>
-    private void Queue(Func<Task> step) => _monitor = After(_monitor, step);
-
-    private static async Task After(Task previous, Func<Task> step)
-    {
-        await previous;
-        await step();
-    }
+    private void Queue(Func<Task> step) => _monitor.Enqueue(step);
 
     private async Task StartMonitorAsync()
     {
@@ -376,10 +378,4 @@ public sealed partial class GeneralPage : SettingsPage
         MeterLevel = _meter.Level;
         MeterText = InputMeter.Readout(_meter.Db);
     }
-
-    /// <summary>General → "Run setup again": the shell opens the wizard with the current values.</summary>
-    public event Action? SetupRequested;
-
-    [RelayCommand]
-    private void RunSetup() => SetupRequested?.Invoke();
 }

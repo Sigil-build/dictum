@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
@@ -7,21 +6,13 @@ using Dictum.App.ViewModels.Settings;
 
 namespace Dictum.App.Views.Settings;
 
-public partial class ProcessorsView : UserControl
+public sealed partial class ProcessorsView : UserControl
 {
     public ProcessorsView()
     {
         InitializeComponent();
         ImportButton.Click += async (_, _) => await ImportAsync();
-
-        // Leaving a key field commits it, as Enter does.
-        AddHandler(LostFocusEvent, (_, e) =>
-        {
-            if (e.Source is TextBox box && box.Classes.Contains("apiKey") && DataContext is ProcessorsPage page)
-            {
-                page.Llm.CommitKeyCommand.Execute(null);
-            }
-        }, RoutingStrategies.Bubble);
+        TextBoxes.CommitKeysOnLeave(this, _ => (DataContext as ProcessorsPage)?.Llm.CommitKeyCommand);
     }
 
     private async Task ImportAsync()

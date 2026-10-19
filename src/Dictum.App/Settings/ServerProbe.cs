@@ -36,7 +36,7 @@ public sealed class ServerProbe(HttpClient http, ISecretStore secrets, TimeProvi
     private const string DataProperty = "data";
     private const string IdProperty = "id";
 
-    public static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(5);
 
     public async Task<ServerCheck> CheckAsync(string baseUrl, string model, string? apiKey, CancellationToken ct)
     {
