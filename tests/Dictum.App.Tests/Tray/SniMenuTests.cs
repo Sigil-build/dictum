@@ -1,4 +1,5 @@
 using Dictum.App.Tray;
+using Dictum.Platform.Linux.Tray;
 
 namespace Dictum.App.Tests.Tray;
 
@@ -21,8 +22,8 @@ public class SniMenuTests
         var nodes = root.Children!;
         Assert.Equal(5, nodes.Count);
         Assert.False(nodes[0].Enabled);
-        Assert.Equal(("checkmark", 1), (nodes[1].ToggleType, nodes[1].ToggleState));
-        Assert.Equal(("checkmark", 0), (nodes[2].ToggleType, nodes[2].ToggleState));
+        Assert.Equal((MenuNode.Checkmark, 1), (nodes[1].ToggleType, nodes[1].ToggleState));
+        Assert.Equal((MenuNode.Checkmark, 0), (nodes[2].ToggleType, nodes[2].ToggleState));
         Assert.True(nodes[3].Separator);
         Assert.Equal(("", -1), (nodes[4].ToggleType, nodes[4].ToggleState));
     }

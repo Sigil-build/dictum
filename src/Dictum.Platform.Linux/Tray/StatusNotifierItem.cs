@@ -5,7 +5,7 @@ namespace Dictum.Platform.Linux.Tray;
 
 /// <summary>Immutable tray state; swapped atomically from the UI thread, read on the D-Bus receive loop.</summary>
 public sealed record SniState(
-    string Status,            // "Passive" | "Active" | "NeedsAttention"
+    string Status,            // one of SniStatus
     string IconName,          // e.g. "dictum-idle" (the loose file dictum-idle.svg in IconThemePath)
     string AttentionIconName, // shown while Status is NeedsAttention
     string IconThemePath,     // absolute dir, e.g. ~/.local/share/dictum/icons
@@ -19,8 +19,10 @@ public sealed class StatusNotifierItem(DBusConnection connection, string menuPat
     public const string Interface = "org.kde.StatusNotifierItem";
     public const string ItemPath = "/StatusNotifierItem";
 
+    /// <summary>The icon until the first update; the desktop app writes it as dictum-idle.svg.</summary>
+    public const string IdleIcon = "dictum-idle";
+
     private const string PixmapsSignature = "a(iiay)";
-    private const string IdleIcon = "dictum-idle";
 
     private static class ItemProperty
     {
@@ -84,7 +86,7 @@ public sealed class StatusNotifierItem(DBusConnection connection, string menuPat
         ItemProperty.AttentionIconPixmap, ItemProperty.AttentionMovieName, ItemProperty.ToolTip,
     ];
 
-    private SniState _state = new("Active", IdleIcon, IdleIcon, "", DesktopIdentity.Name, DesktopIdentity.Name, "");
+    private SniState _state = new(SniStatus.Active, IdleIcon, IdleIcon, "", DesktopIdentity.Name, DesktopIdentity.Name, "");
 
     /// <summary>Raised on a thread-pool thread, never on the D-Bus receive loop.</summary>
     public event Action<int, int>? Activated;

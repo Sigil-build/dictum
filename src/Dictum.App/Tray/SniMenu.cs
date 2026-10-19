@@ -27,7 +27,7 @@ public static class SniMenu
                 TrayMenuItemKind.Separator => new MenuNode(id, Separator: true),
                 TrayMenuItemKind.Header => new MenuNode(id, TrayLabels.Escape(item.Label), Enabled: false),
                 _ when item.Command == TrayCommand.UseProfile =>
-                    new MenuNode(id, Label(item, rightAlignDetail), ToggleType: "checkmark", ToggleState: item.Checked ? 1 : 0),
+                    new MenuNode(id, Label(item, rightAlignDetail), ToggleType: MenuNode.Checkmark, ToggleState: item.Checked ? 1 : 0),
                 _ => new MenuNode(id, Label(item, rightAlignDetail)),
             });
             if (item.Kind == TrayMenuItemKind.Command)

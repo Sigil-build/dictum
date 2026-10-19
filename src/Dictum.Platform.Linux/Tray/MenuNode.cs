@@ -7,6 +7,9 @@ public sealed record MenuNode(
     string Label = "",
     bool Enabled = true,
     bool Separator = false,
-    string ToggleType = "",   // "", "checkmark", "radio"
+    string ToggleType = "",   // "", Checkmark or "radio"
     int ToggleState = -1,     // 0 off, 1 on, -1 indeterminate
-    IReadOnlyList<MenuNode>? Children = null);
+    IReadOnlyList<MenuNode>? Children = null)
+{
+    public const string Checkmark = "checkmark";
+}

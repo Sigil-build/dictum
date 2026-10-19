@@ -18,7 +18,7 @@ public sealed class StatusNotifierTests
         SkipWithoutBus();
         await using var watcher = await FakeWatcher.StartAsync();
         await using var host = (await StatusNotifierHost.TryStartAsync(NullLog.Instance))!;
-        host.Item.Update(new SniState("NeedsAttention", "dictum-recording", "dictum-recording", "/tmp/dictum-icons", "Dictum", "Dictum", "Dictum · Recording"));
+        host.Item.Update(new SniState(SniStatus.NeedsAttention, "dictum-recording", "dictum-recording", "/tmp/dictum-icons", "Dictum", "Dictum", "Dictum · Recording"));
 
         var registered = await watcher.Registered.Task.WaitAsync(TimeSpan.FromSeconds(10), _ct);
         using var client = await ConnectAsync();
@@ -26,7 +26,7 @@ public sealed class StatusNotifierTests
 
         Assert.Equal(host.BusName, registered);
         Assert.Equal("dictum-recording", properties["IconName"].GetString());
-        Assert.Equal("NeedsAttention", properties["Status"].GetString());
+        Assert.Equal(SniStatus.NeedsAttention, properties["Status"].GetString());
         Assert.Equal("/tmp/dictum-icons", properties["IconThemePath"].GetString());
         Assert.False(properties["ItemIsMenu"].GetBool());
         Assert.Equal(TrayAvailability.Registered, host.Availability);
@@ -40,7 +40,7 @@ public sealed class StatusNotifierTests
         await using var host = (await StatusNotifierHost.TryStartAsync(NullLog.Instance))!;
         var clicked = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         host.Menu.Clicked += id => clicked.TrySetResult(id);
-        host.Menu.SetMenu(new MenuNode(0, Children: [new MenuNode(1001, "uk", ToggleType: "checkmark", ToggleState: 1), new MenuNode(1002, Separator: true), new MenuNode(1003, "Quit Dictum")]));
+        host.Menu.SetMenu(new MenuNode(0, Children: [new MenuNode(1001, "uk", ToggleType: MenuNode.Checkmark, ToggleState: 1), new MenuNode(1002, Separator: true), new MenuNode(1003, "Quit Dictum")]));
         using var client = await ConnectAsync();
 
         var (ids, labels) = await GetLayoutAsync(client, host.BusName);

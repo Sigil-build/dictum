@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Dictum.Platform.Linux.Tray;
 
 namespace Dictum.App.Tray;
 
@@ -19,6 +20,7 @@ public static class TraySvgIcons
 
     public static string Name(TrayGlyph glyph, int frame = 0, bool colour = true) => glyph switch
     {
+        TrayGlyph.Idle => StatusNotifierItem.IdleIcon,
         TrayGlyph.Processing => $"dictum-processing-{frame % TrayGeometry.ProcessingFrames}",
         TrayGlyph.Recording or TrayGlyph.Error when !colour => $"dictum-{Slug(glyph)}-mono",
         _ => $"dictum-{Slug(glyph)}",

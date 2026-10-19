@@ -106,7 +106,7 @@ public sealed class SniTrayPresenter : ITrayPresenter
 
         var icon = TraySvgIcons.Name(view.Glyph, _frame, colour: !_highContrast());
         _host.Item.Update(new SniState(
-            view.Attention ? "NeedsAttention" : "Active", icon, icon, _iconDirectory, AppNames.Product, AppNames.Product, view.Tooltip));
+            view.Attention ? SniStatus.NeedsAttention : SniStatus.Active, icon, icon, _iconDirectory, AppNames.Product, AppNames.Product, view.Tooltip));
     }
 
     private static bool SameMenu(IReadOnlyList<TrayMenuItem>? a, IReadOnlyList<TrayMenuItem> b) => a is not null && a.SequenceEqual(b);
