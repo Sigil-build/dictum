@@ -11,12 +11,18 @@ namespace Dictum.Host.Daemon;
 /// Registers a hotkey for each profile of the current config unless the hotkeys are paused, and keeps what the status
 /// says about them.
 /// </summary>
+/// <remarks>
+/// Registrations run one at a time and each reads the config and the pause state when its turn comes. A backend can
+/// take seconds to answer, so otherwise a pause that arrives during a reload's registration could finish first and leave
+/// the reload's hotkeys registered while the status says paused.
+/// </remarks>
 /// <param name="config">The config the next registration binds.</param>
 /// <param name="changed">Publishes the status after each registration.</param>
 internal sealed class HotkeyRegistrar(PlatformServices platform, ILog log, Func<DictumConfig> config, Action changed) : IAsyncDisposable
 {
     private const string NoBackend = "none (use 'dictum toggle')";
 
+    private readonly SemaphoreSlim _registering = new(1, 1);
     private IHotkeyService? _hotkeys;
     private Action<HotkeyEvent>? _onHotkey;
     private volatile bool _paused;
@@ -56,6 +62,30 @@ internal sealed class HotkeyRegistrar(PlatformServices platform, ILog log, Func<
 
     public async Task RegisterAsync(CancellationToken ct)
     {
+        await _registering.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await RegisterCoreAsync(ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            _registering.Release();
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hotkeys is not null)
+        {
+            _hotkeys.Triggered -= _onHotkey;
+            await _hotkeys.DisposeAsync().ConfigureAwait(false);
+        }
+
+        _registering.Dispose();
+    }
+
+    private async Task RegisterCoreAsync(CancellationToken ct)
+    {
         var profiles = config().Profiles;
         var bindings = new List<HotkeyBinding>();
         foreach (var profile in _paused ? [] : profiles)
@@ -78,15 +108,6 @@ internal sealed class HotkeyRegistrar(PlatformServices platform, ILog log, Func<
         }
 
         changed();
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_hotkeys is not null)
-        {
-            _hotkeys.Triggered -= _onHotkey;
-            await _hotkeys.DisposeAsync().ConfigureAwait(false);
-        }
     }
 
     /// <summary>False when the backend refused the bindings; the warning then says why, and a notification shows it.</summary>

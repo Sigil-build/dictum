@@ -13,6 +13,8 @@ namespace Dictum.Integration.Tests.Daemon;
 
 public sealed class DictumDaemonTests : IAsyncDisposable
 {
+    private static readonly TimeSpan Patience = TimeSpan.FromSeconds(5);
+
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
     private readonly FakeHotkeys _hotkeys = new();
     private readonly FakeInjector _injector = new();
@@ -360,6 +362,41 @@ public sealed class DictumDaemonTests : IAsyncDisposable
 
         Assert.Empty(_hotkeys.Bindings);
         Assert.True(daemon.Status().Paused);
+    }
+
+    [Fact]
+    public async Task APauseWhileAReloadRegistersTheHotkeysLeavesThemOff()
+    {
+        await using var daemon = await StartAsync(Config());
+        var registering = _hotkeys.HoldNext();
+
+        var reload = daemon.ApplyConfigAsync(Config(), _ct);
+        await _hotkeys.Held.Task.WaitAsync(Patience, _ct);
+        var pause = daemon.HandleAsync(new IpcRequest(IpcCommand.PauseHotkeys), _ct);
+        registering.SetResult();
+        await reload;
+        await pause;
+
+        Assert.True(daemon.Status().Paused);
+        Assert.Empty(_hotkeys.Bindings);
+    }
+
+    [Fact]
+    public async Task AResumeWhileAReloadRegistersTheHotkeysLeavesThemOn()
+    {
+        await using var daemon = await StartAsync(Config());
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.PauseHotkeys), _ct);
+        var registering = _hotkeys.HoldNext();
+
+        var reload = daemon.ApplyConfigAsync(Config(), _ct);
+        await _hotkeys.Held.Task.WaitAsync(Patience, _ct);
+        var resume = daemon.HandleAsync(new IpcRequest(IpcCommand.ResumeHotkeys), _ct);
+        registering.SetResult();
+        await reload;
+        await resume;
+
+        Assert.False(daemon.Status().Paused);
+        Assert.Equal(["uk", "en"], _hotkeys.Bindings.Select(b => b.Id));
     }
 
     [Fact]
