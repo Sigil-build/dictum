@@ -8,6 +8,16 @@
     <!-- Covers trim/AOT analyzer warnings (IL2xxx / IL3xxx) as well. -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <MSBuildTreatWarningsAsErrors>true</MSBuildTreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!--
+      The compiler reports unused usings (IDE0005) only while it parses documentation comments. Nothing reads
+      the XML files, so missing documentation is not a warning and publish leaves the files out. Wrong
+      documentation, such as a cref to nothing, still is.
+    -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PublishDocumentationFiles>false</PublishDocumentationFiles>
+    <NoWarn>$(NoWarn);CS1573;CS1591</NoWarn>
     <VersionPrefix>0.3.0</VersionPrefix>
     <Product>Dictum</Product>
   </PropertyGroup>
