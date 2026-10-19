@@ -21,7 +21,7 @@ internal static class SttCommand
     private static Command List()
     {
         var command = new Command("list", "List configured STT providers");
-        command.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, (context, _) =>
+        command.SetAction((parse, ct) => CliApp.RunAsync(parse, (context, _) =>
         {
             var config = context.LoadConfig();
             foreach (var (id, stt) in config.Stt)
@@ -30,7 +30,7 @@ internal static class SttCommand
             }
 
             return Task.FromResult(ExitCodes.Success);
-        }));
+        }, ct));
         return command;
     }
 
@@ -41,7 +41,7 @@ internal static class SttCommand
         var language = new Option<string?>("--lang", "-l") { Description = "Language code, a list such as \"uk, en\" to pick from, or auto" };
         var command = new Command("test", "Check a provider and transcribe a sample with it") { id, file, language };
 
-        command.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, async (context, token) =>
+        command.SetAction((parse, ct) => CliApp.RunAsync(parse, async (context, token) =>
         {
             context.LoadConfig();
             var stt = context.Host().GetStt(parse.GetValue(id)!);
@@ -81,7 +81,7 @@ internal static class SttCommand
                 $"{clip.Duration.TotalSeconds:F1} s of audio in {transcript.Elapsed.TotalMilliseconds:F0} ms" +
                 $" (language {transcript.Language ?? "?"}, backend {transcript.Backend ?? "?"})");
             return ExitCodes.Success;
-        }));
+        }, ct));
 
         return command;
     }

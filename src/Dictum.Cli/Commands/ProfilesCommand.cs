@@ -11,7 +11,7 @@ internal static class ProfilesCommand
         var command = new Command("profiles", "List and inspect profiles");
 
         var list = new Command("list", "List profiles");
-        list.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, (context, _) =>
+        list.SetAction((parse, ct) => CliApp.RunAsync(parse, (context, _) =>
         {
             foreach (var profile in context.LoadConfig().Profiles)
             {
@@ -19,11 +19,11 @@ internal static class ProfilesCommand
             }
 
             return Task.FromResult(ExitCodes.Success);
-        }));
+        }, ct));
 
         var id = new Argument<string>("id") { Description = "Profile id" };
         var show = new Command("show", "Show a profile with its provider and processors") { id };
-        show.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, (context, _) =>
+        show.SetAction((parse, ct) => CliApp.RunAsync(parse, (context, _) =>
         {
             var config = context.LoadConfig();
             var wanted = parse.GetValue(id);
@@ -46,12 +46,12 @@ internal static class ProfilesCommand
 
             o.WriteLine($"output:     {profile.Output.ToString().ToLowerInvariant()}");
             return Task.FromResult(ExitCodes.Success);
-        }));
+        }, ct));
 
         var hotkeyProfile = new Argument<string>("id") { Description = "Profile id" };
         var hotkeyValue = new Argument<string>("hotkey") { Description = "Combination, e.g. \"Ctrl+Alt+Space\" or \"Ctrl+Alt+`\"" };
         var setHotkey = new Command("set-hotkey", "Change a profile's hotkey; a running daemon picks it up at once") { hotkeyProfile, hotkeyValue };
-        setHotkey.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, (context, _) =>
+        setHotkey.SetAction((parse, ct) => CliApp.RunAsync(parse, (context, _) =>
         {
             var config = context.LoadConfig();
             var id = parse.GetValue(hotkeyProfile);
@@ -76,7 +76,7 @@ internal static class ProfilesCommand
             context.Store.Save(config);
             context.Error.WriteLine($"{id}: {hotkey}");
             return Task.FromResult(ExitCodes.Success);
-        }));
+        }, ct));
 
         command.Add(list);
         command.Add(setHotkey);

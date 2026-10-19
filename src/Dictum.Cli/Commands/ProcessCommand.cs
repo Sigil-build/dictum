@@ -32,7 +32,7 @@ internal static class ProcessCommand
             json,
         };
 
-        command.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, async (context, token) =>
+        command.SetAction((parse, ct) => CliApp.RunAsync(parse, async (context, token) =>
         {
             var input = parse.GetValue(text) is { } value && value != "-"
                 ? value
@@ -69,7 +69,7 @@ internal static class ProcessCommand
                 ? JsonSerializer.Serialize(new ProcessJson(result, input, stages), CliJsonContext.Readable.ProcessJson)
                 : result);
             return ExitCodes.Success;
-        }));
+        }, ct));
 
         return command;
     }

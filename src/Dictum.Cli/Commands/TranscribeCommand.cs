@@ -15,7 +15,7 @@ internal static class TranscribeCommand
         var command = new Command("transcribe", "Transcribe a WAV file (any rate or channel count)") { file };
         options.AddTo(command);
 
-        command.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, async (context, token) =>
+        command.SetAction((parse, ct) => CliApp.RunAsync(parse, async (context, token) =>
         {
             var path = parse.GetValue(file)!;
             var clip = path == "-"
@@ -26,7 +26,7 @@ internal static class TranscribeCommand
             var profile = host.ResolveProfile(options.Read(parse));
             var result = await host.CreatePipeline().RunAsync(clip, profile, output: null, token).ConfigureAwait(false);
             return Results.Print(context, result, parse.GetValue(options.Json));
-        }));
+        }, ct));
 
         return command;
     }

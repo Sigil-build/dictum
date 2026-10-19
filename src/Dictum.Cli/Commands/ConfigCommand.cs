@@ -11,16 +11,16 @@ internal static class ConfigCommand
         var command = new Command("config", "Create, locate, validate and edit the config file");
 
         var path = new Command("path", "Print the config file path");
-        path.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, (context, _) =>
+        path.SetAction((parse, ct) => CliApp.RunAsync(parse, (context, _) =>
         {
             context.Out.WriteLine(context.ConfigPath);
             return Task.FromResult(ExitCodes.Success);
-        }));
+        }, ct));
 
         var force = new Option<bool>("--force") { Description = "Overwrite an existing config" };
         var init = new Command("init", "Write a starter config without downloading anything (see 'dictum init')") { force };
         init.Hidden = true;
-        init.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, (context, _) =>
+        init.SetAction((parse, ct) => CliApp.RunAsync(parse, (context, _) =>
         {
             if (context.Store.Exists && !parse.GetValue(force))
             {
@@ -33,10 +33,10 @@ internal static class ConfigCommand
             context.Error.WriteLine("Created a starter config. Download a speech model with 'dictum models pull whisper-small-q8',");
             context.Error.WriteLine("or run 'dictum init' instead, which also chooses a model for this machine.");
             return Task.FromResult(ExitCodes.Success);
-        }));
+        }, ct));
 
         var validate = new Command("validate", "Check the config for errors");
-        validate.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, (context, _) =>
+        validate.SetAction((parse, ct) => CliApp.RunAsync(parse, (context, _) =>
         {
             var (config, warnings) = context.Store.LoadWithIssues();
             foreach (var warning in warnings)
@@ -46,10 +46,10 @@ internal static class ConfigCommand
 
             context.Out.WriteLine($"OK: {config.Stt.Count} STT providers, {config.Processors.Count} processors, {config.Profiles.Count} profiles");
             return Task.FromResult(ExitCodes.Success);
-        }));
+        }, ct));
 
         var edit = new Command("edit", "Open the config in $VISUAL / $EDITOR (or the system editor)");
-        edit.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, async (context, token) =>
+        edit.SetAction((parse, ct) => CliApp.RunAsync(parse, async (context, token) =>
         {
             if (!context.Store.Exists)
             {
@@ -79,7 +79,7 @@ internal static class ConfigCommand
 
             context.Error.WriteLine("Config is valid.");
             return ExitCodes.Success;
-        }));
+        }, ct));
 
         command.Add(path);
         command.Add(init);

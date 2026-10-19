@@ -61,7 +61,7 @@ internal static class RecordCommand
         };
         options.AddTo(command);
 
-        command.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, async (context, token) =>
+        command.SetAction((parse, ct) => CliApp.RunAsync(parse, async (context, token) =>
         {
             var host = context.Host();
             var profile = host.ResolveProfile(options.Read(parse));
@@ -147,7 +147,7 @@ internal static class RecordCommand
             }
 
             return Results.Print(context, result, parse.GetValue(options.Json));
-        }));
+        }, ct));
 
         return command;
     }

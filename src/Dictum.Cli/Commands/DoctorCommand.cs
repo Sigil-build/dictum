@@ -4,7 +4,6 @@ using System.Text.Json;
 using Dictum.Cli.Output;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
-using Dictum.Core;
 using Dictum.Host;
 using Dictum.Host.Diagnostics;
 using Dictum.Host.Ipc;
@@ -20,7 +19,7 @@ internal static class DoctorCommand
     {
         var json = new Option<bool>("--json") { Description = "Print JSON" };
         var command = new Command("doctor", "Check config, microphone and every provider, with hints for anything broken") { json };
-        command.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, async (context, token) =>
+        command.SetAction((parse, ct) => CliApp.RunAsync(parse, async (context, token) =>
         {
             DictumConfig? config = null;
             ConfigException? error = null;
@@ -68,7 +67,7 @@ internal static class DoctorCommand
             }
 
             return checks.Any(c => c.Level == HealthLevel.Error) ? ExitCodes.Error : ExitCodes.Success;
-        }));
+        }, ct));
 
         return command;
     }

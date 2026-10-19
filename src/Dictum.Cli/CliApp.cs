@@ -76,8 +76,8 @@ internal static class CliApp
     /// <summary>Runs a command body with a <see cref="CliContext"/> and maps exceptions to exit codes.</summary>
     public static async Task<int> RunAsync(
         ParseResult parse,
-        CancellationToken ct,
         Func<CliContext, CancellationToken, Task<int>> body,
+        CancellationToken ct,
         Core.Diagnostics.LogLevel? consoleLevel = null)
     {
         await using var context = new CliContext(parse, consoleLevel);

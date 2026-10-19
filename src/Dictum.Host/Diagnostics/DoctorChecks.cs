@@ -114,7 +114,7 @@ public static class DoctorChecks
         {
             var devices = audio().ListDevices();
             add("audio library", HealthStatus.Ok($"{PortAudioLibrary.Version} ({PortAudioLibrary.LoadedFrom})"));
-            var chosen = devices.FirstOrDefault(d => d.IsDefault) ?? devices.FirstOrDefault();
+            var chosen = devices.FirstOrDefault(d => d.IsDefault) ?? (devices.Count > 0 ? devices[0] : null);
             add("microphone", chosen is null
                 ? HealthStatus.Warning("No microphone found", "Connect one, or check that the OS allows microphone access.")
                 : HealthStatus.Ok($"{chosen.Name} ({chosen.HostApi}, {chosen.DefaultSampleRate:F0} Hz); {devices.Count} input device(s)"));

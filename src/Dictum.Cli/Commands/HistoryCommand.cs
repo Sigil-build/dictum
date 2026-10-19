@@ -13,7 +13,7 @@ internal static class HistoryCommand
         var last = new Option<int>("--last", "-n") { Description = "How many entries", DefaultValueFactory = _ => DefaultCount };
         var json = new Option<bool>("--json") { Description = "Print JSON" };
         var command = new Command("history", "Show recent transcriptions") { last, json };
-        command.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, (context, _) =>
+        command.SetAction((parse, ct) => CliApp.RunAsync(parse, (context, _) =>
         {
             var entries = context.Host().History.ReadLast(parse.GetValue(last)).ToList();
             if (parse.GetValue(json))
@@ -29,7 +29,7 @@ internal static class HistoryCommand
             }
 
             return Task.FromResult(ExitCodes.Success);
-        }));
+        }, ct));
         return command;
     }
 }

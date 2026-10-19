@@ -15,7 +15,7 @@ internal static class ModelsCommand
         var json = new Option<bool>("--json") { Description = "Print JSON" };
         var all = new Option<bool>("--all") { Description = "Include models meant for tests" };
         var list = new Command("list", "Show catalog models, whether they are installed, and other model files in the models directory") { json, all };
-        list.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, (context, _) =>
+        list.SetAction((parse, ct) => CliApp.RunAsync(parse, (context, _) =>
         {
             var rows = Rows(context.Paths, parse.GetValue(all));
             if (parse.GetValue(json))
@@ -33,11 +33,11 @@ internal static class ModelsCommand
 
             context.Error.WriteLine($"Models directory: {context.Paths.ModelsDirectory}");
             return Task.FromResult(ExitCodes.Success);
-        }));
+        }, ct));
 
         var ids = new Argument<string[]>("ids") { Description = "Catalog ids, e.g. whisper-small-q8", Arity = ArgumentArity.OneOrMore };
         var pull = new Command("pull", "Download models into the models directory (resumes after interruptions, checks SHA-256)") { ids };
-        pull.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, async (context, token) =>
+        pull.SetAction((parse, ct) => CliApp.RunAsync(parse, async (context, token) =>
         {
             var entries = (parse.GetValue(ids) ?? []).Select(Catalog.BuiltIn.Get).ToList();
             using var http = FileDownloader.CreateHttpClient(CliApp.UserAgent);
@@ -50,7 +50,7 @@ internal static class ModelsCommand
             }
 
             return ExitCodes.Success;
-        }));
+        }, ct));
 
         command.Add(list);
         command.Add(pull);

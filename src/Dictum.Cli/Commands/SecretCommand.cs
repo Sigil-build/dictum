@@ -10,7 +10,7 @@ internal static class SecretCommand
 
         var setName = new Argument<string>("name") { Description = "Secret name, e.g. groq" };
         var set = new Command("set", "Store a secret; the value is read from stdin or typed without echo") { setName };
-        set.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, async (context, token) =>
+        set.SetAction((parse, ct) => CliApp.RunAsync(parse, async (context, token) =>
         {
             var name = parse.GetValue(setName)!;
             var value = Console.IsInputRedirected
@@ -25,20 +25,20 @@ internal static class SecretCommand
             await context.Platform.Secrets.SetAsync(name, value, token).ConfigureAwait(false);
             context.Error.WriteLine($"Stored. Use \"apiKey\": \"secret:{name}\" in the config.");
             return ExitCodes.Success;
-        }));
+        }, ct));
 
         var deleteName = new Argument<string>("name") { Description = "Secret name" };
         var delete = new Command("delete", "Remove a stored secret") { deleteName };
-        delete.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, async (context, token) =>
+        delete.SetAction((parse, ct) => CliApp.RunAsync(parse, async (context, token) =>
         {
             await context.Platform.Secrets.DeleteAsync(parse.GetValue(deleteName)!, token).ConfigureAwait(false);
             context.Error.WriteLine("Deleted.");
             return ExitCodes.Success;
-        }));
+        }, ct));
 
         var checkName = new Argument<string>("name") { Description = "Secret name" };
         var check = new Command("check", "Tell whether a secret is stored, without printing it") { checkName };
-        check.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, async (context, token) =>
+        check.SetAction((parse, ct) => CliApp.RunAsync(parse, async (context, token) =>
         {
             var name = parse.GetValue(checkName)!;
             var value = await context.Platform.Secrets.GetAsync(name, token).ConfigureAwait(false);
@@ -50,7 +50,7 @@ internal static class SecretCommand
 
             context.Error.WriteLine($"'{name}' is stored ({value.Length} characters).");
             return ExitCodes.Success;
-        }));
+        }, ct));
 
         command.Add(set);
         command.Add(check);

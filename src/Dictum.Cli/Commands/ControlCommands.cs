@@ -23,7 +23,7 @@ internal static class ControlCommands
     {
         var profile = new Option<string?>("--profile", "-p") { Description = "Profile id (default: the active or first profile)" };
         var command = new Command(name, description) { profile };
-        command.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, async (context, token) =>
+        command.SetAction((parse, ct) => CliApp.RunAsync(parse, async (context, token) =>
         {
             var response = await new IpcClient(context.SocketPath).SendAsync(new IpcRequest(name, parse.GetValue(profile)), token).ConfigureAwait(false);
             if (!response.Ok)
@@ -35,7 +35,7 @@ internal static class ControlCommands
             var status = response.Status!;
             context.Error.WriteLine(status.ActiveProfile is null ? status.State : $"{status.State} ({status.ActiveProfile})");
             return ExitCodes.Success;
-        }));
+        }, ct));
         return command;
     }
 
@@ -45,7 +45,7 @@ internal static class ControlCommands
         var watch = new Option<bool>("--watch") { Description = "Keep printing state changes, results and status as JSON lines until Ctrl+C" };
         var frames = new Option<bool>("--frames") { Description = "With --watch, also print audio frames (50 per second)" };
         var command = new Command(IpcCommand.Status, "Show whether the daemon runs, its state, hotkeys and backends") { json, watch, frames };
-        command.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, async (context, token) =>
+        command.SetAction((parse, ct) => CliApp.RunAsync(parse, async (context, token) =>
         {
             if (parse.GetValue(watch))
             {
@@ -84,7 +84,7 @@ internal static class ControlCommands
             }
 
             return ExitCodes.Success;
-        }));
+        }, ct));
         return command;
     }
 }

@@ -42,7 +42,7 @@ internal static class InitCommand
             yes, language, stt, llm, llmModel, llmApiKey, vocabFile, autostart, gpu, json,
         };
 
-        command.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, async (context, token) =>
+        command.SetAction((parse, ct) => CliApp.RunAsync(parse, async (context, token) =>
         {
             var interactive = !parse.GetValue(yes);
             if (interactive && Console.IsInputRedirected)
@@ -144,7 +144,7 @@ internal static class InitCommand
                     CliJsonContext.Readable.InitJson)
                 : context.ConfigPath);
             return ExitCodes.Success;
-        }));
+        }, ct));
 
         return command;
     }

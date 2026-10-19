@@ -25,7 +25,7 @@ internal static class DaemonCommand
             uninstall,
         };
 
-        command.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, async (context, token) =>
+        command.SetAction((parse, ct) => CliApp.RunAsync(parse, async (context, token) =>
         {
             if (parse.GetValue(install) || parse.GetValue(uninstall))
             {
@@ -86,7 +86,7 @@ internal static class DaemonCommand
             log.Info("Daemon stopping");
             await daemon.AnnounceStoppingAsync(StoppingAnnounceTimeout).ConfigureAwait(false);
             return ExitCodes.Success;
-        }, consoleLevel: LogLevel.Info));
+        }, ct, consoleLevel: LogLevel.Info));
 
         return command;
     }

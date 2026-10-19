@@ -10,7 +10,7 @@ internal static class DevicesCommand
     {
         var json = new Option<bool>("--json") { Description = "Print JSON" };
         var command = new Command("devices", "List microphones") { json };
-        command.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, (context, _) =>
+        command.SetAction((parse, ct) => CliApp.RunAsync(parse, (context, _) =>
         {
             var devices = context.Host().Audio.ListDevices();
             if (parse.GetValue(json))
@@ -32,7 +32,7 @@ internal static class DevicesCommand
             }
 
             return Task.FromResult(ExitCodes.Success);
-        }));
+        }, ct));
         return command;
     }
 }

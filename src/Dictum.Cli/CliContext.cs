@@ -20,11 +20,13 @@ internal sealed class CliContext : IAsyncDisposable
     /// <param name="consoleLevel">Overrides the stderr log level (the daemon logs Info by default).</param>
     public CliContext(ParseResult parse, LogLevel? consoleLevel = null)
     {
+        Out = Console.Out;
+        Error = Console.Error;
         Paths = AppPaths.FromEnvironment();
         Verbose = parse.GetValue(CliApp.VerboseOption);
         ConfigPath = parse.GetValue(CliApp.ConfigOption)
             ?? (Environment.GetEnvironmentVariable("DICTUM_CONFIG") is { Length: > 0 } fromEnv ? fromEnv : Paths.ConfigFile);
-        Log = new DictumLog(Verbose ? LogLevel.Debug : consoleLevel ?? LogLevel.Warning, includeText: Verbose, Console.Error, Paths.LogsDirectory);
+        Log = new DictumLog(Verbose ? LogLevel.Debug : consoleLevel ?? LogLevel.Warning, includeText: Verbose, Error, Paths.LogsDirectory);
         NativeStderr.ShowDiagnostics = Verbose;
         Store = new ConfigStore(ConfigPath, Log);
     }
@@ -39,9 +41,9 @@ internal sealed class CliContext : IAsyncDisposable
 
     public ConfigStore Store { get; }
 
-    public TextWriter Out => Console.Out;
+    public TextWriter Out { get; }
 
-    public TextWriter Error => Console.Error;
+    public TextWriter Error { get; }
 
     public string SocketPath => IpcEndpoint.SocketPath(Paths);
 

@@ -18,7 +18,7 @@ internal static class VocabCommand
         var command = new Command("vocab", "Words, names and terms the recognizer should spell exactly, per profile") { ProfileOption };
 
         var list = new Command("list", "Print the profile's words, one per line");
-        list.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, (context, _) =>
+        list.SetAction((parse, ct) => CliApp.RunAsync(parse, (context, _) =>
         {
             var config = context.LoadConfig();
             var profile = config.Profiles[IndexOf(config, parse.GetValue(ProfileOption))];
@@ -29,16 +29,16 @@ internal static class VocabCommand
 
             WarnAboutDroppedTerms(context, profile);
             return Task.FromResult(ExitCodes.Success);
-        }));
+        }, ct));
 
         var addTerms = new Argument<string[]>("terms") { Description = "Words or phrases; quote phrases with spaces", Arity = ArgumentArity.OneOrMore };
         var add = new Command("add", "Add words to the end of the list") { addTerms };
-        add.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, (context, _) =>
-            Task.FromResult(Edit(context, parse.GetValue(ProfileOption), current => VocabularyList.Merge(current, parse.GetValue(addTerms) ?? [])))));
+        add.SetAction((parse, ct) => CliApp.RunAsync(parse, (context, _) =>
+            Task.FromResult(Edit(context, parse.GetValue(ProfileOption), current => VocabularyList.Merge(current, parse.GetValue(addTerms) ?? []))), ct));
 
         var removeTerms = new Argument<string[]>("terms") { Description = "Words or phrases to remove (any letter case)", Arity = ArgumentArity.OneOrMore };
         var remove = new Command("remove", "Remove words from the list") { removeTerms };
-        remove.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, (context, _) =>
+        remove.SetAction((parse, ct) => CliApp.RunAsync(parse, (context, _) =>
             Task.FromResult(Edit(context, parse.GetValue(ProfileOption), current =>
             {
                 var (remaining, notFound) = VocabularyList.Remove(current, parse.GetValue(removeTerms) ?? []);
@@ -48,15 +48,15 @@ internal static class VocabCommand
                 }
 
                 return remaining;
-            }))));
+            })), ct));
 
         var clear = new Command("clear", "Remove every word from the list");
-        clear.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, (context, _) =>
-            Task.FromResult(Edit(context, parse.GetValue(ProfileOption), _ => []))));
+        clear.SetAction((parse, ct) => CliApp.RunAsync(parse, (context, _) =>
+            Task.FromResult(Edit(context, parse.GetValue(ProfileOption), _ => [])), ct));
 
         var file = new Argument<string>("file") { Description = "Text file with one word or phrase per line ('#' starts a comment), or - for stdin" };
         var import = new Command("import", "Add words from a file") { file };
-        import.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, async (context, token) =>
+        import.SetAction((parse, ct) => CliApp.RunAsync(parse, async (context, token) =>
         {
             var path = parse.GetValue(file)!;
             var text = path == "-"
@@ -64,7 +64,7 @@ internal static class VocabCommand
                 : await File.ReadAllTextAsync(path, token).ConfigureAwait(false);
             var terms = VocabularyList.ParseLines(text).ToList();
             return Edit(context, parse.GetValue(ProfileOption), current => VocabularyList.Merge(current, terms));
-        }));
+        }, ct));
 
         command.Add(list);
         command.Add(add);
