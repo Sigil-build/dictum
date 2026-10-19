@@ -1,11 +1,11 @@
 <Project Sdk="WixToolset.Sdk">
   <!--
-    The per-user MSI (phase 4 spec 3.1). Built by packaging/package.sh with StageDir = the staged files; not in Dictum.slnx,
+    The per-user MSI. Built by packaging/package.sh with StageDir = the staged files; not in Dictum.slnx,
     so dotnet build on Linux never meets it.
     ICE38, ICE64 and ICE91 fire for every per-user package that installs under the user profile (they date from roaming
     profiles); ICE61 warns about AllowSameVersionUpgrades, which Package.wxs wants. Warnings are errors in this repo,
-    so they are suppressed here; the CI uninstall check verifies that nothing
-    is left behind.
+    so they are suppressed here. Nothing in CI installs the MSI: test-msi-install.ps1, run by hand on Windows, checks
+    that the uninstall leaves nothing behind.
   -->
   <PropertyGroup>
     <OutputName>dictum</OutputName>

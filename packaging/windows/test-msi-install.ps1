@@ -1,15 +1,37 @@
 <#
   Installs the Dictum MSI for the current user, checks the result, reinstalls a rebuilt MSI of the same version,
   upgrades over a running daemon, and uninstalls, checking that nothing of the program is left and that user data stays.
-  It runs only with GITHUB_ACTIONS=true and RUNNER_TEMP set: dictum init overwrites the user's config.json and the
-  uninstall removes the HKCU Run value "Dictum". On a machine with a working Dictum, stop it and back up
-  %APPDATA%\Dictum and that Run value first.
+
+  It works on this user's real Dictum:
+  - The run ends with Dictum uninstalled. An installed Dictum MSI is replaced, then removed with HKCU\Software\Dictum
+    and the HKCU Run value "Dictum", whichever copy wrote it. A newer installed Dictum makes the first install fail
+    with the downgrade error: uninstall it first.
+  - dictum init overwrites %APPDATA%\Dictum\config.json and downloads its model into %LOCALAPPDATA%\Dictum; the daemon
+    runs on the default socket and logs there too.
+  So stop a working Dictum and back up %APPDATA%\Dictum and the Run value first, and reinstall Dictum afterwards.
+  It runs only with GITHUB_ACTIONS=true (the opt-in) and RUNNER_TEMP (a new folder for its logs) set.
+
+  The three MSIs come from one staged folder. <out> is a new folder, <version> what
+  `dotnet msbuild src/Dictum.Cli/Dictum.Cli.csproj -getProperty:VersionPrefix` prints. From the repository root, in
+  Git Bash (the bash PowerShell finds may be WSL's):
+    bash packaging/package.sh win-x64 '<out>'
+  That writes <out>\dictum-<version>-win-x64.msi and the staged files in <out>\stage\dictum-<version>-win-x64. Then,
+  in PowerShell:
+    dotnet build packaging/windows/Dictum.Installer.wixproj -c Release --no-incremental `
+      -p:StageDir=<out>\stage\dictum-<version>-win-x64 -o <out>\rebuilt
+    dotnet build packaging/windows/Dictum.Installer.wixproj -c Release --no-incremental `
+      -p:StageDir=<out>\stage\dictum-<version>-win-x64 -p:VersionPrefix=99.0.0 -o <out>\upgrade
+    $env:GITHUB_ACTIONS = 'true'; $env:RUNNER_TEMP = '<a new folder>'
+    ./packaging/windows/test-msi-install.ps1 -Msi <out>\dictum-<version>-win-x64.msi `
+      -RebuiltMsi <out>\rebuilt\dictum.msi -UpgradeMsi <out>\upgrade\dictum.msi -Version <version>
+  An upgrade MSI built with another VersionPrefix, above <version>, is named with -UpgradeVersion.
 #>
 param(
     [Parameter(Mandatory)] [string] $Msi,
     [Parameter(Mandatory)] [string] $RebuiltMsi,
     [Parameter(Mandatory)] [string] $UpgradeMsi,
-    [Parameter(Mandatory)] [string] $Version
+    [Parameter(Mandatory)] [string] $Version,
+    [string] $UpgradeVersion = '99.0.0'
 )
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true') {
@@ -61,9 +83,9 @@ Check ((Msiexec 'i' $RebuiltMsi 'rebuilt') -eq 0) 'a rebuilt MSI of the same ver
 Check ((Products).Count -eq 1) 'Windows Installer still lists Dictum once'
 
 # Upgrade over a running daemon: QuitDictum stops it, nothing is in use, no reboot.
-# The daemon uses the runner's default folders and socket, as the MSI's custom action does.
+# The daemon uses this user's default folders and socket, as the MSI's custom action does.
 & $dictum init --yes --language en --stt whisper-tiny-en --llm none *> (Join-Path $logs 'init.log')
-Check ($LASTEXITCODE -eq 0) "dictum init sets up the runner's default folders (exit $LASTEXITCODE)"
+Check ($LASTEXITCODE -eq 0) "dictum init sets up this user's default folders (exit $LASTEXITCODE)"
 $daemon = Start-Process $dictum -ArgumentList 'daemon' -PassThru -WindowStyle Hidden `
     -RedirectStandardOutput (Join-Path $logs 'daemon.log') -RedirectStandardError (Join-Path $logs 'daemon.err.log')
 $deadline = (Get-Date).AddSeconds($daemonStartSeconds)
@@ -76,7 +98,7 @@ $quit = Get-QuitDictumResult (Get-Content (Join-Path $logs 'msiexec-upgrade.log'
 Check ($quit -eq 'ok') "QuitDictum ran and returned 0 during the upgrade (the log reads: $quit)"
 Check ($daemon.HasExited -or $daemon.WaitForExit($daemonExitMilliseconds)) 'the upgrade stopped the daemon'
 $upgraded = Products
-Check ($upgraded.Count -eq 1 -and $upgraded[0].Version -like '99.0.0*') 'Windows Installer lists the upgraded Dictum once'
+Check ($upgraded.Count -eq 1 -and $upgraded[0].Version -like "$UpgradeVersion*") "Windows Installer lists the upgraded Dictum $UpgradeVersion once"
 
 # Uninstall removes the program, the shortcut, its key and the login item; settings and models stay.
 & $dictum daemon --install-autostart | Out-Null
@@ -91,7 +113,7 @@ Check ((DictumProcesses).Count -eq 0) 'no Dictum process runs from the install f
 Check (Test-Path (Join-Path $env:APPDATA 'Dictum\config.json')) 'the settings stay'
 
 if ($failed) {
-    # The program's own logs join the uploaded folder; the key MSI lines and the rest go to the job log.
+    # Dictum's own logs join $logs; the key MSI lines and the end of every other log go to the output.
     Copy-Item (Join-Path $env:LOCALAPPDATA 'Dictum\logs') (Join-Path $logs 'dictum') -Recurse -ErrorAction SilentlyContinue
     foreach ($log in Get-ChildItem $logs -Filter 'msiexec-*.log') {
         Write-Output "--- $($log.Name), key lines"

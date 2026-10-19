@@ -1,7 +1,7 @@
 <#
-  Checks a Dictum MSI without installing it (phase 4 PR 4b): the per-user scope, the version, the upgrade code, the
-  Start menu shortcut, the custom actions and their conditions, and the files, from an administrative extract into a
-  temp folder (nothing is registered). Exit 0 when every check passes.
+  Checks a Dictum MSI without installing it: the per-user scope, the version, the upgrade code, the Start menu
+  shortcut, the custom actions and their conditions, and the files, from an administrative extract into a temp folder
+  (nothing is registered). Exit 0 when every check passes.
 #>
 param(
     [Parameter(Mandatory)] [string] $Msi,
