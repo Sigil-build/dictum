@@ -6,11 +6,8 @@ namespace Dictum.App.Shell;
 /// <summary>The UI language: <c>general.uiLanguage</c>, or the OS UI culture when that is null.</summary>
 public static class UiCulture
 {
-    public const string English = "en";
-    public const string Ukrainian = "uk";
-
     public static CultureInfo? Resolve(string? uiLanguage) =>
-        uiLanguage is English or Ukrainian ? CultureInfo.GetCultureInfo(uiLanguage) : null;
+        uiLanguage is UiLanguages.English or UiLanguages.Ukrainian ? CultureInfo.GetCultureInfo(uiLanguage) : null;
 
     /// <summary>Sets the UI culture for this thread and every later one. Call in Main, before Avalonia starts.</summary>
     public static void Apply(string? uiLanguage)

@@ -65,7 +65,7 @@ public static class SelfTest
             CheckTrayIcons(checks);
             CheckOverlay(checks);
             checks.Add("settings views", SettingsViews(out var views), views);
-            UiCulture.Apply(UiCulture.Ukrainian);
+            UiCulture.Apply(UiLanguages.Ukrainian);
             checks.Add("ui culture", Strings.MenuQuit == ukrainian, $"\"{Strings.MenuQuit}\" with {CultureInfo.CurrentUICulture.Name}");
         }
 
@@ -76,7 +76,7 @@ public static class SelfTest
     private static string CheckStrings(Checks checks)
     {
         var english = Strings.ResourceManager.GetString(nameof(Strings.MenuQuit), CultureInfo.InvariantCulture) ?? "";
-        var ukrainian = Strings.ResourceManager.GetString(nameof(Strings.MenuQuit), CultureInfo.GetCultureInfo(UiCulture.Ukrainian)) ?? "";
+        var ukrainian = Strings.ResourceManager.GetString(nameof(Strings.MenuQuit), CultureInfo.GetCultureInfo(UiLanguages.Ukrainian)) ?? "";
         checks.Add("strings", english == "Quit Dictum" && ukrainian.Any(c => c is >= 'А' and <= 'я'), $"en \"{english}\", uk \"{ukrainian}\"");
         return ukrainian;
     }

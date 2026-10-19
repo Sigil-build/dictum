@@ -41,6 +41,8 @@ public sealed partial class GeneralPage : SettingsPage
 {
     public static readonly TimeSpan MeterTick = TimeSpan.FromMilliseconds(50);
 
+    public static decimal MaxHistorySize { get; } = ConfigValidator.MaxHistorySize;
+
     private static readonly string HistorySizePath = ConfigPaths.General(nameof(GeneralSettings.HistorySize));
 
     /// <summary>Well inside <see cref="IpcProtocol.MonitorLifetime"/>, so the daemon keeps the meter open while the page shows.</summary>
@@ -70,8 +72,8 @@ public sealed partial class GeneralPage : SettingsPage
         UiLanguages =
         [
             new Option<string?>(null, Strings.SettingsUiLanguageSystem),
-            new Option<string?>("en", Strings.SettingsUiLanguageEnglish),
-            new Option<string?>("uk", Strings.SettingsUiLanguageUkrainian),
+            new Option<string?>(Dictum.Core.Configuration.UiLanguages.English, Strings.SettingsUiLanguageEnglish),
+            new Option<string?>(Dictum.Core.Configuration.UiLanguages.Ukrainian, Strings.SettingsUiLanguageUkrainian),
         ];
         CanChangeStartAtLogin = services.Autostart is not null && services.Executable is not null;
         MeterText = InputMeter.Readout((int)InputMeter.FloorDb);

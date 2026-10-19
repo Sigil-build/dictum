@@ -8,7 +8,6 @@ namespace Dictum.Processing;
 /// <summary>Applies literal and regex replacement rules in order, e.g. a dictionary of technical terms.</summary>
 public sealed class ReplaceProcessor : ITextProcessor
 {
-    private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(200);
 
     private readonly IReadOnlyList<Func<string, string>> _rules;
     private readonly ILog _log;
@@ -48,7 +47,7 @@ public sealed class ReplaceProcessor : ITextProcessor
 
         if (!string.IsNullOrEmpty(rule.Pattern))
         {
-            var regex = new Regex(rule.Pattern, RegexOptions.CultureInvariant, RegexTimeout);
+            var regex = new Regex(rule.Pattern, RegexOptions.CultureInvariant, ReplaceRule.RegexTimeout);
             return text => regex.Replace(text, rule.To);
         }
 
@@ -62,7 +61,7 @@ public sealed class ReplaceProcessor : ITextProcessor
         {
             // No letter or digit on either side; the replacement is literal, so a "$" stays a dollar sign.
             var options = RegexOptions.CultureInvariant | (rule.IgnoreCase ? RegexOptions.IgnoreCase : RegexOptions.None);
-            var word = new Regex($@"(?<!\w){Regex.Escape(from)}(?!\w)", options, RegexTimeout);
+            var word = new Regex($@"(?<!\w){Regex.Escape(from)}(?!\w)", options, ReplaceRule.RegexTimeout);
             var to = rule.To.Replace("$", "$$", StringComparison.Ordinal);
             return text => word.Replace(text, to);
         }

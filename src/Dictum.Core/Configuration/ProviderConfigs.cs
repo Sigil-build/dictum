@@ -78,6 +78,9 @@ public sealed record ReplaceProcessorConfig : ProcessorConfig
 /// <summary>Either a literal <see cref="From"/> or a regex <see cref="Pattern"/>, replaced by <see cref="To"/>.</summary>
 public sealed record ReplaceRule
 {
+    /// <summary>A pattern that takes longer than this on one text is abandoned, so a bad regex cannot hang a dictation.</summary>
+    public static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(200);
+
     public string? From { get; init; }
 
     public string? Pattern { get; init; }

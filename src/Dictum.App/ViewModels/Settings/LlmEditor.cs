@@ -27,6 +27,8 @@ public sealed partial class LlmEditor : ObservableObject, IDisposable
         ["en"] = "so um i want you to like check this code and push it to main by the evening okay",
     };
 
+    public static decimal MaxTemperature { get; } = (decimal)ConfigValidator.MaxTemperature;
+
     private static readonly TimeSpan PromptSaveDelay = TimeSpan.FromMilliseconds(500);
     private static readonly TimeSpan PreviewDelay = TimeSpan.FromMilliseconds(600);
     private static readonly string[] SampleLanguages = ["uk", "en"];

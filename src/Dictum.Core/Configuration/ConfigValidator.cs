@@ -8,14 +8,15 @@ namespace Dictum.Core.Configuration;
 /// <summary>Semantic checks that JSON parsing alone does not cover.</summary>
 public static class ConfigValidator
 {
-    private const int MaxPasteDelayMs = 5000;
-    private const double MinOverlayOpacity = 0.3;
-    private const double MaxOverlayOpacity = 1.0;
+    public const int MaxPasteDelayMs = 5000;
+    public const double MinOverlayOpacity = 0.3;
+    public const double MaxOverlayOpacity = 1.0;
 
     /// <summary>The OpenAI chat API accepts temperatures from 0 to 2.</summary>
-    private const double MaxTemperature = 2;
+    public const double MaxTemperature = 2;
 
-    private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(200);
+    /// <summary>The most dictations the History setting offers to keep.</summary>
+    public const int MaxHistorySize = 5000;
 
     public static IReadOnlyList<ConfigIssue> Validate(DictumConfig config)
     {
@@ -65,9 +66,10 @@ public static class ConfigValidator
             Error(issues, ConfigPaths.Field(ConfigPaths.General(nameof(GeneralSettings.Overlay)), nameof(OverlaySettings.Opacity)), string.Create(CultureInfo.InvariantCulture, $"must be between {MinOverlayOpacity} and {MaxOverlayOpacity:0.0}"));
         }
 
-        if (general.UiLanguage is not (null or "en" or "uk"))
+        if (general.UiLanguage is not (null or UiLanguages.English or UiLanguages.Ukrainian))
         {
-            Error(issues, ConfigPaths.General(nameof(GeneralSettings.UiLanguage)), $"'{general.UiLanguage}' is not a UI language; use \"en\" or \"uk\", or leave it out to follow the system");
+            Error(issues, ConfigPaths.General(nameof(GeneralSettings.UiLanguage)),
+                $"'{general.UiLanguage}' is not a UI language; use \"{UiLanguages.English}\" or \"{UiLanguages.Ukrainian}\", or leave it out to follow the system");
         }
     }
 
@@ -212,7 +214,7 @@ public static class ConfigValidator
 
             try
             {
-                _ = new Regex(rule.Pattern!, RegexOptions.None, RegexTimeout);
+                _ = new Regex(rule.Pattern!, RegexOptions.None, ReplaceRule.RegexTimeout);
             }
             catch (ArgumentException ex)
             {

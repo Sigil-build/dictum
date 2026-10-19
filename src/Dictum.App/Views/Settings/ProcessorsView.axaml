@@ -70,7 +70,7 @@
               </StackPanel>
               <StackPanel Grid.Row="4" Spacing="4">
                 <TextBlock Text="{x:Static res:Strings.SettingsLlmTemperature}" Classes="hint" />
-                <NumericUpDown Value="{Binding Llm.Temperature}" Minimum="0" Maximum="2" Increment="0.1" FormatString="0.0" Width="120"
+                <NumericUpDown Value="{Binding Llm.Temperature}" Minimum="0" Maximum="{x:Static vm:LlmEditor.MaxTemperature}" Increment="0.1" FormatString="0.0" Width="120"
                                HorizontalAlignment="Left" AutomationProperties.Name="{x:Static res:Strings.SettingsLlmTemperature}" />
                 <TextBlock Text="{Binding Llm.TemperatureError}" Classes="error" IsVisible="{Binding Llm.TemperatureError, Converter={x:Static ObjectConverters.IsNotNull}}" />
               </StackPanel>

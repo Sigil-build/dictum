@@ -13,7 +13,7 @@
         <controls:SettingsRow Label="{x:Static res:Strings.SettingsPasteDelay}"
                               Description="{x:Static res:Strings.SettingsPasteDelayHint}"
                               Error="{Binding PasteDelayError}">
-          <NumericUpDown Value="{Binding PasteDelay}" Minimum="0" Maximum="5000" Increment="50" FormatString="0" Width="120"
+          <NumericUpDown Value="{Binding PasteDelay}" Minimum="0" Maximum="{x:Static vm:PastingPage.MaxPasteDelay}" Increment="50" FormatString="0" Width="120"
                          AutomationProperties.Name="{x:Static res:Strings.SettingsPasteDelay}" />
         </controls:SettingsRow>
 

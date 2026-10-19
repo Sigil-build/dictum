@@ -29,7 +29,7 @@
 
         <controls:SettingsRow Label="{x:Static res:Strings.SettingsOverlayOpacity}">
           <StackPanel Orientation="Horizontal" Spacing="12">
-            <Slider Width="200" Minimum="30" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True"
+            <Slider Width="200" Minimum="{x:Static vm:OverlayPage.MinOpacityPercent}" Maximum="{x:Static vm:OverlayPage.MaxOpacityPercent}" TickFrequency="5" IsSnapToTickEnabled="True"
                     Value="{Binding Opacity}" AutomationProperties.Name="{x:Static res:Strings.SettingsOverlayOpacity}" />
             <TextBlock Width="48" Text="{Binding OpacityText}" VerticalAlignment="Center" TextAlignment="Right"
                        Foreground="{DynamicResource color.text.secondary}" />

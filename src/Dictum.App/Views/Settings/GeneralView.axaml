@@ -53,7 +53,7 @@
                               Label="{x:Static res:Strings.SettingsHistory}"
                               Description="{x:Static res:Strings.SettingsHistoryHint}"
                               Error="{Binding HistoryError}">
-          <NumericUpDown Value="{Binding HistorySize}" Minimum="0" Maximum="5000" Increment="1" FormatString="0"
+          <NumericUpDown Value="{Binding HistorySize}" Minimum="0" Maximum="{x:Static vm:GeneralPage.MaxHistorySize}" Increment="1" FormatString="0"
                          Width="120" AutomationProperties.Name="{x:Static res:Strings.SettingsHistoryCount}" />
         </controls:SettingsRow>
 

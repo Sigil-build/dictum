@@ -17,6 +17,8 @@ namespace Dictum.App.ViewModels.Settings;
 /// </summary>
 public sealed partial class PastingPage : SettingsPage
 {
+    public static decimal MaxPasteDelay { get; } = ConfigValidator.MaxPasteDelayMs;
+
     private readonly SettingsSession _session;
     private bool _loading;
     private bool _delayEmpty;
