@@ -6,9 +6,11 @@ namespace Dictum.Cli.Commands;
 
 internal static class HistoryCommand
 {
+    private const int DefaultCount = 10;
+
     public static Command Create()
     {
-        var last = new Option<int>("--last", "-n") { Description = "How many entries", DefaultValueFactory = _ => 10 };
+        var last = new Option<int>("--last", "-n") { Description = "How many entries", DefaultValueFactory = _ => DefaultCount };
         var json = new Option<bool>("--json") { Description = "Print JSON" };
         var command = new Command("history", "Show recent transcriptions") { last, json };
         command.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, (context, _) =>

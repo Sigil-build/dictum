@@ -11,7 +11,29 @@ namespace Dictum.Cli.Commands;
 
 internal static class RecordCommand
 {
+    private const string ToStdout = "stdout";
+    private const string ToClipboard = "clipboard";
+    private const string ToPaste = "paste";
+
+    /// <summary>The microphone delivers 50 frames per second, 20 ms each.</summary>
+    private const int FramesPerSecond = 50;
+
+    /// <summary>Frame times in the dump are rounded to the millisecond.</summary>
+    private const int FrameTimeDecimals = 3;
+
     private const int MeterWidth = 24;
+
+    /// <summary>The bar with its time and brackets, plus a margin.</summary>
+    private const int MeterLineWidth = MeterWidth + 12;
+
+    /// <summary>The meter shows the top 60 dB below full scale.</summary>
+    private const float MeterRangeDb = 60f;
+
+    /// <summary>About ten redraws per second.</summary>
+    private const int MeterRedrawMs = 100;
+
+    private static readonly TimeSpan FrameLength = TimeSpan.FromSeconds(1) / FramesPerSecond;
+    private static readonly TimeSpan KeyPollInterval = TimeSpan.FromMilliseconds(50);
 
     public static Command Create()
     {
@@ -22,9 +44,9 @@ internal static class RecordCommand
         var output = new Option<string>("--out")
         {
             Description = "Where the text goes: stdout, clipboard, or paste into the focused app",
-            DefaultValueFactory = _ => "stdout",
+            DefaultValueFactory = _ => ToStdout,
         };
-        output.AcceptOnlyFromAmong("stdout", "clipboard", "paste");
+        output.AcceptOnlyFromAmong(ToStdout, ToClipboard, ToPaste);
         var dumpFrames = new Option<string?>("--dump-frames") { Description = "Write level and spectrum frames to a JSON file (for the overlay prototype)" };
         var saveAudio = new Option<string?>("--save-audio") { Description = "Also save the recording as a 16 kHz WAV file, e.g. to check the microphone" };
 
@@ -63,18 +85,16 @@ internal static class RecordCommand
                 };
             }
 
-
             var stop = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             var frames = parse.GetValue(dumpFrames) is null ? null : new List<FrameJson>();
             var meter = new LevelMeter(context.Error, enabled: !Console.IsErrorRedirected);
             var silence = parse.GetValue(untilSilence) is { } quiet ? new SilenceDetector(quiet) : null;
-            var frameLength = TimeSpan.FromMilliseconds(20);
 
             host.Audio.FrameCaptured += frame =>
             {
-                frames?.Add(new FrameJson(Math.Round(frame.At.TotalSeconds, 3), frame.Rms, frame.Bands.ToArray()));
+                frames?.Add(new FrameJson(Math.Round(frame.At.TotalSeconds, FrameTimeDecimals), frame.Rms, frame.Bands.ToArray()));
                 meter.Update(frame);
-                if (silence?.Push(frame.Rms, frameLength) == true)
+                if (silence?.Push(frame.Rms, FrameLength) == true)
                 {
                     stop.TrySetResult(true);
                 }
@@ -106,23 +126,23 @@ internal static class RecordCommand
 
             context.Error.WriteLine("Transcribing…");
             var target = parse.GetValue(output);
-            var sink = target == "stdout" ? null : InjectorOutput.For(
+            var sink = target == ToStdout ? null : InjectorOutput.For(
                 context.Platform.Injector,
-                target == "paste" ? OutputMode.Paste : OutputMode.Clipboard,
+                target == ToPaste ? OutputMode.Paste : OutputMode.Clipboard,
                 context.TryLoadConfig()?.Profiles.FirstOrDefault(p => p.Id == profile.Id)?.PasteShortcut ?? PasteShortcut.Auto,
                 context.TryLoadConfig()?.General ?? new GeneralSettings());
             var result = await pipeline.StopAsync(profile, sink, token).ConfigureAwait(false);
 
             if (parse.GetValue(dumpFrames) is { } dumpPath && frames is not null)
             {
-                var dump = new FrameDumpJson(50, frames.FirstOrDefault()?.Bands.Length ?? 0, frames);
+                var dump = new FrameDumpJson(FramesPerSecond, frames.FirstOrDefault()?.Bands.Length ?? 0, frames);
                 await File.WriteAllTextAsync(dumpPath, JsonSerializer.Serialize(dump, CliJsonContext.Readable.FrameDumpJson), token).ConfigureAwait(false);
                 context.Error.WriteLine($"Wrote {frames.Count} frames to {dumpPath}");
             }
 
             if (sink is not null && !parse.GetValue(options.Json))
             {
-                context.Error.WriteLine(result.Text.Length == 0 ? "No speech detected." : target == "paste" ? "Pasted." : "Copied to the clipboard.");
+                context.Error.WriteLine(result.Text.Length == 0 ? "No speech detected." : target == ToPaste ? "Pasted." : "Copied to the clipboard.");
                 return ExitCodes.Success;
             }
 
@@ -150,7 +170,7 @@ internal static class RecordCommand
                 }
             }
 
-            await Task.Delay(50, CancellationToken.None).ConfigureAwait(false);
+            await Task.Delay(KeyPollInterval, CancellationToken.None).ConfigureAwait(false);
         }
     }
 
@@ -171,13 +191,12 @@ internal static class RecordCommand
             lock (_gate)
             {
                 _peak = Math.Max(_peak, frame.Rms);
-                if (_sinceDraw.ElapsedMilliseconds < 100)
+                if (_sinceDraw.ElapsedMilliseconds < MeterRedrawMs)
                 {
                     return;
                 }
 
-                // Map -60..0 dBFS onto the bar.
-                var level = Math.Clamp((Levels.ToDb(_peak) + 60f) / 60f, 0f, 1f);
+                var level = Math.Clamp((Levels.ToDb(_peak) + MeterRangeDb) / MeterRangeDb, 0f, 1f);
                 var filled = (int)Math.Round(level * MeterWidth);
                 writer.Write($"\r  {frame.At:mm\\:ss} [{new string('#', filled)}{new string(' ', MeterWidth - filled)}]");
                 _peak = 0;
@@ -191,7 +210,7 @@ internal static class RecordCommand
             {
                 lock (_gate)
                 {
-                    writer.Write($"\r{new string(' ', MeterWidth + 12)}\r");
+                    writer.Write($"\r{new string(' ', MeterLineWidth)}\r");
                 }
             }
         }

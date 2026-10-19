@@ -13,6 +13,9 @@ namespace Dictum.Cli.Commands;
 
 internal static class DoctorCommand
 {
+    /// <summary>Width of the check name column; hints line up under the details.</summary>
+    private const int NameWidth = 22;
+
     public static Command Create()
     {
         var json = new Option<bool>("--json") { Description = "Print JSON" };
@@ -56,10 +59,10 @@ internal static class DoctorCommand
                 context.Out.WriteLine($"dictum {CliApp.Version} on {RuntimeInformation.OSDescription} ({RuntimeInformation.RuntimeIdentifier})");
                 foreach (var check in checks)
                 {
-                    context.Out.WriteLine($"{Label(check.Level)} {check.Name,-22} {check.Detail}");
+                    context.Out.WriteLine($"{Label(check.Level)} {check.Name,-NameWidth} {check.Detail}");
                     if (check.Hint is not null && check.Level != HealthLevel.Ok)
                     {
-                        context.Out.WriteLine($"     {"",-22} → {check.Hint}");
+                        context.Out.WriteLine($"     {"",-NameWidth} → {check.Hint}");
                     }
                 }
             }
@@ -74,7 +77,7 @@ internal static class DoctorCommand
     {
         try
         {
-            var status = (await new IpcClient(context.SocketPath).SendAsync(new IpcRequest("status"), ct).ConfigureAwait(false)).Status!;
+            var status = (await new IpcClient(context.SocketPath).SendAsync(new IpcRequest(IpcCommand.Status), ct).ConfigureAwait(false)).Status!;
             var registered = status.Profiles.Count(p => p.Registered);
             var detail = $"running (pid {status.ProcessId}), {status.State}; {registered} hotkey(s) registered via {status.HotkeyBackend}";
             return status.Warning is null ? HealthStatus.Ok(detail) : HealthStatus.Warning(detail, status.Warning);

@@ -18,6 +18,10 @@ namespace Dictum.Cli.Commands;
 internal static class InitCommand
 {
     private const string CleanupSecret = "dictum-cleanup";
+    private const string NoCleanup = "none";
+    private const string GpuAuto = "auto";
+    private const string GpuCpu = "cpu";
+    private const string DefaultServerUrl = "http://localhost:8080/v1";
 
     public static Command Create()
     {
@@ -30,7 +34,7 @@ internal static class InitCommand
         var vocabFile = new Option<string?>("--vocab-file") { Description = "Words to add to the profile, one per line" };
         var autostart = new Option<bool>("--autostart") { Description = "Start the daemon at login" };
         var gpu = new Option<string?>("--gpu") { Description = "auto (default) or cpu" };
-        gpu.AcceptOnlyFromAmong("auto", "cpu");
+        gpu.AcceptOnlyFromAmong(GpuAuto, GpuCpu);
         var json = new Option<bool>("--json") { Description = "Print a JSON summary" };
 
         var command = new Command("init", "Set Dictum up: choose and download a speech model, cleanup and your words")
@@ -93,7 +97,7 @@ internal static class InitCommand
                 server is null ? CleanupChoice.None : CleanupChoice.ExistingServer,
                 server,
                 words,
-                ForceCpu: parse.GetValue(gpu) == "cpu");
+                ForceCpu: parse.GetValue(gpu) == GpuCpu);
             var plan = SetupPlanner.Plan(current, answers, catalog, e => ModelFiles.IsInstalled(context.Paths, e));
 
             if (plan.Downloads.Count == 0)
@@ -121,7 +125,7 @@ internal static class InitCommand
                 await WarnIfUnreachableAsync(context, plan.Config, pendingSecret, token).ConfigureAwait(false);
             }
 
-            using (var http = FileDownloader.CreateHttpClient($"dictum/{CliApp.Version}"))
+            using (var http = FileDownloader.CreateHttpClient(CliApp.UserAgent))
             using (var view = new SetupProgressView(context.Error, redraw: !Console.IsErrorRedirected))
             {
                 await new SetupRunner(new FileDownloader(http), context.Paths)
@@ -136,7 +140,7 @@ internal static class InitCommand
 
             context.Out.WriteLine(parse.GetValue(json)
                 ? JsonSerializer.Serialize(
-                    new InitJson(context.ConfigPath, sttAnswer ?? defaults.KeptModelFile ?? "", [.. plan.Downloads.Select(d => d.Id)], server?.BaseUrl ?? "none", autostartAnswer),
+                    new InitJson(context.ConfigPath, sttAnswer ?? defaults.KeptModelFile ?? "", [.. plan.Downloads.Select(d => d.Id)], server?.BaseUrl ?? NoCleanup, autostartAnswer),
                     CliJsonContext.Readable.InitJson)
                 : context.ConfigPath);
             return ExitCodes.Success;
@@ -187,7 +191,7 @@ internal static class InitCommand
     {
         if (llm is not null)
         {
-            if (llm == "none")
+            if (llm == NoCleanup)
             {
                 return (null, null);
             }
@@ -211,11 +215,11 @@ internal static class InitCommand
             return (null, null);
         }
 
-        var baseUrl = prompt.Ask("Server URL, including /v1", current?.BaseUrl ?? "http://localhost:8080/v1");
+        var baseUrl = prompt.Ask("Server URL, including /v1", current?.BaseUrl ?? DefaultServerUrl);
         while (!ConfigValidator.IsHttpUrl(baseUrl))
         {
             context.Error.WriteLine($"'{baseUrl}' is not a server URL; it starts with http:// or https://, e.g. http://localhost:8080/v1.");
-            baseUrl = prompt.Ask("Server URL, including /v1", current?.BaseUrl ?? "http://localhost:8080/v1");
+            baseUrl = prompt.Ask("Server URL, including /v1", current?.BaseUrl ?? DefaultServerUrl);
         }
         var modelName = prompt.Ask("Model name on that server", current?.Model);
         var apiKey = SetupPlanner.CarriedApiKey(current, baseUrl);
@@ -329,7 +333,7 @@ internal static class InitCommand
         bool running;
         try
         {
-            await new IpcClient(context.SocketPath).SendAsync(new IpcRequest("status"), ct).ConfigureAwait(false);
+            await new IpcClient(context.SocketPath).SendAsync(new IpcRequest(IpcCommand.Status), ct).ConfigureAwait(false);
             running = true;
         }
         catch (DaemonNotRunningException)

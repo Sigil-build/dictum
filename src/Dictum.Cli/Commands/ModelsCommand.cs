@@ -40,7 +40,7 @@ internal static class ModelsCommand
         pull.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, async (context, token) =>
         {
             var entries = (parse.GetValue(ids) ?? []).Select(Catalog.BuiltIn.Get).ToList();
-            using var http = FileDownloader.CreateHttpClient($"dictum/{CliApp.Version}");
+            using var http = FileDownloader.CreateHttpClient(CliApp.UserAgent);
             using var view = new SetupProgressView(context.Error, redraw: !Console.IsErrorRedirected);
             var runner = new SetupRunner(new FileDownloader(http), context.Paths);
             await runner.DownloadAsync(entries, HardwareProbe.Detect(context.Paths).FreeDiskBytes, view, token).ConfigureAwait(false);

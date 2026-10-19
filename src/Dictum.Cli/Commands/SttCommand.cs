@@ -8,6 +8,8 @@ namespace Dictum.Cli.Commands;
 
 internal static class SttCommand
 {
+    private const int RecordSeconds = 5;
+
     public static Command Create()
     {
         var command = new Command("stt", "List and test speech-to-text providers");
@@ -35,7 +37,7 @@ internal static class SttCommand
     private static Command Test()
     {
         var id = new Argument<string>("id") { Description = "Provider id" };
-        var file = new Option<string?>("--file", "-f") { Description = "WAV file to transcribe instead of recording 5 seconds" };
+        var file = new Option<string?>("--file", "-f") { Description = $"WAV file to transcribe instead of recording {RecordSeconds} seconds" };
         var language = new Option<string?>("--lang", "-l") { Description = "Language code, a list such as \"uk, en\" to pick from, or auto" };
         var command = new Command("test", "Check a provider and transcribe a sample with it") { id, file, language };
 
@@ -65,9 +67,9 @@ internal static class SttCommand
             else
             {
                 var audio = context.Host().Audio;
-                context.Error.WriteLine("Recording 5 seconds… say something.");
+                context.Error.WriteLine($"Recording {RecordSeconds} seconds… say something.");
                 await audio.StartAsync(context.TryLoadConfig()?.General.AudioDevice, token).ConfigureAwait(false);
-                await Task.Delay(TimeSpan.FromSeconds(5), token).ConfigureAwait(false);
+                await Task.Delay(TimeSpan.FromSeconds(RecordSeconds), token).ConfigureAwait(false);
                 clip = await audio.StopAsync(token).ConfigureAwait(false);
             }
 

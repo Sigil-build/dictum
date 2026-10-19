@@ -10,12 +10,12 @@ internal static class ControlCommands
 {
     public static IEnumerable<Command> Create()
     {
-        yield return Control("toggle", "Start dictation, or stop it and paste the text (bind this in your compositor)");
-        yield return Control("start", "Start dictation");
-        yield return Control("stop", "Stop dictation and paste the text");
-        yield return Control("cancel", "Stop dictation and discard it");
-        yield return Control("reload", "Re-read the config file now");
-        yield return Control("shutdown", "Stop the running daemon");
+        yield return Control(IpcCommand.Toggle, "Start dictation, or stop it and paste the text (bind this in your compositor)");
+        yield return Control(IpcCommand.Start, "Start dictation");
+        yield return Control(IpcCommand.Stop, "Stop dictation and paste the text");
+        yield return Control(IpcCommand.Cancel, "Stop dictation and discard it");
+        yield return Control(IpcCommand.Reload, "Re-read the config file now");
+        yield return Control(IpcCommand.Shutdown, "Stop the running daemon");
         yield return Status();
     }
 
@@ -44,7 +44,7 @@ internal static class ControlCommands
         var json = new Option<bool>("--json") { Description = "Print JSON" };
         var watch = new Option<bool>("--watch") { Description = "Keep printing state changes, results and status as JSON lines until Ctrl+C" };
         var frames = new Option<bool>("--frames") { Description = "With --watch, also print audio frames (50 per second)" };
-        var command = new Command("status", "Show whether the daemon runs, its state, hotkeys and backends") { json, watch, frames };
+        var command = new Command(IpcCommand.Status, "Show whether the daemon runs, its state, hotkeys and backends") { json, watch, frames };
         command.SetAction((parse, ct) => CliApp.RunAsync(parse, ct, async (context, token) =>
         {
             if (parse.GetValue(watch))
@@ -52,7 +52,7 @@ internal static class ControlCommands
                 await using var subscription = await new IpcClient(context.SocketPath).SubscribeAsync(token).ConfigureAwait(false);
                 await foreach (var message in subscription.ReadEventsAsync(token).ConfigureAwait(false))
                 {
-                    if (message.Event != "frame" || parse.GetValue(frames))
+                    if (message.Event != IpcEventKind.Frame || parse.GetValue(frames))
                     {
                         context.Out.WriteLine(JsonSerializer.Serialize(message, CliJsonContext.Readable.IpcEvent));
                     }
@@ -61,7 +61,7 @@ internal static class ControlCommands
                 return ExitCodes.Success;
             }
 
-            var response = await new IpcClient(context.SocketPath).SendAsync(new IpcRequest("status"), token).ConfigureAwait(false);
+            var response = await new IpcClient(context.SocketPath).SendAsync(new IpcRequest(IpcCommand.Status), token).ConfigureAwait(false);
             var status = response.Status!;
             if (parse.GetValue(json))
             {

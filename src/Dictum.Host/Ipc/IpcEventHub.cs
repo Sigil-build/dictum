@@ -5,6 +5,8 @@ namespace Dictum.Host.Ipc;
 /// <summary>Fans daemon events out to every subscriber, never waiting on one.</summary>
 public sealed class IpcEventHub
 {
+    private static readonly TimeSpan DeliveryPollInterval = TimeSpan.FromMilliseconds(10);
+
     private readonly Lock _gate = new();
     private readonly List<IpcSubscriber> _subscribers = [];
 
@@ -67,7 +69,7 @@ public sealed class IpcEventHub
                 return false;
             }
 
-            await Task.Delay(10).ConfigureAwait(false);
+            await Task.Delay(DeliveryPollInterval).ConfigureAwait(false);
         }
     }
 
@@ -102,7 +104,7 @@ public sealed class IpcSubscriber : IDisposable
 
     public void Post(IpcEvent message)
     {
-        if (message.Event == "frame")
+        if (message.Event == IpcEventKind.Frame)
         {
             Interlocked.Exchange(ref _frame, message);
         }

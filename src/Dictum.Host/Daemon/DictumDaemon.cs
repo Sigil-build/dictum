@@ -20,6 +20,21 @@ namespace Dictum.Host.Daemon;
 /// </summary>
 public sealed class DictumDaemon : IAsyncDisposable
 {
+    /// <summary>Must match the LogicalName of the sample in Dictum.Host.csproj.</summary>
+    private const string SampleResource = "Dictum.Host.Samples.uk.wav";
+
+    private const int DefaultTestSeconds = 5;
+    private const int MinTestSeconds = 1;
+    private const int MaxTestSeconds = 30;
+
+    /// <summary>The expiry check runs a few times per monitor lifetime, within these bounds.</summary>
+    private const int MonitorChecksPerLifetime = 4;
+    private const double MinMonitorCheckMs = 20;
+    private const double MaxMonitorCheckMs = 1000;
+
+    /// <summary>A level meter its client does not renew within this time is closed.</summary>
+    private static readonly TimeSpan DefaultMonitorLifetime = TimeSpan.FromSeconds(60);
+
     private readonly Func<DictumConfig, IDictationEngine> _createEngine;
     private readonly PlatformServices _platform;
     private readonly ISoundPlayer _sounds;
@@ -64,7 +79,7 @@ public sealed class DictumDaemon : IAsyncDisposable
         _log = log;
         _events = events ?? new IpcEventHub();
         _configWarnings = configWarnings ?? [];
-        _monitorLifetime = monitorLifetime ?? TimeSpan.FromSeconds(60);
+        _monitorLifetime = monitorLifetime ?? DefaultMonitorLifetime;
         _engine = createEngine(config);
     }
 
@@ -90,7 +105,7 @@ public sealed class DictumDaemon : IAsyncDisposable
         }
 
         _stoppingAnnounced = true;
-        _events.Publish(IpcEvent.Stopping(_shutdown.Task.IsCompleted ? "shutdown" : "exit"));
+        _events.Publish(IpcEvent.Stopping(_shutdown.Task.IsCompleted ? StoppingReason.Shutdown : StoppingReason.Exit));
         await _events.WhenDeliveredAsync(timeout).ConfigureAwait(false);
     }
 
@@ -168,16 +183,16 @@ public sealed class DictumDaemon : IAsyncDisposable
         {
             switch (request.Command)
             {
-                case "status":
-                case "subscribe":
+                case IpcCommand.Status:
+                case IpcCommand.Subscribe:
                     break;
-                case "start":
+                case IpcCommand.Start:
                     await StartDictationAsync(ProfileFor(request.Profile), ct).ConfigureAwait(false);
                     break;
-                case "stop":
+                case IpcCommand.Stop:
                     _ = StopDictationAsync(_activeProfile);
                     break;
-                case "toggle":
+                case IpcCommand.Toggle:
                     if (State == PipelineState.Recording)
                     {
                         _ = StopDictationAsync(_activeProfile);
@@ -188,10 +203,10 @@ public sealed class DictumDaemon : IAsyncDisposable
                     }
 
                     break;
-                case "cancel":
+                case IpcCommand.Cancel:
                     await CancelAsync().ConfigureAwait(false);
                     break;
-                case "reload":
+                case IpcCommand.Reload:
                     if (ReloadHandler is null)
                     {
                         return IpcResponse.Failure("This daemon cannot reload its config.");
@@ -199,36 +214,36 @@ public sealed class DictumDaemon : IAsyncDisposable
 
                     await ReloadHandler(ct).ConfigureAwait(false);
                     break;
-                case "shutdown":
+                case IpcCommand.Shutdown:
                     await CancelAsync().ConfigureAwait(false);
                     _shutdown.TrySetResult();
                     break;
-                case "pause-hotkeys":
-                case "resume-hotkeys":
-                    _paused = request.Command == "pause-hotkeys";
+                case IpcCommand.PauseHotkeys:
+                case IpcCommand.ResumeHotkeys:
+                    _paused = request.Command == IpcCommand.PauseHotkeys;
                     await RegisterHotkeysAsync(ct).ConfigureAwait(false);
                     break;
-                case "use-profile":
+                case IpcCommand.UseProfile:
                     _selectedProfile = request.Profile is { } id && Config.Profiles.Any(p => p.Id == id)
                         ? id
                         : throw new ConfigException($"Unknown profile '{request.Profile}'.");
                     _events.Publish(IpcEvent.ForStatus(Status()));
                     break;
-                case "devices":
+                case IpcCommand.Devices:
                     return new IpcResponse(true, Status: Status(), Devices: _engine.Audio.ListDevices());
-                case "doctor":
+                case IpcCommand.Doctor:
                     if (DoctorHandler is null)
                     {
                         return IpcResponse.Failure("This daemon cannot run the checks.");
                     }
 
                     return new IpcResponse(true, Status: Status(), Checks: await DoctorHandler(ct).ConfigureAwait(false));
-                case "test-stt":
+                case IpcCommand.TestStt:
                     return new IpcResponse(true, Status: Status(), Test: await TestSttAsync(request, ct).ConfigureAwait(false));
-                case "monitor-start":
+                case IpcCommand.MonitorStart:
                     await StartMonitorAsync(request.Device, ct).ConfigureAwait(false);
                     break;
-                case "monitor-stop":
+                case IpcCommand.MonitorStop:
                     await _gate.WaitAsync(ct).ConfigureAwait(false);
                     try
                     {
@@ -276,7 +291,7 @@ public sealed class DictumDaemon : IAsyncDisposable
         if (!_stoppingAnnounced)
         {
             _stoppingAnnounced = true;
-            _events.Publish(IpcEvent.Stopping(_shutdown.Task.IsCompleted ? "shutdown" : "exit"));
+            _events.Publish(IpcEvent.Stopping(_shutdown.Task.IsCompleted ? StoppingReason.Shutdown : StoppingReason.Exit));
         }
 
         await _stopping.CancelAsync().ConfigureAwait(false);
@@ -508,7 +523,7 @@ public sealed class DictumDaemon : IAsyncDisposable
             {
                 try
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(Math.Clamp(request.Seconds ?? 5, 1, 30)), ct).ConfigureAwait(false);
+                    await Task.Delay(TimeSpan.FromSeconds(Math.Clamp(request.Seconds ?? DefaultTestSeconds, MinTestSeconds, MaxTestSeconds)), ct).ConfigureAwait(false);
                 }
                 finally
                 {
@@ -532,7 +547,7 @@ public sealed class DictumDaemon : IAsyncDisposable
     /// <summary>6.9 s of Ukrainian speech ("тестовий запис"), synthesised with Piper TTS from a CC0 dataset.</summary>
     private static AudioClip LoadSample()
     {
-        using var stream = typeof(DictumDaemon).Assembly.GetManifestResourceStream("Dictum.Host.Samples.uk.wav")
+        using var stream = typeof(DictumDaemon).Assembly.GetManifestResourceStream(SampleResource)
             ?? throw new InvalidOperationException("The built-in speech sample is missing from this build.");
         return Wav.ReadClip(stream);
     }
@@ -567,7 +582,8 @@ public sealed class DictumDaemon : IAsyncDisposable
     /// <summary>Closes a monitor its client stopped renewing, e.g. after the desktop app crashed.</summary>
     private async Task ExpireMonitorAsync()
     {
-        var step = TimeSpan.FromMilliseconds(Math.Clamp(_monitorLifetime.TotalMilliseconds / 4, 20, 1000));
+        var step = TimeSpan.FromMilliseconds(Math.Clamp(
+            _monitorLifetime.TotalMilliseconds / MonitorChecksPerLifetime, MinMonitorCheckMs, MaxMonitorCheckMs));
         while (_monitoring)
         {
             await Task.Delay(step, _stopping.Token).ConfigureAwait(false);

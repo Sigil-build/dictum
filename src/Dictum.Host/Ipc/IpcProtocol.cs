@@ -9,13 +9,53 @@ public static class IpcProtocol
 {
     /// <summary>Bumped whenever a message changes shape; the desktop app refuses a daemon with another version.</summary>
     public const int Version = 1;
+
+    /// <summary>Every message is one line of JSON.</summary>
+    internal const char LineEnd = '\n';
 }
 
-/// <param name="Command">
-/// <c>toggle</c>, <c>start</c>, <c>stop</c>, <c>cancel</c>, <c>status</c>, <c>reload</c>, <c>subscribe</c>, <c>shutdown</c>,
-/// <c>pause-hotkeys</c>, <c>resume-hotkeys</c>, <c>use-profile</c>, <c>devices</c>, <c>monitor-start</c>, <c>monitor-stop</c>,
-/// <c>test-stt</c> or <c>doctor</c>.
-/// </param>
+/// <summary>The commands the daemon answers, sent as <see cref="IpcRequest.Command"/>.</summary>
+public static class IpcCommand
+{
+    public const string Toggle = "toggle";
+    public const string Start = "start";
+    public const string Stop = "stop";
+    public const string Cancel = "cancel";
+    public const string Status = "status";
+    public const string Reload = "reload";
+    public const string Subscribe = "subscribe";
+    public const string Shutdown = "shutdown";
+    public const string PauseHotkeys = "pause-hotkeys";
+    public const string ResumeHotkeys = "resume-hotkeys";
+    public const string UseProfile = "use-profile";
+    public const string Devices = "devices";
+    public const string Doctor = "doctor";
+    public const string TestStt = "test-stt";
+    public const string MonitorStart = "monitor-start";
+    public const string MonitorStop = "monitor-stop";
+}
+
+/// <summary>The kinds of <see cref="IpcEvent"/> on the <c>subscribe</c> stream.</summary>
+public static class IpcEventKind
+{
+    public const string State = "state";
+    public const string Frame = "frame";
+    public const string Finished = "finished";
+    public const string Status = "status";
+    public const string Stopping = "stopping";
+}
+
+/// <summary>Why the daemon sent a <c>stopping</c> event.</summary>
+public static class StoppingReason
+{
+    /// <summary>A client sent <c>shutdown</c>.</summary>
+    public const string Shutdown = "shutdown";
+
+    /// <summary>The process ends for another reason, such as Ctrl+C or SIGTERM.</summary>
+    public const string Exit = "exit";
+}
+
+/// <param name="Command">One of <see cref="IpcCommand"/>.</param>
 /// <param name="Profile">Profile id; null means the selected or first profile.</param>
 /// <param name="Stt">STT provider id, for <c>test-stt</c>.</param>
 /// <param name="Device">Microphone, for <c>monitor-start</c>; null means the configured one.</param>
@@ -72,9 +112,9 @@ public static class DictationOutcome
 }
 
 /// <summary>
-/// One line of the <c>subscribe</c> stream: <c>state</c>, <c>frame</c>, <c>finished</c>, <c>status</c> or <c>stopping</c>.
-/// Fields that do not apply are left out of the JSON. A frame can arrive just after the state it belonged to has
-/// ended; consumers ignore frames outside recording and monitoring.
+/// One line of the <c>subscribe</c> stream, of a kind from <see cref="IpcEventKind"/>. Fields that do not apply are left
+/// out of the JSON. A frame can arrive just after the state it belonged to has ended; consumers ignore frames outside
+/// recording and monitoring.
 /// </summary>
 public sealed record IpcEvent(
     string Event,
@@ -92,18 +132,21 @@ public sealed record IpcEvent(
     DaemonStatus? Status = null,
     string? Reason = null)
 {
+    /// <summary>Frame times are rounded to the millisecond.</summary>
+    private const int FrameTimeDecimals = 3;
+
     public static IpcEvent ForState(PipelineState state, string? profile, string? mode) =>
-        new("state", State: state.ToString(), Profile: profile, Mode: mode);
+        new(IpcEventKind.State, State: state.ToString(), Profile: profile, Mode: mode);
 
     public static IpcEvent ForFrame(AudioFrame frame) =>
-        new("frame", T: Math.Round(frame.At.TotalSeconds, 3), Rms: frame.Rms, Bands: frame.Bands.ToArray());
+        new(IpcEventKind.Frame, T: Math.Round(frame.At.TotalSeconds, FrameTimeDecimals), Rms: frame.Rms, Bands: frame.Bands.ToArray());
 
     public static IpcEvent Finished(string outcome, string? message, string? language, long durationMs, long? transcribeMs) =>
-        new("finished", Outcome: outcome, Message: message, Language: language, DurationMs: durationMs, TranscribeMs: transcribeMs);
+        new(IpcEventKind.Finished, Outcome: outcome, Message: message, Language: language, DurationMs: durationMs, TranscribeMs: transcribeMs);
 
-    public static IpcEvent ForStatus(DaemonStatus status) => new("status", Status: status);
+    public static IpcEvent ForStatus(DaemonStatus status) => new(IpcEventKind.Status, Status: status);
 
-    public static IpcEvent Stopping(string reason) => new("stopping", Reason: reason);
+    public static IpcEvent Stopping(string reason) => new(IpcEventKind.Stopping, Reason: reason);
 }
 
 [JsonSourceGenerationOptions(

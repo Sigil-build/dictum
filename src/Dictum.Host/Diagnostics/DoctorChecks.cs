@@ -102,9 +102,11 @@ public static class DoctorChecks
 
     private static void CheckAudio(Func<IAudioSource> audio, Action<string, HealthStatus> add)
     {
-        if (Environment.GetEnvironmentVariable("DICTUM_AUDIO_FILE") is { Length: > 0 } file)
+        if (Environment.GetEnvironmentVariable(EnvironmentVariables.AudioFile) is { Length: > 0 } file)
         {
-            add("microphone", HealthStatus.Warning($"Replaced by DICTUM_AUDIO_FILE={file}", "Unset DICTUM_AUDIO_FILE to record from the microphone."));
+            add("microphone", HealthStatus.Warning(
+                $"Replaced by {EnvironmentVariables.AudioFile}={file}",
+                $"Unset {EnvironmentVariables.AudioFile} to record from the microphone."));
             return;
         }
 

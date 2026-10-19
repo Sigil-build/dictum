@@ -41,6 +41,8 @@ internal static class CliApp
     public static string Version { get; } =
         typeof(CliApp).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "0.0.0";
 
+    public static string UserAgent => $"dictum/{Version}";
+
     public static RootCommand BuildRoot()
     {
         var root = new RootCommand("Dictum: voice to text. Results go to stdout; logs and progress go to stderr.")

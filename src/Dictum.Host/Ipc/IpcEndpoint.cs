@@ -1,5 +1,6 @@
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Dictum.Core;
@@ -19,20 +20,28 @@ public sealed class DaemonAlreadyRunningException(string message) : Exception(me
 /// </summary>
 public static class IpcEndpoint
 {
+    private const string SocketFileName = "dictum.sock";
+
+    /// <summary>The OS limit is 108 bytes, 104 on macOS; this leaves a margin below both.</summary>
+    private const int MaxSocketPathBytes = 100;
+
+    /// <summary>Hex digits of the path hash in a shortened socket name: 48 bits keep data directories apart.</summary>
+    private const int ShortHashLength = 12;
+
     public static string SocketPath(AppPaths paths)
     {
-        if (Environment.GetEnvironmentVariable("DICTUM_SOCKET") is { Length: > 0 } custom)
+        if (Environment.GetEnvironmentVariable(EnvironmentVariables.Socket) is { Length: > 0 } custom)
         {
             return custom;
         }
 
         if (OperatingSystem.IsLinux() && Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR") is { Length: > 0 } runtime)
         {
-            return Path.Combine(runtime, "dictum.sock");
+            return Path.Combine(runtime, SocketFileName);
         }
 
         // macOS and Linux without XDG_RUNTIME_DIR use the per-user data directory; Windows uses %LOCALAPPDATA%\Dictum.
-        return Shorten(Path.Combine(paths.DataDirectory, "dictum.sock"));
+        return Shorten(Path.Combine(paths.DataDirectory, SocketFileName));
     }
 
     /// <summary>
@@ -41,29 +50,28 @@ public static class IpcEndpoint
     /// </summary>
     public static string Shorten(string path)
     {
-        const int Limit = 100;
-        if (Encoding.UTF8.GetByteCount(path) <= Limit)
+        if (Encoding.UTF8.GetByteCount(path) <= MaxSocketPathBytes)
         {
             return path;
         }
 
-        var hash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(path)))[..12];
+        var hash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(path)))[..ShortHashLength];
         return Path.Combine(Path.GetTempPath(), $"dictum-{hash}.sock");
     }
 }
 
 public sealed class IpcClient(string socketPath)
 {
-    private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(10);
 
     /// <param name="timeout">How long to wait for the answer; slow commands such as <c>test-stt</c> pass a longer one.</param>
     public async Task<IpcResponse> SendAsync(IpcRequest request, CancellationToken ct, TimeSpan? timeout = null)
     {
         using var socket = await ConnectAsync(ct).ConfigureAwait(false);
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        deadline.CancelAfter(timeout ?? Timeout);
+        deadline.CancelAfter(timeout ?? DefaultTimeout);
         await using var stream = new NetworkStream(socket, ownsSocket: false);
-        var line = JsonSerializer.Serialize(request, IpcJsonContext.Default.IpcRequest) + "\n";
+        var line = JsonSerializer.Serialize(request, IpcJsonContext.Default.IpcRequest) + IpcProtocol.LineEnd;
         await stream.WriteAsync(Encoding.UTF8.GetBytes(line), deadline.Token).ConfigureAwait(false);
 
         using var reader = new StreamReader(stream, Encoding.UTF8);
@@ -81,8 +89,8 @@ public sealed class IpcClient(string socketPath)
         try
         {
             using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            deadline.CancelAfter(Timeout);
-            var line = JsonSerializer.Serialize(new IpcRequest("subscribe"), IpcJsonContext.Default.IpcRequest) + "\n";
+            deadline.CancelAfter(DefaultTimeout);
+            var line = JsonSerializer.Serialize(new IpcRequest(IpcCommand.Subscribe), IpcJsonContext.Default.IpcRequest) + IpcProtocol.LineEnd;
             await stream.WriteAsync(Encoding.UTF8.GetBytes(line), deadline.Token).ConfigureAwait(false);
             var reader = new StreamReader(stream, Encoding.UTF8);
             var reply = await reader.ReadLineAsync(deadline.Token).ConfigureAwait(false)
@@ -148,6 +156,13 @@ public sealed class IpcSubscription(IpcResponse response, NetworkStream stream, 
 /// </summary>
 public sealed class IpcServer : IAsyncDisposable
 {
+    private const string LockFileSuffix = ".lock";
+
+    /// <summary>The accept loop hands every connection off at once, so a short queue of pending ones is plenty.</summary>
+    private const int ListenBacklog = 8;
+
+    private static readonly TimeSpan DefaultWriteTimeout = TimeSpan.FromSeconds(5);
+
     private readonly string _socketPath;
     private readonly ILog _log;
     private readonly IpcEventHub? _events;
@@ -164,7 +179,7 @@ public sealed class IpcServer : IAsyncDisposable
         _socketPath = socketPath;
         _log = log;
         _events = events;
-        _writeTimeout = writeTimeout ?? TimeSpan.FromSeconds(5);
+        _writeTimeout = writeTimeout ?? DefaultWriteTimeout;
     }
 
     public string SocketPath => _socketPath;
@@ -174,7 +189,7 @@ public sealed class IpcServer : IAsyncDisposable
         Directory.CreateDirectory(Path.GetDirectoryName(_socketPath)!);
         try
         {
-            _lock = new FileStream(_socketPath + ".lock", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            _lock = new FileStream(_socketPath + LockFileSuffix, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
         }
         catch (IOException)
         {
@@ -194,7 +209,7 @@ public sealed class IpcServer : IAsyncDisposable
             File.SetUnixFileMode(_socketPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
         }
 
-        listener.Listen(8);
+        listener.Listen(ListenBacklog);
         _listener = listener;
         _acceptLoop = AcceptLoopAsync(listener, handler, _stop.Token);
         _log.Info($"Listening on {_socketPath}");
@@ -265,7 +280,7 @@ public sealed class IpcServer : IAsyncDisposable
 
                     // Subscribed before the reply is built: an event published meanwhile follows the reply instead of being
                     // lost, so a client that connects while the daemon registers its hotkeys hears about it.
-                    subscriber = request?.Command == "subscribe" ? _events?.Subscribe() : null;
+                    subscriber = request?.Command == IpcCommand.Subscribe ? _events?.Subscribe() : null;
                     response = request is null
                         ? IpcResponse.Failure("Empty request.")
                         : await handler(request, ct).ConfigureAwait(false);
@@ -286,7 +301,7 @@ public sealed class IpcServer : IAsyncDisposable
                     subscriber = null;
                 }
 
-                var reply = JsonSerializer.Serialize(response, IpcJsonContext.Default.IpcResponse) + "\n";
+                var reply = JsonSerializer.Serialize(response, IpcJsonContext.Default.IpcResponse) + IpcProtocol.LineEnd;
                 await stream.WriteAsync(Encoding.UTF8.GetBytes(reply), ct).ConfigureAwait(false);
                 if (subscriber is not null)
                 {
@@ -322,7 +337,7 @@ public sealed class IpcServer : IAsyncDisposable
                 var text = new StringBuilder();
                 foreach (var message in batch)
                 {
-                    text.Append(JsonSerializer.Serialize(message, IpcJsonContext.Default.IpcEvent)).Append('\n');
+                    text.Append(JsonSerializer.Serialize(message, IpcJsonContext.Default.IpcEvent)).Append(IpcProtocol.LineEnd);
                 }
 
                 using var write = CancellationTokenSource.CreateLinkedTokenSource(closed.Token);

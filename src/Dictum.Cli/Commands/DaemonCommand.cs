@@ -12,6 +12,9 @@ namespace Dictum.Cli.Commands;
 
 internal static class DaemonCommand
 {
+    /// <summary>How long a stop waits for subscribers to hear that the daemon stops, so they do not restart it.</summary>
+    private static readonly TimeSpan StoppingAnnounceTimeout = TimeSpan.FromSeconds(1);
+
     public static Command Create()
     {
         var install = new Option<bool>("--install-autostart") { Description = "Start the daemon at login, then exit" };
@@ -81,7 +84,7 @@ internal static class DaemonCommand
             await Task.WhenAny(Task.Delay(Timeout.Infinite, token), terminated.Task, daemon.ShutdownRequested).ConfigureAwait(false);
 
             log.Info("Daemon stopping");
-            await daemon.AnnounceStoppingAsync(TimeSpan.FromSeconds(1)).ConfigureAwait(false);
+            await daemon.AnnounceStoppingAsync(StoppingAnnounceTimeout).ConfigureAwait(false);
             return ExitCodes.Success;
         }, consoleLevel: LogLevel.Info));
 
