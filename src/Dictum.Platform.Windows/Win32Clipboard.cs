@@ -59,6 +59,13 @@ public sealed unsafe class Win32Clipboard(TimeSpan? openTimeout = null) : IClipb
                 }
 
                 var target = (char*)Win32.GlobalLock(memory);
+                if (target is null)
+                {
+                    var error = Marshal.GetLastPInvokeError();
+                    Win32.GlobalFree(memory);
+                    throw new Win32Exception(error, "GlobalLock failed");
+                }
+
                 text.AsSpan().CopyTo(new Span<char>(target, text.Length));
                 target[text.Length] = '\0';
                 Win32.GlobalUnlock(memory);

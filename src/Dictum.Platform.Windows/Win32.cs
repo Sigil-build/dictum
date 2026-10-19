@@ -74,7 +74,7 @@ internal static unsafe partial class Win32
     [LibraryImport("kernel32", SetLastError = true)]
     public static partial nint GlobalAlloc(uint flags, nuint bytes);
 
-    [LibraryImport("kernel32")]
+    [LibraryImport("kernel32", SetLastError = true)]
     public static partial nint GlobalLock(nint memory);
 
     [LibraryImport("kernel32")]
