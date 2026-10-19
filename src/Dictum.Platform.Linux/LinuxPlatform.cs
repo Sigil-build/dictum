@@ -117,7 +117,7 @@ public static class LinuxPlatform
         }
     }
 
-    internal static PlatformCheck Tool(string name, bool present, string tool, string hint) =>
+    private static PlatformCheck Tool(string name, bool present, string tool, string hint) =>
         new(name, present ? HealthStatus.Ok(tool) : HealthStatus.Error($"{tool} not found", hint));
 
     /// <summary>Clipboard stand-in that explains which tool to install.</summary>

@@ -90,16 +90,8 @@ public sealed class PortalGlobalShortcuts(Portal portal, ILog log) : IHotkeyServ
 
     private async Task<string> CreateSessionAsync(CancellationToken ct)
     {
-        var token = portal.NextToken();
-        var sessionToken = portal.NextToken();
-        var (code, results) = await portal.RequestAsync(token, c => BuildCreateSession(c, token, sessionToken), ct).ConfigureAwait(false);
-        if (code != 0 || !results.TryGetValue("session_handle", out var handle))
-        {
-            throw new HotkeyUnavailableException($"The portal refused to create a shortcuts session (code {code}).");
-        }
-
-        // The spec types session_handle as 's'; accept an object path too.
-        return handle.Type == VariantValueType.ObjectPath ? handle.GetObjectPathAsString() : handle.GetString();
+        var (code, session) = await portal.CreateSessionAsync(Interface, ct).ConfigureAwait(false);
+        return session ?? throw new HotkeyUnavailableException($"The portal refused to create a shortcuts session (code {code}).");
     }
 
     private async Task BindAsync(string session, IReadOnlyList<HotkeyBinding> bindings, CancellationToken ct)
@@ -175,18 +167,6 @@ public sealed class PortalGlobalShortcuts(Portal portal, ILog log) : IHotkeyServ
             var details = entry.GetItem(1).GetDictionary<string, VariantValue>();
             yield return (id, details.TryGetValue("trigger_description", out var trigger) ? trigger.GetString() : "(not set)");
         }
-    }
-
-    private static MessageBuffer BuildCreateSession(DBusConnection connection, string token, string sessionToken)
-    {
-        using var writer = connection.GetMessageWriter();
-        writer.WriteMethodCallHeader(Portal.Destination, Portal.ObjectPath, Interface, "CreateSession", "a{sv}");
-        writer.WriteDictionary(new Dictionary<string, VariantValue>
-        {
-            ["handle_token"] = token,
-            ["session_handle_token"] = sessionToken,
-        });
-        return writer.CreateMessage();
     }
 
     private static MessageBuffer BuildBindShortcuts(DBusConnection connection, string session, IReadOnlyList<HotkeyBinding> bindings, string token)

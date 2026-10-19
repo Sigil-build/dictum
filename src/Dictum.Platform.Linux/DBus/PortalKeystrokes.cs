@@ -59,52 +59,15 @@ public sealed class PortalKeystrokes(Portal portal, string restoreTokenFile, ILo
                 throw new InjectionUnavailableException("This desktop has no RemoteDesktop portal.");
             }
 
-            var token = portal.NextToken();
-            var sessionToken = portal.NextToken();
-            var (code, results) = await portal.RequestAsync(token, c => BuildCreateSession(c, token, sessionToken), ct).ConfigureAwait(false);
-            if (code != 0 || !results.TryGetValue("session_handle", out var handle))
+            var (code, session) = await portal.CreateSessionAsync(Interface, ct).ConfigureAwait(false);
+            if (session is null)
             {
                 throw new InjectionUnavailableException($"The RemoteDesktop portal refused to create a session (code {code}).");
             }
 
-            var session = handle.Type == VariantValueType.ObjectPath ? handle.GetObjectPathAsString() : handle.GetString();
             var restore = File.Exists(restoreTokenFile) ? (await File.ReadAllTextAsync(restoreTokenFile, ct).ConfigureAwait(false)).Trim() : null;
-
-            var selectToken = portal.NextToken();
-            (code, _) = await portal.RequestAsync(selectToken, c => BuildSelectDevices(c, session, selectToken, restore), ct).ConfigureAwait(false);
-            if (code != 0)
-            {
-                throw Denied(code);
-            }
-
-            var startToken = portal.NextToken();
-            (code, results) = await portal.RequestAsync(startToken, c => BuildStart(c, session, startToken), ct).ConfigureAwait(false);
-            if (code != 0)
-            {
-                throw Denied(code);
-            }
-
-            if (results.TryGetValue("devices", out var devices) && (devices.GetUInt32() & DeviceKeyboard) == 0)
-            {
-                throw new InjectionUnavailableException("Keyboard control was not granted.");
-            }
-
-            if (results.TryGetValue("restore_token", out var newToken))
-            {
-                await SaveTokenAsync(newToken.GetString(), ct).ConfigureAwait(false);
-            }
-
-            _closed?.Dispose();
-            _closed = await connection.AddMatchAsync(
-                new MatchRule { Type = MessageType.Signal, Interface = "org.freedesktop.portal.Session", Member = "Closed", Path = session },
-                static (_, _) => true,
-                _ =>
-                {
-                    log.Info("RemoteDesktop session closed; it will be reopened on the next paste");
-                    _session = null;
-                },
-                emitOnCapturedContext: false,
-                ObserverFlags.None).ConfigureAwait(false);
+            await StartAsync(session, restore, ct).ConfigureAwait(false);
+            await WatchClosedAsync(connection, session).ConfigureAwait(false);
 
             log.Info($"RemoteDesktop keyboard access granted{(restore is null ? "" : " (restored)")}");
             _session = session;
@@ -118,6 +81,50 @@ public sealed class PortalKeystrokes(Portal portal, string restoreTokenFile, ILo
         {
             _gate.Release();
         }
+    }
+
+    /// <summary>Selects the keyboard and starts the session, which shows the dialog unless the restore token still holds.</summary>
+    private async Task StartAsync(string session, string? restoreToken, CancellationToken ct)
+    {
+        var selectToken = portal.NextToken();
+        var (selected, _) = await portal.RequestAsync(selectToken, c => BuildSelectDevices(c, session, selectToken, restoreToken), ct).ConfigureAwait(false);
+        if (selected != 0)
+        {
+            throw Denied(selected);
+        }
+
+        var startToken = portal.NextToken();
+        var (started, results) = await portal.RequestAsync(startToken, c => BuildStart(c, session, startToken), ct).ConfigureAwait(false);
+        if (started != 0)
+        {
+            throw Denied(started);
+        }
+
+        if (results.TryGetValue("devices", out var devices) && (devices.GetUInt32() & DeviceKeyboard) == 0)
+        {
+            throw new InjectionUnavailableException("Keyboard control was not granted.");
+        }
+
+        if (results.TryGetValue("restore_token", out var newToken))
+        {
+            await SaveTokenAsync(newToken.GetString(), ct).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Forgets the session when the desktop closes it, so the next paste opens a new one.</summary>
+    private async Task WatchClosedAsync(DBusConnection connection, string session)
+    {
+        _closed?.Dispose();
+        _closed = await connection.AddMatchAsync(
+            new MatchRule { Type = MessageType.Signal, Interface = "org.freedesktop.portal.Session", Member = "Closed", Path = session },
+            static (_, _) => true,
+            _ =>
+            {
+                log.Info("RemoteDesktop session closed; it will be reopened on the next paste");
+                _session = null;
+            },
+            emitOnCapturedContext: false,
+            ObserverFlags.None).ConfigureAwait(false);
     }
 
     private static InjectionUnavailableException Denied(uint code) => code == 1
@@ -134,18 +141,6 @@ public sealed class PortalKeystrokes(Portal portal, string restoreTokenFile, ILo
         {
             File.SetUnixFileMode(restoreTokenFile, UnixFileMode.UserRead | UnixFileMode.UserWrite);
         }
-    }
-
-    private static MessageBuffer BuildCreateSession(DBusConnection connection, string token, string sessionToken)
-    {
-        using var writer = connection.GetMessageWriter();
-        writer.WriteMethodCallHeader(Portal.Destination, Portal.ObjectPath, Interface, "CreateSession", "a{sv}");
-        writer.WriteDictionary(new Dictionary<string, VariantValue>
-        {
-            ["handle_token"] = token,
-            ["session_handle_token"] = sessionToken,
-        });
-        return writer.CreateMessage();
     }
 
     private static MessageBuffer BuildSelectDevices(DBusConnection connection, string session, string token, string? restoreToken)

@@ -8,15 +8,14 @@ namespace Dictum.Platform.Linux.DBus;
 /// </summary>
 public sealed class KWinOutputs : IDisposable
 {
-    private readonly SemaphoreSlim _connect = new(1, 1);
-    private DBusConnection? _connection;
+    private readonly SessionBus _bus = new();
 
     /// <summary>The output's name, such as "DP-2"; null without a session bus or KWin, or when <paramref name="ct"/> ends first.</summary>
     public async Task<string?> ActiveOutputAsync(CancellationToken ct)
     {
         try
         {
-            var connection = await ConnectAsync(ct).ConfigureAwait(false);
+            var connection = await _bus.ConnectAsync(ct).ConfigureAwait(false);
             return await connection.CallMethodAsync(Build(connection), static (message, _) => message.GetBodyReader().ReadString())
                 .WaitAsync(ct).ConfigureAwait(false);
         }
@@ -27,32 +26,7 @@ public sealed class KWinOutputs : IDisposable
         }
     }
 
-    public void Dispose()
-    {
-        _connection?.Dispose();
-        _connect.Dispose();
-    }
-
-    private async Task<DBusConnection> ConnectAsync(CancellationToken ct)
-    {
-        await _connect.WaitAsync(ct).ConfigureAwait(false);
-        try
-        {
-            if (_connection is null)
-            {
-                var address = DBusAddress.Session ?? throw new InvalidOperationException("No D-Bus session bus.");
-                var connection = new DBusConnection(address);
-                await connection.ConnectAsync().ConfigureAwait(false);
-                _connection = connection;
-            }
-
-            return _connection;
-        }
-        finally
-        {
-            _connect.Release();
-        }
-    }
+    public void Dispose() => _bus.Dispose();
 
     private static MessageBuffer Build(DBusConnection connection)
     {

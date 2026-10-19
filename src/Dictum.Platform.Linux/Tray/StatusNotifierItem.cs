@@ -103,20 +103,7 @@ public sealed class StatusNotifierItem(DBusConnection connection, string menuPat
         }
     }
 
-    public ValueTask HandleMethodAsync(MethodContext context)
-    {
-        // Tmds.DBus closes the whole connection when an exception escapes HandleMethodAsync, so catch everything.
-        try
-        {
-            Handle(context);
-        }
-        catch (Exception ex)
-        {
-            context.ReplyError("org.freedesktop.DBus.Error.Failed", ex.Message);
-        }
-
-        return default;
-    }
+    public ValueTask HandleMethodAsync(MethodContext context) => ExportedObject.HandleSafely(context, Handle);
 
     private void Handle(MethodContext context)
     {
@@ -143,18 +130,18 @@ public sealed class StatusNotifierItem(DBusConnection connection, string menuPat
         {
             case ("Activate", "ii"):
                 Raise(Activated, reader.ReadInt32(), reader.ReadInt32());
-                ReplyEmpty(context);
+                ExportedObject.ReplyEmpty(context);
                 break;
             case ("SecondaryActivate", "ii"):
                 Raise(SecondaryActivated, reader.ReadInt32(), reader.ReadInt32());
-                ReplyEmpty(context);
+                ExportedObject.ReplyEmpty(context);
                 break;
             case ("ContextMenu", "ii"):
                 // Only called by hosts that could not use Menu (dbusmenu); nothing to do.
-                ReplyEmpty(context);
+                ExportedObject.ReplyEmpty(context);
                 break;
             case ("Scroll", "is"):
-                ReplyEmpty(context);
+                ExportedObject.ReplyEmpty(context);
                 break;
             case ("ProvideXdgActivationToken", "s"):
                 var token = reader.ReadString();
@@ -163,7 +150,7 @@ public sealed class StatusNotifierItem(DBusConnection connection, string menuPat
                     ThreadPool.QueueUserWorkItem(_ => provided(token));
                 }
 
-                ReplyEmpty(context);
+                ExportedObject.ReplyEmpty(context);
                 break;
         }
     }
@@ -292,28 +279,15 @@ public sealed class StatusNotifierItem(DBusConnection connection, string menuPat
         }
     }
 
-    private static void ReplyEmpty(MethodContext context)
-    {
-        using var writer = context.CreateReplyWriter(null);
-        context.Reply(writer.CreateMessage());
-    }
-
     private void EmitSignal(string member, string? status = null)
     {
-        var writer = connection.GetMessageWriter();
-        try
+        using var writer = connection.GetMessageWriter();
+        writer.WriteSignalHeader(path: ItemPath, @interface: Interface, member: member, signature: status is null ? null : "s");
+        if (status is not null)
         {
-            writer.WriteSignalHeader(path: ItemPath, @interface: Interface, member: member, signature: status is null ? null : "s");
-            if (status is not null)
-            {
-                writer.WriteString(status);
-            }
+            writer.WriteString(status);
+        }
 
-            connection.TrySendMessage(writer.CreateMessage()); // false when disconnected; the buffer is returned to the pool
-        }
-        finally
-        {
-            writer.Dispose();
-        }
+        connection.TrySendMessage(writer.CreateMessage()); // false when disconnected; the buffer is returned to the pool
     }
 }

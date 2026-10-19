@@ -101,15 +101,21 @@ public sealed class SecretServiceStore(Portal portal, ILog log) : ISecretStore
                 var reader = message.GetBodyReader();
                 return (Unlocked: reader.ReadArrayOfObjectPath().Select(p => p.ToString()).ToArray(), Prompt: reader.ReadObjectPathAsString());
             }).ConfigureAwait(false);
-        return prompt == NoPrompt || !await PromptAsync(connection, prompt, ct).ConfigureAwait(false) ? unlocked : items;
+        if (prompt == NoPrompt)
+        {
+            return unlocked;
+        }
+
+        await PromptAsync(connection, prompt, ct).ConfigureAwait(false);
+        return items;
     }
 
     /// <summary>Shows the keyring's own dialog (e.g. to unlock the wallet); throws when it is dismissed.</summary>
-    private static async Task<bool> PromptAsync(DBusConnection connection, string prompt, CancellationToken ct)
+    private static async Task PromptAsync(DBusConnection connection, string prompt, CancellationToken ct)
     {
         if (prompt == NoPrompt)
         {
-            return true;
+            return;
         }
 
         var completed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -131,8 +137,6 @@ public sealed class SecretServiceStore(Portal portal, ILog log) : ISecretStore
         {
             throw new ConfigException("The keyring prompt was dismissed.");
         }
-
-        return true;
     }
 
     private static async Task<T> CallAsync<T>(DBusConnection connection, Func<DBusConnection, MessageBuffer> build, MessageValueReader<T> read)

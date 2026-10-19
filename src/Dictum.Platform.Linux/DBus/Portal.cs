@@ -15,35 +15,13 @@ public sealed class Portal
     public const string AppId = "dev.dictum.Dictum";
 
     private readonly ILog _log;
-    private readonly SemaphoreSlim _connect = new(1, 1);
-    private DBusConnection? _connection;
+    private readonly SessionBus _bus = new();
     private int _token;
     private bool _registered;
 
     public Portal(ILog log) => _log = log;
 
-    public async Task<DBusConnection> ConnectAsync(CancellationToken ct)
-    {
-        await _connect.WaitAsync(ct).ConfigureAwait(false);
-        try
-        {
-            if (_connection is null)
-            {
-                // Our own connection, not the shared DBusConnection.Session: that one auto-connects and does not
-                // allow UniqueName, which the portal Request paths are built from.
-                var address = DBusAddress.Session ?? throw new InvalidOperationException("No D-Bus session bus (DBUS_SESSION_BUS_ADDRESS is not set).");
-                var connection = new DBusConnection(address);
-                await connection.ConnectAsync().ConfigureAwait(false);
-                _connection = connection;
-            }
-
-            return _connection;
-        }
-        finally
-        {
-            _connect.Release();
-        }
-    }
+    public Task<DBusConnection> ConnectAsync(CancellationToken ct) => _bus.ConnectAsync(ct);
 
     /// <summary>A fresh handle_token, unique within this connection.</summary>
     public string NextToken() => $"dictum{Interlocked.Increment(ref _token)}";
@@ -140,6 +118,24 @@ public sealed class Portal
         return await response.Task.WaitAsync(ct).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Calls CreateSession on a portal interface such as GlobalShortcuts or RemoteDesktop. The session handle is null
+    /// when the portal refuses; the code says why.
+    /// </summary>
+    public async Task<(uint Code, string? Session)> CreateSessionAsync(string iface, CancellationToken ct)
+    {
+        var token = NextToken();
+        var sessionToken = NextToken();
+        var (code, results) = await RequestAsync(token, c => BuildCreateSession(c, iface, token, sessionToken), ct).ConfigureAwait(false);
+        if (code != 0 || !results.TryGetValue("session_handle", out var handle))
+        {
+            return (code, null);
+        }
+
+        // The spec types session_handle as 's'; accept an object path too.
+        return (code, handle.Type == VariantValueType.ObjectPath ? handle.GetObjectPathAsString() : handle.GetString());
+    }
+
     /// <summary>Closes a portal session (org.freedesktop.portal.Session.Close); errors are ignored.</summary>
     public async Task CloseSessionAsync(string sessionHandle)
     {
@@ -165,6 +161,18 @@ public sealed class Portal
         writer.WriteMethodCallHeader(Destination, ObjectPath, "org.freedesktop.host.portal.Registry", "Register", "sa{sv}");
         writer.WriteString(AppId);
         writer.WriteDictionary(new Dictionary<string, VariantValue>());
+        return writer.CreateMessage();
+    }
+
+    private static MessageBuffer BuildCreateSession(DBusConnection connection, string iface, string token, string sessionToken)
+    {
+        using var writer = connection.GetMessageWriter();
+        writer.WriteMethodCallHeader(Destination, ObjectPath, iface, "CreateSession", "a{sv}");
+        writer.WriteDictionary(new Dictionary<string, VariantValue>
+        {
+            ["handle_token"] = token,
+            ["session_handle_token"] = sessionToken,
+        });
         return writer.CreateMessage();
     }
 
