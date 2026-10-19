@@ -5,19 +5,24 @@ namespace Dictum.Platform.Linux;
 /// <summary>WM_CLASS of the focused X11 window via xprop, e.g. "konsole".</summary>
 public sealed class XpropActiveApp : IActiveAppProvider
 {
+    internal const string Program = "xprop";
+    private static readonly TimeSpan QueryTimeout = TimeSpan.FromSeconds(1);
+
+    public static bool IsAvailable => Tools.Exists(Program);
+
     public string? GetActiveApp()
     {
         // IActiveAppProvider is synchronous; each xprop call is bounded by its timeout.
         try
         {
-            var root = Tools.RunAsync("xprop", ["-root", "_NET_ACTIVE_WINDOW"], null, CancellationToken.None, 1000).GetAwaiter().GetResult();
+            var root = Tools.RunAsync(Program, ["-root", "_NET_ACTIVE_WINDOW"], null, CancellationToken.None, QueryTimeout).GetAwaiter().GetResult();
             var id = ParseWindowId(root.Output);
             if (id is null)
             {
                 return null;
             }
 
-            var window = Tools.RunAsync("xprop", ["-id", id, "WM_CLASS"], null, CancellationToken.None, 1000).GetAwaiter().GetResult();
+            var window = Tools.RunAsync(Program, ["-id", id, "WM_CLASS"], null, CancellationToken.None, QueryTimeout).GetAwaiter().GetResult();
             return ParseWmClass(window.Output);
         }
         catch (Exception ex) when (ex is InvalidOperationException or TimeoutException or System.ComponentModel.Win32Exception)

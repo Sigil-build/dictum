@@ -21,10 +21,10 @@ public sealed class LinuxAutostart(SystemdAutostart daemon, string configHome) :
     public static string AutostartEntry(LoginItem item) => $"""
         [Desktop Entry]
         Type=Application
-        Name=Dictum
-        Comment=Voice to text
+        Name={DesktopIdentity.Name}
+        Comment={DesktopIdentity.Comment}
         Exec={item.CommandLine}
-        Icon=audio-input-microphone
+        Icon={DesktopIdentity.Icon}
         Terminal=false
         X-GNOME-Autostart-enabled=true
 

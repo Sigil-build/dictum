@@ -15,6 +15,9 @@ public sealed class PortalKeystrokes(Portal portal, string restoreTokenFile, ILo
 
     private const uint DeviceKeyboard = 1;
     private const uint PersistUntilRevoked = 2;
+    private const uint KeyReleased = 0;
+    private const uint KeyPressed = 1;
+    private const string RestoreTokenKey = "restore_token";
 
     private readonly SemaphoreSlim _gate = new(1, 1);
     private string? _session;
@@ -32,13 +35,13 @@ public sealed class PortalKeystrokes(Portal portal, string restoreTokenFile, ILo
         foreach (var code in codes)
         {
             await connection.CallMethodAsync(BuildKey(connection, session, code, pressed: true)).ConfigureAwait(false);
-            await Task.Delay(8, ct).ConfigureAwait(false);
+            await Task.Delay(EvdevKeys.KeyEventGap, ct).ConfigureAwait(false);
         }
 
         foreach (var code in codes.Reverse())
         {
             await connection.CallMethodAsync(BuildKey(connection, session, code, pressed: false)).ConfigureAwait(false);
-            await Task.Delay(8, ct).ConfigureAwait(false);
+            await Task.Delay(EvdevKeys.KeyEventGap, ct).ConfigureAwait(false);
         }
     }
 
@@ -94,14 +97,14 @@ public sealed class PortalKeystrokes(Portal portal, string restoreTokenFile, ILo
     {
         var selectToken = portal.NextToken();
         var (selected, _) = await portal.RequestAsync(selectToken, c => BuildSelectDevices(c, session, selectToken, restoreToken), ct).ConfigureAwait(false);
-        if (selected != 0)
+        if (selected != Portal.ResponseSuccess)
         {
             throw Denied(selected);
         }
 
         var startToken = portal.NextToken();
         var (started, results) = await portal.RequestAsync(startToken, c => BuildStart(c, session, startToken), ct).ConfigureAwait(false);
-        if (started != 0)
+        if (started != Portal.ResponseSuccess)
         {
             throw Denied(started);
         }
@@ -111,7 +114,7 @@ public sealed class PortalKeystrokes(Portal portal, string restoreTokenFile, ILo
             throw new InjectionUnavailableException("Keyboard control was not granted.");
         }
 
-        if (results.TryGetValue("restore_token", out var newToken))
+        if (results.TryGetValue(RestoreTokenKey, out var newToken))
         {
             await SaveTokenAsync(newToken.GetString(), ct).ConfigureAwait(false);
         }
@@ -122,7 +125,7 @@ public sealed class PortalKeystrokes(Portal portal, string restoreTokenFile, ILo
     {
         _closed?.Dispose();
         _closed = await connection.AddMatchAsync(
-            new MatchRule { Type = MessageType.Signal, Interface = "org.freedesktop.portal.Session", Member = "Closed", Path = session },
+            new MatchRule { Type = MessageType.Signal, Interface = Portal.SessionInterface, Member = "Closed", Path = session },
             static (_, _) => true,
             _ =>
             {
@@ -133,7 +136,7 @@ public sealed class PortalKeystrokes(Portal portal, string restoreTokenFile, ILo
             ObserverFlags.None).ConfigureAwait(false);
     }
 
-    private static InjectionUnavailableException Denied(uint code) => code == 1
+    private static InjectionUnavailableException Denied(uint code) => code == Portal.ResponseCancelled
         ? new("Keyboard control was not allowed in the desktop dialog.", "Restart 'dictum daemon' and allow it, or use ydotool (\"injector\": \"ydotool\").")
         : new($"The RemoteDesktop portal failed (code {code}).");
 
@@ -153,13 +156,13 @@ public sealed class PortalKeystrokes(Portal portal, string restoreTokenFile, ILo
     {
         var options = new Dictionary<string, VariantValue>
         {
-            ["handle_token"] = token,
+            [Portal.HandleTokenOption] = token,
             ["types"] = VariantValue.UInt32(DeviceKeyboard),
             ["persist_mode"] = VariantValue.UInt32(PersistUntilRevoked),
         };
         if (!string.IsNullOrEmpty(restoreToken))
         {
-            options["restore_token"] = restoreToken;
+            options[RestoreTokenKey] = restoreToken;
         }
 
         using var writer = connection.GetMessageWriter();
@@ -175,7 +178,7 @@ public sealed class PortalKeystrokes(Portal portal, string restoreTokenFile, ILo
         writer.WriteMethodCallHeader(Portal.Destination, Portal.ObjectPath, Interface, "Start", "osa{sv}");
         writer.WriteObjectPath(session);
         writer.WriteString(string.Empty);
-        writer.WriteDictionary(new Dictionary<string, VariantValue> { ["handle_token"] = token });
+        writer.WriteDictionary(new Dictionary<string, VariantValue> { [Portal.HandleTokenOption] = token });
         return writer.CreateMessage();
     }
 
@@ -186,7 +189,7 @@ public sealed class PortalKeystrokes(Portal portal, string restoreTokenFile, ILo
         writer.WriteObjectPath(session);
         writer.WriteDictionary(new Dictionary<string, VariantValue>());
         writer.WriteInt32(keycode);
-        writer.WriteUInt32(pressed ? 1u : 0u);
+        writer.WriteUInt32(pressed ? KeyPressed : KeyReleased);
         return writer.CreateMessage();
     }
 }

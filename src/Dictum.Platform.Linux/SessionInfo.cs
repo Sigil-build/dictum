@@ -28,7 +28,7 @@ public sealed record SessionInfo(SessionType Type, Desktop Desktop, string Deskt
     {
         var sessionType = env("XDG_SESSION_TYPE");
         var type = sessionType == "wayland" || !string.IsNullOrEmpty(env("WAYLAND_DISPLAY")) ? SessionType.Wayland
-            : sessionType == "x11" || !string.IsNullOrEmpty(env("DISPLAY")) ? SessionType.X11
+            : sessionType == "x11" || !string.IsNullOrEmpty(env(LinuxEnvironment.Display)) ? SessionType.X11
             : SessionType.Unknown;
 
         var names = (env("XDG_CURRENT_DESKTOP") ?? "").Split(':', StringSplitOptions.RemoveEmptyEntries);

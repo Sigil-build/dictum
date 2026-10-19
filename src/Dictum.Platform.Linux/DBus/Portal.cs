@@ -12,7 +12,13 @@ public sealed class Portal : IDisposable
 {
     public const string Destination = "org.freedesktop.portal.Desktop";
     public const string ObjectPath = "/org/freedesktop/portal/desktop";
-    public const string AppId = "dev.dictum.Dictum";
+
+    internal const string SessionInterface = "org.freedesktop.portal.Session";
+    internal const string HandleTokenOption = "handle_token";
+
+    // org.freedesktop.portal.Request response codes; the only other one, 2, means any other error.
+    internal const uint ResponseSuccess = 0;
+    internal const uint ResponseCancelled = 1;
 
     private readonly ILog _log;
     private readonly SessionBus _bus = new();
@@ -49,7 +55,7 @@ public sealed class Portal : IDisposable
         try
         {
             await connection.CallMethodAsync(BuildRegister(connection)).ConfigureAwait(false);
-            _log.Debug($"Registered with the portal as {AppId}");
+            _log.Debug($"Registered with the portal as {DesktopIdentity.AppId}");
         }
         catch (DBusErrorReplyException ex)
         {
@@ -78,7 +84,6 @@ public sealed class Portal : IDisposable
     /// <summary>
     /// Calls a portal method that answers through an org.freedesktop.portal.Request object: subscribes
     /// to its Response signal first, then makes the call, then waits for the answer (a dialog can take a while).
-    /// The response code is 0 for success, 1 when the dialog was cancelled and 2 for any other error.
     /// </summary>
     public async Task<(uint Code, Dictionary<string, VariantValue> Results)> RequestAsync(
         string token,
@@ -129,7 +134,7 @@ public sealed class Portal : IDisposable
         var token = NextToken();
         var sessionToken = NextToken();
         var (code, results) = await RequestAsync(token, c => BuildCreateSession(c, iface, token, sessionToken), ct).ConfigureAwait(false);
-        if (code != 0 || !results.TryGetValue("session_handle", out var handle))
+        if (code != ResponseSuccess || !results.TryGetValue("session_handle", out var handle))
         {
             return (code, null);
         }
@@ -148,20 +153,21 @@ public sealed class Portal : IDisposable
         }
         catch (DBusErrorReplyException)
         {
+            // A session the portal no longer knows needs no closing.
         }
     }
 
     public static bool IsMissing(DBusErrorReplyException ex) =>
-        ex.ErrorName is "org.freedesktop.DBus.Error.ServiceUnknown"
-            or "org.freedesktop.DBus.Error.UnknownInterface"
-            or "org.freedesktop.DBus.Error.UnknownMethod"
-            or "org.freedesktop.DBus.Error.UnknownObject";
+        ex.ErrorName is DBusNames.ServiceUnknownError
+            or DBusNames.UnknownInterfaceError
+            or DBusNames.UnknownMethodError
+            or DBusNames.UnknownObjectError;
 
     private static MessageBuffer BuildRegister(DBusConnection connection)
     {
         using var writer = connection.GetMessageWriter();
         writer.WriteMethodCallHeader(Destination, ObjectPath, "org.freedesktop.host.portal.Registry", "Register", "sa{sv}");
-        writer.WriteString(AppId);
+        writer.WriteString(DesktopIdentity.AppId);
         writer.WriteDictionary(new Dictionary<string, VariantValue>());
         return writer.CreateMessage();
     }
@@ -172,7 +178,7 @@ public sealed class Portal : IDisposable
         writer.WriteMethodCallHeader(Destination, ObjectPath, iface, "CreateSession", "a{sv}");
         writer.WriteDictionary(new Dictionary<string, VariantValue>
         {
-            ["handle_token"] = token,
+            [HandleTokenOption] = token,
             ["session_handle_token"] = sessionToken,
         });
         return writer.CreateMessage();
@@ -181,7 +187,7 @@ public sealed class Portal : IDisposable
     private static MessageBuffer BuildGetProperty(DBusConnection connection, string iface, string property)
     {
         using var writer = connection.GetMessageWriter();
-        writer.WriteMethodCallHeader(Destination, ObjectPath, "org.freedesktop.DBus.Properties", "Get", "ss");
+        writer.WriteMethodCallHeader(Destination, ObjectPath, DBusNames.PropertiesInterface, DBusNames.Get, "ss");
         writer.WriteString(iface);
         writer.WriteString(property);
         return writer.CreateMessage();
@@ -190,7 +196,7 @@ public sealed class Portal : IDisposable
     private static MessageBuffer BuildClose(DBusConnection connection, string sessionHandle)
     {
         using var writer = connection.GetMessageWriter();
-        writer.WriteMethodCallHeader(Destination, sessionHandle, "org.freedesktop.portal.Session", "Close", null);
+        writer.WriteMethodCallHeader(Destination, sessionHandle, SessionInterface, "Close", null);
         return writer.CreateMessage();
     }
 }

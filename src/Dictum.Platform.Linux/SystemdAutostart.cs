@@ -9,15 +9,18 @@ public sealed class SystemdAutostart(string configHome, Func<IReadOnlyList<strin
 {
     public const string UnitName = "dictum.service";
 
+    private const string DaemonReload = "daemon-reload";
+    private static readonly TimeSpan SystemctlTimeout = TimeSpan.FromSeconds(10);
+
     public SystemdAutostart()
         : this(DefaultConfigHome, Systemctl)
     {
     }
 
     public static string DefaultConfigHome =>
-        Environment.GetEnvironmentVariable("XDG_CONFIG_HOME") is { Length: > 0 } home
+        Environment.GetEnvironmentVariable(LinuxEnvironment.ConfigHome) is { Length: > 0 } home
             ? home
-            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".config");
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), LinuxEnvironment.DefaultConfigFolder);
 
     public string UnitPath => Path.Combine(configHome, "systemd", "user", UnitName);
 
@@ -27,7 +30,7 @@ public sealed class SystemdAutostart(string configHome, Func<IReadOnlyList<strin
     {
         Directory.CreateDirectory(Path.GetDirectoryName(UnitPath)!);
         await File.WriteAllTextAsync(UnitPath, UnitFile(item), ct).ConfigureAwait(false);
-        await systemctl(["daemon-reload"], ct).ConfigureAwait(false);
+        await systemctl([DaemonReload], ct).ConfigureAwait(false);
         await systemctl(["enable", UnitName], ct).ConfigureAwait(false);
     }
 
@@ -37,7 +40,7 @@ public sealed class SystemdAutostart(string configHome, Func<IReadOnlyList<strin
         {
             await systemctl(["disable", UnitName], ct).ConfigureAwait(false);
             File.Delete(UnitPath);
-            await systemctl(["daemon-reload"], ct).ConfigureAwait(false);
+            await systemctl([DaemonReload], ct).ConfigureAwait(false);
         }
     }
 
@@ -59,7 +62,7 @@ public sealed class SystemdAutostart(string configHome, Func<IReadOnlyList<strin
 
     private static async Task Systemctl(IReadOnlyList<string> args, CancellationToken ct)
     {
-        var result = await Tools.RunAsync("systemctl", ["--user", .. args], null, ct, 10_000).ConfigureAwait(false);
+        var result = await Tools.RunAsync("systemctl", ["--user", .. args], null, ct, SystemctlTimeout).ConfigureAwait(false);
         if (result.ExitCode != 0)
         {
             throw new InvalidOperationException($"systemctl --user {string.Join(' ', args)} failed: {result.Error.Trim()}");

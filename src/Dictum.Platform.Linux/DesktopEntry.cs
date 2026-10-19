@@ -12,15 +12,15 @@ public static class DesktopEntry
                 ? data
                 : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "share"),
             "applications",
-            $"{DBus.Portal.AppId}.desktop");
+            $"{DesktopIdentity.AppId}.desktop");
 
     public static string Content(LoginItem daemon) => $"""
         [Desktop Entry]
         Type=Application
-        Name=Dictum
-        Comment=Voice to text
+        Name={DesktopIdentity.Name}
+        Comment={DesktopIdentity.Comment}
         Exec={daemon.CommandLine}
-        Icon=audio-input-microphone
+        Icon={DesktopIdentity.Icon}
         Terminal=false
         NoDisplay=true
         Categories=Utility;Accessibility;

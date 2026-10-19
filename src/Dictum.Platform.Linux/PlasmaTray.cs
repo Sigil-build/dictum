@@ -12,11 +12,8 @@ public static class PlasmaTray
 
     private const string SystemTray = "org.kde.plasma.private.systemtray";
 
-    public static string ConfigFile(Func<string, string?> env)
-    {
-        var config = env("XDG_CONFIG_HOME") is { Length: > 0 } custom ? custom : Path.Combine(env("HOME") ?? "", ".config");
-        return Path.Combine(config, "plasma-org.kde.plasma.desktop-appletsrc");
-    }
+    public static string ConfigFile(Func<string, string?> env) =>
+        Path.Combine(LinuxEnvironment.ConfigDirectory(env), "plasma-org.kde.plasma.desktop-appletsrc");
 
     /// <summary>True when a system tray hides <paramref name="itemId"/>; null when the file has no system tray.</summary>
     public static bool? IsHidden(string appletsrc, string itemId)

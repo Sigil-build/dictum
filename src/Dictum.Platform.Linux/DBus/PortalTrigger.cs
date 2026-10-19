@@ -8,9 +8,11 @@ namespace Dictum.Platform.Linux.DBus;
 /// </summary>
 public static class PortalTrigger
 {
+    private const int MaxParts = 5; // four modifiers and the key
+
     public static string Format(Hotkey hotkey)
     {
-        var parts = new List<string>(5);
+        var parts = new List<string>(MaxParts);
         if (hotkey.Modifiers.HasFlag(HotkeyModifiers.Ctrl))
         {
             parts.Add("CTRL");

@@ -16,9 +16,10 @@ public static unsafe partial class X11Overlay
     private const nuint AtomType = 4;
     private const int ShapeInput = 2;
     private const int ShapeSet = 0;
+    private const int Format32 = 32;
 
     private static readonly Lazy<nint> Display = new(() =>
-        Environment.GetEnvironmentVariable("DISPLAY") is { Length: > 0 } ? XOpenDisplay(0) : 0);
+        Environment.GetEnvironmentVariable(LinuxEnvironment.Display) is { Length: > 0 } ? XOpenDisplay(name: 0) : 0);
 
     /// <summary>Makes <paramref name="window"/> a click-through notification; false without an X display.</summary>
     public static bool Prepare(nuint window)
@@ -32,11 +33,11 @@ public static unsafe partial class X11Overlay
         // These Xlib calls always return 1: X errors arrive later, through the error handler.
         var attributes = new SetWindowAttributes { OverrideRedirect = 1 };
         _ = XChangeWindowAttributes(display, window, OverrideRedirectMask, ref attributes);
-        var type = XInternAtom(display, "_NET_WM_WINDOW_TYPE", 0);
-        var notification = XInternAtom(display, "_NET_WM_WINDOW_TYPE_NOTIFICATION", 0);
-        _ = XChangeProperty(display, window, type, AtomType, 32, PropModeReplace, &notification, 1);
+        var type = XInternAtom(display, "_NET_WM_WINDOW_TYPE", onlyIfExists: 0);
+        var notification = XInternAtom(display, "_NET_WM_WINDOW_TYPE_NOTIFICATION", onlyIfExists: 0);
+        _ = XChangeProperty(display, window, type, AtomType, Format32, PropModeReplace, &notification, count: 1);
         Rectangle none = default;
-        XShapeCombineRectangles(display, window, ShapeInput, 0, 0, &none, 0, ShapeSet, 0);
+        XShapeCombineRectangles(display, window, ShapeInput, x: 0, y: 0, &none, count: 0, ShapeSet, ordering: 0);
         _ = XFlush(display);
         return true;
     }

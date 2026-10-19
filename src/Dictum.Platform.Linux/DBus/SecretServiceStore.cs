@@ -17,6 +17,12 @@ public sealed class SecretServiceStore(Portal portal, ILog log) : ISecretStore, 
     private const string ServiceInterface = "org.freedesktop.Secret.Service";
     private const string DefaultCollection = "/org/freedesktop/secrets/aliases/default";
     private const string NoPrompt = "/";
+    private const string PromptInterface = "org.freedesktop.Secret.Prompt";
+
+    // Every Dictum secret is stored under, and found by, these attributes.
+    private const string ApplicationAttribute = "application";
+    private const string ApplicationValue = "dictum";
+    private const string NameAttribute = "name";
 
     private readonly SemaphoreSlim _gate = new(1, 1);
     private string? _session;
@@ -123,7 +129,7 @@ public sealed class SecretServiceStore(Portal portal, ILog log) : ISecretStore, 
 
         var completed = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         using var subscription = await connection.AddMatchAsync(
-            new MatchRule { Type = MessageType.Signal, Interface = "org.freedesktop.Secret.Prompt", Member = "Completed", Path = prompt },
+            new MatchRule { Type = MessageType.Signal, Interface = PromptInterface, Member = "Completed", Path = prompt },
             static (message, _) => message.GetBodyReader().ReadBool(),
             notification =>
             {
@@ -148,7 +154,7 @@ public sealed class SecretServiceStore(Portal portal, ILog log) : ISecretStore, 
         {
             return await connection.CallMethodAsync(build(connection), read).ConfigureAwait(false);
         }
-        catch (DBusErrorReplyException ex) when (ex.ErrorName == "org.freedesktop.DBus.Error.ServiceUnknown")
+        catch (DBusErrorReplyException ex) when (ex.ErrorName == DBusNames.ServiceUnknownError)
         {
             throw new ConfigException("No Secret Service is running (KWallet or GNOME Keyring); use 'env:VAR' for API keys instead.");
         }
@@ -190,10 +196,10 @@ public sealed class SecretServiceStore(Portal portal, ILog log) : ISecretStore, 
     {
         var start = writer.WriteDictionaryStart();
         writer.WriteDictionaryEntryStart();
-        writer.WriteString("application");
-        writer.WriteString("dictum");
+        writer.WriteString(ApplicationAttribute);
+        writer.WriteString(ApplicationValue);
         writer.WriteDictionaryEntryStart();
-        writer.WriteString("name");
+        writer.WriteString(NameAttribute);
         writer.WriteString(key);
         writer.WriteDictionaryEnd(start);
     }
@@ -246,7 +252,7 @@ public sealed class SecretServiceStore(Portal portal, ILog log) : ISecretStore, 
         writer.WriteDictionary(new Dictionary<string, VariantValue>
         {
             ["org.freedesktop.Secret.Item.Label"] = $"Dictum: {key}",
-            ["org.freedesktop.Secret.Item.Attributes"] = new Dict<string, string> { ["application"] = "dictum", ["name"] = key }.AsVariantValue(),
+            ["org.freedesktop.Secret.Item.Attributes"] = new Dict<string, string> { [ApplicationAttribute] = ApplicationValue, [NameAttribute] = key }.AsVariantValue(),
         });
         writer.WriteStructureStart();
         writer.WriteObjectPath(session);
@@ -267,7 +273,7 @@ public sealed class SecretServiceStore(Portal portal, ILog log) : ISecretStore, 
     private static MessageBuffer BuildPrompt(DBusConnection connection, string prompt)
     {
         using var writer = connection.GetMessageWriter();
-        writer.WriteMethodCallHeader(Service, prompt, "org.freedesktop.Secret.Prompt", "Prompt", "s");
+        writer.WriteMethodCallHeader(Service, prompt, PromptInterface, "Prompt", "s");
         writer.WriteString(string.Empty);
         return writer.CreateMessage();
     }

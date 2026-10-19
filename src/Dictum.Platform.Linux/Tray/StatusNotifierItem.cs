@@ -1,3 +1,4 @@
+using Dictum.Platform.Linux.DBus;
 using Tmds.DBus.Protocol;
 
 namespace Dictum.Platform.Linux.Tray;
@@ -17,6 +18,29 @@ public sealed class StatusNotifierItem(DBusConnection connection, string menuPat
 {
     public const string Interface = "org.kde.StatusNotifierItem";
     public const string ItemPath = "/StatusNotifierItem";
+
+    private const string PixmapsSignature = "a(iiay)";
+    private const string IdleIcon = "dictum-idle";
+
+    private static class ItemProperty
+    {
+        public const string Category = "Category";
+        public const string Id = "Id";
+        public const string Title = "Title";
+        public const string Status = "Status";
+        public const string WindowId = "WindowId";
+        public const string IconThemePath = "IconThemePath";
+        public const string Menu = "Menu";
+        public const string ItemIsMenu = "ItemIsMenu";
+        public const string IconName = "IconName";
+        public const string IconPixmap = "IconPixmap";
+        public const string OverlayIconName = "OverlayIconName";
+        public const string OverlayIconPixmap = "OverlayIconPixmap";
+        public const string AttentionIconName = "AttentionIconName";
+        public const string AttentionIconPixmap = "AttentionIconPixmap";
+        public const string AttentionMovieName = "AttentionMovieName";
+        public const string ToolTip = "ToolTip";
+    }
 
     private static readonly ReadOnlyMemory<byte> InterfaceXml = """
         <interface name="org.kde.StatusNotifierItem">
@@ -54,11 +78,13 @@ public sealed class StatusNotifierItem(DBusConnection connection, string menuPat
 
     private static readonly string[] PropertyNames =
     [
-        "Category", "Id", "Title", "Status", "WindowId", "IconThemePath", "Menu", "ItemIsMenu", "IconName", "IconPixmap",
-        "OverlayIconName", "OverlayIconPixmap", "AttentionIconName", "AttentionIconPixmap", "AttentionMovieName", "ToolTip",
+        ItemProperty.Category, ItemProperty.Id, ItemProperty.Title, ItemProperty.Status, ItemProperty.WindowId,
+        ItemProperty.IconThemePath, ItemProperty.Menu, ItemProperty.ItemIsMenu, ItemProperty.IconName, ItemProperty.IconPixmap,
+        ItemProperty.OverlayIconName, ItemProperty.OverlayIconPixmap, ItemProperty.AttentionIconName,
+        ItemProperty.AttentionIconPixmap, ItemProperty.AttentionMovieName, ItemProperty.ToolTip,
     ];
 
-    private SniState _state = new("Active", "dictum-idle", "dictum-idle", "", "Dictum", "Dictum", "");
+    private SniState _state = new("Active", IdleIcon, IdleIcon, "", DesktopIdentity.Name, DesktopIdentity.Name, "");
 
     /// <summary>Raised on a thread-pool thread, never on the D-Bus receive loop.</summary>
     public event Action<int, int>? Activated;
@@ -161,13 +187,13 @@ public sealed class StatusNotifierItem(DBusConnection connection, string menuPat
         var reader = request.GetBodyReader();
         switch ((request.MemberAsString, request.SignatureAsString))
         {
-            case ("Get", "ss"):
+            case (DBusNames.Get, "ss"):
             {
                 var iface = reader.ReadString();
                 var name = reader.ReadString();
                 if (iface != Interface || Array.IndexOf(PropertyNames, name) < 0)
                 {
-                    context.ReplyError("org.freedesktop.DBus.Error.UnknownProperty", $"No property {iface}.{name}");
+                    context.ReplyError(DBusNames.UnknownPropertyError, $"No property {iface}.{name}");
                     return;
                 }
 
@@ -186,11 +212,11 @@ public sealed class StatusNotifierItem(DBusConnection connection, string menuPat
                 break;
             }
 
-            case ("GetAll", "s"):
+            case (DBusNames.GetAll, "s"):
             {
                 if (reader.ReadString() != Interface)
                 {
-                    context.ReplyError("org.freedesktop.DBus.Error.UnknownInterface", "No such interface");
+                    context.ReplyError(DBusNames.UnknownInterfaceError, "No such interface");
                     return;
                 }
 
@@ -217,8 +243,8 @@ public sealed class StatusNotifierItem(DBusConnection connection, string menuPat
                 break;
             }
 
-            case ("Set", "ssv"):
-                context.ReplyError("org.freedesktop.DBus.Error.PropertyReadOnly", "Properties are read-only");
+            case (DBusNames.Set, "ssv"):
+                context.ReplyError(DBusNames.PropertyReadOnlyError, "Properties are read-only");
                 break;
         }
     }
@@ -228,24 +254,24 @@ public sealed class StatusNotifierItem(DBusConnection connection, string menuPat
     {
         switch (name)
         {
-            case "Category": writer.WriteVariantString("ApplicationStatus"); break;
-            case "Id": writer.WriteVariantString(PlasmaTray.ItemId); break;
-            case "Title": writer.WriteVariantString(state.Title); break;
-            case "Status": writer.WriteVariantString(state.Status); break;
-            case "WindowId": writer.WriteVariantInt32(0); break;
-            case "IconThemePath": writer.WriteVariantString(state.IconThemePath); break;
-            case "Menu": writer.WriteVariantObjectPath(menuPath); break;
-            case "ItemIsMenu": writer.WriteVariantBool(false); break;
-            case "IconName": writer.WriteVariantString(state.IconName); break;
-            case "OverlayIconName": writer.WriteVariantString(""); break;
-            case "AttentionIconName": writer.WriteVariantString(state.AttentionIconName); break;
-            case "AttentionMovieName": writer.WriteVariantString(""); break;
-            case "IconPixmap" or "OverlayIconPixmap" or "AttentionIconPixmap":
-                writer.WriteSignature("a(iiay)");
+            case ItemProperty.Category: writer.WriteVariantString("ApplicationStatus"); break;
+            case ItemProperty.Id: writer.WriteVariantString(PlasmaTray.ItemId); break;
+            case ItemProperty.Title: writer.WriteVariantString(state.Title); break;
+            case ItemProperty.Status: writer.WriteVariantString(state.Status); break;
+            case ItemProperty.WindowId: writer.WriteVariantInt32(0); break;
+            case ItemProperty.IconThemePath: writer.WriteVariantString(state.IconThemePath); break;
+            case ItemProperty.Menu: writer.WriteVariantObjectPath(menuPath); break;
+            case ItemProperty.ItemIsMenu: writer.WriteVariantBool(false); break;
+            case ItemProperty.IconName: writer.WriteVariantString(state.IconName); break;
+            case ItemProperty.OverlayIconName: writer.WriteVariantString(""); break;
+            case ItemProperty.AttentionIconName: writer.WriteVariantString(state.AttentionIconName); break;
+            case ItemProperty.AttentionMovieName: writer.WriteVariantString(""); break;
+            case ItemProperty.IconPixmap or ItemProperty.OverlayIconPixmap or ItemProperty.AttentionIconPixmap:
+                writer.WriteSignature(PixmapsSignature);
                 WritePixmaps(ref writer, []); // none: hosts load IconName from IconThemePath
                 break;
-            case "ToolTip":
-                writer.WriteSignature("(sa(iiay)ss)");
+            case ItemProperty.ToolTip:
+                writer.WriteSignature("(s" + PixmapsSignature + "ss)");
                 writer.WriteStructureStart();
                 writer.WriteString("");                // icon name
                 WritePixmaps(ref writer, []);          // icon pixmaps

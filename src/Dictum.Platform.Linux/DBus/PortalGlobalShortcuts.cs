@@ -98,14 +98,14 @@ public sealed class PortalGlobalShortcuts(Portal portal, ILog log) : IHotkeyServ
     {
         var token = portal.NextToken();
         var (code, results) = await portal.RequestAsync(token, c => BuildBindShortcuts(c, session, bindings, token), ct).ConfigureAwait(false);
-        if (code == 1)
+        if (code == Portal.ResponseCancelled)
         {
             throw new HotkeyUnavailableException(
                 "Binding the shortcuts was cancelled in the desktop dialog.",
                 "Restart 'dictum daemon' and accept the dialog, or assign the shortcuts in System Settings → Shortcuts.");
         }
 
-        if (code != 0)
+        if (code != Portal.ResponseSuccess)
         {
             throw new HotkeyUnavailableException($"The portal could not bind the shortcuts (code {code}).");
         }
@@ -188,7 +188,7 @@ public sealed class PortalGlobalShortcuts(Portal portal, ILog log) : IHotkeyServ
 
         writer.WriteArrayEnd(array);
         writer.WriteString(string.Empty);
-        writer.WriteDictionary(new Dictionary<string, VariantValue> { ["handle_token"] = token });
+        writer.WriteDictionary(new Dictionary<string, VariantValue> { [Portal.HandleTokenOption] = token });
         return writer.CreateMessage();
     }
 }

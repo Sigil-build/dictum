@@ -1,4 +1,5 @@
 using Dictum.Core.Diagnostics;
+using Dictum.Platform.Linux.DBus;
 using Tmds.DBus.Protocol;
 
 namespace Dictum.Platform.Linux.Tray;
@@ -144,7 +145,7 @@ public sealed class StatusNotifierHost : IAsyncDisposable
     private MessageBuffer BuildGetHostRegistered(string destination)
     {
         using var writer = _connection.GetMessageWriter();
-        writer.WriteMethodCallHeader(destination, WatcherPath, "org.freedesktop.DBus.Properties", "Get", "ss");
+        writer.WriteMethodCallHeader(destination, WatcherPath, DBusNames.PropertiesInterface, DBusNames.Get, "ss");
         writer.WriteString(WatcherInterface);
         writer.WriteString("IsStatusNotifierHostRegistered");
         return writer.CreateMessage();

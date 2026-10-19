@@ -10,19 +10,23 @@ public static class DisplayScale
 {
     public const string Variable = "AVALONIA_GLOBAL_SCALE_FACTOR";
 
+    private const double BaseDpi = 96;
+    private const double DpiTolerance = 0.5;
+    private const int FactorDecimals = 3;
+
     /// <summary>The factor to set; null leaves Avalonia alone (no X display, a scale already in the environment, or 96 dpi).</summary>
     public static string? FactorFor(Func<string, string?> environment, double? xftDpi)
     {
         if (environment(Variable) is { Length: > 0 }
             || environment("AVALONIA_SCREEN_SCALE_FACTORS") is { Length: > 0 }
-            || environment("DISPLAY") is not { Length: > 0 }
+            || environment(LinuxEnvironment.Display) is not { Length: > 0 }
             || xftDpi is not { } dpi
-            || Math.Abs(dpi - 96) < 0.5)
+            || Math.Abs(dpi - BaseDpi) < DpiTolerance)
         {
             return null;
         }
 
-        return Math.Round(dpi / 96, 3).ToString(CultureInfo.InvariantCulture);
+        return Math.Round(dpi / BaseDpi, FactorDecimals).ToString(CultureInfo.InvariantCulture);
     }
 
     /// <summary>Sets the variable for this process. Call it before Avalonia starts.</summary>

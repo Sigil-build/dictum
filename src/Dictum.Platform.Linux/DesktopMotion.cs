@@ -5,6 +5,9 @@ namespace Dictum.Platform.Linux;
 /// <summary>The desktop's reduced-motion setting: KDE's animation speed at "instant", GNOME's animations off.</summary>
 public static class DesktopMotion
 {
+    private const string AnimationFactorKey = "AnimationDurationFactor=";
+    private static readonly TimeSpan GsettingsTimeout = TimeSpan.FromSeconds(1);
+
     /// <summary>KDE: <c>AnimationDurationFactor=0</c> in the <c>[KDE]</c> group of <c>kdeglobals</c>.</summary>
     public static bool KdeReduced(string? kdeglobals)
     {
@@ -16,9 +19,9 @@ public static class DesktopMotion
             {
                 group = line;
             }
-            else if (group == "[KDE]" && line.StartsWith("AnimationDurationFactor=", StringComparison.Ordinal))
+            else if (group == "[KDE]" && line.StartsWith(AnimationFactorKey, StringComparison.Ordinal))
             {
-                return double.TryParse(line["AnimationDurationFactor=".Length..], NumberStyles.Float, CultureInfo.InvariantCulture, out var factor)
+                return double.TryParse(line[AnimationFactorKey.Length..], NumberStyles.Float, CultureInfo.InvariantCulture, out var factor)
                     && factor <= 0;
             }
         }
@@ -38,14 +41,13 @@ public static class DesktopMotion
             {
                 case Desktop.Kde:
                 {
-                    var home = environment("XDG_CONFIG_HOME") is { Length: > 0 } custom ? custom : Path.Combine(environment("HOME") ?? "", ".config");
-                    var file = Path.Combine(home, "kdeglobals");
+                    var file = Path.Combine(LinuxEnvironment.ConfigDirectory(environment), "kdeglobals");
                     return File.Exists(file) && KdeReduced(await File.ReadAllTextAsync(file, ct).ConfigureAwait(false));
                 }
 
                 case Desktop.Gnome:
                 {
-                    var result = await Tools.RunAsync("gsettings", ["get", "org.gnome.desktop.interface", "enable-animations"], null, ct, 1000)
+                    var result = await Tools.RunAsync("gsettings", ["get", "org.gnome.desktop.interface", "enable-animations"], null, ct, GsettingsTimeout)
                         .ConfigureAwait(false);
                     return result.ExitCode == 0 && GnomeReduced(result.Output);
                 }

@@ -41,7 +41,7 @@ public static class LinuxPlatform
             log);
 
         return new PlatformServices(
-            $"Linux ({session})",
+            Name(session),
             () => hotkeys,
             injector,
             new SecretServiceStore(portal, log),
@@ -51,8 +51,8 @@ public static class LinuxPlatform
             [
                 new("session", HealthStatus.Ok(session.ToString())),
                 new("hotkeys", HealthStatus.Ok(hotkeys.Capabilities.Backend)),
-                Tool("clipboard", XClipboard.IsAvailable, "xclip", "Install xclip: 'sudo pacman -S xclip' or 'sudo apt install xclip'."),
-                Tool("active window", Tools.Exists("xprop"), "xprop", "Install xprop (package xorg-xprop / x11-utils) so terminals get Ctrl+Shift+V."),
+                Tool("clipboard", XClipboard.IsAvailable, XClipboard.Xclip, "Install xclip: 'sudo pacman -S xclip' or 'sudo apt install xclip'."),
+                Tool("active window", XpropActiveApp.IsAvailable, XpropActiveApp.Program, "Install xprop (package xorg-xprop / x11-utils) so terminals get Ctrl+Shift+V."),
             ]));
     }
 
@@ -60,7 +60,7 @@ public static class LinuxPlatform
         ILog log, Func<PlatformSettings> settings, SessionInfo session, Portal portal, INotifier notifier, IAutostart autostart, string stateDirectory)
     {
         var hotkeys = new PortalGlobalShortcuts(portal, log);
-        IClipboard clipboard = WlClipboard.IsAvailable ? new WlClipboard() : new MissingClipboard("wl-clipboard");
+        IClipboard clipboard = WlClipboard.IsAvailable ? new WlClipboard() : new MissingClipboard(WlClipboard.Package);
         var keystrokes = new WaylandKeystrokes(
             session,
             () => settings().Injector,
@@ -76,7 +76,7 @@ public static class LinuxPlatform
         var injector = new ClipboardPasteInjector(clipboard, keystrokes, null, null, () => settings().TerminalApps, log);
 
         return new PlatformServices(
-            $"Linux ({session})",
+            Name(session),
             () => hotkeys,
             injector,
             new SecretServiceStore(portal, log),
@@ -85,7 +85,7 @@ public static class LinuxPlatform
             async ct => [
                 new("session", HealthStatus.Ok(session.ToString())),
                 await PortalCheckAsync(portal, "hotkeys", PortalGlobalShortcuts.Interface, PortalGlobalShortcuts.CompositorHint, ct).ConfigureAwait(false),
-                Tool("clipboard", WlClipboard.IsAvailable, "wl-clipboard", "Install wl-clipboard: 'sudo pacman -S wl-clipboard' or 'sudo apt install wl-clipboard'."),
+                Tool("clipboard", WlClipboard.IsAvailable, WlClipboard.Package, "Install wl-clipboard: 'sudo pacman -S wl-clipboard' or 'sudo apt install wl-clipboard'."),
                 await PortalCheckAsync(portal, "paste (portal)", PortalKeystrokes.Interface, "Use ydotool instead: \"injector\": \"ydotool\".", ct).ConfigureAwait(false),
                 new("paste (ydotool)", YdotoolKeystrokes.IsAvailable
                     ? HealthStatus.Ok($"ydotoold at {YdotoolKeystrokes.SocketPath}")
@@ -102,6 +102,8 @@ public static class LinuxPlatform
                 await keystrokes.PrepareAsync(ct).ConfigureAwait(false);
             });
     }
+
+    private static string Name(SessionInfo session) => $"Linux ({session})";
 
     private static async Task<PlatformCheck> PortalCheckAsync(Portal portal, string name, string iface, string hint, CancellationToken ct)
     {

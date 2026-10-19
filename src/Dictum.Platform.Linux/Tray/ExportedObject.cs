@@ -1,3 +1,4 @@
+using Dictum.Platform.Linux.DBus;
 using Tmds.DBus.Protocol;
 
 namespace Dictum.Platform.Linux.Tray;
@@ -17,7 +18,7 @@ internal static class ExportedObject
         }
         catch (Exception ex)
         {
-            context.ReplyError("org.freedesktop.DBus.Error.Failed", ex.Message);
+            context.ReplyError(DBusNames.FailedError, ex.Message);
         }
 
         return default;

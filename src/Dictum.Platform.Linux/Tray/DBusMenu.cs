@@ -1,3 +1,4 @@
+using Dictum.Platform.Linux.DBus;
 using Tmds.DBus.Protocol;
 
 namespace Dictum.Platform.Linux.Tray;
@@ -7,6 +8,19 @@ public sealed class DBusMenu(DBusConnection connection) : IPathMethodHandler
 {
     public const string Interface = "com.canonical.dbusmenu";
     public const string MenuPath = "/MenuBar";
+
+    private const string ClickedEvent = "clicked";
+    private const uint ProtocolVersion = 3;
+    private const string LeftToRight = "ltr";
+    private const string NormalStatus = "normal";
+
+    private static class MenuProperty
+    {
+        public const string Version = "Version";
+        public const string TextDirection = "TextDirection";
+        public const string Status = "Status";
+        public const string IconThemePath = "IconThemePath";
+    }
 
     private static readonly ReadOnlyMemory<byte> InterfaceXml = """
         <interface name="com.canonical.dbusmenu">
@@ -157,11 +171,11 @@ public sealed class DBusMenu(DBusConnection connection) : IPathMethodHandler
         var names = reader.ReadArrayOfString();
         if (!layout.ById.TryGetValue(parentId, out var parent))
         {
-            context.ReplyError("org.freedesktop.DBus.Error.InvalidArgs", $"Unknown menu id {parentId}");
+            context.ReplyError(DBusNames.InvalidArgsError, $"Unknown menu id {parentId}");
             return;
         }
 
-        var writer = context.CreateReplyWriter("u(ia{sv}av)");
+        var writer = context.CreateReplyWriter("u" + MenuNodeWriter.LayoutSignature);
         try
         {
             writer.WriteUInt32(layout.Revision);
@@ -211,7 +225,7 @@ public sealed class DBusMenu(DBusConnection connection) : IPathMethodHandler
         }
         else
         {
-            context.ReplyError("org.freedesktop.DBus.Error.InvalidArgs", $"No property {name} on {id}");
+            context.ReplyError(DBusNames.InvalidArgsError, $"No property {name} on {id}");
         }
     }
 
@@ -222,7 +236,7 @@ public sealed class DBusMenu(DBusConnection connection) : IPathMethodHandler
         var eventId = reader.ReadString();
         reader.ReadVariantValue(); // data: Plasma sends s "", GNOME sends i 0
         reader.ReadUInt32();       // timestamp
-        if (eventId == "clicked")
+        if (eventId == ClickedEvent)
         {
             RaiseClicked(id);
         }
@@ -246,7 +260,7 @@ public sealed class DBusMenu(DBusConnection connection) : IPathMethodHandler
             {
                 errors.Add(id);
             }
-            else if (eventId == "clicked")
+            else if (eventId == ClickedEvent)
             {
                 RaiseClicked(id);
             }
@@ -288,21 +302,21 @@ public sealed class DBusMenu(DBusConnection connection) : IPathMethodHandler
         var reader = request.GetBodyReader();
         switch ((request.MemberAsString, request.SignatureAsString))
         {
-            case ("GetAll", "s") when reader.ReadString() == Interface:
+            case (DBusNames.GetAll, "s") when reader.ReadString() == Interface:
             {
                 using var writer = context.CreateReplyWriter("a{sv}");
                 var dict = writer.WriteDictionaryStart();
                 writer.WriteDictionaryEntryStart();
-                writer.WriteString("Version");
-                writer.WriteVariantUInt32(3);
+                writer.WriteString(MenuProperty.Version);
+                writer.WriteVariantUInt32(ProtocolVersion);
                 writer.WriteDictionaryEntryStart();
-                writer.WriteString("TextDirection");
-                writer.WriteVariantString("ltr");
+                writer.WriteString(MenuProperty.TextDirection);
+                writer.WriteVariantString(LeftToRight);
                 writer.WriteDictionaryEntryStart();
-                writer.WriteString("Status");
-                writer.WriteVariantString("normal");
+                writer.WriteString(MenuProperty.Status);
+                writer.WriteVariantString(NormalStatus);
                 writer.WriteDictionaryEntryStart();
-                writer.WriteString("IconThemePath");
+                writer.WriteString(MenuProperty.IconThemePath);
                 writer.WriteSignature("as");
                 writer.WriteArray(Array.Empty<string>());
                 writer.WriteDictionaryEnd(dict);
@@ -310,20 +324,20 @@ public sealed class DBusMenu(DBusConnection connection) : IPathMethodHandler
                 break;
             }
 
-            case ("Get", "ss") when reader.ReadString() == Interface:
+            case (DBusNames.Get, "ss") when reader.ReadString() == Interface:
             {
                 var name = reader.ReadString();
                 VariantValue? value = name switch
                 {
-                    "Version" => VariantValue.UInt32(3),
-                    "TextDirection" => VariantValue.String("ltr"),
-                    "Status" => VariantValue.String("normal"),
-                    "IconThemePath" => VariantValue.Array(Array.Empty<string>()),
+                    MenuProperty.Version => VariantValue.UInt32(ProtocolVersion),
+                    MenuProperty.TextDirection => VariantValue.String(LeftToRight),
+                    MenuProperty.Status => VariantValue.String(NormalStatus),
+                    MenuProperty.IconThemePath => VariantValue.Array(Array.Empty<string>()),
                     _ => (VariantValue?)null,
                 };
                 if (value is null)
                 {
-                    context.ReplyError("org.freedesktop.DBus.Error.UnknownProperty", name);
+                    context.ReplyError(DBusNames.UnknownPropertyError, name);
                     return;
                 }
 
@@ -332,7 +346,7 @@ public sealed class DBusMenu(DBusConnection connection) : IPathMethodHandler
             }
 
             default:
-                context.ReplyError("org.freedesktop.DBus.Error.UnknownInterface", "No such interface");
+                context.ReplyError(DBusNames.UnknownInterfaceError, "No such interface");
                 break;
         }
     }
