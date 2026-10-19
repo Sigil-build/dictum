@@ -12,6 +12,21 @@ namespace Dictum.Integration.Tests;
 /// <summary>Real Win32 clipboard and Credential Manager; skipped on other OSes.</summary>
 public class WindowsPlatformTests
 {
+    /// <summary>A key of its own: the real Run key belongs to the Dictum installed on this machine.</summary>
+    private const string RunKeyRoot = @"Software\Dictum-Tests";
+
+    /// <summary>The clipboard history, a clipboard manager or an app that renders its data late can hold it this long.</summary>
+    private static readonly TimeSpan BriefHold = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>Most of <see cref="BriefHold"/>, with room for the timer's resolution.</summary>
+    private static readonly TimeSpan WaitedThroughBriefHold = TimeSpan.FromMilliseconds(400);
+
+    /// <summary>Longer than <see cref="OpenTimeout"/> and <see cref="CancelAfter"/>.</summary>
+    private static readonly TimeSpan LongHold = TimeSpan.FromSeconds(1);
+
+    private static readonly TimeSpan OpenTimeout = TimeSpan.FromMilliseconds(200);
+    private static readonly TimeSpan CancelAfter = TimeSpan.FromMilliseconds(100);
+
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
 
     [Fact]
@@ -49,13 +64,12 @@ public class WindowsPlatformTests
             return;
         }
 
-        // The clipboard history, a clipboard manager or an app that renders its data late can hold it this long.
-        await using var hold = await ClipboardHold.StartAsync(TimeSpan.FromMilliseconds(500));
+        await using var hold = await ClipboardHold.StartAsync(BriefHold);
         var waited = Stopwatch.StartNew();
 
         await new Win32Clipboard().GetTextAsync(_ct);
 
-        Assert.True(waited.Elapsed >= TimeSpan.FromMilliseconds(400), $"The read did not wait for the holder: {waited.Elapsed}");
+        Assert.True(waited.Elapsed >= WaitedThroughBriefHold, $"The read did not wait for the holder: {waited.Elapsed}");
     }
 
     // The platform analyzer does not carry the IsWindows check into the lambdas of the next two tests.
@@ -69,8 +83,8 @@ public class WindowsPlatformTests
             return;
         }
 
-        await using var hold = await ClipboardHold.StartAsync(TimeSpan.FromSeconds(1));
-        var clipboard = new Win32Clipboard(openTimeout: TimeSpan.FromMilliseconds(200));
+        await using var hold = await ClipboardHold.StartAsync(LongHold);
+        var clipboard = new Win32Clipboard(openTimeout: OpenTimeout);
 
         var error = await Assert.ThrowsAsync<Win32Exception>(() => clipboard.GetTextAsync(_ct));
 
@@ -87,9 +101,9 @@ public class WindowsPlatformTests
             return;
         }
 
-        await using var hold = await ClipboardHold.StartAsync(TimeSpan.FromSeconds(1));
+        await using var hold = await ClipboardHold.StartAsync(LongHold);
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(_ct);
-        cts.CancelAfter(TimeSpan.FromMilliseconds(100));
+        cts.CancelAfter(CancelAfter);
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => new Win32Clipboard().GetTextAsync(cts.Token));
     }
@@ -127,8 +141,7 @@ public class WindowsPlatformTests
             return;
         }
 
-        // A key of its own: the real Run key belongs to the user's installed Dictum.
-        var keyPath = $@"Software\Dictum-Tests\Run-{Guid.NewGuid():N}";
+        var keyPath = $@"{RunKeyRoot}\Run-{Guid.NewGuid():N}";
         var autostart = new RunKeyAutostart(keyPath);
         try
         {
@@ -147,7 +160,7 @@ public class WindowsPlatformTests
         }
         finally
         {
-            Registry.CurrentUser.DeleteSubKeyTree(@"Software\Dictum-Tests", throwOnMissingSubKey: false);
+            Registry.CurrentUser.DeleteSubKeyTree(RunKeyRoot, throwOnMissingSubKey: false);
         }
     }
 
@@ -219,6 +232,11 @@ public class WindowsPlatformTests
 [SupportedOSPlatform("windows")]
 internal sealed partial class ClipboardHold(Task closed) : IAsyncDisposable
 {
+    /// <summary>How long the hold tries to open a clipboard that someone else has open.</summary>
+    private static readonly TimeSpan OpenPatience = TimeSpan.FromSeconds(5);
+
+    private static readonly TimeSpan OpenRetryInterval = TimeSpan.FromMilliseconds(5);
+
     /// <summary>Returns once the clipboard is open.</summary>
     public static async Task<ClipboardHold> StartAsync(TimeSpan duration)
     {
@@ -236,13 +254,13 @@ internal sealed partial class ClipboardHold(Task closed) : IAsyncDisposable
                 var waited = Stopwatch.StartNew();
                 while (!OpenClipboard(owner))
                 {
-                    if (waited.Elapsed > TimeSpan.FromSeconds(5))
+                    if (waited.Elapsed > OpenPatience)
                     {
                         opened.SetException(new InvalidOperationException("Could not open the clipboard to hold it."));
                         return;
                     }
 
-                    Thread.Sleep(5);
+                    Thread.Sleep(OpenRetryInterval);
                 }
 
                 opened.SetResult();

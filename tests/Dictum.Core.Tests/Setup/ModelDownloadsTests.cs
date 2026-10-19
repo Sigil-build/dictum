@@ -46,7 +46,7 @@ public sealed class ModelDownloadsTests : IDisposable
         Assert.DoesNotContain("\"a\"", File.ReadAllText(Paths.DownloadsFile));
     }
 
-    [Fact(Timeout = 10_000)]
+    [Fact(Timeout = TestTimeout.Default)]
     public async Task PauseKeepsThePartialFileAndResumeContinuesWithARange()
     {
         var stalling = new StallingStream(DataA[..1000]);
@@ -101,7 +101,7 @@ public sealed class ModelDownloadsTests : IDisposable
         Assert.Equal(DownloadState.Done, queue.Items[1].State);
     }
 
-    [Fact(Timeout = 10_000)]
+    [Fact(Timeout = TestTimeout.Default)]
     public async Task ASaveThatFailsDoesNotStopTheQueue()
     {
         var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -134,7 +134,7 @@ public sealed class ModelDownloadsTests : IDisposable
         Assert.Empty(http.Requests);
     }
 
-    [Fact(Timeout = 10_000)]
+    [Fact(Timeout = TestTimeout.Default)]
     public async Task CancelRemovesTheEntryAndItsPartialFile()
     {
         var stalling = new StallingStream(DataA[..1000]);
@@ -151,7 +151,7 @@ public sealed class ModelDownloadsTests : IDisposable
         Assert.False(File.Exists(Paths.ResolveModel("a.bin") + ".partial"));
     }
 
-    [Fact(Timeout = 20_000)]
+    [Fact(Timeout = TestTimeout.Generous)]
     public async Task ChangesFromManyThreadsNeverFailTheQueue()
     {
         var http = new FakeHttpHandler().Hang();
@@ -175,7 +175,7 @@ public sealed class ModelDownloadsTests : IDisposable
         Assert.True(File.Exists(Paths.DownloadsFile));
     }
 
-    [Fact(Timeout = 10_000)]
+    [Fact(Timeout = TestTimeout.Default)]
     public async Task ClosingTheAppMidDownloadContinuesItOnTheNextStart()
     {
         var stalling = new StallingStream(DataA[..1000]);
@@ -200,7 +200,7 @@ public sealed class ModelDownloadsTests : IDisposable
         Assert.Equal(DataA, File.ReadAllBytes(Paths.ResolveModel("a.bin")));
     }
 
-    [Fact(Timeout = 10_000)]
+    [Fact(Timeout = TestTimeout.Default)]
     public async Task PauseThenAnImmediateResumeStillFinishesTheDownload()
     {
         var stalling = new StallingStream(DataA[..1000]);

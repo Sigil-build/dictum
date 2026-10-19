@@ -7,7 +7,7 @@ using Dictum.Platform.Windows;
 namespace Dictum.Integration.Tests;
 
 /// <summary>
-/// The overlay's Win32 styles on a real Avalonia window, which rebuilds GWL_EXSTYLE on every Show (final review C1).
+/// The overlay's Win32 styles on a real Avalonia window, which rebuilds GWL_EXSTYLE on every Show.
 /// Runs on a locked desktop too.
 /// </summary>
 public class OverlayWindowStyleTests

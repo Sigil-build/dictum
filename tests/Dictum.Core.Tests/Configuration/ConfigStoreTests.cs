@@ -7,8 +7,8 @@ namespace Dictum.Core.Tests.Configuration;
 
 public class ConfigStoreTests
 {
-    // The example from the implementation plan, section 5.
-    private const string PlanExample = """
+    /// <summary>Every section and every provider type, with the values a real setup has.</summary>
+    private const string FullExample = """
         {
           "schemaVersion": 1,
           "general": { "startWithSystem": true, "historySize": 200, "sounds": true, "audioDevice": null },
@@ -33,9 +33,9 @@ public class ConfigStoreTests
         """;
 
     [Fact]
-    public void ParsesThePlanExample()
+    public void ParsesAConfigWithEverySection()
     {
-        var config = ConfigStore.Parse(PlanExample);
+        var config = ConfigStore.Parse(FullExample);
 
         var turbo = Assert.IsType<WhisperLocalSttConfig>(config.Stt["local-turbo"]);
         Assert.Equal("ggml-large-v3-turbo.bin", turbo.Model);
@@ -64,7 +64,7 @@ public class ConfigStoreTests
     [Fact]
     public void SerializeRoundTripsAndKeepsTheTypeDiscriminator()
     {
-        var original = ConfigStore.Parse(PlanExample);
+        var original = ConfigStore.Parse(FullExample);
 
         var json = ConfigStore.Serialize(original);
         var copy = ConfigStore.Parse(json);

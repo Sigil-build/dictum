@@ -64,7 +64,6 @@ public sealed class LinuxAutostartTests : IDisposable
         Assert.DoesNotContain(" daemon", entry);
     }
 
-    // Review focus 1: the daemon's unit runs it through the AppImage.
     [Fact]
     public async Task TheDaemonUnitRunsThroughTheAppImage()
     {

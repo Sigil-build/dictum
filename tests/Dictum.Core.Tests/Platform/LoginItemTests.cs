@@ -28,14 +28,14 @@ public class LoginItemTests
         Assert.Equal(["daemon"], item.Arguments);
     }
 
-    // Review focus 1: inside an AppImage the desktop app is always bundled, and the AppImage is what lasts.
+    // Inside an AppImage the desktop app is always bundled, and the AppImage is what lasts.
     [Fact]
     public void InsideAnAppImageInitStartsTheAppImage() =>
         Assert.Equal(
             new LoginItem(LoginApp.DesktopApp, "/home/me/Apps/dictum.AppImage"),
             LoginItem.NextTo("/tmp/.mount_x/usr/bin/dictum", "/home/me/Apps/dictum.AppImage"));
 
-    // Review focus 2: the Run key text stays as it was.
+    // The Run key's format: an upgrade must recognise the entry an earlier version wrote.
     [Fact]
     public void TheCommandLineQuotesTheExecutable()
     {

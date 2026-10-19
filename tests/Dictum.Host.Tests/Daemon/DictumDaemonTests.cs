@@ -14,7 +14,18 @@ namespace Dictum.Host.Tests.Daemon;
 
 public sealed class DictumDaemonTests : IAsyncDisposable
 {
+    private const int PasteDelayMs = 250;
+
     private static readonly TimeSpan Patience = TimeSpan.FromSeconds(5);
+
+    /// <summary>How long a drain waits for events still on their way.</summary>
+    private static readonly TimeSpan DrainWait = TimeSpan.FromMilliseconds(100);
+
+    /// <summary>Room for a second Finished event to arrive, if the daemon sent one.</summary>
+    private static readonly TimeSpan LateEventWait = TimeSpan.FromMilliseconds(200);
+
+    /// <summary>How long the stop announcement may take to reach the subscribers.</summary>
+    private static readonly TimeSpan AnnounceTimeout = TimeSpan.FromMilliseconds(50);
 
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
     private readonly FakeHotkeys _hotkeys = new();
@@ -41,7 +52,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         var (text, options) = _injector.Injected[0];
         Assert.Equal("привіт світ", text);
         Assert.Equal(PasteShortcut.CtrlShiftV, options.Shortcut);
-        Assert.Equal(TimeSpan.FromMilliseconds(250), options.RestoreDelay);
+        Assert.Equal(TimeSpan.FromMilliseconds(PasteDelayMs), options.RestoreDelay);
         Assert.Equal([SoundCue.Start, SoundCue.Stop], _sounds.Played);
     }
 
@@ -278,7 +289,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         await daemon.HandleAsync(new IpcRequest(IpcCommand.Cancel), _ct);
         await stop;
         var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == IpcEventKind.Finished));
-        await Task.Delay(200, _ct);
+        await Task.Delay(LateEventWait, _ct);
         events.AddRange(await DrainAsync(subscriber));
 
         Assert.Single(events, e => e.Event == IpcEventKind.Finished);
@@ -341,7 +352,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
 
     private static async Task<List<IpcEvent>> DrainAsync(IpcSubscriber subscriber)
     {
-        using var quick = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+        using var quick = new CancellationTokenSource(DrainWait);
         try
         {
             return [.. await subscriber.NextAsync(quick.Token)];
@@ -360,7 +371,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
 
         Assert.True((await daemon.HandleAsync(new IpcRequest(IpcCommand.Shutdown), _ct)).Ok);
 
-        await daemon.ShutdownRequested.WaitAsync(TimeSpan.FromSeconds(5), _ct);
+        await daemon.ShutdownRequested.WaitAsync(Patience, _ct);
         Assert.Equal(PipelineState.Idle, daemon.State);
     }
 
@@ -608,7 +619,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         using var subscriber = _events.Subscribe();
         await daemon.HandleAsync(new IpcRequest(IpcCommand.Shutdown), _ct);
 
-        await daemon.AnnounceStoppingAsync(TimeSpan.FromMilliseconds(50));
+        await daemon.AnnounceStoppingAsync(AnnounceTimeout);
         await daemon.DisposeAsync();
         var events = await DrainAsync(subscriber);
 
@@ -711,7 +722,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         await WaitForAsync(() => daemon.State == PipelineState.Transcribing);
         await daemon.HandleAsync(new IpcRequest(IpcCommand.Cancel), _ct);
         var events = await CollectAsync(subscriber, e => e.Any(x => x.Event == IpcEventKind.Finished));
-        await Task.Delay(200, _ct);
+        await Task.Delay(LateEventWait, _ct);
         events.AddRange(await DrainAsync(subscriber));
 
         Assert.Equal(DictationOutcome.Cancelled, Assert.Single(events, e => e.Event == IpcEventKind.Finished).Outcome);
@@ -761,7 +772,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         Assert.Equal((false, true), (monitorKept, audio.LastKeepSamples));
     }
 
-    // PR 5b: step 8 says "loading" until the speech model is in memory.
+    // The setup wizard's last step says "loading" until the speech model is in memory.
     [Fact]
     public async Task TheStatusSaysWhenTheWarmUpEnded()
     {
@@ -777,7 +788,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         Assert.True(daemon.Status().WarmedUp);
     }
 
-    // PR 5b: a reload warms up the new engine; the status says "loading" again until it has.
+    // A reload warms up the new engine; the status says "loading" again until it has.
     [Fact]
     public async Task AReloadSaysLoadingUntilTheNewEngineWarmedUp()
     {
@@ -795,7 +806,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         await CollectAsync(subscriber, e => e.Any(x => x.Status?.WarmedUp == true));
     }
 
-    // PR 5b, review focus 2: a warm-up that failed still ends "loading"; the first dictation then reports the problem.
+    // A warm-up that failed still ends "loading"; the first dictation then reports the problem.
     [Fact]
     public async Task AFailedWarmUpStillEndsLoading()
     {
@@ -809,7 +820,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     {
         var events = new List<IpcEvent>();
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(_ct);
-        timeout.CancelAfter(TimeSpan.FromSeconds(5));
+        timeout.CancelAfter(Patience);
         while (!until(events))
         {
             events.AddRange(await subscriber.NextAsync(timeout.Token));
@@ -841,7 +852,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
 
     private static DictumConfig Config() => new()
     {
-        General = new GeneralSettings { PasteDelayMs = 250 },
+        General = new GeneralSettings { PasteDelayMs = PasteDelayMs },
         Stt = new() { ["s"] = new WhisperLocalSttConfig { Model = "m.bin" } },
         Profiles =
         [
@@ -852,7 +863,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
 
     private static Task WaitForAsync(Func<bool> condition) => Eventually.WaitForAsync(condition, "the daemon", Patience);
 
-    // PR 4d: "Measure" on Settings → Models divides the latency by the length of what was transcribed.
+    // "Measure" on Settings → Models divides the latency by the length of what was transcribed.
     [Fact]
     public async Task TestSttReportsHowLongTheAudioWas()
     {

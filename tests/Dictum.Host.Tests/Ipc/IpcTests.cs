@@ -7,6 +7,20 @@ namespace Dictum.Host.Tests.Ipc;
 
 public sealed class IpcTests : IDisposable
 {
+    /// <summary>IpcEndpoint's limit, below the 108 bytes Linux allows and the 104 of macOS.</summary>
+    private const int SocketPathLimit = 100;
+
+    /// <summary>Short, so a subscriber that never reads is dropped quickly.</summary>
+    private static readonly TimeSpan SlowReaderTimeout = TimeSpan.FromMilliseconds(200);
+
+    /// <summary>How long a daemon that took the connection gets to answer before it counts as not answering.</summary>
+    private static readonly TimeSpan SilenceTimeout = TimeSpan.FromMilliseconds(200);
+
+    private static readonly TimeSpan DeliveryTimeout = TimeSpan.FromSeconds(2);
+
+    /// <summary>Lets the server's writer run between bursts of events.</summary>
+    private static readonly TimeSpan BurstPause = TimeSpan.FromMilliseconds(20);
+
     private readonly TempDirectory _dir = new();
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
 
@@ -88,13 +102,13 @@ public sealed class IpcTests : IDisposable
 
         var shortened = IpcEndpoint.Shorten(deep);
 
-        Assert.True(shortened.Length <= 100, shortened);
+        Assert.True(shortened.Length <= SocketPathLimit, shortened);
         Assert.Equal(shortened, IpcEndpoint.Shorten(deep));
         Assert.NotEqual(shortened, IpcEndpoint.Shorten(deep + "2"));
         Assert.Equal(SocketPath, IpcEndpoint.Shorten(SocketPath));
     }
 
-    [Fact(Timeout = 10_000)]
+    [Fact(Timeout = TestTimeout.Default)]
     public async Task SubscribeStreamsPublishedEventsInOrder()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -123,7 +137,7 @@ public sealed class IpcTests : IDisposable
         Assert.Equal((IpcEventKind.Finished, DictationOutcome.Pasted, 6100L), (events[1].Event, events[1].Outcome, events[1].TranscribeMs));
     }
 
-    [Fact(Timeout = 10_000)]
+    [Fact(Timeout = TestTimeout.Default)]
     public async Task HangingUpRemovesTheSubscriber()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -135,18 +149,15 @@ public sealed class IpcTests : IDisposable
         Assert.Equal(1, hub.SubscriberCount);
         await subscription.DisposeAsync();
 
-        while (hub.SubscriberCount > 0)
-        {
-            await Task.Delay(10, ct);
-        }
+        await Eventually.WaitForAsync(() => hub.SubscriberCount == 0, "the subscriber to be removed");
     }
 
-    [Fact(Timeout = 20_000)]
+    [Fact(Timeout = TestTimeout.Generous)]
     public async Task OverflowingSubscriberIsDropped()
     {
         var ct = TestContext.Current.CancellationToken;
         var hub = new IpcEventHub();
-        await using var server = new IpcServer(SocketPath, NullLog.Instance, hub, writeTimeout: TimeSpan.FromMilliseconds(200));
+        await using var server = new IpcServer(SocketPath, NullLog.Instance, hub, writeTimeout: SlowReaderTimeout);
         server.Start((_, _) => Task.FromResult(IpcResponse.Success(Status(nameof(PipelineState.Idle)))));
 
         await using var neverReads = await new IpcClient(SocketPath).SubscribeAsync(ct);
@@ -158,11 +169,11 @@ public sealed class IpcTests : IDisposable
                 hub.Publish(big);
             }
 
-            await Task.Delay(20, ct);
+            await Task.Delay(BurstPause, ct);
         }
     }
 
-    [Fact(Timeout = 10_000)]
+    [Fact(Timeout = TestTimeout.Default)]
     public async Task EventsDeliveredBeforeDisposeReachTheClient()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -172,7 +183,7 @@ public sealed class IpcTests : IDisposable
         await using var subscription = await new IpcClient(SocketPath).SubscribeAsync(ct);
 
         hub.Publish(IpcEvent.Stopping(StoppingReason.Shutdown));
-        Assert.True(await hub.WhenDeliveredAsync(TimeSpan.FromSeconds(2)));
+        Assert.True(await hub.WhenDeliveredAsync(DeliveryTimeout));
         await server.DisposeAsync();
 
         var events = new List<IpcEvent>();
@@ -184,7 +195,7 @@ public sealed class IpcTests : IDisposable
         Assert.Equal((IpcEventKind.Stopping, StoppingReason.Shutdown), (events.Single().Event, events.Single().Reason));
     }
 
-    [Fact(Timeout = 10_000)]
+    [Fact(Timeout = TestTimeout.Default)]
     public async Task AHandlerExceptionBecomesAFailureAnswer()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -197,9 +208,9 @@ public sealed class IpcTests : IDisposable
         Assert.Contains("broken handler", response.Error);
     }
 
-    // PR 5b: the GUI subscribes to a daemon that may still be registering its hotkeys; a status published while the
-    // reply is being built must still reach it, or step 8 waits for a change it never hears about.
-    [Fact(Timeout = 10_000)]
+    // The GUI subscribes to a daemon that may still be registering its hotkeys; a status published while the reply is
+    // being built must still reach it, or the setup wizard's last step waits for a change it never hears about.
+    [Fact(Timeout = TestTimeout.Default)]
     public async Task AnEventPublishedWhileTheSubscribeReplyIsBuiltIsNotLost()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -223,8 +234,8 @@ public sealed class IpcTests : IDisposable
         }
     }
 
-    // PR 5b: subscribing before the reply must not leave a subscriber behind when the reply is a refusal.
-    [Fact(Timeout = 10_000)]
+    // Subscribing before the reply must not leave a subscriber behind when the reply is a refusal.
+    [Fact(Timeout = TestTimeout.Default)]
     public async Task ARefusedSubscribeLeavesNoSubscriber()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -238,7 +249,7 @@ public sealed class IpcTests : IDisposable
         Assert.Equal(0, hub.SubscriberCount);
     }
 
-    [Fact(Timeout = 10_000)]
+    [Fact(Timeout = TestTimeout.Default)]
     public async Task AProbeTellsAnAnsweringDaemonFromASilentOneAndFromNone()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -258,7 +269,7 @@ public sealed class IpcTests : IDisposable
             await Task.Delay(Timeout.Infinite, serving);
             return IpcResponse.Failure("never sent");
         });
-        Assert.Equal(DaemonPresence.NotAnswering, (await client.ProbeAsync(ct, TimeSpan.FromMilliseconds(200))).Presence);
+        Assert.Equal(DaemonPresence.NotAnswering, (await client.ProbeAsync(ct, SilenceTimeout)).Presence);
     }
 
     private static Task<IpcResponse> Refuse(IpcRequest request, CancellationToken ct) => Task.FromResult(IpcResponse.Failure("x"));

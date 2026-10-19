@@ -2,6 +2,7 @@ using Dictum.Core.Diagnostics;
 using Dictum.Core.Hotkeys;
 using Dictum.Platform.Hotkeys;
 using Dictum.Platform.Input;
+using Dictum.Testing;
 using SharpHook;
 using SharpHook.Data;
 using SharpHook.Providers;
@@ -14,7 +15,7 @@ public sealed class SharpHookHotkeyServiceTests
     private static readonly TimeSpan LongStart = TimeSpan.FromMinutes(1);
     private static readonly HotkeyBinding[] Bindings = [new("dictate", Hotkey.Parse("Ctrl+Alt+Space"), "Dictate")];
 
-    [Fact(Timeout = 10_000)]
+    [Fact(Timeout = TestTimeout.Default)]
     public async Task AHookThatDoesNotStartInTimeIsDisposedAndTheNextBindingsStartANewOne()
     {
         var stuck = new SimpleGlobalHook(new FakeHookProvider(enables: false));
@@ -30,7 +31,7 @@ public sealed class SharpHookHotkeyServiceTests
         Assert.True(working.Enabled);
     }
 
-    [Fact(Timeout = 10_000)]
+    [Fact(Timeout = TestTimeout.Default)]
     public async Task AHookThatFailsToStartIsTriedAgainWithTheNextBindings()
     {
         var working = new FakeHookProvider(enables: true);
@@ -45,7 +46,7 @@ public sealed class SharpHookHotkeyServiceTests
         Assert.True(working.Enabled);
     }
 
-    [Fact(Timeout = 10_000)]
+    [Fact(Timeout = TestTimeout.Default)]
     public async Task ACancelledStartIsReportedAsCancelledAndDisposesTheHook()
     {
         var hook = new SimpleGlobalHook(new FakeHookProvider(enables: false));

@@ -9,6 +9,9 @@ public class IpcEventHubTests
 {
     private static readonly TimeSpan DeliveryTimeout = TimeSpan.FromSeconds(1);
 
+    /// <summary>Far more than 10,000 publishes need, and far less than one that waits for a stuck subscriber.</summary>
+    private static readonly TimeSpan PublishBudget = TimeSpan.FromSeconds(1);
+
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
 
     [Fact]
@@ -42,7 +45,7 @@ public class IpcEventHubTests
             hub.Publish(IpcEvent.Stopping("test"));
         }
 
-        Assert.True(watch.ElapsedMilliseconds < 1000);
+        Assert.True(watch.Elapsed < PublishBudget);
         Assert.True(stuck.Overflowed);
     }
 

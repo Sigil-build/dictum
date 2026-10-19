@@ -71,7 +71,7 @@ public class LinuxPlatformTests
         Assert.Contains("NoDisplay=true", DesktopEntry.Content(new LoginItem(LoginApp.Daemon, "/opt/dictum/dictum")));
     }
 
-    // Review focus 1: the portal's entry must still start the daemon after the AppImage moves its mount.
+    // The AppImage mounts under a new path every run, so the portal's entry must name the AppImage file.
     [Fact]
     public void ThePortalEntryRunsTheDaemonThroughTheAppImage() =>
         Assert.Contains(

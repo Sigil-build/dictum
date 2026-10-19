@@ -7,7 +7,7 @@ public class PackagingTests
 {
     private static string Icons => Path.Combine(Repository.Root, "packaging", "icons");
 
-    // Review focus 5: every size Windows picks from (16 for small icons up to 256 for large tiles), so none is scaled.
+    // Every size Windows picks from (16 for small icons up to 256 for large tiles), so none is scaled.
     [Fact]
     public void TheIconHasEverySizeWindowsUses()
     {

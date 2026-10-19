@@ -10,7 +10,7 @@ public class ReplaceProcessorTests
     private static readonly ProcessingContext Context = new("p", "uk", null);
 
     [Fact]
-    public async Task AppliesThePlanExampleRules()
+    public async Task AppliesALiteralAndARegexRule()
     {
         var processor = new ReplaceProcessor("dev-terms", new ReplaceProcessorConfig
         {
@@ -43,7 +43,6 @@ public class ReplaceProcessorTests
         Assert.Equal("api API 50%", result);
     }
 
-    // Review focus 4.
     [Fact]
     public async Task WholeWordLeavesLongerWordsAlone()
     {
@@ -61,7 +60,6 @@ public class ReplaceProcessorTests
         Assert.Equal("main, мейнфрейм і API, Api, rapid", result);
     }
 
-    // Review focus 4.
     [Fact]
     public async Task ADollarInTheReplacementStaysLiteral()
     {

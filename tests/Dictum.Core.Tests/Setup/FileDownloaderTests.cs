@@ -7,6 +7,12 @@ namespace Dictum.Core.Tests.Setup;
 
 public sealed class FileDownloaderTests : IDisposable
 {
+    /// <summary>Short, so a stalled connection is given up quickly.</summary>
+    private static readonly TimeSpan StallTimeout = TimeSpan.FromMilliseconds(200);
+
+    /// <summary>Long enough for the bytes before the stall to reach the partial file.</summary>
+    private static readonly TimeSpan CancelDuringTheStall = TimeSpan.FromMilliseconds(300);
+
     private static readonly byte[] Data = [.. Enumerable.Range(0, 5000).Select(i => (byte)(i * 7))];
     private readonly TempDirectory _dir = new();
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
@@ -72,20 +78,20 @@ public sealed class FileDownloaderTests : IDisposable
         var http = new FakeHttpHandler()
             .Respond(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new StallingStream(Data[..1000])) })
             .Respond(_ => PartialContent(Data[1000..]));
-        var downloader = new FileDownloader(http.Client(), [TimeSpan.Zero], stallTimeout: TimeSpan.FromMilliseconds(200));
+        var downloader = new FileDownloader(http.Client(), [TimeSpan.Zero], stallTimeout: StallTimeout);
 
         await downloader.DownloadAsync(Entry(), Target, null, _ct);
 
         Assert.Equal(Data, File.ReadAllBytes(Target));
     }
 
-    [Fact(Timeout = 10_000)]
+    [Fact(Timeout = TestTimeout.Default)]
     public async Task ServerThatNeverAnswersIsRetried()
     {
         var http = new FakeHttpHandler()
             .Hang()
             .Respond(_ => Ok(Data));
-        var downloader = new FileDownloader(http.Client(), [TimeSpan.Zero], stallTimeout: TimeSpan.FromMilliseconds(200));
+        var downloader = new FileDownloader(http.Client(), [TimeSpan.Zero], stallTimeout: StallTimeout);
 
         await downloader.DownloadAsync(Entry(), Target, null, TestContext.Current.CancellationToken);
 
@@ -137,7 +143,7 @@ public sealed class FileDownloaderTests : IDisposable
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(_ct);
         var http = new FakeHttpHandler()
             .Respond(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new StallingStream(Data[..3000])) });
-        cts.CancelAfter(TimeSpan.FromMilliseconds(300));
+        cts.CancelAfter(CancelDuringTheStall);
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Downloader(http).DownloadAsync(Entry(), Target, null, cts.Token));
 

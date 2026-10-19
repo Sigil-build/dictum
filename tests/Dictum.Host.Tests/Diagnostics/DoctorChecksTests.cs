@@ -15,6 +15,9 @@ namespace Dictum.Host.Tests.Diagnostics;
 
 public sealed class DoctorChecksTests : IDisposable
 {
+    /// <summary>Short, so a provider or a daemon that never answers fails its row quickly.</summary>
+    private static readonly TimeSpan ShortTimeout = TimeSpan.FromMilliseconds(200);
+
     private readonly TempDirectory _dir = new();
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
 
@@ -48,7 +51,7 @@ public sealed class DoctorChecksTests : IDisposable
     [Fact]
     public async Task AProviderThatNeverAnswersTimesOut()
     {
-        var inputs = Inputs(Config("m.bin")) with { GetStt = _ => new SilentStt(), CheckTimeout = TimeSpan.FromMilliseconds(100) };
+        var inputs = Inputs(Config("m.bin")) with { GetStt = _ => new SilentStt(), CheckTimeout = ShortTimeout };
 
         var checks = await DoctorChecks.RunAsync(inputs, _ct);
 
@@ -66,7 +69,7 @@ public sealed class DoctorChecksTests : IDisposable
             return IpcResponse.Failure("never sent");
         });
 
-        var row = await DoctorChecks.CheckDaemonAsync(socket, _ct, TimeSpan.FromMilliseconds(200));
+        var row = await DoctorChecks.CheckDaemonAsync(socket, _ct, ShortTimeout);
 
         Assert.Equal(HealthLevel.Error, row.Level);
         Assert.Contains("not answering", row.Detail);

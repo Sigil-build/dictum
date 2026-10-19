@@ -19,6 +19,12 @@ namespace Dictum.Integration.Tests;
 /// </summary>
 public class CleanupPromptTests
 {
+    /// <summary>A large model on a slow machine can take this long for one answer.</summary>
+    private const int AnswerTimeoutMs = 120_000;
+
+    /// <summary>An answer with less than a third of the input's words dropped most of them.</summary>
+    private const int MostWordsDroppedRatio = 3;
+
     private static readonly string? Server = Environment.GetEnvironmentVariable("DICTUM_TEST_LLAMA_SERVER");
     private static readonly string? Model = Environment.GetEnvironmentVariable("DICTUM_TEST_LLM_MODEL");
 
@@ -41,7 +47,7 @@ public class CleanupPromptTests
                 Prompt = "cleanup",
                 ApiKey = LlamaServer.ApiKey,
                 Temperature = 0,
-                TimeoutMs = 120_000,
+                TimeoutMs = AnswerTimeoutMs,
                 OnError = LlmErrorMode.Fail,
                 PreserveText = false,
             },
@@ -53,8 +59,8 @@ public class CleanupPromptTests
         var failures = new List<string>();
         foreach (var phrase in Phrases())
         {
-            // Every phrase runs with and without a word list: in October 2026 a vocabulary sentence in this prompt made
-            // MamayLM append terms ("…з новим Notepad++.") and drop case endings ("з тогл").
+            // Every phrase runs with and without a word list: a vocabulary sentence in this prompt made MamayLM append
+            // terms ("…з новим Notepad++.") and drop case endings ("з тогл").
             foreach (var vocabulary in new[] { null, Vocabulary })
             {
                 var label = vocabulary is null ? phrase.Id : $"{phrase.Id} (with vocabulary)";
@@ -64,7 +70,7 @@ public class CleanupPromptTests
                     failures.Add($"{label}: added line breaks: {answer}");
                 }
 
-                if (TextChecks.WordCount(answer) * 3 < TextChecks.WordCount(phrase.Text))
+                if (TextChecks.WordCount(answer) * MostWordsDroppedRatio < TextChecks.WordCount(phrase.Text))
                 {
                     failures.Add($"{label}: dropped most words: {answer}");
                 }
@@ -117,6 +123,13 @@ public class CleanupPromptTests
     {
         public const string ApiKey = "integration-test";
 
+        private const int ExitWaitMs = 5000;
+
+        /// <summary>Loading a model from a cold disk, onto a GPU or into RAM, can take minutes.</summary>
+        private static readonly TimeSpan StartPatience = TimeSpan.FromMinutes(3);
+
+        private static readonly TimeSpan HealthPollInterval = TimeSpan.FromMilliseconds(500);
+
         private readonly Process _process;
 
         private LlamaServer(Process process, int port)
@@ -153,7 +166,7 @@ public class CleanupPromptTests
             var server = new LlamaServer(process, port);
 
             using var http = new HttpClient();
-            var deadline = DateTime.UtcNow.AddMinutes(3);
+            var deadline = DateTime.UtcNow + StartPatience;
             while (DateTime.UtcNow < deadline)
             {
                 if (process.HasExited)
@@ -172,13 +185,14 @@ public class CleanupPromptTests
                 }
                 catch (HttpRequestException)
                 {
+                    // Not listening yet.
                 }
 
-                await Task.Delay(500, ct);
+                await Task.Delay(HealthPollInterval, ct);
             }
 
             server.Dispose();
-            throw new TimeoutException("llama-server was not ready within 3 minutes");
+            throw new TimeoutException($"llama-server was not ready within {StartPatience.TotalMinutes} minutes");
         }
 
         public void Dispose()
@@ -186,7 +200,7 @@ public class CleanupPromptTests
             if (!_process.HasExited)
             {
                 _process.Kill(entireProcessTree: true);
-                _process.WaitForExit(5000);
+                _process.WaitForExit(ExitWaitMs);
             }
 
             _process.Dispose();

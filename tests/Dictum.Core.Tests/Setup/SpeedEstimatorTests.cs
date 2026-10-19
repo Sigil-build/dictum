@@ -18,7 +18,6 @@ public class SpeedEstimatorTests
     private static HistoryEntry Dictation(string model, double audioSeconds, long transcribeMs) =>
         new(DateTimeOffset.UnixEpoch, "work", "local", "raw", "text", "uk", audioSeconds, Model: model, Backend: "vulkan", TranscribeMs: transcribeMs);
 
-    // Review focus 3.
     [Fact]
     public void DictationsGiveTheMedianOfTheLastTwenty()
     {
@@ -63,7 +62,6 @@ public class SpeedEstimatorTests
         Assert.False(estimates.ContainsKey(SetupPlanner.VadId));
     }
 
-    // Review focus 3.
     [Theory]
     [InlineData("rtx", 8, 0.13, SpeedClass.Fast)]
     [InlineData("iris", 8, 1.1, SpeedClass.Usable)]

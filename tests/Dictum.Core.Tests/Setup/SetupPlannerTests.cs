@@ -289,7 +289,7 @@ public class SetupPlannerTests
         string[]? vocabulary = null) =>
         new(language, speechModel, cleanup, server, vocabulary ?? []);
 
-    // PR 5: the wizard shows the current words and saves what is left in the box.
+    // The wizard shows the current words and saves what is left in the box.
     [Fact]
     public void ReplacingWordsDropsTheOnesTheUserRemoved()
     {

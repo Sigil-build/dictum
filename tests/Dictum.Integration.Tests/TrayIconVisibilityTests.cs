@@ -73,7 +73,7 @@ public sealed class TrayIconVisibilityTests : IDisposable
         Assert.Null(new TrayIconVisibility(_key + @"\missing").IsPromoted(Exe));
     }
 
-    // Final review M7: Windows writes paths under Program Files and the system folders with the known folder's GUID.
+    // Windows writes paths under Program Files and the system folders with the known folder's GUID.
     [Fact]
     public void AProgramFilesInstallIsFoundThroughItsKnownFolderGuid()
     {

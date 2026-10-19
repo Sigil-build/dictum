@@ -11,6 +11,9 @@ namespace Dictum.Integration.Tests.Linux;
 /// </summary>
 public sealed class StatusNotifierTests
 {
+    /// <summary>For a round trip over the session bus.</summary>
+    private static readonly TimeSpan Patience = TimeSpan.FromSeconds(10);
+
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
 
     [Fact]
@@ -21,7 +24,7 @@ public sealed class StatusNotifierTests
         await using var host = (await StatusNotifierHost.TryStartAsync(NullLog.Instance))!;
         host.Item.Update(new SniState(SniStatus.NeedsAttention, "dictum-recording", "dictum-recording", "/tmp/dictum-icons", "Dictum", "Dictum", "Dictum · Recording"));
 
-        var registered = await watcher.Registered.Task.WaitAsync(TimeSpan.FromSeconds(10), _ct);
+        var registered = await watcher.Registered.Task.WaitAsync(Patience, _ct);
         using var client = await ConnectAsync();
         var properties = await GetAllAsync(client, host.BusName, "/StatusNotifierItem", "org.kde.StatusNotifierItem");
 
@@ -49,7 +52,7 @@ public sealed class StatusNotifierTests
 
         Assert.Equal([1001, 1002, 1003], ids);
         Assert.Equal(["uk", "", "Quit Dictum"], labels);
-        Assert.Equal(1003, await clicked.Task.WaitAsync(TimeSpan.FromSeconds(5), _ct));
+        Assert.Equal(1003, await clicked.Task.WaitAsync(Patience, _ct));
     }
 
     [Fact]
@@ -58,12 +61,12 @@ public sealed class StatusNotifierTests
         SkipWithoutBus();
         var first = await FakeWatcher.StartAsync();
         await using var host = (await StatusNotifierHost.TryStartAsync(NullLog.Instance))!;
-        await first.Registered.Task.WaitAsync(TimeSpan.FromSeconds(10), _ct);
+        await first.Registered.Task.WaitAsync(Patience, _ct);
 
         await first.DisposeAsync();
         await using var second = await FakeWatcher.StartAsync();
 
-        Assert.Equal(host.BusName, await second.Registered.Task.WaitAsync(TimeSpan.FromSeconds(10), _ct));
+        Assert.Equal(host.BusName, await second.Registered.Task.WaitAsync(Patience, _ct));
     }
 
     [Fact]
@@ -72,7 +75,7 @@ public sealed class StatusNotifierTests
         SkipWithoutBus();
         await using var host = (await StatusNotifierHost.TryStartAsync(NullLog.Instance))!;
 
-        await Eventually.WaitForAsync(() => host.Availability == TrayAvailability.NoWatcher, "the host to find no watcher", TimeSpan.FromSeconds(5));
+        await Eventually.WaitForAsync(() => host.Availability == TrayAvailability.NoWatcher, "the host to find no watcher", Patience);
 
         Assert.Equal(TrayAvailability.NoWatcher, host.Availability);
     }

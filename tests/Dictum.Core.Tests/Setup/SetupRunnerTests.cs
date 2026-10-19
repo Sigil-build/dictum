@@ -154,7 +154,7 @@ public sealed class SetupRunnerTests : IDisposable
         new CatalogLicence("MIT", "https://example.com"),
         ["*"]);
 
-    // PR 5: the wizard checks the space for the whole set before anything starts.
+    // The wizard checks the space for the whole set before anything starts.
     [Fact]
     public void TheNeededSpaceCountsOnlyMissingFiles()
     {

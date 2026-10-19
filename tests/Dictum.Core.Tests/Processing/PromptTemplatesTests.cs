@@ -10,7 +10,7 @@ public sealed class PromptTemplatesTests : IDisposable
 
     public void Dispose() => _dir.Dispose();
 
-    // Final review C2: an edit made in Settings (or by hand) reaches the next dictation.
+    // An edit made in Settings (or by hand) reaches the next dictation.
     [Fact]
     public void AnEditedPromptFileIsReadAgain()
     {
@@ -37,7 +37,7 @@ public sealed class PromptTemplatesTests : IDisposable
         Assert.Equal("B {{text}}", templates.Load("notes"));
     }
 
-    // Final review C2: "Restore the built-in prompt" deletes the file; the built-in comes back.
+    // "Restore the built-in prompt" deletes the file; the built-in comes back.
     [Fact]
     public void ADeletedOverrideBringsTheBuiltInBack()
     {
