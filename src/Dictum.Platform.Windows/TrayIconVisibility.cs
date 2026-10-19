@@ -4,10 +4,10 @@ using Microsoft.Win32;
 namespace Dictum.Platform.Windows;
 
 /// <summary>
-/// Whether Windows 11 shows an app's notification icon on the taskbar (spec 6). Windows keeps one subkey per icon
-/// under HKCU\Control Panel\NotifyIconSettings, with the app's <c>ExecutablePath</c>. <c>IsPromoted</c> = 1 puts the
-/// icon on the taskbar; without it the icon sits in the overflow. Paths under Program Files and the system folders
-/// start with the known folder's GUID (final review M7). <paramref name="keyPath"/> is for tests.
+/// Whether Windows 11 shows an app's notification icon on the taskbar. Windows keeps one subkey per icon under
+/// HKCU\Control Panel\NotifyIconSettings, with the app's <c>ExecutablePath</c>. <c>IsPromoted</c> = 1 puts the icon on
+/// the taskbar; without it the icon sits in the overflow. Paths under Program Files and the system folders start with
+/// the known folder's GUID. <paramref name="keyPath"/> is for tests.
 /// </summary>
 [SupportedOSPlatform("windows")]
 public sealed class TrayIconVisibility(string keyPath = @"Control Panel\NotifyIconSettings")

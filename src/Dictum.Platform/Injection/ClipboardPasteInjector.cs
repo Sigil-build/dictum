@@ -87,6 +87,7 @@ public sealed class ClipboardPasteInjector(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            // Only the restore needs this text; an unreadable clipboard means nothing to restore, not a failed paste.
             log.Debug($"Could not read the clipboard: {ex.Message}");
             return null;
         }

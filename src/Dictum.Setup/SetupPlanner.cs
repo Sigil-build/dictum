@@ -63,7 +63,7 @@ public static class SetupPlanner
     public const string CpuModel = "whisper-small-q8";
     public const int ExistingServerTimeoutMs = 15_000;
 
-    /// <summary>Used when <see cref="CleanupId"/> already names a processor of the user's that is not an LLM.</summary>
+    /// <summary>Used when <see cref="CleanupId"/> already names a processor that is not an LLM.</summary>
     public const string LlmCleanupFallbackId = "llm-cleanup";
 
     /// <summary>Used when <see cref="SttId"/> already names a provider that is not a local Whisper.</summary>
@@ -120,7 +120,7 @@ public static class SetupPlanner
             ? current.ApiKey
             : null;
 
-    /// <summary>The LLM cleanup processor init manages; a user's own non-LLM processor named "cleanup" is left alone.</summary>
+    /// <summary>The LLM cleanup processor init manages; an existing non-LLM processor named "cleanup" is left alone.</summary>
     public static string CleanupProcessorId(DictumConfig config) =>
         config.Processors.TryGetValue(CleanupId, out var named) && named is not LlmProcessorConfig ? LlmCleanupFallbackId : CleanupId;
 

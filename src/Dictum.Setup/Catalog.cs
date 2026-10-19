@@ -26,7 +26,7 @@ public enum CatalogTier
     Ci,
 }
 
-/// <param name="Notice">Terms the user must see before downloading, or null.</param>
+/// <param name="Notice">Terms that must be shown before the download, or null.</param>
 public sealed record CatalogLicence(string Name, string Url, string? Notice = null);
 
 /// <param name="File">File name in the models directory; the config refers to models by this name.</param>

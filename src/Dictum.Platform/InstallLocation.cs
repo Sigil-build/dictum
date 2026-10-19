@@ -3,7 +3,7 @@ namespace Dictum.Platform;
 /// <summary>
 /// What starts Dictum from outside the running process: login items and the portal's desktop entry. Normally the running
 /// files. Inside an AppImage it is the AppImage file, because the AppImage mounts under a new path on every run; its
-/// AppRun starts the desktop app, or the CLI when the first argument is <see cref="AppImageCli"/> (phase 4 spec 5.1).
+/// AppRun starts the desktop app, or the CLI when the first argument is <see cref="AppImageCli"/>.
 /// </summary>
 public static class InstallLocation
 {
@@ -19,7 +19,7 @@ public static class InstallLocation
     /// <summary>
     /// <paramref name="appImage"/> when <paramref name="processPath"/> lies inside <paramref name="appDir"/>, the AppImage's
     /// mount; null otherwise. A terminal inside another AppImage (an editor) passes both variables on to whatever it starts,
-    /// so the variable alone does not say Dictum runs from an AppImage (final review I1).
+    /// so the variable alone does not say Dictum runs from an AppImage.
     /// </summary>
     public static string? AppImageOf(string? appImage, string? appDir, string? processPath) =>
         appImage is { Length: > 0 } && appDir is { Length: > 0 } && processPath is not null

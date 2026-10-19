@@ -32,7 +32,7 @@ public sealed class DownloadQueue(FileDownloader downloader, AppPaths paths, Cat
     private CancellationTokenSource? _current;
     private Task _worker = Task.CompletedTask;
 
-    // The user's pause, saved and restored; closing the app is not a pause, so a restart continues the downloads.
+    // An explicit pause, saved and restored; closing the app is not a pause, so a restart continues the downloads.
     private bool _paused;
     private bool _disposing;
 
@@ -177,7 +177,7 @@ public sealed class DownloadQueue(FileDownloader downloader, AppPaths paths, Cat
         }
         catch (JsonException)
         {
-            // A damaged file must not stop the app from starting; the user can start the downloads again.
+            // A damaged file must not stop the app from starting; the downloads can be started again.
             return;
         }
 

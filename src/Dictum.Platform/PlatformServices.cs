@@ -37,7 +37,7 @@ public enum LoginApp
 /// <param name="Executable">Full path of <c>dictum</c> for <see cref="LoginApp.Daemon"/>, of <c>dictum-gui</c> otherwise;
 /// inside an AppImage, the AppImage file.</param>
 /// <param name="AppImage">The item runs through an AppImage, whose AppRun starts the CLI when the first argument is
-/// <see cref="InstallLocation.AppImageCli"/> (phase 4 spec 3.4).</param>
+/// <see cref="InstallLocation.AppImageCli"/>.</param>
 public sealed record LoginItem(LoginApp App, string Executable, bool AppImage = false)
 {
     public const string DesktopAppName = "dictum-gui";

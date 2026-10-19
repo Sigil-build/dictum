@@ -45,7 +45,7 @@ public interface IActiveAppProvider
     string? GetActiveApp();
 }
 
-/// <summary>Lets the injector wait until the user has let go of the hotkey modifiers.</summary>
+/// <summary>Lets the injector wait until the hotkey modifiers are released.</summary>
 public interface IModifierState
 {
     Task WaitForReleaseAsync(TimeSpan timeout, CancellationToken ct);

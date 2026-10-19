@@ -75,6 +75,7 @@ public sealed class SharpHookHotkeyService(ILog log, string backend) : IHotkeySe
                 }
                 catch (HookException)
                 {
+                    // A hook that stopped with an error has nothing left to release, and disposing must not throw.
                 }
             }
         }

@@ -2,7 +2,6 @@ using System.Runtime.InteropServices;
 
 namespace Dictum.Platform.Windows;
 
-/// <summary>Win32 imports used by the Windows platform.</summary>
 internal static unsafe partial class Win32
 {
     public const uint CfUnicodeText = 13;

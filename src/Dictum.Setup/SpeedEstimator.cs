@@ -2,10 +2,10 @@ using Dictum.Core.History;
 
 namespace Dictum.Setup;
 
-/// <summary>Where a speed estimate comes from, best first (spec 10.2).</summary>
+/// <summary>Where a speed estimate comes from, best first.</summary>
 public enum SpeedSource
 {
-    /// <summary>The median of the user's last dictations with the model.</summary>
+    /// <summary>The median of the last dictations with the model.</summary>
     Dictations,
 
     /// <summary>A "Measure" run of the built-in sample.</summary>
@@ -40,9 +40,9 @@ public sealed record SpeedEstimate(double Ratio, SpeedSource Source)
 }
 
 /// <summary>
-/// How long a speech model takes on this computer (spec 10.2). Sources, best first:
+/// How long a speech model takes on this computer. Sources, best first:
 /// <list type="number">
-/// <item>the median of the user's last <see cref="Dictations"/> dictations with the model;</item>
+/// <item>the median of the last <see cref="Dictations"/> dictations with the model;</item>
 /// <item>a "Measure" run of the built-in sample;</item>
 /// <item>scaling by <see cref="CatalogEntry.RelativeCost"/> from the nearest model with a known speed;</item>
 /// <item>a fixed anchor for the class of hardware.</item>
@@ -52,14 +52,15 @@ public static class SpeedEstimator
 {
     public const int Dictations = 20;
 
-    /// <summary>Turbo on a discrete GPU: about 0.3–1 s for 5 s of speech (spec 10.2).</summary>
+    /// <summary>Turbo on a discrete GPU: about 0.3–1 s for 5 s of speech.</summary>
     public const double DiscreteGpuTurbo = 0.13;
 
     /// <summary>Turbo on an integrated GPU: about 5–6 s for 5 s, measured on the Iris Xe.</summary>
     public const double IntegratedGpuTurbo = 1.1;
 
-    // Whisper small on the CPU, from the CPU rows of whisper.cpp #89: a 30 s window encodes in 1.4–4.8 s on 8 threads
-    // (Ryzen 5950X, 3900X, i7-11800H), in 3–6 s on 4 and in 8.7 s on 2 (i7-11800H).
+    // Whisper small on the CPU, from the CPU rows of the whisper.cpp benchmark thread (ggml-org/whisper.cpp issue 89):
+    // a 30 s window encodes in 1.4–4.8 s on 8 threads (Ryzen 5950X, 3900X, i7-11800H), in 3–6 s on 4 and in 8.7 s on 2
+    // (i7-11800H).
     public const double CpuSmallManyCores = 0.6;
     public const double CpuSmallSomeCores = 1.2;
     public const double CpuSmallFewCores = 2.4;

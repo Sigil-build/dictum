@@ -3,8 +3,8 @@ using System.Runtime.Versioning;
 namespace Dictum.Platform.Windows;
 
 /// <summary>
-/// The listening overlay's Win32 side (spec 5.4): a click-through, never-activated window that stays out of Alt+Tab;
-/// where the cursor is; and whether Windows plays animations (spec 5.5).
+/// The listening overlay's Win32 side: a click-through, never-activated window that stays out of Alt+Tab; where the
+/// cursor is; and whether Windows plays animations.
 /// </summary>
 [SupportedOSPlatform("windows")]
 public static class OverlayWindowStyle

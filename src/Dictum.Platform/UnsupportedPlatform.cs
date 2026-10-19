@@ -4,7 +4,7 @@ using Dictum.Platform.Injection;
 
 namespace Dictum.Platform;
 
-/// <summary>Placeholder services for platforms without hotkey and paste support yet (macOS for now).</summary>
+/// <summary>Placeholder services for a platform without hotkey and paste support, such as macOS.</summary>
 public static class UnsupportedPlatform
 {
     public static PlatformServices Create(string name, string reason) => new(
