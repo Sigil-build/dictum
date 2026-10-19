@@ -1,9 +1,12 @@
 namespace Dictum.Platform.Linux;
 
-/// <summary>Environment variables read in more than one place, and the XDG config directory they point to.</summary>
-internal static class LinuxEnvironment
+/// <summary>Session environment variables read in more than one place, and the XDG config directory they point to.</summary>
+public static class LinuxEnvironment
 {
     public const string Display = "DISPLAY";
+    public const string WaylandDisplay = "WAYLAND_DISPLAY";
+    public const string CurrentDesktop = "XDG_CURRENT_DESKTOP";
+    public const string RuntimeDirectory = "XDG_RUNTIME_DIR";
     public const string ConfigHome = "XDG_CONFIG_HOME";
     public const string Home = "HOME";
     public const string DefaultConfigFolder = ".config";

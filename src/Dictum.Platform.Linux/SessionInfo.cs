@@ -27,11 +27,11 @@ public sealed record SessionInfo(SessionType Type, Desktop Desktop, string Deskt
     public static SessionInfo Detect(Func<string, string?> env)
     {
         var sessionType = env("XDG_SESSION_TYPE");
-        var type = sessionType == "wayland" || !string.IsNullOrEmpty(env("WAYLAND_DISPLAY")) ? SessionType.Wayland
+        var type = sessionType == "wayland" || !string.IsNullOrEmpty(env(LinuxEnvironment.WaylandDisplay)) ? SessionType.Wayland
             : sessionType == "x11" || !string.IsNullOrEmpty(env(LinuxEnvironment.Display)) ? SessionType.X11
             : SessionType.Unknown;
 
-        var names = (env("XDG_CURRENT_DESKTOP") ?? "").Split(':', StringSplitOptions.RemoveEmptyEntries);
+        var names = (env(LinuxEnvironment.CurrentDesktop) ?? "").Split(':', StringSplitOptions.RemoveEmptyEntries);
         var desktop = names.Any(n => n.Equals("KDE", StringComparison.OrdinalIgnoreCase)) ? Desktop.Kde
             : names.Any(n => n.Contains("GNOME", StringComparison.OrdinalIgnoreCase)) ? Desktop.Gnome
             : names.Any(n => n.Equals("Hyprland", StringComparison.OrdinalIgnoreCase)) || !string.IsNullOrEmpty(env("HYPRLAND_INSTANCE_SIGNATURE")) ? Desktop.Hyprland

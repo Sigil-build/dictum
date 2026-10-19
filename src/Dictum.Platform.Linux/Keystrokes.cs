@@ -43,7 +43,7 @@ public sealed class YdotoolKeystrokes : IKeystrokeSender
 
     public static string SocketPath =>
         Environment.GetEnvironmentVariable("YDOTOOL_SOCKET") is { Length: > 0 } custom ? custom
-        : Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR") is { Length: > 0 } runtime && File.Exists(Path.Combine(runtime, SocketName))
+        : Environment.GetEnvironmentVariable(LinuxEnvironment.RuntimeDirectory) is { Length: > 0 } runtime && File.Exists(Path.Combine(runtime, SocketName))
             ? Path.Combine(runtime, SocketName)
             : FallbackSocket;
 

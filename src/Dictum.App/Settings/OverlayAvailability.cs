@@ -1,5 +1,6 @@
 using Dictum.App.Resources;
 using Dictum.Core.Diagnostics;
+using Dictum.Platform.Linux;
 
 namespace Dictum.App.Settings;
 
@@ -21,8 +22,8 @@ public static class OverlayAvailability
     public static OverlayHost ThisDesktop(Func<string, string?> env) =>
         OperatingSystem.IsWindows() ? OverlayHost.Windows
         : !OperatingSystem.IsLinux() ? OverlayHost.Unsupported
-        : string.IsNullOrEmpty(env("DISPLAY")) ? OverlayHost.NoX
-        : string.IsNullOrEmpty(env("WAYLAND_DISPLAY")) ? OverlayHost.X11
+        : string.IsNullOrEmpty(env(LinuxEnvironment.Display)) ? OverlayHost.NoX
+        : string.IsNullOrEmpty(env(LinuxEnvironment.WaylandDisplay)) ? OverlayHost.X11
         : OverlayHost.XWayland;
 
     public static SystemRow Row(OverlayHost host, bool enabled) => (host, enabled) switch

@@ -1,4 +1,5 @@
 using Dictum.Core.Diagnostics;
+using Dictum.Platform.Linux;
 using Dictum.Platform.Linux.Tray;
 
 namespace Dictum.App.Tray;
@@ -13,7 +14,7 @@ public sealed class SniTrayPresenter : ITrayPresenter
     private readonly StatusNotifierHost _host;
     private readonly string _iconDirectory;
     private readonly Func<bool> _highContrast;
-    private readonly bool _plasma = (Environment.GetEnvironmentVariable("XDG_CURRENT_DESKTOP") ?? "").Contains("KDE", StringComparison.OrdinalIgnoreCase);
+    private readonly bool _plasma = (Environment.GetEnvironmentVariable(LinuxEnvironment.CurrentDesktop) ?? "").Contains("KDE", StringComparison.OrdinalIgnoreCase);
     private readonly Lock _gate = new();
     private readonly Timer _animation;
     private TrayView? _view;

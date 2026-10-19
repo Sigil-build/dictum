@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using Dictum.Core;
+using Dictum.Platform.Linux;
 
 namespace Dictum.Host.Ipc;
 
@@ -25,7 +26,7 @@ public static class IpcEndpoint
             return custom;
         }
 
-        if (OperatingSystem.IsLinux() && Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR") is { Length: > 0 } runtime)
+        if (OperatingSystem.IsLinux() && Environment.GetEnvironmentVariable(LinuxEnvironment.RuntimeDirectory) is { Length: > 0 } runtime)
         {
             return Path.Combine(runtime, SocketFileName);
         }
