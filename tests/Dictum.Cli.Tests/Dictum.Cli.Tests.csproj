@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The CLI in this process, with its config, data and daemon socket in a temp folder (CliSandbox). -->
+  <ItemGroup>
+    <ProjectReference Include="../../src/Dictum.Cli/Dictum.Cli.csproj" />
+    <ProjectReference Include="../Dictum.Testing/Dictum.Testing.csproj" />
+  </ItemGroup>
+
+</Project>

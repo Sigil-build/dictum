@@ -118,7 +118,7 @@ internal static class InitCommand
         }
     }
 
-    private static void CheckLanguage(CliContext context, string language)
+    internal static void CheckLanguage(CliContext context, string language)
     {
         if (!ConfigValidator.IsValidLanguage(language))
         {
@@ -148,7 +148,7 @@ internal static class InitCommand
     }
 
     /// <summary>Returns the server to use (null for no cleanup) and a key value still to be written to the secret store.</summary>
-    private static (ExistingLlmServer? Server, PendingSecret? Pending) AskCleanup(
+    internal static (ExistingLlmServer? Server, PendingSecret? Pending) AskCleanup(
         CliContext context,
         ConsolePrompt prompt,
         bool interactive,
