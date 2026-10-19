@@ -207,6 +207,12 @@ public sealed class DictumDaemon : IAsyncDisposable
                 throw new InvalidOperationException($"Already busy ({State}).");
             }
 
+            // The pipeline is idle a moment before the last stop clears its profile, which would also clear a new one's.
+            if (_stopInProgress)
+            {
+                throw new InvalidOperationException("Already busy (finishing the last dictation).");
+            }
+
             if (_tester.IsTesting)
             {
                 throw new InvalidOperationException("A speech provider test is recording; try again in a few seconds.");
@@ -269,10 +275,27 @@ public sealed class DictumDaemon : IAsyncDisposable
         }
 
         await _engine.Pipeline.CancelAsync().ConfigureAwait(false);
-        _activeProfile = null;
+        await _gate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            // A dictation that started after this cancel keeps its profile.
+            if (wasRecording || State != PipelineState.Recording)
+            {
+                _activeProfile = null;
+            }
+
+            if (wasRecording)
+            {
+                _stopInProgress = false;
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+
         if (wasRecording)
         {
-            _stopInProgress = false;
             Finish(DictationOutcome.Cancelled, null, null);
         }
 
@@ -309,7 +332,7 @@ public sealed class DictumDaemon : IAsyncDisposable
         var action = (hotkeyEvent.Phase, profile.Mode) switch
         {
             (HotkeyPhase.Pressed, HotkeyMode.Toggle) when recordingThis => StopDictationAsync(profile.Id),
-            (HotkeyPhase.Pressed, _) when State == PipelineState.Idle => StartDictationAsync(profile.Id, _stopping.Token),
+            (HotkeyPhase.Pressed, _) when State == PipelineState.Idle && !_stopInProgress => StartDictationAsync(profile.Id, _stopping.Token),
             (HotkeyPhase.Released, HotkeyMode.PushToTalk) when recordingThis => StopDictationAsync(profile.Id),
             _ => Task.CompletedTask,
         };
@@ -366,8 +389,16 @@ public sealed class DictumDaemon : IAsyncDisposable
         }
         finally
         {
-            _activeProfile = null;
-            _stopInProgress = false;
+            await _gate.WaitAsync().ConfigureAwait(false);
+            try
+            {
+                _activeProfile = null;
+                _stopInProgress = false;
+            }
+            finally
+            {
+                _gate.Release();
+            }
         }
 
         await ApplyPendingConfigAsync().ConfigureAwait(false);

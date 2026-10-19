@@ -45,6 +45,33 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task APressWhileTheLastDictationIsFinishingLeavesNoRecordingBehind()
+    {
+        await using var daemon = await StartAsync(Config());
+        var pressed = false;
+        daemon.StateChanged += state =>
+        {
+            // The pipeline is idle again, while the stop that made it so has not finished yet.
+            if (state == PipelineState.Idle && !pressed)
+            {
+                pressed = true;
+                _hotkeys.Raise("uk", HotkeyPhase.Pressed);
+            }
+        };
+
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "uk"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Stop), _ct);
+        await WaitForAsync(() => pressed && _injector.Injected.Count == 1);
+        _hotkeys.Raise("uk", HotkeyPhase.Released);
+        await WaitForAsync(() => daemon.State == PipelineState.Idle && daemon.Status().ActiveProfile is null);
+
+        _hotkeys.Raise("uk", HotkeyPhase.Pressed);
+        await WaitForAsync(() => daemon.State == PipelineState.Recording);
+        _hotkeys.Raise("uk", HotkeyPhase.Released);
+        await WaitForAsync(() => _injector.Injected.Count == 2 && daemon.State == PipelineState.Idle);
+    }
+
+    [Fact]
     public async Task ToggleStartsOnFirstPressAndStopsOnSecond()
     {
         await using var daemon = await StartAsync(Config());
