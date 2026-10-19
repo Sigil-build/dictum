@@ -175,9 +175,9 @@ public sealed class ModelDownloads(FileDownloader downloader, AppPaths paths, Ca
         {
             saved = JsonSerializer.Deserialize(File.ReadAllText(paths.DownloadsFile), ModelDownloadsJsonContext.Default.SavedDownloads);
         }
-        catch (JsonException)
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
-            // A damaged file must not stop the app from starting; the downloads can be started again.
+            // A damaged or unreadable file must not stop the app from starting; the downloads can be started again.
             return;
         }
 

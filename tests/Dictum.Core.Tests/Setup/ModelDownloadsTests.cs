@@ -211,6 +211,21 @@ public sealed class ModelDownloadsTests : IDisposable
         Assert.Empty(queue.Items);
     }
 
+    [Fact]
+    public async Task AQueueFileThatCannotBeReadIsIgnored()
+    {
+        Directory.CreateDirectory(Paths.DataDirectory);
+        File.WriteAllText(Paths.DownloadsFile, """{ "paused": false, "ids": ["b"] }""");
+        await using var queue = Queue(new FakeHttpHandler());
+
+        using (new FileStream(Paths.DownloadsFile, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        {
+            queue.Restore();
+        }
+
+        Assert.Empty(queue.Items);
+    }
+
     private static HttpResponseMessage Ok(byte[] data) => new(HttpStatusCode.OK) { Content = new ByteArrayContent(data) };
 
     /// <summary>Delivers its bytes, then waits for data that never comes, until the download is cancelled.</summary>
