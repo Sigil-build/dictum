@@ -18,6 +18,7 @@ public sealed record ProfileOverrides(
     IReadOnlyList<string>? Pipeline = null,
     bool Raw = false);
 
+/// <summary>Builds the profile a dictation runs with from the config and the command-line overrides.</summary>
 public static class ProfileResolver
 {
     public const string AdHocProfileId = "ad-hoc";
@@ -31,7 +32,7 @@ public static class ProfileResolver
     {
         var profile = overrides.Profile is { } profileId
             ? config.Profiles.FirstOrDefault(p => p.Id == profileId)
-                ?? throw new ConfigException($"Unknown profile '{profileId}'. Configured: {Known(config.Profiles.Select(p => p.Id))}.")
+                ?? throw new ConfigException($"Unknown profile '{profileId}'. Configured: {ConfiguredIds.Format(config.Profiles.Select(p => p.Id))}.")
             : config.Profiles.FirstOrDefault();
 
         ISpeechToText stt;
@@ -56,11 +57,12 @@ public static class ProfileResolver
             profile?.Id ?? AdHocProfileId,
             stt,
             SttRequest.ForSetting(language, SttPromptBuilder.Build(profile?.SttPrompt, vocabulary).Prompt)
-                ?? throw new ConfigException($"'{language}' is not an ISO 639-1 language code, a comma-separated list of codes, or 'auto'."),
+                ?? throw InvalidLanguage(language),
             [.. steps.Select(getProcessor)],
             vocabulary);
     }
 
-    private static string Known(IEnumerable<string> ids) =>
-        ids.Any() ? string.Join(", ", ids) : "none";
+    /// <summary>The error for a language setting that is neither ISO 639-1 codes nor <c>auto</c>.</summary>
+    public static ConfigException InvalidLanguage(string? language) =>
+        new($"'{language}' is not an ISO 639-1 language code, a comma-separated list of codes, or 'auto'.");
 }

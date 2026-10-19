@@ -81,12 +81,12 @@ public sealed class DictumHost : IDictationEngine
     public ISpeechToText GetStt(string id) =>
         _stt.GetOrAdd(id, key => Config.Stt.TryGetValue(key, out var config)
             ? _registry.CreateStt(key, config, _services)
-            : throw new ConfigException($"Unknown STT provider '{key}'. Configured: {Known(Config.Stt.Keys)}."));
+            : throw new ConfigException($"Unknown STT provider '{key}'. Configured: {ConfiguredIds.Format(Config.Stt.Keys)}."));
 
     public ITextProcessor GetProcessor(string id) =>
         _processors.GetOrAdd(id, key => Config.Processors.TryGetValue(key, out var config)
             ? _registry.CreateProcessor(key, config, _services)
-            : throw new ConfigException($"Unknown processor '{key}'. Configured: {Known(Config.Processors.Keys)}."));
+            : throw new ConfigException($"Unknown processor '{key}'. Configured: {ConfiguredIds.Format(Config.Processors.Keys)}."));
 
     /// <summary>Creates a provider that is not in the config, e.g. from <c>--model</c>.</summary>
     public ISpeechToText CreateAdHocStt(string id, SttConfig config) =>
@@ -128,7 +128,4 @@ public sealed class DictumHost : IDictationEngine
             // Each provider applies its own timeout from the config.
             Timeout = Timeout.InfiniteTimeSpan,
         };
-
-    private static string Known(IEnumerable<string> keys) =>
-        keys.Any() ? string.Join(", ", keys) : "none";
 }

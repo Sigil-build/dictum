@@ -39,29 +39,29 @@ public sealed class DictumDaemon : IAsyncDisposable
     private readonly PlatformServices _platform;
     private readonly ISoundPlayer _sounds;
     private readonly ILog _log;
+    private readonly IpcEventHub _events;
+    private readonly TimeSpan _monitorLifetime;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly CancellationTokenSource _stopping = new();
-    private IHotkeyService? _hotkeys;
+    private readonly TaskCompletionSource _shutdown = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private IDictationEngine _engine;
-    private string? _activeProfile;
-    private CancellationTokenSource? _dictation;
-    private bool _stopInProgress;
+    private IHotkeyService? _hotkeys;
     private IReadOnlyList<ProfileStatus> _profiles = [];
-    private volatile bool _warmedUp;
-    private string? _warning;
-    private readonly IpcEventHub _events;
     private IReadOnlyList<ConfigIssue> _configWarnings;
+    private (DictumConfig Config, IReadOnlyList<ConfigIssue>? Warnings)? _pendingConfig;
     private Action<PipelineState>? _stateHandler;
     private Action<AudioFrame>? _frameHandler;
-    private readonly TaskCompletionSource _shutdown = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private bool _paused;
+    private CancellationTokenSource? _dictation;
+    private string? _activeProfile;
     private string? _selectedProfile;
-    private readonly TimeSpan _monitorLifetime;
+    private string? _warning;
+    private volatile bool _warmedUp;
+    private bool _stopInProgress;
+    private bool _paused;
     private bool _monitoring;
     private DateTimeOffset _monitorUntil;
     private bool _testing;
     private bool _stoppingAnnounced;
-    private (DictumConfig Config, IReadOnlyList<ConfigIssue>? Warnings)? _pendingConfig;
 
     public DictumDaemon(
         DictumConfig config,
@@ -91,7 +91,16 @@ public sealed class DictumDaemon : IAsyncDisposable
     /// <summary>Re-reads the config for the <c>reload</c> command; set by the host that owns the config file.</summary>
     public Func<CancellationToken, Task>? ReloadHandler { get; set; }
 
+    /// <summary>Runs the doctor checks for the <c>doctor</c> command; set by the host, which knows the paths.</summary>
+    public Func<CancellationToken, Task<IReadOnlyList<PlatformCheck>>>? DoctorHandler { get; set; }
+
     public IDictationEngine Engine => _engine;
+
+    public IReadOnlyList<ConfigIssue> ConfigWarnings => _configWarnings;
+
+    public PipelineState State => _engine.Pipeline.State;
+
+    public event Action<PipelineState>? StateChanged;
 
     /// <summary>
     /// Tells subscribers that the daemon stops, and waits until they have been sent it. Call before the IPC server is
@@ -99,24 +108,11 @@ public sealed class DictumDaemon : IAsyncDisposable
     /// </summary>
     public async Task AnnounceStoppingAsync(TimeSpan timeout)
     {
-        if (_stoppingAnnounced)
+        if (TryAnnounceStopping())
         {
-            return;
+            await _events.WhenDeliveredAsync(timeout).ConfigureAwait(false);
         }
-
-        _stoppingAnnounced = true;
-        _events.Publish(IpcEvent.Stopping(_shutdown.Task.IsCompleted ? StoppingReason.Shutdown : StoppingReason.Exit));
-        await _events.WhenDeliveredAsync(timeout).ConfigureAwait(false);
     }
-
-    public IReadOnlyList<ConfigIssue> ConfigWarnings => _configWarnings;
-
-    /// <summary>Runs the doctor checks for the <c>doctor</c> command; set by the host, which knows the paths.</summary>
-    public Func<CancellationToken, Task<IReadOnlyList<PlatformCheck>>>? DoctorHandler { get; set; }
-
-    public PipelineState State => _engine.Pipeline.State;
-
-    public event Action<PipelineState>? StateChanged;
 
     public async Task StartAsync(CancellationToken ct)
     {
@@ -181,85 +177,7 @@ public sealed class DictumDaemon : IAsyncDisposable
     {
         try
         {
-            switch (request.Command)
-            {
-                case IpcCommand.Status:
-                case IpcCommand.Subscribe:
-                    break;
-                case IpcCommand.Start:
-                    await StartDictationAsync(ProfileFor(request.Profile), ct).ConfigureAwait(false);
-                    break;
-                case IpcCommand.Stop:
-                    _ = StopDictationAsync(_activeProfile);
-                    break;
-                case IpcCommand.Toggle:
-                    if (State == PipelineState.Recording)
-                    {
-                        _ = StopDictationAsync(_activeProfile);
-                    }
-                    else
-                    {
-                        await StartDictationAsync(ProfileFor(request.Profile), ct).ConfigureAwait(false);
-                    }
-
-                    break;
-                case IpcCommand.Cancel:
-                    await CancelAsync().ConfigureAwait(false);
-                    break;
-                case IpcCommand.Reload:
-                    if (ReloadHandler is null)
-                    {
-                        return IpcResponse.Failure("This daemon cannot reload its config.");
-                    }
-
-                    await ReloadHandler(ct).ConfigureAwait(false);
-                    break;
-                case IpcCommand.Shutdown:
-                    await CancelAsync().ConfigureAwait(false);
-                    _shutdown.TrySetResult();
-                    break;
-                case IpcCommand.PauseHotkeys:
-                case IpcCommand.ResumeHotkeys:
-                    _paused = request.Command == IpcCommand.PauseHotkeys;
-                    await RegisterHotkeysAsync(ct).ConfigureAwait(false);
-                    break;
-                case IpcCommand.UseProfile:
-                    _selectedProfile = request.Profile is { } id && Config.Profiles.Any(p => p.Id == id)
-                        ? id
-                        : throw new ConfigException($"Unknown profile '{request.Profile}'.");
-                    _events.Publish(IpcEvent.ForStatus(Status()));
-                    break;
-                case IpcCommand.Devices:
-                    return new IpcResponse(true, Status: Status(), Devices: _engine.Audio.ListDevices());
-                case IpcCommand.Doctor:
-                    if (DoctorHandler is null)
-                    {
-                        return IpcResponse.Failure("This daemon cannot run the checks.");
-                    }
-
-                    return new IpcResponse(true, Status: Status(), Checks: await DoctorHandler(ct).ConfigureAwait(false));
-                case IpcCommand.TestStt:
-                    return new IpcResponse(true, Status: Status(), Test: await TestSttAsync(request, ct).ConfigureAwait(false));
-                case IpcCommand.MonitorStart:
-                    await StartMonitorAsync(request.Device, ct).ConfigureAwait(false);
-                    break;
-                case IpcCommand.MonitorStop:
-                    await _gate.WaitAsync(ct).ConfigureAwait(false);
-                    try
-                    {
-                        await StopMonitorCoreAsync().ConfigureAwait(false);
-                    }
-                    finally
-                    {
-                        _gate.Release();
-                    }
-
-                    break;
-                default:
-                    return IpcResponse.Failure($"Unknown command '{request.Command}'.");
-            }
-
-            return IpcResponse.Success(Status());
+            return await DispatchAsync(request, ct).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is ConfigException or InvalidOperationException or AudioDeviceException)
         {
@@ -288,12 +206,7 @@ public sealed class DictumDaemon : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if (!_stoppingAnnounced)
-        {
-            _stoppingAnnounced = true;
-            _events.Publish(IpcEvent.Stopping(_shutdown.Task.IsCompleted ? StoppingReason.Shutdown : StoppingReason.Exit));
-        }
-
+        TryAnnounceStopping();
         await _stopping.CancelAsync().ConfigureAwait(false);
         if (_hotkeys is not null)
         {
@@ -304,6 +217,101 @@ public sealed class DictumDaemon : IAsyncDisposable
         await CancelAsync().ConfigureAwait(false);
         await StopMonitorCoreAsync().ConfigureAwait(false);
         await _engine.DisposeAsync().ConfigureAwait(false);
+    }
+
+    private async Task<IpcResponse> DispatchAsync(IpcRequest request, CancellationToken ct)
+    {
+        switch (request.Command)
+        {
+            case IpcCommand.Status:
+            case IpcCommand.Subscribe:
+                break;
+            case IpcCommand.Start:
+                await StartDictationAsync(ProfileFor(request.Profile), ct).ConfigureAwait(false);
+                break;
+            case IpcCommand.Stop:
+                _ = StopDictationAsync(_activeProfile);
+                break;
+            case IpcCommand.Toggle:
+                await ToggleAsync(request.Profile, ct).ConfigureAwait(false);
+                break;
+            case IpcCommand.Cancel:
+                await CancelAsync().ConfigureAwait(false);
+                break;
+            case IpcCommand.Reload:
+                if (ReloadHandler is null)
+                {
+                    return IpcResponse.Failure("This daemon cannot reload its config.");
+                }
+
+                await ReloadHandler(ct).ConfigureAwait(false);
+                break;
+            case IpcCommand.Shutdown:
+                await CancelAsync().ConfigureAwait(false);
+                _shutdown.TrySetResult();
+                break;
+            case IpcCommand.PauseHotkeys:
+            case IpcCommand.ResumeHotkeys:
+                _paused = request.Command == IpcCommand.PauseHotkeys;
+                await RegisterHotkeysAsync(ct).ConfigureAwait(false);
+                break;
+            case IpcCommand.UseProfile:
+                SelectProfile(request.Profile);
+                break;
+            case IpcCommand.Devices:
+                return new IpcResponse(true, Status: Status(), Devices: _engine.Audio.ListDevices());
+            case IpcCommand.Doctor:
+                if (DoctorHandler is null)
+                {
+                    return IpcResponse.Failure("This daemon cannot run the checks.");
+                }
+
+                return new IpcResponse(true, Status: Status(), Checks: await DoctorHandler(ct).ConfigureAwait(false));
+            case IpcCommand.TestStt:
+                return new IpcResponse(true, Status: Status(), Test: await TestSttAsync(request, ct).ConfigureAwait(false));
+            case IpcCommand.MonitorStart:
+                await StartMonitorAsync(request.Device, ct).ConfigureAwait(false);
+                break;
+            case IpcCommand.MonitorStop:
+                await StopMonitorAsync(ct).ConfigureAwait(false);
+                break;
+            default:
+                return IpcResponse.Failure($"Unknown command '{request.Command}'.");
+        }
+
+        return IpcResponse.Success(Status());
+    }
+
+    private bool TryAnnounceStopping()
+    {
+        if (_stoppingAnnounced)
+        {
+            return false;
+        }
+
+        _stoppingAnnounced = true;
+        _events.Publish(IpcEvent.Stopping(_shutdown.Task.IsCompleted ? StoppingReason.Shutdown : StoppingReason.Exit));
+        return true;
+    }
+
+    private async Task ToggleAsync(string? profile, CancellationToken ct)
+    {
+        if (State == PipelineState.Recording)
+        {
+            _ = StopDictationAsync(_activeProfile);
+        }
+        else
+        {
+            await StartDictationAsync(ProfileFor(profile), ct).ConfigureAwait(false);
+        }
+    }
+
+    private void SelectProfile(string? profile)
+    {
+        _selectedProfile = profile is { } id && Config.Profiles.Any(p => p.Id == id)
+            ? id
+            : throw new ConfigException($"Unknown profile '{profile}'.");
+        _events.Publish(IpcEvent.ForStatus(Status()));
     }
 
     private void OnHotkey(HotkeyEvent hotkeyEvent)
@@ -602,6 +610,19 @@ public sealed class DictumDaemon : IAsyncDisposable
                     _gate.Release();
                 }
             }
+        }
+    }
+
+    private async Task StopMonitorAsync(CancellationToken ct)
+    {
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await StopMonitorCoreAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
         }
     }
 
