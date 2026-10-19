@@ -1,3 +1,4 @@
+using System.Security;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Daemon;
@@ -313,6 +314,13 @@ public sealed partial class GeneralPage : SettingsPage
         try
         {
             StartAtLogin = _services.Autostart?.Installed == LoginApp.DesktopApp;
+        }
+        catch (Exception ex) when (ex is SecurityException or IOException or UnauthorizedAccessException)
+        {
+            // A policy or security software can deny the Run key or the autostart folder; the read runs while Settings
+            // opens, so it must not throw. The switch keeps its value and the error shows by it.
+            _services.Log.Warn($"Login item not read: {ex.Message}");
+            StartAtLoginError = UiText.Format(Strings.SettingsStartAtLoginFailed, ex.Message);
         }
         finally
         {

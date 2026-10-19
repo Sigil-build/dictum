@@ -1,3 +1,4 @@
+using System.Security;
 using Dictum.App.Daemon;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
@@ -50,15 +51,30 @@ public sealed class GeneralPageTests : IDisposable
     }
 
     [Fact]
-    public void ALoginItemThatCannotBeReadLeavesTheOtherRowsEditable()
+    public void ALoginItemThatCannotBeReadWhenThePageShowsIsShownAndTheMeterStillStarts()
     {
         var (page, session, _) = Open(new GeneralSettings { Sounds = true });
         _autostart.ReadFails = new UnauthorizedAccessException("The login item cannot be read.");
-        Assert.Throws<UnauthorizedAccessException>(page.OnShown);
-        _autostart.ReadFails = null;
 
+        Assert.Null(Record.Exception(page.OnShown));
+
+        Assert.Contains("The login item cannot be read.", page.StartAtLoginError);
+        Assert.False(page.StartAtLogin);
+        Assert.Equal([IpcCommand.Devices, IpcCommand.MonitorStart], _channel.Commands);
         page.Sounds = false;
+        Assert.False(session.Config.General.Sounds);
+    }
 
+    [Fact]
+    public void ALoginItemThatCannotBeReadWhenSettingsOpensIsShownAndTheOtherRowsStayEditable()
+    {
+        _autostart.ReadFails = new SecurityException("Requested registry access is not allowed.");
+
+        var (page, session, _) = Open(new GeneralSettings { Sounds = true });
+
+        Assert.Contains("Requested registry access is not allowed.", page.StartAtLoginError);
+        Assert.False(page.StartAtLogin);
+        page.Sounds = false;
         Assert.False(session.Config.General.Sounds);
     }
 
