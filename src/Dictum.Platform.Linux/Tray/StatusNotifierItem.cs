@@ -88,13 +88,11 @@ public sealed class StatusNotifierItem(DBusConnection connection, string menuPat
 
     /// <summary>Raised on a thread-pool thread, never on the D-Bus receive loop.</summary>
     public event Action<int, int>? Activated;
-    public event Action<int, int>? SecondaryActivated;
-    public event Action<string>? ActivationTokenProvided;
 
     public string Path => ItemPath;
     public bool HandlesChildPaths => false;
 
-    public SniState State => Volatile.Read(ref _state);
+    private SniState State => Volatile.Read(ref _state);
 
     /// <summary>Swap the state and emit the New* signals hosts listen to (Plasma ignores PropertiesChanged on SNI).</summary>
     public void Update(SniState next)
@@ -159,23 +157,9 @@ public sealed class StatusNotifierItem(DBusConnection connection, string menuPat
                 ExportedObject.ReplyEmpty(context);
                 break;
             case ("SecondaryActivate", "ii"):
-                Raise(SecondaryActivated, reader.ReadInt32(), reader.ReadInt32());
-                ExportedObject.ReplyEmpty(context);
-                break;
-            case ("ContextMenu", "ii"):
-                // Only called by hosts that could not use Menu (dbusmenu); nothing to do.
-                ExportedObject.ReplyEmpty(context);
-                break;
+            case ("ContextMenu", "ii"): // only from hosts that cannot use Menu (dbusmenu)
             case ("Scroll", "is"):
-                ExportedObject.ReplyEmpty(context);
-                break;
             case ("ProvideXdgActivationToken", "s"):
-                var token = reader.ReadString();
-                if (ActivationTokenProvided is { } provided)
-                {
-                    ThreadPool.QueueUserWorkItem(_ => provided(token));
-                }
-
                 ExportedObject.ReplyEmpty(context);
                 break;
         }
@@ -268,31 +252,23 @@ public sealed class StatusNotifierItem(DBusConnection connection, string menuPat
             case ItemProperty.AttentionMovieName: writer.WriteVariantString(""); break;
             case ItemProperty.IconPixmap or ItemProperty.OverlayIconPixmap or ItemProperty.AttentionIconPixmap:
                 writer.WriteSignature(PixmapsSignature);
-                WritePixmaps(ref writer, []); // none: hosts load IconName from IconThemePath
+                WriteNoPixmaps(ref writer);
                 break;
             case ItemProperty.ToolTip:
                 writer.WriteSignature("(s" + PixmapsSignature + "ss)");
                 writer.WriteStructureStart();
                 writer.WriteString("");                // icon name
-                WritePixmaps(ref writer, []);          // icon pixmaps
+                WriteNoPixmaps(ref writer);            // icon pixmaps
                 writer.WriteString(state.ToolTipTitle);
                 writer.WriteString(state.ToolTipText); // subset of HTML allowed
                 break;
         }
     }
 
-    /// <summary>a(iiay): each entry is (width, height, ARGB32 bytes in network byte order).</summary>
-    private static void WritePixmaps(ref MessageWriter writer, ReadOnlySpan<(int Width, int Height, byte[] Argb)> pixmaps)
+    /// <summary>An empty a(iiay): hosts load IconName from IconThemePath instead.</summary>
+    private static void WriteNoPixmaps(ref MessageWriter writer)
     {
         var array = writer.WriteArrayStart(DBusType.Struct);
-        foreach (var (width, height, argb) in pixmaps)
-        {
-            writer.WriteStructureStart();
-            writer.WriteInt32(width);
-            writer.WriteInt32(height);
-            writer.WriteArray(argb);
-        }
-
         writer.WriteArrayEnd(array);
     }
 
