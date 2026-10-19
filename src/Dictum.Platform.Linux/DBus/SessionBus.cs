@@ -20,7 +20,16 @@ internal sealed class SessionBus : IDisposable
             {
                 var address = DBusAddress.Session ?? throw new InvalidOperationException("No D-Bus session bus (DBUS_SESSION_BUS_ADDRESS is not set).");
                 var connection = new DBusConnection(address);
-                await connection.ConnectAsync().ConfigureAwait(false);
+                try
+                {
+                    await connection.ConnectAsync().ConfigureAwait(false);
+                }
+                catch
+                {
+                    connection.Dispose();
+                    throw;
+                }
+
                 _connection = connection;
             }
 
