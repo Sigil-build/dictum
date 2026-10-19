@@ -12,14 +12,19 @@ namespace Dictum.Platform.Input;
 /// raises Pressed; releasing any key of it raises Released. On Windows the combination is suppressed
 /// so it does not also reach the focused app.
 /// </summary>
-public sealed class SharpHookHotkeyService(ILog log, string backend) : IHotkeyService, IModifierState
+/// <param name="createHook">Makes the hook for each start; null uses SharpHook's libuiohook hook.</param>
+/// <param name="startTimeout">How long a starting hook may take to enable.</param>
+public sealed class SharpHookHotkeyService(ILog log, string backend, Func<IGlobalHook>? createHook = null, TimeSpan? startTimeout = null)
+    : IHotkeyService, IModifierState
 {
-    private static readonly TimeSpan StartTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan DefaultStartTimeout = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan ReleasePollInterval = TimeSpan.FromMilliseconds(15);
 
     private readonly Lock _gate = new();
     private readonly bool _suppress = OperatingSystem.IsWindows();
-    private SimpleGlobalHook? _hook;
+    private readonly Func<IGlobalHook> _createHook = createHook ?? (static () => new SimpleGlobalHook());
+    private readonly TimeSpan _startTimeout = startTimeout ?? DefaultStartTimeout;
+    private IGlobalHook? _hook;
     private Task? _run;
     private IReadOnlyList<HotkeyBinding> _bindings = [];
     private HotkeyModifiers _held;
@@ -85,25 +90,45 @@ public sealed class SharpHookHotkeyService(ILog log, string backend) : IHotkeySe
     private async Task StartAsync(CancellationToken ct)
     {
         var enabled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var hook = new SimpleGlobalHook();
+        var hook = _createHook();
         hook.HookEnabled += (_, _) => enabled.TrySetResult();
         hook.KeyPressed += OnKeyPressed;
         hook.KeyReleased += OnKeyReleased;
         _hook = hook;
-        _run = hook.RunAsync(GlobalHookType.Keyboard, useBackgroundThread: true);
+        var run = _run = hook.RunAsync(GlobalHookType.Keyboard, useBackgroundThread: true);
 
-        var finished = await Task.WhenAny(enabled.Task, _run, Task.Delay(StartTimeout, ct)).ConfigureAwait(false);
-        if (finished == _run && _run.Exception?.InnerException is HookException hookError)
+        var finished = await Task.WhenAny(enabled.Task, run, Task.Delay(_startTimeout, ct)).ConfigureAwait(false);
+        if (finished == enabled.Task)
+        {
+            log.Info($"Keyboard hook running ({backend})");
+            return;
+        }
+
+        Abandon(hook);
+        if (finished == run && run.Exception?.InnerException is HookException hookError)
         {
             throw new HotkeyUnavailableException($"The keyboard hook failed to start: {hookError.Result}", HintFor(hookError.Result), hookError);
         }
 
-        if (finished != enabled.Task)
-        {
-            throw new HotkeyUnavailableException("The keyboard hook did not start in time.");
-        }
+        ct.ThrowIfCancellationRequested();
+        throw new HotkeyUnavailableException("The keyboard hook did not start in time.");
+    }
 
-        log.Info($"Keyboard hook running ({backend})");
+    /// <summary>Drops a hook that did not start, so the next bindings start a new one.</summary>
+    private void Abandon(IGlobalHook hook)
+    {
+        _hook = null;
+        _run = null;
+        hook.KeyPressed -= OnKeyPressed;
+        hook.KeyReleased -= OnKeyReleased;
+        try
+        {
+            hook.Dispose();
+        }
+        catch (HookException)
+        {
+            // Stopping a hook that never enabled can fail; without its handlers it raises nothing even if it starts later.
+        }
     }
 
     private static string? HintFor(UioHookResult result) => result switch
