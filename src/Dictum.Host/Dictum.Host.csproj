@@ -15,6 +15,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="Dictum.Host.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- 6.9 s of Ukrainian speech for 'test-stt': a copy of fixtures/uk.wav (Piper TTS, CC0 dataset). -->
     <EmbeddedResource Include="Samples/uk.wav" LogicalName="Dictum.Host.Samples.uk.wav" />
   </ItemGroup>
