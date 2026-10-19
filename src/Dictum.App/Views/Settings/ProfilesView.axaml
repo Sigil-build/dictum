@@ -5,7 +5,12 @@
              xmlns:res="using:Dictum.App.Resources"
              x:Class="Dictum.App.Views.Settings.ProfilesView"
              x:DataType="vm:ProfilesPage">
-  <Grid ColumnDefinitions="180,16,*" Margin="16,4,24,16">
+  <Grid Margin="{StaticResource settings.listPage.margin}">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="{StaticResource settings.listPage.listWidth}" />
+      <ColumnDefinition Width="16" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
     <DockPanel>
       <TextBlock DockPanel.Dock="Top" Classes="title" Text="{Binding Title}" Margin="0,0,0,8" />
       <Button DockPanel.Dock="Bottom" Content="{x:Static res:Strings.SettingsProfilesNew}" HorizontalAlignment="Stretch"
@@ -24,9 +29,14 @@
     </DockPanel>
 
     <ScrollViewer Grid.Column="2" IsVisible="{Binding HasProfile}">
-      <StackPanel Spacing="10" IsEnabled="{Binding CanEdit}" Margin="0,48,0,0">
+      <StackPanel Spacing="10" IsEnabled="{Binding CanEdit}" Margin="{StaticResource settings.listPage.editorMargin}">
         <Border Classes="editorRow">
-          <Grid ColumnDefinitions="140,16,*">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="{StaticResource settings.label.width}" />
+              <ColumnDefinition Width="16" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
             <TextBlock Text="{x:Static res:Strings.SettingsProfilesName}" VerticalAlignment="Center" />
             <TextBox Grid.Column="2" Text="{Binding Name}" PlaceholderText="{Binding NamePlaceholder}"
                      AutomationProperties.Name="{x:Static res:Strings.SettingsProfilesName}" />
@@ -34,7 +44,12 @@
         </Border>
 
         <Border Classes="editorRow">
-          <Grid ColumnDefinitions="140,16,*">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="{StaticResource settings.label.width}" />
+              <ColumnDefinition Width="16" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
             <StackPanel>
               <TextBlock Text="{x:Static res:Strings.SettingsProfilesHotkey}" />
               <TextBlock Text="{x:Static res:Strings.SettingsProfilesHotkeyHint}" Classes="hint" />
@@ -52,7 +67,12 @@
         </Border>
 
         <Border Classes="editorRow">
-          <Grid ColumnDefinitions="140,16,*">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="{StaticResource settings.label.width}" />
+              <ColumnDefinition Width="16" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
             <StackPanel>
               <TextBlock Text="{x:Static res:Strings.SettingsProfilesLanguages}" />
               <TextBlock Text="{x:Static res:Strings.SettingsProfilesLanguagesHint}" Classes="hint" />
@@ -92,11 +112,16 @@
           </Grid>
         </Border>
         <Border Classes="banner" Margin="0,-4,0,0" IsVisible="{Binding Languages.SimilarWarning, Converter={x:Static ObjectConverters.IsNotNull}}">
-          <TextBlock Text="{Binding Languages.SimilarWarning}" Margin="156,0,0,0" />
+          <TextBlock Text="{Binding Languages.SimilarWarning}" Margin="{StaticResource settings.label.indent}" />
         </Border>
 
         <Border Classes="editorRow">
-          <Grid ColumnDefinitions="140,16,*">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="{StaticResource settings.label.width}" />
+              <ColumnDefinition Width="16" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
             <StackPanel>
               <TextBlock Text="{x:Static res:Strings.SettingsProfilesWords}" />
               <TextBlock Text="{x:Static res:Strings.SettingsProfilesWordsHint}" Classes="hint" />
@@ -132,7 +157,12 @@
         </Border>
 
         <Border Classes="editorRow">
-          <Grid ColumnDefinitions="140,16,*">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="{StaticResource settings.label.width}" />
+              <ColumnDefinition Width="16" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
             <StackPanel>
               <TextBlock Text="{x:Static res:Strings.SettingsProfilesSpeechHint}" />
               <TextBlock Text="{x:Static res:Strings.SettingsProfilesSpeechHintHint}" Classes="hint" />
@@ -143,7 +173,12 @@
         </Border>
 
         <Border Classes="editorRow">
-          <Grid ColumnDefinitions="140,16,*">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="{StaticResource settings.label.width}" />
+              <ColumnDefinition Width="16" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
             <StackPanel>
               <TextBlock Text="{x:Static res:Strings.SettingsProfilesChain}" />
               <TextBlock Text="{x:Static res:Strings.SettingsProfilesChainHint}" Classes="hint" />
@@ -179,7 +214,12 @@
         </Border>
 
         <Border Classes="editorRow">
-          <Grid ColumnDefinitions="140,16,*">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="{StaticResource settings.label.width}" />
+              <ColumnDefinition Width="16" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
             <TextBlock Text="{x:Static res:Strings.SettingsProfilesOutput}" />
             <StackPanel Grid.Column="2" Spacing="8">
               <StackPanel Orientation="Horizontal" Spacing="20">
@@ -200,7 +240,12 @@
         </Border>
 
         <Border Classes="editorRow">
-          <Grid ColumnDefinitions="140,16,*">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="{StaticResource settings.label.width}" />
+              <ColumnDefinition Width="16" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
             <TextBlock Text="{x:Static res:Strings.SettingsProfilesProvider}" VerticalAlignment="Center" />
             <StackPanel Grid.Column="2" Spacing="4">
               <ComboBox Width="320" ItemsSource="{Binding Providers}" SelectedItem="{Binding Provider}"

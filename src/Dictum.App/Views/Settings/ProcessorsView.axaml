@@ -5,7 +5,12 @@
              xmlns:views="using:Dictum.App.Views.Settings"
              x:Class="Dictum.App.Views.Settings.ProcessorsView"
              x:DataType="vm:ProcessorsPage">
-  <Grid ColumnDefinitions="180,16,*" Margin="16,4,24,16">
+  <Grid Margin="{StaticResource settings.listPage.margin}">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="{StaticResource settings.listPage.listWidth}" />
+      <ColumnDefinition Width="16" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
     <DockPanel>
       <TextBlock DockPanel.Dock="Top" Classes="title" Text="{Binding Title}" Margin="0,0,0,8" />
       <StackPanel DockPanel.Dock="Bottom" Spacing="4" Margin="0,4,0,0" IsEnabled="{Binding CanEdit}">
@@ -26,7 +31,7 @@
     </DockPanel>
 
     <ScrollViewer Grid.Column="2" IsVisible="{Binding HasProcessor}">
-      <StackPanel Spacing="10" Margin="0,48,0,0" IsEnabled="{Binding CanEdit}">
+      <StackPanel Spacing="10" Margin="{StaticResource settings.listPage.editorMargin}" IsEnabled="{Binding CanEdit}">
         <Grid ColumnDefinitions="*,Auto">
           <StackPanel>
             <TextBlock Text="{Binding Selected.Id}" FontWeight="SemiBold" Foreground="{DynamicResource color.text.primary}" />

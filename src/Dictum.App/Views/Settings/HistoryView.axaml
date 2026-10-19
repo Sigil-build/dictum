@@ -4,8 +4,8 @@
              xmlns:res="using:Dictum.App.Resources"
              x:Class="Dictum.App.Views.Settings.HistoryView"
              x:DataType="vm:HistoryPage">
-  <Grid Margin="16,4,32,24" RowDefinitions="Auto,Auto,Auto,*">
-    <TextBlock Classes="title" Text="{Binding Title}" Margin="0,0,0,16" />
+  <Grid Margin="{StaticResource settings.page.margin}" RowDefinitions="Auto,Auto,Auto,*">
+    <TextBlock Classes="title" Text="{Binding Title}" Margin="{StaticResource settings.title.margin}" />
     <TextBox Grid.Row="1" Text="{Binding Search}" Margin="0,0,0,12"
              PlaceholderText="{x:Static res:Strings.SettingsHistorySearch}"
              AutomationProperties.Name="{x:Static res:Strings.SettingsHistorySearch}" />
@@ -52,14 +52,12 @@
                      Foreground="{DynamicResource color.text.secondary}" />
           <TextBlock Grid.Column="2" Text="{x:Static res:Strings.SettingsHistoryFinal}" FontWeight="SemiBold" Margin="0,0,0,6"
                      Foreground="{DynamicResource color.text.secondary}" />
-          <Border Grid.Row="1" Background="{DynamicResource color.bg.layer}" BorderBrush="{DynamicResource color.border}"
-                  BorderThickness="1" CornerRadius="{DynamicResource radius.control}" Padding="12">
+          <Border Grid.Row="1" Classes="card" Padding="12">
             <ScrollViewer>
               <SelectableTextBlock Text="{Binding Selected.Entry.RawText}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
             </ScrollViewer>
           </Border>
-          <Border Grid.Row="1" Grid.Column="2" Background="{DynamicResource color.bg.layer}" BorderBrush="{DynamicResource color.border}"
-                  BorderThickness="1" CornerRadius="{DynamicResource radius.control}" Padding="12">
+          <Border Grid.Row="1" Grid.Column="2" Classes="card" Padding="12">
             <ScrollViewer>
               <SelectableTextBlock Text="{Binding Selected.Entry.Text}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
             </ScrollViewer>
@@ -73,8 +71,7 @@
           <StackPanel Grid.Row="3" Grid.ColumnSpan="3" Spacing="6" Margin="0,8,0,0"
                       IsVisible="{Binding ReRunLabel, Converter={x:Static ObjectConverters.IsNotNull}}">
             <TextBlock Text="{x:Static res:Strings.SettingsHistoryReRunResult}" FontWeight="SemiBold" Foreground="{DynamicResource color.text.secondary}" />
-            <Border Background="{DynamicResource color.bg.layer}" BorderBrush="{DynamicResource color.border}" BorderThickness="1"
-                    CornerRadius="{DynamicResource radius.control}" Padding="12">
+            <Border Classes="card" Padding="12">
               <SelectableTextBlock Text="{Binding ReRunText}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
             </Border>
             <StackPanel Orientation="Horizontal" Spacing="8">

@@ -7,7 +7,7 @@
              x:Class="Dictum.App.Views.Settings.SpeechProvidersView"
              x:DataType="vm:SpeechProvidersPage">
   <ScrollViewer>
-    <StackPanel Margin="16,4,32,24" Spacing="8">
+    <StackPanel Margin="{StaticResource settings.page.margin}" Spacing="8">
       <TextBlock Classes="title" Text="{Binding Title}" Margin="0,0,0,12" />
       <ItemsControl ItemsSource="{Binding Cards}">
         <ItemsControl.ItemTemplate>
@@ -76,7 +76,11 @@
                   <Button Content="{x:Static res:Strings.SettingsProvidersTestSample}" Command="{Binding TestSampleCommand}" />
                 </StackPanel>
                 <controls:LevelMeterBar Level="{Binding MeterLevel}" IsVisible="{Binding Testing}" />
-                <Grid ColumnDefinitions="28,*" IsVisible="{Binding Result, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <Grid IsVisible="{Binding Result, Converter={x:Static ObjectConverters.IsNotNull}}">
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="{StaticResource settings.badge.width}" />
+                    <ColumnDefinition Width="*" />
+                  </Grid.ColumnDefinitions>
                   <controls:StatusBadge Level="{Binding Result.Level}" VerticalAlignment="Top" />
                   <StackPanel Grid.Column="1" Margin="10,2,0,0">
                     <TextBlock Text="{Binding Result.Status}" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />

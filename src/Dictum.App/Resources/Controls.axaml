@@ -145,13 +145,15 @@
   <Style Selector="TextBlock.keycapPlus">
     <Setter Property="Foreground" Value="{DynamicResource color.text.secondary}" />
   </Style>
-  <!-- Profiles editor rows: bordered cards. -->
-  <Style Selector="Border.editorRow">
-    <Setter Property="Padding" Value="16,10" />
+  <!-- Cards: a layer above the page with a hairline border. Editor rows and model cards are cards with their own padding. -->
+  <Style Selector="Border.card, Border.editorRow, Border.modelCard">
     <Setter Property="CornerRadius" Value="{DynamicResource radius.control}" />
     <Setter Property="Background" Value="{DynamicResource color.bg.layer}" />
     <Setter Property="BorderBrush" Value="{DynamicResource color.border}" />
     <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector="Border.editorRow">
+    <Setter Property="Padding" Value="16,10" />
   </Style>
   <Style Selector="TextBlock.hint">
     <Setter Property="FontSize" Value="12" />
@@ -222,10 +224,6 @@
   <!-- Models: cards with an accent border while downloading, pill badges, the download and disk bars. -->
   <Style Selector="Border.modelCard">
     <Setter Property="Padding" Value="16,14" />
-    <Setter Property="CornerRadius" Value="{DynamicResource radius.control}" />
-    <Setter Property="Background" Value="{DynamicResource color.bg.layer}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource color.border}" />
-    <Setter Property="BorderThickness" Value="1" />
   </Style>
   <Style Selector="Border.modelCard.active">
     <Setter Property="BorderBrush" Value="{DynamicResource color.accent}" />

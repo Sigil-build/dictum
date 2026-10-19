@@ -6,8 +6,8 @@
              x:Class="Dictum.App.Views.Settings.GeneralView"
              x:DataType="vm:GeneralPage">
   <ScrollViewer>
-    <StackPanel Margin="16,4,32,24" Spacing="4">
-      <TextBlock Classes="title" Text="{Binding Title}" Margin="0,0,0,16" />
+    <StackPanel Margin="{StaticResource settings.page.margin}" Spacing="4">
+      <TextBlock Classes="title" Text="{Binding Title}" Margin="{StaticResource settings.title.margin}" />
 
       <controls:SettingsRow Icon="{DynamicResource icon.login}"
                             Label="{x:Static res:Strings.SettingsStartAtLogin}"

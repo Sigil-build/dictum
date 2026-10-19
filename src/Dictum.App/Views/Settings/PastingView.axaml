@@ -6,7 +6,7 @@
              x:Class="Dictum.App.Views.Settings.PastingView"
              x:DataType="vm:PastingPage">
   <ScrollViewer>
-    <StackPanel Margin="16,4,32,24" Spacing="4">
+    <StackPanel Margin="{StaticResource settings.page.margin}" Spacing="4">
       <Button Classes="link" Content="{Binding BackLabel}" Command="{Binding BackCommand}" />
       <TextBlock Classes="title" Text="{Binding Title}" Margin="0,4,0,16" />
       <StackPanel Spacing="4" IsEnabled="{Binding CanEdit}">

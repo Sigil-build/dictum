@@ -5,7 +5,7 @@
              x:Class="Dictum.App.Views.Settings.ModelsView"
              x:DataType="vm:ModelsPage">
   <ScrollViewer>
-    <StackPanel Margin="16,4,32,24" Spacing="8">
+    <StackPanel Margin="{StaticResource settings.page.margin}" Spacing="8">
       <Grid ColumnDefinitions="*,16,Auto">
         <TextBlock Classes="title" Text="{Binding Title}" VerticalAlignment="Bottom" />
         <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Bottom">

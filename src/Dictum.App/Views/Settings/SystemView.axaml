@@ -16,8 +16,7 @@
                 Command="{Binding CheckAgainCommand}" />
       </Grid>
 
-      <Border Background="{DynamicResource color.bg.layer}" BorderBrush="{DynamicResource color.border}" BorderThickness="1"
-              CornerRadius="{DynamicResource radius.control}">
+      <Border Classes="card">
         <ContentControl Content="{Binding Service}" />
       </Border>
 
@@ -29,9 +28,14 @@
       <ItemsControl ItemsSource="{Binding Rows}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="settings:SystemRow">
-            <Border Background="{DynamicResource color.bg.layer}" BorderBrush="{DynamicResource color.border}" BorderThickness="1"
-                    CornerRadius="{DynamicResource radius.control}" Padding="16,8" Margin="0,0,0,6">
-              <Grid ColumnDefinitions="28,200,*,Auto">
+            <Border Classes="card" Padding="16,8" Margin="0,0,0,6">
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="{StaticResource settings.badge.width}" />
+                  <ColumnDefinition Width="200" />
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
                 <controls:StatusBadge Level="{Binding Level}" VerticalAlignment="Center" />
                 <StackPanel Grid.Column="1" Margin="14,0" VerticalAlignment="Center">
                   <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
