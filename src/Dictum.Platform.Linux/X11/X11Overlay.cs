@@ -43,7 +43,7 @@ public static unsafe partial class X11Overlay
     }
 
     /// <summary>The pointer in root-window pixels. Under XWayland it only moves over X11 windows, so KDE Wayland asks KWin.</summary>
-    public static (int X, int Y)? Pointer()
+    public static (int X, int Y)? PointerPosition()
     {
         var display = Display.Value;
         return display != 0 && XQueryPointer(display, XDefaultRootWindow(display), out _, out _, out var x, out var y, out _, out _, out _) != 0

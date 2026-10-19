@@ -125,7 +125,7 @@ public sealed class OverlayDesktop : IOverlayDesktop, IDisposable
         }
 
         // Under XWayland the X pointer freezes over Wayland windows, so only a real X11 session asks X.
-        return session.Type == SessionType.X11 && X11Overlay.Pointer() is { } pointer
+        return session.Type == SessionType.X11 && X11Overlay.PointerPosition() is { } pointer
             ? new ScreenHint(new PixelPoint(pointer.X, pointer.Y), null)
             : ScreenHint.None;
     }
