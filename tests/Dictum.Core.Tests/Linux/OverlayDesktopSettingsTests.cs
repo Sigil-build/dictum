@@ -1,5 +1,6 @@
 using Dictum.Platform.Linux;
 using Dictum.Platform.Linux.X11;
+using Dictum.Testing;
 
 namespace Dictum.Core.Tests.Linux;
 

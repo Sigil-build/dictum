@@ -3,6 +3,7 @@ using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Processing;
 using Dictum.Processing;
+using Dictum.Testing;
 
 namespace Dictum.Core.Tests.Processing;
 
@@ -278,7 +279,7 @@ public sealed class LlmProcessorTests : IDisposable
     public async Task ReasoningThatUsesUpTheTokenLimitIsExplained(string content)
     {
         var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer(content, finishReason: "length"));
-        var log = new RecordingLog();
+        var log = new ListLog();
 
         Assert.Equal("привіт світ", await Create(http, log: log).ProcessAsync("привіт світ", _context, _ct));
         Assert.Contains(log.Messages, m => m.Contains("reasoning", StringComparison.Ordinal) && m.Contains("maxTokens", StringComparison.Ordinal));
@@ -370,15 +371,6 @@ public sealed class LlmProcessorTests : IDisposable
             new ConfigValueResolver(new UnavailableSecretStore()),
             new PromptTemplates(_prompts.Path),
             log ?? NullLog.Instance);
-
-    private sealed class RecordingLog : ILog
-    {
-        public List<string> Messages { get; } = [];
-
-        public bool IncludeText => false;
-
-        public void Write(LogLevel level, string message, Exception? exception = null) => Messages.Add(message);
-    }
 
     private static string Answer(string content, string finishReason = "stop") =>
         $$"""{ "choices": [ { "index": 0, "finish_reason": "{{finishReason}}", "message": { "role": "assistant", "content": "{{content}}" } } ] }""";

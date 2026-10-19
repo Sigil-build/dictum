@@ -1,28 +1,18 @@
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
+using Dictum.Testing;
 
 namespace Dictum.Host.Tests.Ipc;
 
 public sealed class IpcTests : IDisposable
 {
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-ipc", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
 
-    public IpcTests() => Directory.CreateDirectory(_dir);
+    private string SocketPath => _dir.File("d.sock");
 
-    private string SocketPath => Path.Combine(_dir, "d.sock");
-
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-    }
+    public void Dispose() => _dir.Dispose();
 
     [Fact]
     public async Task RequestReachesTheHandlerAndTheAnswerComesBack()
@@ -65,7 +55,7 @@ public sealed class IpcTests : IDisposable
     public async Task AStartThatCannotListenLeavesNothingHeld()
     {
         // Over the socket path limit: binding fails after the lock is taken and the socket created.
-        var tooLong = Path.Combine(_dir, new string('s', 150));
+        var tooLong = _dir.File(new string('s', 150));
         await using var first = new IpcServer(tooLong, NullLog.Instance);
         var failure = Record.Exception(() => first.Start(Refuse));
         await using var second = new IpcServer(tooLong, NullLog.Instance);

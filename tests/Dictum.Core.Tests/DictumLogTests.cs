@@ -1,4 +1,5 @@
 using Dictum.Core.Diagnostics;
+using Dictum.Testing;
 
 namespace Dictum.Core.Tests;
 

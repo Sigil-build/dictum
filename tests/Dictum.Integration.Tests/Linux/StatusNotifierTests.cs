@@ -1,5 +1,6 @@
 using Dictum.Core.Diagnostics;
 using Dictum.Platform.Linux.Tray;
+using Dictum.Testing;
 using Tmds.DBus.Protocol;
 
 namespace Dictum.Integration.Tests.Linux;
@@ -71,11 +72,7 @@ public sealed class StatusNotifierTests
         SkipWithoutBus();
         await using var host = (await StatusNotifierHost.TryStartAsync(NullLog.Instance))!;
 
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
-        while (host.Availability != TrayAvailability.NoWatcher && DateTime.UtcNow < deadline)
-        {
-            await Task.Delay(20, _ct);
-        }
+        await Eventually.WaitForAsync(() => host.Availability == TrayAvailability.NoWatcher, "the host to find no watcher", TimeSpan.FromSeconds(5));
 
         Assert.Equal(TrayAvailability.NoWatcher, host.Availability);
     }

@@ -1,4 +1,5 @@
 using Dictum.Platform;
+using Dictum.Testing;
 
 namespace Dictum.Core.Tests.Platform;
 
@@ -28,29 +29,5 @@ public class AutostartExtensionsTests
 
         Assert.Null(installed.Installed);
         Assert.Equal(0, absent.Uninstalls);
-    }
-
-    private sealed class FakeAutostart : IAutostart
-    {
-        public LoginItem? Item { get; set; }
-
-        public int Uninstalls { get; private set; }
-
-        public LoginApp? Installed => Item?.App;
-
-        public string Location(LoginApp app) => "fake";
-
-        public Task InstallAsync(LoginItem item, CancellationToken ct)
-        {
-            Item = item;
-            return Task.CompletedTask;
-        }
-
-        public Task UninstallAsync(CancellationToken ct)
-        {
-            Item = null;
-            Uninstalls++;
-            return Task.CompletedTask;
-        }
     }
 }

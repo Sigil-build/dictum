@@ -1,5 +1,6 @@
 using System.Globalization;
 using Dictum.Core.History;
+using Dictum.Testing;
 
 namespace Dictum.Core.Tests;
 

@@ -8,6 +8,7 @@ using Dictum.Host.Daemon;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
 using Dictum.Platform.Hotkeys;
+using Dictum.Testing;
 
 namespace Dictum.Host.Tests.Daemon;
 
@@ -495,7 +496,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     [Fact]
     public async Task MonitorExpiresWithoutRenewal()
     {
-        var time = new ManualTimeProvider();
+        var time = new ManualClock(manualTimers: true);
         await using var daemon = await StartAsync(Config(), time: time);
         await Send(daemon, IpcCommand.MonitorStart);
 
@@ -507,7 +508,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     [Fact]
     public async Task RenewingKeepsTheMonitorOpen()
     {
-        var time = new ManualTimeProvider();
+        var time = new ManualClock(manualTimers: true);
         await using var daemon = await StartAsync(Config(), time: time);
 
         for (var i = 0; i < 6; i++)
@@ -849,15 +850,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         ],
     };
 
-    private async Task WaitForAsync(Func<bool> condition)
-    {
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
-        while (!condition())
-        {
-            Assert.True(DateTime.UtcNow < deadline, "Timed out waiting for the daemon");
-            await Task.Delay(10, _ct);
-        }
-    }
+    private static Task WaitForAsync(Func<bool> condition) => Eventually.WaitForAsync(condition, "the daemon", Patience);
 
     // PR 4d: "Measure" on Settings → Models divides the latency by the length of what was transcribed.
     [Fact]

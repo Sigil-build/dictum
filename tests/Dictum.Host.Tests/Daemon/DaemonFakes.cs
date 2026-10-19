@@ -1,4 +1,3 @@
-using Dictum.Audio;
 using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
@@ -9,55 +8,9 @@ using Dictum.Host.Daemon;
 using Dictum.Platform;
 using Dictum.Platform.Hotkeys;
 using Dictum.Platform.Injection;
+using Dictum.Testing;
 
 namespace Dictum.Host.Tests.Daemon;
-
-internal sealed class FakeAudio : IAudioSource
-{
-    public event Action<AudioFrame>? FrameCaptured;
-
-    public int Starts { get; private set; }
-
-    public int Stops { get; private set; }
-
-    public Exception? FailWith { get; set; }
-
-    public Exception? FailOnStop { get; set; }
-
-    public bool? LastKeepSamples { get; private set; }
-
-    public IReadOnlyList<AudioDevice> Devices { get; set; } = [];
-
-    public IReadOnlyList<AudioDevice> ListDevices() => Devices;
-
-    public Task StartAsync(string? deviceId, CancellationToken ct, bool keepSamples = true)
-    {
-        if (FailWith is not null)
-        {
-            throw FailWith;
-        }
-
-        Starts++;
-        LastKeepSamples = keepSamples;
-        FrameCaptured?.Invoke(default);
-        return Task.CompletedTask;
-    }
-
-    public Task<AudioClip> StopAsync(CancellationToken ct)
-    {
-        if (FailOnStop is not null)
-        {
-            throw FailOnStop;
-        }
-
-        Stops++;
-        return Task.FromResult(new AudioClip(new float[AudioClip.WhisperSampleRate]));
-    }
-
-    public void Raise(AudioFrame frame) => FrameCaptured?.Invoke(frame);
-
-    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
-}
 
 internal sealed class EchoStt(string text) : ISpeechToText
 {
@@ -104,7 +57,7 @@ internal sealed class FakeEngine : IDictationEngine
 
     public DictumConfig Config { get; }
 
-    public FakeAudio Audio { get; } = new();
+    public FakeAudioSource Audio { get; } = new();
 
     IAudioSource IDictationEngine.Audio => Audio;
 
@@ -199,21 +152,6 @@ internal sealed class FakeInjector : ITextInjector
         }
 
         Injected.Add((text, options));
-        return Task.CompletedTask;
-    }
-}
-
-internal sealed class FakeSounds : ISoundPlayer
-{
-    public List<SoundCue> Played { get; } = [];
-
-    public Task PlayAsync(SoundCue cue, CancellationToken ct)
-    {
-        lock (Played)
-        {
-            Played.Add(cue);
-        }
-
         return Task.CompletedTask;
     }
 }

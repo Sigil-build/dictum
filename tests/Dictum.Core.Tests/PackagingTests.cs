@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using Dictum.Testing;
 
 namespace Dictum.Core.Tests;
 

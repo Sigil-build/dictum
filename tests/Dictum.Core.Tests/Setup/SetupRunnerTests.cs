@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Setup;
+using Dictum.Testing;
 
 namespace Dictum.Core.Tests.Setup;
 

@@ -3,6 +3,7 @@ using Dictum.Core.History;
 using Dictum.Core.Pipeline;
 using Dictum.Core.Processing;
 using Dictum.Core.Stt;
+using Dictum.Testing;
 
 namespace Dictum.Core.Tests.Pipeline;
 

@@ -1,26 +1,21 @@
 using Dictum.Processing;
+using Dictum.Testing;
 
 namespace Dictum.Core.Tests.Processing;
 
 public sealed class PromptLibraryTests : IDisposable
 {
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-prompts", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _temp = new();
 
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-    }
+    /// <summary>Not created up front: the library makes it when it writes.</summary>
+    private string Folder => _temp.File("prompts");
+
+    public void Dispose() => _temp.Dispose();
 
     [Fact]
     public void TheBuiltInsAreListedWithoutAFolder()
     {
-        var prompts = new PromptLibrary(_dir);
+        var prompts = new PromptLibrary(Folder);
 
         Assert.Equal(["cleanup", "code-comment", "email"], prompts.Names());
         Assert.True(PromptLibrary.IsBuiltIn("cleanup"));
@@ -30,7 +25,7 @@ public sealed class PromptLibraryTests : IDisposable
     [Fact]
     public void AWrittenPromptIsListedReadAndOverridesABuiltIn()
     {
-        var prompts = new PromptLibrary(_dir);
+        var prompts = new PromptLibrary(Folder);
 
         prompts.Write("meeting-notes", "Make notes from {{text}}");
         prompts.Write("cleanup", "Fix {{text}}");
@@ -44,7 +39,7 @@ public sealed class PromptLibraryTests : IDisposable
     [Fact]
     public void DeletingAnOverrideBringsTheBuiltInBack()
     {
-        var prompts = new PromptLibrary(_dir);
+        var prompts = new PromptLibrary(Folder);
         prompts.Write("cleanup", "Fix {{text}}");
 
         prompts.Delete("cleanup");
@@ -54,7 +49,7 @@ public sealed class PromptLibraryTests : IDisposable
     }
 
     [Fact]
-    public void AnUnknownPromptReadsEmpty() => Assert.Equal("", new PromptLibrary(_dir).Read("nothing-here"));
+    public void AnUnknownPromptReadsEmpty() => Assert.Equal("", new PromptLibrary(Folder).Read("nothing-here"));
 
     [Theory]
     [InlineData("meeting-notes", true)]

@@ -1,10 +1,11 @@
 using Dictum.Core.Configuration;
+using Dictum.Testing;
 
 namespace Dictum.Core.Tests.Configuration;
 
 public class ConfigValueResolverTests
 {
-    private readonly ConfigValueResolver _resolver = new(new FakeSecretStore());
+    private readonly ConfigValueResolver _resolver = new(new FakeSecrets { Values = { ["groq"] = "s3cret" } });
 
     [Fact]
     public async Task LiteralAndEmptyValuesPassThrough()
@@ -50,15 +51,5 @@ public class ConfigValueResolverTests
             await resolver.ResolveAsync("secret:groq", TestContext.Current.CancellationToken));
 
         Assert.Contains("env:", ex.Message);
-    }
-
-    private sealed class FakeSecretStore : ISecretStore
-    {
-        public Task<string?> GetAsync(string key, CancellationToken ct) =>
-            Task.FromResult(key == "groq" ? "s3cret" : null);
-
-        public Task SetAsync(string key, string value, CancellationToken ct) => Task.CompletedTask;
-
-        public Task DeleteAsync(string key, CancellationToken ct) => Task.CompletedTask;
     }
 }

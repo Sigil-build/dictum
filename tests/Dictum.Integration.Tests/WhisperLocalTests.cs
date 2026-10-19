@@ -3,6 +3,7 @@ using Dictum.Core;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Pipeline;
 using Dictum.Host;
+using Dictum.Testing;
 
 namespace Dictum.Integration.Tests;
 
@@ -72,8 +73,8 @@ public class WhisperLocalTests
 
     private static async Task<DictationResult> TranscribeAsync(string fixture, string language)
     {
-        var temp = Path.Combine(Path.GetTempPath(), "dictum-integration", Guid.NewGuid().ToString("N"));
-        await using var host = DictumHost.Create(new AppPaths(temp, temp), NullLog.Instance, config: null);
+        using var temp = new TempDirectory();
+        await using var host = DictumHost.Create(new AppPaths(temp.Path, temp.Path), NullLog.Instance, config: null);
         var profile = host.ResolveProfile(new ProfileOverrides(Model: Path.GetFullPath(Model!), Language: language));
 
         await using var stream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "fixtures", fixture));

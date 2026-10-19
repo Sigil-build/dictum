@@ -1,6 +1,7 @@
 using System.Threading.Channels;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Testing;
 
 namespace Dictum.Host.Tests;
 
@@ -11,7 +12,7 @@ public sealed class ConfigWatcherTests : IDisposable
     /// <summary>Several times the watcher's debounce: a reload that has not come by then is not coming.</summary>
     private static readonly TimeSpan QuietPeriod = TimeSpan.FromSeconds(1.5);
 
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-watch", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
     private readonly Channel<DictumConfig> _changed = Channel.CreateUnbounded<DictumConfig>();
     private readonly Channel<ConfigException> _invalid = Channel.CreateUnbounded<ConfigException>();
@@ -19,21 +20,11 @@ public sealed class ConfigWatcherTests : IDisposable
 
     public ConfigWatcherTests()
     {
-        Directory.CreateDirectory(_dir);
-        _store = new ConfigStore(Path.Combine(_dir, "config.json"), NullLog.Instance);
+        _store = new ConfigStore(_dir.File("config.json"), NullLog.Instance);
         _store.Save(Config("first"));
     }
 
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-    }
+    public void Dispose() => _dir.Dispose();
 
     [Fact]
     public async Task ABurstOfSavesIsReloadedOnceWithTheLastOne()
@@ -66,7 +57,7 @@ public sealed class ConfigWatcherTests : IDisposable
     public async Task AnEditorThatSavesThroughARenameIsSeen()
     {
         using var watcher = Watch();
-        var swap = Path.Combine(_dir, ".config.json.swp");
+        var swap = _dir.File(".config.json.swp");
 
         await File.WriteAllTextAsync(swap, ConfigStore.Serialize(Config("renamed")), _ct);
         File.Move(swap, _store.Path, overwrite: true);

@@ -1,4 +1,5 @@
 using Dictum.Platform;
+using Dictum.Testing;
 
 namespace Dictum.Core.Tests.Platform;
 

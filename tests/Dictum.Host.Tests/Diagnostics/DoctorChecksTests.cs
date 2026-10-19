@@ -9,21 +9,16 @@ using Dictum.Host.Ipc;
 using Dictum.Host.Tests.Daemon;
 using Dictum.Platform;
 using Dictum.Setup;
+using Dictum.Testing;
 
 namespace Dictum.Host.Tests.Diagnostics;
 
 public sealed class DoctorChecksTests : IDisposable
 {
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-doctor", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
 
-    public void Dispose()
-    {
-        if (Directory.Exists(_dir))
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-    }
+    public void Dispose() => _dir.Dispose();
 
     [Fact]
     public async Task AMissingCatalogModelIsAnErrorWithAPullHint()
@@ -63,7 +58,7 @@ public sealed class DoctorChecksTests : IDisposable
     [Fact]
     public async Task ADaemonThatTakesTheConnectionButNeverAnswersIsAnErrorRow()
     {
-        var socket = Path.Combine(_dir, "d.sock");
+        var socket = _dir.File("d.sock");
         await using var silent = new IpcServer(socket, NullLog.Instance);
         silent.Start(async (_, ct) =>
         {
@@ -89,14 +84,14 @@ public sealed class DoctorChecksTests : IDisposable
     }
 
     private DoctorInputs Inputs(DictumConfig config) => new(
-        Path.Combine(_dir, "config.json"),
+        _dir.File("config.json"),
         config,
         null,
         [],
-        new AppPaths(_dir, _dir),
+        new AppPaths(_dir.Path, _dir.Path),
         new PlatformServices("test", null, new FakeInjector(), new UnavailableSecretStore(), null, new FakeNotifier(), _ => Task.FromResult<IReadOnlyList<PlatformCheck>>([])),
         new HardwareInfo(null, long.MaxValue),
-        () => new FakeAudio(),
+        () => new FakeAudioSource(),
         _ => new EchoStt("ok"),
         id => throw new ConfigException($"Unknown processor '{id}'."),
         _ => Task.FromResult(HealthStatus.Ok("running")));

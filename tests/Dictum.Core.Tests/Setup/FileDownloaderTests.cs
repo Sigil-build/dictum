@@ -1,6 +1,7 @@
 using System.Net;
 using System.Security.Cryptography;
 using Dictum.Setup;
+using Dictum.Testing;
 
 namespace Dictum.Core.Tests.Setup;
 

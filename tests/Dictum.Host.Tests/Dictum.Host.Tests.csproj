@@ -6,6 +6,7 @@
   -->
   <ItemGroup>
     <ProjectReference Include="../../src/Dictum.Host/Dictum.Host.csproj" />
+    <ProjectReference Include="../Dictum.Testing/Dictum.Testing.csproj" />
   </ItemGroup>
 
 </Project>

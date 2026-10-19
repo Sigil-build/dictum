@@ -4,6 +4,7 @@ using Dictum.Core.Diagnostics;
 using Dictum.Host.Daemon;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
+using Dictum.Testing;
 
 namespace Dictum.Host.Tests.Daemon;
 
@@ -11,27 +12,16 @@ public sealed class DaemonHostTests : IDisposable
 {
     private static readonly TimeSpan Patience = TimeSpan.FromSeconds(5);
 
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-host", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
     private readonly FakeHotkeys _hotkeys = new();
     private readonly EchoStt _stt = new("ok");
     private readonly List<FakeEngine> _engines = [];
     private readonly TaskCompletionSource _secondEngine = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    public DaemonHostTests() => Directory.CreateDirectory(_dir);
+    private string SocketPath => _dir.File("d.sock");
 
-    private string SocketPath => Path.Combine(_dir, "d.sock");
-
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-    }
+    public void Dispose() => _dir.Dispose();
 
     [Fact]
     public async Task AReloadWhileTheHotkeysAreBeingRegisteredIsApplied()
@@ -73,7 +63,7 @@ public sealed class DaemonHostTests : IDisposable
     private async Task RunAsync(Func<Task> body)
     {
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-        var store = new ConfigStore(Path.Combine(_dir, "config.json"), NullLog.Instance);
+        var store = new ConfigStore(_dir.File("config.json"), NullLog.Instance);
         store.Save(Config());
         var (config, warnings) = store.LoadWithIssues();
         var platform = new PlatformServices(
@@ -88,7 +78,7 @@ public sealed class DaemonHostTests : IDisposable
             config,
             warnings,
             store,
-            new AppPaths(_dir, _dir),
+            new AppPaths(_dir.Path, _dir.Path),
             SocketPath,
             platform,
             NullLog.Instance,

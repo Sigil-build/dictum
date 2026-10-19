@@ -1,6 +1,7 @@
 using Dictum.Core.Audio;
 using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
+using Dictum.Testing;
 
 namespace Dictum.Host.Tests.Ipc;
 
@@ -60,7 +61,7 @@ public class IpcEventHubTests
     [Fact]
     public async Task WhenDeliveredWaitsUntilTheWriterHasSentEverything()
     {
-        var time = new ManualTimeProvider();
+        var time = new ManualClock(manualTimers: true);
         var hub = new IpcEventHub(time);
         using var subscriber = hub.Subscribe();
         hub.Publish(IpcEvent.Stopping(StoppingReason.Shutdown));
@@ -74,7 +75,7 @@ public class IpcEventHubTests
     }
 
     /// <summary>Waits for delivery while the clock runs past the timeout.</summary>
-    private static Task<bool> DeliveredInTimeAsync(IpcEventHub hub, ManualTimeProvider time)
+    private static Task<bool> DeliveredInTimeAsync(IpcEventHub hub, ManualClock time)
     {
         var delivered = hub.WhenDeliveredAsync(DeliveryTimeout);
         time.Advance(DeliveryTimeout);

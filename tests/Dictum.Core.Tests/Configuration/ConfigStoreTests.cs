@@ -1,6 +1,7 @@
 using System.Text.Json.Nodes;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Testing;
 
 namespace Dictum.Core.Tests.Configuration;
 
