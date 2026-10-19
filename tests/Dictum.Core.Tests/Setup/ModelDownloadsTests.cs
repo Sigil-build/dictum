@@ -100,6 +100,25 @@ public sealed class ModelDownloadsTests : IDisposable
         Assert.Equal(DownloadState.Done, queue.Items[1].State);
     }
 
+    [Fact(Timeout = 10_000)]
+    public async Task ASaveThatFailsDoesNotStopTheQueue()
+    {
+        var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var http = new FakeHttpHandler()
+            .Respond(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(new GatedStream(DataA, gate.Task)) })
+            .Respond(_ => Ok(DataB));
+        await using var queue = Queue(http);
+        var catalog = TestCatalog();
+        queue.Enqueue([catalog.Get("a"), catalog.Get("b")]);
+
+        // From here on every save fails: its temporary file cannot be written over a directory.
+        Directory.CreateDirectory(Paths.DownloadsFile + ".tmp");
+        gate.SetResult();
+        await queue.WhenIdleAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal([DownloadState.Done, DownloadState.Done], queue.Items.Select(i => i.State));
+    }
+
     [Fact]
     public async Task NotEnoughSpaceFailsTheEntryWithoutARequest()
     {
@@ -227,6 +246,16 @@ public sealed class ModelDownloadsTests : IDisposable
     }
 
     private static HttpResponseMessage Ok(byte[] data) => new(HttpStatusCode.OK) { Content = new ByteArrayContent(data) };
+
+    /// <summary>Holds its bytes back until <paramref name="open"/> completes.</summary>
+    private sealed class GatedStream(byte[] data, Task open) : MemoryStream(data)
+    {
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            await open.WaitAsync(cancellationToken);
+            return await base.ReadAsync(buffer, cancellationToken);
+        }
+    }
 
     /// <summary>Delivers its bytes, then waits for data that never comes, until the download is cancelled.</summary>
     private sealed class StallingStream(byte[] data) : MemoryStream(data)

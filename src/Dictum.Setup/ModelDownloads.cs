@@ -302,7 +302,21 @@ public sealed class ModelDownloads(FileDownloader downloader, AppPaths paths, Ca
                 DeletePartial(entry);
             }
 
+            SaveFromWorker();
+        }
+    }
+
+    /// <summary>A save that fails here must not stop the queue; the next change writes the file again.</summary>
+    private void SaveFromWorker()
+    {
+        try
+        {
             Save();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // The file only tells a restarted app what to continue; a stale one at worst lists a download that has
+            // finished since, which Enqueue skips as installed, or failed, which is then tried again.
         }
     }
 
