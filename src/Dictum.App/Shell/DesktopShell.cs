@@ -115,7 +115,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
 
         if (OperatingSystem.IsLinux())
         {
-            return await SniTrayPresenter.TryStartAsync(Path.Combine(paths.DataDirectory, "tray-icons"), highContrast, log);
+            return await SniTrayPresenter.TryStartAsync(paths.TrayIconsDirectory, highContrast, log);
         }
 
         return null;

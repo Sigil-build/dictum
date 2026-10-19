@@ -45,6 +45,9 @@ public sealed class AppPaths
 
     public string LogsDirectory => Path.Combine(DataDirectory, "logs");
 
+    /// <summary>The tray glyphs as SVG files, for a StatusNotifierItem's icon theme path.</summary>
+    public string TrayIconsDirectory => Path.Combine(DataDirectory, "tray-icons");
+
     /// <summary>The config file to use: <paramref name="explicitPath"/> (<c>--config</c>), then <see cref="DictumEnvironment.ConfigFile"/>, then <see cref="ConfigFile"/>.</summary>
     public string ConfigFileFrom(string? explicitPath) =>
         explicitPath ?? (Environment.GetEnvironmentVariable(DictumEnvironment.ConfigFile) is { Length: > 0 } fromEnvironment ? fromEnvironment : ConfigFile);
