@@ -282,7 +282,9 @@ public sealed partial class ProviderCard : ObservableObject
         }
 
         KeyError = null;
+        var previous = (_session.Config.Stt.GetValueOrDefault(Id) as OpenAiCompatibleSttConfig)?.ApiKey;
         EditRemote(r => r with { ApiKey = result.Value });
+        await ApiKeys.DeleteLegacyCleanupAsync(_services.Secrets, previous, _session.Config, _services.Log, CancellationToken.None);
     }
 
     [RelayCommand(CanExecute = nameof(HasKey))]

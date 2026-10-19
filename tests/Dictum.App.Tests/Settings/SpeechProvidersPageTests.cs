@@ -170,6 +170,22 @@ public sealed class SpeechProvidersPageTests : IDisposable
     }
 
     [Fact]
+    public async Task ANewKeyOverTheOldCleanupEntryDeletesThatEntry()
+    {
+        _secrets.Values[SecretNames.LegacyCleanup] = "sk-old";
+        var config = ProfilesPageTests.Sample();
+        config.Stt["remote"] = (OpenAiCompatibleSttConfig)config.Stt["remote"] with { ApiKey = "secret:dictum-cleanup" };
+        var (page, session) = Open(config);
+        var card = Card(page, "remote");
+
+        card.KeyText = "sk-new";
+        await card.CommitKeyCommand.ExecuteAsync(null);
+
+        Assert.Equal("secret:dictum-stt-remote", Saved<OpenAiCompatibleSttConfig>(session, "remote").ApiKey);
+        Assert.Equal(new Dictionary<string, string> { ["dictum-stt-remote"] = "sk-new" }, _secrets.Values);
+    }
+
+    [Fact]
     public async Task RemovingTheKeyClearsTheConfigAndOurSecret()
     {
         var (page, session) = Open();
