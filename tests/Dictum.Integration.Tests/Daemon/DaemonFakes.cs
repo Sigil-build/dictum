@@ -1,4 +1,4 @@
-using Dictum.Audio.PortAudio;
+using Dictum.Audio;
 using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;

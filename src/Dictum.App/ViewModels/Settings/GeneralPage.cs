@@ -4,7 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Daemon;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
-using Dictum.Audio.PortAudio;
+using Dictum.Audio;
 using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;

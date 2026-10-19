@@ -1,3 +1,4 @@
+using Dictum.Audio;
 using Dictum.Audio.PortAudio;
 
 namespace Dictum.Core.Tests.Audio;

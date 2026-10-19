@@ -78,6 +78,9 @@ public sealed class DictumHost : IDictationEngine
     public static DictumHost Create(AppPaths paths, ILog log, DictumConfig? config, ISecretStore? secrets = null) =>
         new(paths, log, config ?? new DictumConfig(), secrets ?? new UnavailableSecretStore());
 
+    /// <summary>The state cues on the default output device, for the daemon and the Settings sound test.</summary>
+    public static ISoundPlayer CreateSoundPlayer(ILog log) => new SoundPlayer(log);
+
     public ISpeechToText GetStt(string id) =>
         _stt.GetOrAdd(id, key => Config.Stt.TryGetValue(key, out var config)
             ? _registry.CreateStt(key, config, _services)

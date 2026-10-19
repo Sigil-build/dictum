@@ -13,10 +13,10 @@ using Dictum.App.Tray;
 using Dictum.App.ViewModels;
 using Dictum.App.ViewModels.Settings;
 using Dictum.App.ViewModels.Setup;
-using Dictum.Audio.PortAudio;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Host;
 using Dictum.Host.Ipc;
 using Dictum.Setup;
 
@@ -182,7 +182,7 @@ public static class SelfTest
             var offline = new Offline();
             using var runner = new ProcessorRunner(paths, new UnavailableSecretStore(), NullLog.Instance);
             var general = new GeneralPage(session, new GeneralServices(offline, new FrameHub(TimeProvider.System), UiTimers.Instance,
-                null, null, new SoundPlayer(NullLog.Instance), TimeProvider.System, NullLog.Instance));
+                null, null, DictumHost.CreateSoundPlayer(NullLog.Instance), TimeProvider.System, NullLog.Instance));
             SettingsPage[] pages =
             [
                 general,

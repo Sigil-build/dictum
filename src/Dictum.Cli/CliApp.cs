@@ -1,14 +1,12 @@
 using System.CommandLine;
 using System.Reflection;
 using Dictum.Audio;
-using Dictum.Audio.PortAudio;
 using Dictum.Cli.Commands;
 using Dictum.Core;
 using Dictum.Core.Configuration;
+using Dictum.Core.Diagnostics;
 using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
-using Dictum.Platform.Hotkeys;
-using Dictum.Platform.Injection;
 using Dictum.Setup;
 
 namespace Dictum.Cli;
@@ -67,7 +65,7 @@ internal static class CliApp
         ParseResult parse,
         Func<CliContext, CancellationToken, Task<int>> body,
         CancellationToken ct,
-        Core.Diagnostics.LogLevel? consoleLevel = null)
+        LogLevel? consoleLevel = null)
     {
         await using var context = new CliContext(parse, consoleLevel);
         try
@@ -99,7 +97,7 @@ internal static class CliApp
     private static int Report(CliContext context, Exception ex)
     {
         var inner = ex is DictationException { InnerException: { } cause } ? cause : ex;
-        context.Log.Write(Core.Diagnostics.LogLevel.Debug, ex.ToString());
+        context.Log.Write(LogLevel.Debug, ex.ToString());
         switch (inner)
         {
             case ConfigException config:
@@ -114,12 +112,8 @@ internal static class CliApp
                 return Fail(context, ex.Message, ExitCodes.ProviderUnavailable);
             case DaemonNotRunningException:
                 return Fail(context, inner.Message, ExitCodes.DaemonNotRunning);
-            case AudioDeviceException audio:
-                return Fail(context, audio.Message, ExitCodes.Error, audio.Hint);
-            case HotkeyUnavailableException hotkey:
-                return Fail(context, hotkey.Message, ExitCodes.Error, hotkey.Hint);
-            case InjectionUnavailableException injection:
-                return Fail(context, injection.Message, ExitCodes.Error, injection.Hint);
+            case IHasHint hinted:
+                return Fail(context, inner.Message, ExitCodes.Error, hinted.Hint);
             case DownloadException download:
                 return Fail(context, download.Message, ExitCodes.DownloadFailed);
             case DaemonAlreadyRunningException:

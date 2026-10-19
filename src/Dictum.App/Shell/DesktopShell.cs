@@ -11,7 +11,7 @@ using Dictum.App.ViewModels.Settings;
 using Dictum.App.ViewModels.Setup;
 using Dictum.App.Views.Settings;
 using Dictum.App.Views.Setup;
-using Dictum.Audio.PortAudio;
+using Dictum.Audio;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
@@ -42,7 +42,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     private readonly TrayController _tray;
     private readonly IOverlayDesktop _overlayDesktop;
     private readonly IAutostart? _autostart;
-    private readonly SoundPlayer _sounds;
+    private readonly ISoundPlayer _sounds;
     private readonly Func<HardwareInfo> _probeHardware;
     private readonly SpeedMeasurements _measurements = new();
     private SettingsViewModel? _settings;
@@ -92,7 +92,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         Overlay = new OverlayController(() => new OverlayWindow(_overlayDesktop.Prepare), _overlayDesktop, () => _highContrast, TimeProvider.System, log);
         _autostart = autostart;
         _probeHardware = probeHardware ?? (() => HardwareProbe.Detect(paths));
-        _sounds = new SoundPlayer(log);
+        _sounds = DictumHost.CreateSoundPlayer(log);
         Frames = new FrameHub(TimeProvider.System);
     }
 

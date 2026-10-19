@@ -1,4 +1,5 @@
 using Dictum.Core.Configuration;
+using Dictum.Core.Diagnostics;
 
 namespace Dictum.Platform.Injection;
 
@@ -52,7 +53,7 @@ public interface IModifierState
 }
 
 public sealed class InjectionUnavailableException(string message, string? hint = null, Exception? inner = null)
-    : Exception(message, inner)
+    : Exception(message, inner), IHasHint
 {
     public string? Hint { get; } = hint;
 }

@@ -1,6 +1,5 @@
 using System.CommandLine;
 using System.Runtime.InteropServices;
-using Dictum.Audio.PortAudio;
 using Dictum.Core.Diagnostics;
 using Dictum.Host;
 using Dictum.Host.Daemon;
@@ -41,7 +40,7 @@ internal static class DaemonCommand
         var log = context.Log;
 
         var events = new IpcEventHub();
-        await using var daemon = new DictumDaemon(config, context.CreateHost, platform, new SoundPlayer(log), log, events, warnings);
+        await using var daemon = new DictumDaemon(config, context.CreateHost, platform, DictumHost.CreateSoundPlayer(log), log, events, warnings);
         await using var server = new IpcServer(context.SocketPath, log, events);
         server.Start(daemon.HandleAsync);
         await daemon.StartAsync(ct).ConfigureAwait(false);

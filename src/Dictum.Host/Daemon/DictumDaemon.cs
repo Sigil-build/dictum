@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using Dictum.Audio;
-using Dictum.Audio.PortAudio;
 using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;

@@ -1,21 +1,9 @@
 using System.Runtime.InteropServices;
+using Dictum.Core.Audio;
 using Dictum.Core.Diagnostics;
 using static Dictum.Audio.PortAudio.PortAudioNative;
 
 namespace Dictum.Audio.PortAudio;
-
-public enum SoundCue
-{
-    Start,
-    Stop,
-    Error,
-}
-
-/// <summary>Plays short state cues; abstracted so the daemon can be tested without audio.</summary>
-public interface ISoundPlayer
-{
-    Task PlayAsync(SoundCue cue, CancellationToken ct);
-}
 
 /// <summary>
 /// Short synthesised cues on the default output device. Best effort: a missing library or device, or a stream that

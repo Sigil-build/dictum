@@ -1,13 +1,8 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
+using Dictum.Core.Audio;
 
 namespace Dictum.Audio.PortAudio;
-
-public sealed class AudioDeviceException(string message, string? hint = null) : Exception(message)
-{
-    /// <summary>How to fix it, shown apart from the message.</summary>
-    public string? Hint { get; } = hint;
-}
 
 /// <summary>
 /// Loads and initialises PortAudio once per process.

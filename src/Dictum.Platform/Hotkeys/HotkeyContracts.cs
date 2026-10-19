@@ -1,3 +1,4 @@
+using Dictum.Core.Diagnostics;
 using Dictum.Core.Hotkeys;
 
 namespace Dictum.Platform.Hotkeys;
@@ -34,7 +35,7 @@ public interface IHotkeyService : IAsyncDisposable
 
 /// <summary>The backend could not register hotkeys (no portal, permission denied, hook failed).</summary>
 public sealed class HotkeyUnavailableException(string message, string? hint = null, Exception? inner = null)
-    : Exception(message, inner)
+    : Exception(message, inner), IHasHint
 {
     public string? Hint { get; } = hint;
 }
