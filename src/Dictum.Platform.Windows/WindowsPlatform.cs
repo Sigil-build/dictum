@@ -29,10 +29,10 @@ public static class WindowsPlatform
             new CredentialManagerSecretStore(),
             new RunKeyAutostart(),
             NullNotifier.Instance,
-            ct => Task.FromResult(Diagnose(hotkeys, injector)));
+            _ => Task.FromResult<IReadOnlyList<PlatformCheck>>(Diagnose(hotkeys, injector)));
     }
 
-    private static IReadOnlyList<PlatformCheck> Diagnose(SharpHookHotkeyService hotkeys, ITextInjector injector)
+    private static List<PlatformCheck> Diagnose(SharpHookHotkeyService hotkeys, ClipboardPasteInjector injector)
     {
         var checks = new List<PlatformCheck>
         {

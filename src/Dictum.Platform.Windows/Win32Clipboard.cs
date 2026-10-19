@@ -23,7 +23,7 @@ public sealed unsafe class Win32Clipboard(TimeSpan? openTimeout = null) : IClipb
     public string Backend => "Win32 clipboard";
 
     public Task<string?> GetTextAsync(CancellationToken ct) =>
-        Task.FromResult(WithClipboard(nint.Zero, ct, () =>
+        Task.FromResult(WithClipboard(nint.Zero, () =>
         {
             var handle = Win32.GetClipboardData(Win32.CfUnicodeText);
             if (handle == 0)
@@ -41,14 +41,14 @@ public sealed unsafe class Win32Clipboard(TimeSpan? openTimeout = null) : IClipb
             {
                 Win32.GlobalUnlock(handle);
             }
-        }));
+        }, ct));
 
     public Task SetTextAsync(string text, CancellationToken ct)
     {
         var owner = Win32.CreateWindowEx(0, "STATIC", null, 0, 0, 0, 0, 0, Win32.HwndMessage, 0, 0, 0);
         try
         {
-            WithClipboard(owner, ct, () =>
+            WithClipboard(owner, () =>
             {
                 Win32.EmptyClipboard();
                 var bytes = (nuint)((text.Length + 1) * sizeof(char));
@@ -72,7 +72,7 @@ public sealed unsafe class Win32Clipboard(TimeSpan? openTimeout = null) : IClipb
                 }
 
                 return (string?)null;
-            });
+            }, ct);
         }
         finally
         {
@@ -90,7 +90,7 @@ public sealed unsafe class Win32Clipboard(TimeSpan? openTimeout = null) : IClipb
     /// for a moment, sometimes for hundreds of milliseconds, so opening is retried with growing pauses. The wait
     /// blocks the thread: the clipboard is opened, used and closed on one thread.
     /// </summary>
-    private string? WithClipboard(nint owner, CancellationToken ct, Func<string?> action)
+    private string? WithClipboard(nint owner, Func<string?> action, CancellationToken ct)
     {
         var waited = Stopwatch.StartNew();
         var pause = FirstPause;
