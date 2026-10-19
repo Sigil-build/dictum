@@ -24,8 +24,7 @@ public sealed class SharpHookHotkeyService(ILog log, string backend, Func<IGloba
     private readonly bool _suppress = OperatingSystem.IsWindows();
     private readonly Func<IGlobalHook> _createHook = createHook ?? (static () => new SimpleGlobalHook());
     private readonly TimeSpan _startTimeout = startTimeout ?? DefaultStartTimeout;
-    private IGlobalHook? _hook;
-    private Task? _run;
+    private StartedHook? _hook;
     private IReadOnlyList<HotkeyBinding> _bindings = [];
     private HotkeyModifiers _held;
     private HotkeyBinding? _active;
@@ -43,9 +42,23 @@ public sealed class SharpHookHotkeyService(ILog log, string backend, Func<IGloba
             _active = null;
         }
 
-        if (_hook is null && bindings.Count > 0)
+        if (bindings.Count == 0)
         {
-            await StartAsync(ct).ConfigureAwait(false);
+            return;
+        }
+
+        var hook = _hook;
+        if (hook is { Run.IsCompleted: true, Enabled.IsCompleted: false })
+        {
+            // Its run ended without enabling after its start timed out; with that run over, a new hook does not run beside it.
+            Abandon(hook);
+            hook = null;
+        }
+
+        hook ??= Start();
+        if (!hook.Enabled.IsCompleted)
+        {
+            await WaitUntilEnabledAsync(hook, ct).ConfigureAwait(false);
         }
     }
 
@@ -70,60 +83,72 @@ public sealed class SharpHookHotkeyService(ILog log, string backend, Func<IGloba
 
     public async ValueTask DisposeAsync()
     {
-        if (_hook is { } hook)
+        if (_hook is { } started)
         {
-            hook.Dispose();
-            if (_run is not null)
+            started.Hook.Dispose();
+            try
             {
-                try
-                {
-                    await _run.ConfigureAwait(false);
-                }
-                catch (HookException)
-                {
-                    // A hook that stopped with an error has nothing left to release, and disposing must not throw.
-                }
+                await started.Run.ConfigureAwait(false);
+            }
+            catch (HookException)
+            {
+                // A hook that stopped with an error has nothing left to release, and disposing must not throw.
             }
         }
     }
 
-    private async Task StartAsync(CancellationToken ct)
+    private StartedHook Start()
     {
         var enabled = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var hook = _createHook();
         hook.HookEnabled += (_, _) => enabled.TrySetResult();
         hook.KeyPressed += OnKeyPressed;
         hook.KeyReleased += OnKeyReleased;
-        _hook = hook;
-        var run = _run = hook.RunAsync(GlobalHookType.Keyboard, useBackgroundThread: true);
+        var started = new StartedHook(hook, hook.RunAsync(GlobalHookType.Keyboard, useBackgroundThread: true), enabled.Task);
+        _hook = started;
+        return started;
+    }
 
-        var finished = await Task.WhenAny(enabled.Task, run, Task.Delay(_startTimeout, ct)).ConfigureAwait(false);
-        if (finished == enabled.Task)
+    /// <summary>
+    /// A hook still starting when the time is up is kept: it delivers the hotkeys if it enables later, and the next
+    /// bindings wait on it again, since a second native run beside it would leave two hooks installed.
+    /// </summary>
+    private async Task WaitUntilEnabledAsync(StartedHook started, CancellationToken ct)
+    {
+        var finished = await Task.WhenAny(started.Enabled, started.Run, Task.Delay(_startTimeout, ct)).ConfigureAwait(false);
+        if (finished == started.Enabled)
         {
             log.Info($"Keyboard hook running ({backend})");
             return;
         }
 
-        Abandon(hook);
-        if (finished == run && run.Exception?.InnerException is HookException hookError)
+        if (finished == started.Run)
         {
-            throw new HotkeyUnavailableException($"The keyboard hook failed to start: {hookError.Result}", HintFor(hookError.Result), hookError);
+            Abandon(started);
+            if (started.Run.Exception?.InnerException is HookException hookError)
+            {
+                throw new HotkeyUnavailableException($"The keyboard hook failed to start: {hookError.Result}", HintFor(hookError.Result), hookError);
+            }
+        }
+        else if (ct.IsCancellationRequested)
+        {
+            // Cancelled means shutting down: nothing will want the hook, even if it starts later.
+            Abandon(started);
         }
 
         ct.ThrowIfCancellationRequested();
         throw new HotkeyUnavailableException("The keyboard hook did not start in time.");
     }
 
-    /// <summary>Drops a hook that did not start, so the next bindings start a new one.</summary>
-    private void Abandon(IGlobalHook hook)
+    /// <summary>Drops a hook whose run ended before it enabled, or whose start was cancelled, so the next bindings start a new one.</summary>
+    private void Abandon(StartedHook started)
     {
         _hook = null;
-        _run = null;
-        hook.KeyPressed -= OnKeyPressed;
-        hook.KeyReleased -= OnKeyReleased;
+        started.Hook.KeyPressed -= OnKeyPressed;
+        started.Hook.KeyReleased -= OnKeyReleased;
         try
         {
-            hook.Dispose();
+            started.Hook.Dispose();
         }
         catch (HookException)
         {
@@ -212,4 +237,8 @@ public sealed class SharpHookHotkeyService(ILog log, string backend, Func<IGloba
             ThreadPool.QueueUserWorkItem(static state => state.handler(state.hotkeyEvent), (handler, hotkeyEvent), preferLocal: false);
         }
     }
+
+    /// <summary>A hook and its run, held in one field so that a reader never sees one without the other.</summary>
+    /// <param name="Enabled">Completes once the hook is installed and delivers keys.</param>
+    private sealed record StartedHook(IGlobalHook Hook, Task Run, Task Enabled);
 }
