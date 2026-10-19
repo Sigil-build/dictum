@@ -38,8 +38,7 @@ internal sealed class FakeDaemon : IAsyncDisposable
     {
         var daemon = new FakeDaemon(socketPath, options ?? new FakeDaemonOptions());
 
-        // IpcServer.StartAsync binds and listens before it returns.
-        daemon._server.StartAsync(daemon.HandleAsync, CancellationToken.None).GetAwaiter().GetResult();
+        daemon._server.Start(daemon.HandleAsync);
         return daemon;
     }
 

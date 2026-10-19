@@ -56,7 +56,7 @@ internal static class Program
             OverlayDesktop.ForThisDesktop(log), PlatformFactory.CreateAutostart());
 
         // No synchronisation context exists yet, so blocking here cannot deadlock.
-        var instance = SingleInstance.AcquireAsync(appSocket, shell.OnCommand, log, CancellationToken.None).GetAwaiter().GetResult();
+        var instance = SingleInstance.AcquireAsync(appSocket, shell.OnCommand, log).GetAwaiter().GetResult();
         if (instance is null)
         {
             try

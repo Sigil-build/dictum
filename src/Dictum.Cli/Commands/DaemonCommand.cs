@@ -43,7 +43,7 @@ internal static class DaemonCommand
         var events = new IpcEventHub();
         await using var daemon = new DictumDaemon(config, context.CreateHost, platform, new SoundPlayer(log), log, events, warnings);
         await using var server = new IpcServer(context.SocketPath, log, events);
-        await server.StartAsync(daemon.HandleAsync, ct).ConfigureAwait(false);
+        server.Start(daemon.HandleAsync);
         await daemon.StartAsync(ct).ConfigureAwait(false);
         using var watcher = new ConfigWatcher(
             context.Store,

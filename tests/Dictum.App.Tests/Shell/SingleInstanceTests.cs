@@ -38,8 +38,8 @@ public sealed class SingleInstanceTests : IDisposable
         var first = new ConcurrentQueue<string>();
         var second = new ConcurrentQueue<string>();
 
-        await using var running = await SingleInstance.AcquireAsync(SocketPath, first.Enqueue, NullLog.Instance, _ct);
-        var other = await SingleInstance.AcquireAsync(SocketPath, second.Enqueue, NullLog.Instance, _ct);
+        await using var running = await SingleInstance.AcquireAsync(SocketPath, first.Enqueue, NullLog.Instance);
+        var other = await SingleInstance.AcquireAsync(SocketPath, second.Enqueue, NullLog.Instance);
         await SingleInstance.NotifyAsync(SocketPath, SingleInstance.ShowSettings, _ct);
 
         Assert.NotNull(running);
@@ -51,10 +51,10 @@ public sealed class SingleInstanceTests : IDisposable
     [Fact]
     public async Task OnceTheFirstExitsTheNextLaunchTakesOver()
     {
-        var first = await SingleInstance.AcquireAsync(SocketPath, _ => { }, NullLog.Instance, _ct);
+        var first = await SingleInstance.AcquireAsync(SocketPath, _ => { }, NullLog.Instance);
         await first!.DisposeAsync();
 
-        await using var next = await SingleInstance.AcquireAsync(SocketPath, _ => { }, NullLog.Instance, _ct);
+        await using var next = await SingleInstance.AcquireAsync(SocketPath, _ => { }, NullLog.Instance);
 
         Assert.NotNull(next);
     }
@@ -66,7 +66,7 @@ public sealed class SingleInstanceTests : IDisposable
         var notify = SingleInstance.NotifyAsync(SocketPath, SingleInstance.ShowSettings, _ct);
         await Task.Delay(300, _ct);
 
-        await using var late = await SingleInstance.AcquireAsync(SocketPath, commands.Enqueue, NullLog.Instance, _ct);
+        await using var late = await SingleInstance.AcquireAsync(SocketPath, commands.Enqueue, NullLog.Instance);
         await notify.WaitAsync(TimeSpan.FromSeconds(5), _ct);
 
         Assert.Equal([SingleInstance.ShowSettings], commands);
@@ -104,7 +104,7 @@ public sealed class SingleInstanceTests : IDisposable
                     await running!.DisposeAsync();
                 });
             }
-        }, NullLog.Instance, _ct);
+        }, NullLog.Instance);
 
         Assert.True(await SingleInstance.QuitAsync(SocketPath, _ct));
         Assert.False(await SingleInstance.QuitAsync(SocketPath, _ct));
@@ -114,7 +114,7 @@ public sealed class SingleInstanceTests : IDisposable
     [Fact]
     public async Task QuitGivesUpAfterThePatience()
     {
-        await using var running = await SingleInstance.AcquireAsync(SocketPath, _ => { }, NullLog.Instance, _ct);
+        await using var running = await SingleInstance.AcquireAsync(SocketPath, _ => { }, NullLog.Instance);
 
         await Assert.ThrowsAsync<TimeoutException>(() => SingleInstance.QuitAsync(SocketPath, _ct, TimeSpan.FromMilliseconds(500)));
     }
@@ -147,7 +147,7 @@ public sealed class SingleInstanceTests : IDisposable
     {
         var processes = new FakeProcesses(4242);
         await using var daemon = new FakeDaemon(processes, 4242, exitsOnShutdown: false);
-        await daemon.StartAsync(DaemonSocket, _ct);
+        daemon.Start(DaemonSocket);
         SingleInstance? running = null;
         running = await SingleInstance.AcquireAsync(SocketPath, command =>
         {
@@ -160,7 +160,7 @@ public sealed class SingleInstanceTests : IDisposable
                     processes.Exit(4242);
                 });
             }
-        }, NullLog.Instance, _ct);
+        }, NullLog.Instance);
 
         var code = await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, _dir, processes, TextWriter.Null, _ct);
 
@@ -174,7 +174,7 @@ public sealed class SingleInstanceTests : IDisposable
     {
         var processes = new FakeProcesses(4242);
         await using var daemon = new FakeDaemon(processes, 4242, exitsOnShutdown: true);
-        await daemon.StartAsync(DaemonSocket, _ct);
+        daemon.Start(DaemonSocket);
 
         var code = await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, _dir, processes, TextWriter.Null, _ct);
 
@@ -187,7 +187,7 @@ public sealed class SingleInstanceTests : IDisposable
     {
         var processes = new FakeProcesses();
         await using var daemon = new FakeDaemon(processes, 999, exitsOnShutdown: true);
-        await daemon.StartAsync(DaemonSocket, _ct);
+        daemon.Start(DaemonSocket);
 
         var code = await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, _dir, processes, TextWriter.Null, _ct);
 
@@ -200,7 +200,7 @@ public sealed class SingleInstanceTests : IDisposable
     {
         var processes = new FakeProcesses(4242);
         await using var daemon = new FakeDaemon(processes, 4242, exitsOnShutdown: false);
-        await daemon.StartAsync(DaemonSocket, _ct);
+        daemon.Start(DaemonSocket);
         var error = new StringWriter();
 
         var code = await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, _dir, processes, error, _ct, TimeSpan.FromMilliseconds(500));
@@ -239,10 +239,10 @@ public sealed class SingleInstanceTests : IDisposable
 
         public bool ShutdownAsked { get; private set; }
 
-        public async Task StartAsync(string socket, CancellationToken ct)
+        public void Start(string socket)
         {
             _server = new IpcServer(socket, NullLog.Instance);
-            await _server.StartAsync((request, _) =>
+            _server.Start((request, _) =>
             {
                 if (request.Command == "shutdown")
                 {
@@ -254,7 +254,7 @@ public sealed class SingleInstanceTests : IDisposable
                 }
 
                 return Task.FromResult(IpcResponse.Success(new DaemonStatus("Idle", null, [], "hook", "paste", pid)));
-            }, ct);
+            });
         }
 
         public ValueTask DisposeAsync() => _server?.DisposeAsync() ?? ValueTask.CompletedTask;

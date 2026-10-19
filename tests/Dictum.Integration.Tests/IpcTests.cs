@@ -28,7 +28,7 @@ public class IpcTests : IDisposable
     public async Task RequestReachesTheHandlerAndTheAnswerComesBack()
     {
         await using var server = new IpcServer(SocketPath, NullLog.Instance);
-        await server.StartAsync((request, _) => Task.FromResult(IpcResponse.Success(Status($"{request.Command}:{request.Profile}"))), _ct);
+        server.Start((request, _) => Task.FromResult(IpcResponse.Success(Status($"{request.Command}:{request.Profile}"))));
 
         var response = await new IpcClient(SocketPath).SendAsync(new IpcRequest("toggle", "dictate-uk"), _ct);
 
@@ -41,7 +41,7 @@ public class IpcTests : IDisposable
     {
         await using var server = new IpcServer(SocketPath, NullLog.Instance);
         var count = 0;
-        await server.StartAsync((_, _) => Task.FromResult(IpcResponse.Success(Status($"{Interlocked.Increment(ref count)}"))), _ct);
+        server.Start((_, _) => Task.FromResult(IpcResponse.Success(Status($"{Interlocked.Increment(ref count)}"))));
         var client = new IpcClient(SocketPath);
 
         for (var i = 1; i <= 3; i++)
@@ -54,11 +54,11 @@ public class IpcTests : IDisposable
     public async Task SecondServerIsRejected()
     {
         await using var first = new IpcServer(SocketPath, NullLog.Instance);
-        await first.StartAsync((_, _) => Task.FromResult(IpcResponse.Failure("x")), _ct);
+        first.Start((_, _) => Task.FromResult(IpcResponse.Failure("x")));
         await using var second = new IpcServer(SocketPath, NullLog.Instance);
 
-        await Assert.ThrowsAsync<DaemonAlreadyRunningException>(() =>
-            second.StartAsync((_, _) => Task.FromResult(IpcResponse.Failure("x")), _ct));
+        Assert.Throws<DaemonAlreadyRunningException>(() =>
+            second.Start((_, _) => Task.FromResult(IpcResponse.Failure("x"))));
     }
 
     [Fact]
@@ -71,7 +71,7 @@ public class IpcTests : IDisposable
         await File.WriteAllTextAsync(SocketPath, "stale", _ct);
         await using var server = new IpcServer(SocketPath, NullLog.Instance);
 
-        await server.StartAsync((_, _) => Task.FromResult(IpcResponse.Success(Status("fresh"))), _ct);
+        server.Start((_, _) => Task.FromResult(IpcResponse.Success(Status("fresh"))));
 
         Assert.Equal("fresh", (await new IpcClient(SocketPath).SendAsync(new IpcRequest("status"), _ct)).Status!.State);
     }
@@ -95,7 +95,7 @@ public class IpcTests : IDisposable
         var ct = TestContext.Current.CancellationToken;
         var hub = new IpcEventHub();
         await using var server = new IpcServer(SocketPath, NullLog.Instance, hub);
-        await server.StartAsync((_, _) => Task.FromResult(IpcResponse.Success(Status("Idle"))), ct);
+        server.Start((_, _) => Task.FromResult(IpcResponse.Success(Status("Idle"))));
 
         await using var subscription = await new IpcClient(SocketPath).SubscribeAsync(ct);
         Assert.True(subscription.Response.Ok);
@@ -124,7 +124,7 @@ public class IpcTests : IDisposable
         var ct = TestContext.Current.CancellationToken;
         var hub = new IpcEventHub();
         await using var server = new IpcServer(SocketPath, NullLog.Instance, hub);
-        await server.StartAsync((_, _) => Task.FromResult(IpcResponse.Success(Status("Idle"))), ct);
+        server.Start((_, _) => Task.FromResult(IpcResponse.Success(Status("Idle"))));
 
         var subscription = await new IpcClient(SocketPath).SubscribeAsync(ct);
         Assert.Equal(1, hub.SubscriberCount);
@@ -142,7 +142,7 @@ public class IpcTests : IDisposable
         var ct = TestContext.Current.CancellationToken;
         var hub = new IpcEventHub();
         await using var server = new IpcServer(SocketPath, NullLog.Instance, hub, writeTimeout: TimeSpan.FromMilliseconds(200));
-        await server.StartAsync((_, _) => Task.FromResult(IpcResponse.Success(Status("Idle"))), ct);
+        server.Start((_, _) => Task.FromResult(IpcResponse.Success(Status("Idle"))));
 
         await using var neverReads = await new IpcClient(SocketPath).SubscribeAsync(ct);
         var big = IpcEvent.ForStatus(Status(new string('x', 2000)));
@@ -163,7 +163,7 @@ public class IpcTests : IDisposable
         var ct = TestContext.Current.CancellationToken;
         var hub = new IpcEventHub();
         var server = new IpcServer(SocketPath, NullLog.Instance, hub);
-        await server.StartAsync((_, _) => Task.FromResult(IpcResponse.Success(Status("Idle"))), ct);
+        server.Start((_, _) => Task.FromResult(IpcResponse.Success(Status("Idle"))));
         await using var subscription = await new IpcClient(SocketPath).SubscribeAsync(ct);
 
         hub.Publish(IpcEvent.Stopping("shutdown"));
@@ -184,7 +184,7 @@ public class IpcTests : IDisposable
     {
         var ct = TestContext.Current.CancellationToken;
         await using var server = new IpcServer(SocketPath, NullLog.Instance);
-        await server.StartAsync((_, _) => throw new InvalidDataException("broken handler"), ct);
+        server.Start((_, _) => throw new InvalidDataException("broken handler"));
 
         var response = await new IpcClient(SocketPath).SendAsync(new IpcRequest("status"), ct);
 
@@ -200,7 +200,7 @@ public class IpcTests : IDisposable
         var ct = TestContext.Current.CancellationToken;
         var hub = new IpcEventHub();
         await using var server = new IpcServer(SocketPath, NullLog.Instance, hub);
-        await server.StartAsync((request, _) =>
+        server.Start((request, _) =>
         {
             if (request.Command == "subscribe")
             {
@@ -208,7 +208,7 @@ public class IpcTests : IDisposable
             }
 
             return Task.FromResult(IpcResponse.Success(Status("Idle")));
-        }, ct);
+        });
 
         await using var subscription = await new IpcClient(SocketPath).SubscribeAsync(ct);
         await foreach (var e in subscription.ReadEventsAsync(ct))
@@ -225,7 +225,7 @@ public class IpcTests : IDisposable
         var ct = TestContext.Current.CancellationToken;
         var hub = new IpcEventHub();
         await using var server = new IpcServer(SocketPath, NullLog.Instance, hub);
-        await server.StartAsync((_, _) => Task.FromResult(IpcResponse.Failure("No.")), ct);
+        server.Start((_, _) => Task.FromResult(IpcResponse.Failure("No.")));
 
         var response = await new IpcClient(SocketPath).SendAsync(new IpcRequest("subscribe"), ct);
 

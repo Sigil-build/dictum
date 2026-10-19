@@ -35,18 +35,16 @@ public sealed class SingleInstance : IAsyncDisposable
 
     /// <summary>Becomes the instance, or returns null when another one holds the lock.</summary>
     /// <param name="onCommand">Gets each command a later launch sends; called on a server thread.</param>
-    public static async Task<SingleInstance?> AcquireAsync(string socketPath, Action<string> onCommand, ILog log, CancellationToken ct)
+    public static async Task<SingleInstance?> AcquireAsync(string socketPath, Action<string> onCommand, ILog log)
     {
         var server = new IpcServer(socketPath, log);
         try
         {
-            await server.StartAsync(
-                (request, _) =>
-                {
-                    onCommand(request.Command);
-                    return Task.FromResult(new IpcResponse(true));
-                },
-                ct).ConfigureAwait(false);
+            server.Start((request, _) =>
+            {
+                onCommand(request.Command);
+                return Task.FromResult(new IpcResponse(true));
+            });
             return new SingleInstance(server);
         }
         catch (DaemonAlreadyRunningException)

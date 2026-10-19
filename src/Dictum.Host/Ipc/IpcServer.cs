@@ -39,7 +39,7 @@ public sealed class IpcServer : IAsyncDisposable
 
     public string SocketPath => _socketPath;
 
-    public Task StartAsync(Func<IpcRequest, CancellationToken, Task<IpcResponse>> handler, CancellationToken ct)
+    public void Start(Func<IpcRequest, CancellationToken, Task<IpcResponse>> handler)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_socketPath)!);
         try
@@ -68,7 +68,6 @@ public sealed class IpcServer : IAsyncDisposable
         _listener = listener;
         _acceptLoop = AcceptLoopAsync(listener, handler, _stop.Token);
         _log.Info($"Listening on {_socketPath}");
-        return Task.CompletedTask;
     }
 
     public async ValueTask DisposeAsync()
