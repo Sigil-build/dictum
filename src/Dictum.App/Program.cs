@@ -46,7 +46,7 @@ internal static class Program
 
         var paths = AppPaths.FromEnvironment();
         using var log = OpenLog(paths);
-        var store = new ConfigStore(ConfigPath(paths), log);
+        var store = new ConfigStore(paths.ConfigFileFrom(explicitPath: null), log);
         UiCulture.Apply(UiCulture.FromConfig(store));
 
         var daemonSocket = IpcEndpoint.SocketPath(paths);
@@ -116,7 +116,7 @@ internal static class Program
 
         var paths = AppPaths.FromEnvironment();
         using var log = OpenLog(paths);
-        var store = new ConfigStore(ConfigPath(paths), log);
+        var store = new ConfigStore(paths.ConfigFileFrom(explicitPath: null), log);
         UiCulture.Apply(UiCulture.FromConfig(store));
         DictumConfig? user = null;
         try
@@ -145,10 +145,6 @@ internal static class Program
 
     private static DictumLog OpenLog(AppPaths paths) =>
         new(LogLevel.Warning, includeText: false, console: null, paths.LogsDirectory, AppNames.GuiLogFile);
-
-    /// <summary><c>DICTUM_CONFIG</c> when it is set, as for the CLI; the default config file otherwise.</summary>
-    private static string ConfigPath(AppPaths paths) =>
-        Environment.GetEnvironmentVariable("DICTUM_CONFIG") is { Length: > 0 } custom ? custom : paths.ConfigFile;
 
     // Also used by the XAML previewer.
     public static AppBuilder BuildAvaloniaApp() =>

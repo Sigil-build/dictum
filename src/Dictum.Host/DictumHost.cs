@@ -47,7 +47,7 @@ public sealed class DictumHost : IDictationEngine
         services.AddSingleton(_ => CreateHttpClient());
         services.AddSingleton(_ => new PromptTemplates(paths.PromptsDirectory));
         services.AddSingleton(_ => new HistoryStore(paths.HistoryFile, config.General.HistorySize));
-        services.AddSingleton<IAudioSource>(_ => Environment.GetEnvironmentVariable(EnvironmentVariables.AudioFile) is { Length: > 0 } file
+        services.AddSingleton<IAudioSource>(_ => Environment.GetEnvironmentVariable(DictumEnvironment.AudioFile) is { Length: > 0 } file
             ? new FileAudioSource(file)
             : new PortAudioSource(log));
         _services = services.BuildServiceProvider();

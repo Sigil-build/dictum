@@ -20,7 +20,7 @@ public static class IpcEndpoint
 
     public static string SocketPath(AppPaths paths)
     {
-        if (Environment.GetEnvironmentVariable(EnvironmentVariables.Socket) is { Length: > 0 } custom)
+        if (Environment.GetEnvironmentVariable(DictumEnvironment.Socket) is { Length: > 0 } custom)
         {
             return custom;
         }

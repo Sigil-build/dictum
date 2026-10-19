@@ -2,7 +2,7 @@ namespace Dictum.Core;
 
 /// <summary>Per-OS locations for config, data, models, history and logs.</summary>
 /// <remarks>
-/// Environment overrides: <c>DICTUM_CONFIG_DIR</c>, <c>DICTUM_DATA_DIR</c>.
+/// Environment overrides: <see cref="DictumEnvironment.ConfigDirectory"/>, <see cref="DictumEnvironment.DataDirectory"/>.
 /// </remarks>
 public sealed class AppPaths
 {
@@ -39,14 +39,18 @@ public sealed class AppPaths
 
     public string LogsDirectory => Path.Combine(DataDirectory, "logs");
 
+    /// <summary>The config file to use: <paramref name="explicitPath"/> (<c>--config</c>), then <see cref="DictumEnvironment.ConfigFile"/>, then <see cref="ConfigFile"/>.</summary>
+    public string ConfigFileFrom(string? explicitPath) =>
+        explicitPath ?? (Environment.GetEnvironmentVariable(DictumEnvironment.ConfigFile) is { Length: > 0 } fromEnvironment ? fromEnvironment : ConfigFile);
+
     /// <summary>Resolves a model reference: absolute paths are kept, bare names live in <see cref="ModelsDirectory"/>.</summary>
     public string ResolveModel(string model) =>
         Path.IsPathFullyQualified(model) ? model : Path.Combine(ModelsDirectory, model);
 
     public static AppPaths FromEnvironment() =>
         new(
-            Environment.GetEnvironmentVariable("DICTUM_CONFIG_DIR") is { Length: > 0 } config ? config : DefaultConfigDirectory(),
-            Environment.GetEnvironmentVariable("DICTUM_DATA_DIR") is { Length: > 0 } data ? data : DefaultDataDirectory());
+            Environment.GetEnvironmentVariable(DictumEnvironment.ConfigDirectory) is { Length: > 0 } config ? config : DefaultConfigDirectory(),
+            Environment.GetEnvironmentVariable(DictumEnvironment.DataDirectory) is { Length: > 0 } data ? data : DefaultDataDirectory());
 
     private static string DefaultConfigDirectory()
     {

@@ -1,4 +1,5 @@
 using Dictum.App.Daemon;
+using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Pipeline;
@@ -52,10 +53,10 @@ public sealed class RealDaemonTests : IAsyncDisposable
         var log = new ListLog();
         var launcher = new DaemonProcessLauncher(CliExecutable(), ["daemon"], log, new Dictionary<string, string>
         {
-            ["DICTUM_CONFIG_DIR"] = config,
-            ["DICTUM_DATA_DIR"] = Path.Combine(_dir, "data"),
-            ["DICTUM_SOCKET"] = socket,
-            ["DICTUM_AUDIO_FILE"] = Path.Combine(AppContext.BaseDirectory, "fixtures", "en.wav"),
+            [DictumEnvironment.ConfigDirectory] = config,
+            [DictumEnvironment.DataDirectory] = Path.Combine(_dir, "data"),
+            [DictumEnvironment.Socket] = socket,
+            [DictumEnvironment.AudioFile] = Path.Combine(AppContext.BaseDirectory, "fixtures", "en.wav"),
         });
         var events = new List<IpcEvent>();
         _supervisor = new DaemonSupervisor(socket, () => true, launcher, log, "dictum-gui.log");

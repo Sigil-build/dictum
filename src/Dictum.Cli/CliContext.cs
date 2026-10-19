@@ -24,8 +24,7 @@ internal sealed class CliContext : IAsyncDisposable
         Error = Console.Error;
         Paths = AppPaths.FromEnvironment();
         Verbose = parse.GetValue(CliApp.VerboseOption);
-        ConfigPath = parse.GetValue(CliApp.ConfigOption)
-            ?? (Environment.GetEnvironmentVariable("DICTUM_CONFIG") is { Length: > 0 } fromEnv ? fromEnv : Paths.ConfigFile);
+        ConfigPath = Paths.ConfigFileFrom(parse.GetValue(CliApp.ConfigOption));
         Log = new DictumLog(Verbose ? LogLevel.Debug : consoleLevel ?? LogLevel.Warning, includeText: Verbose, Error, Paths.LogsDirectory);
         NativeStderr.ShowDiagnostics = Verbose;
         Store = new ConfigStore(ConfigPath, Log);
