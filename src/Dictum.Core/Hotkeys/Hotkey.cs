@@ -119,7 +119,7 @@ public sealed record Hotkey(HotkeyModifiers Modifiers, HotkeyKey Key)
     /// <summary>Canonical form, e.g. "Ctrl+Alt+Space".</summary>
     public override string ToString()
     {
-        var parts = new List<string>(5);
+        var parts = new List<string>();
         if (Modifiers.HasFlag(HotkeyModifiers.Ctrl))
         {
             parts.Add("Ctrl");

@@ -109,11 +109,11 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
         var stages = new List<StageTiming>();
         if (recordElapsed is { } recorded)
         {
-            stages.Add(new StageTiming("record", recorded));
+            stages.Add(new StageTiming(StageTiming.Record, recorded));
         }
 
         string? rawText = null;
-        var stage = "transcribe";
+        var stage = StageTiming.Transcribe;
         try
         {
             ClipRecorded?.Invoke(clip);
@@ -153,7 +153,7 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
                 var context = new ProcessingContext(profile.Id, language, ActiveApp: null, VocabularyList.Render(profile.Vocabulary));
                 foreach (var processor in profile.Processors)
                 {
-                    stage = $"process:{processor.Id}";
+                    stage = StageTiming.Process(processor.Id);
                     watch.Restart();
                     text = TextChecks.StripInvisible(await processor.ProcessAsync(text, context, ct).ConfigureAwait(false)).Trim();
                     stages.Add(new StageTiming(stage, watch.Elapsed));
@@ -162,7 +162,7 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
 
             if (output is not null && text.Length > 0)
             {
-                stage = "output";
+                stage = StageTiming.Output;
                 SetState(PipelineState.Output);
                 watch.Restart();
                 await output.WriteAsync(text, ct).ConfigureAwait(false);
@@ -176,7 +176,7 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
                     DateTimeOffset.Now, profile.Id, profile.Stt.Id, rawText, text, language, clip.Duration.TotalSeconds,
                     Model: transcript.Model,
                     Backend: transcript.Backend,
-                    TranscribeMs: (long?)stages.FirstOrDefault(s => s.Stage == "transcribe")?.Elapsed.TotalMilliseconds));
+                    TranscribeMs: (long?)stages.FirstOrDefault(s => s.Stage == StageTiming.Transcribe)?.Elapsed.TotalMilliseconds));
             }
 
             return result;
@@ -224,10 +224,13 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
     /// <summary>A hint shorter than this may well be exactly what was said, so it is never treated as an echo.</summary>
     public const int MinHintEchoWords = 4;
 
+    /// <summary>Fewer consecutive vocabulary terms can be real speech, so they are never treated as an echo.</summary>
+    private const int MinEchoTerms = 3;
+
     /// <summary>
     /// With a vocabulary hint, Whisper may echo the hint on near-silence. A transcript that is the hint itself (when the
-    /// hint has at least <see cref="MinHintEchoWords"/> words), or three or more consecutive vocabulary terms in list
-    /// order, is dropped; real speech is never only that.
+    /// hint has at least <see cref="MinHintEchoWords"/> words), or <see cref="MinEchoTerms"/> or more consecutive
+    /// vocabulary terms in list order, is dropped; real speech is never only that.
     /// </summary>
     public static bool IsHintEcho(string text, string? hint, IReadOnlyList<string>? vocabulary)
     {
@@ -242,15 +245,15 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
             return true;
         }
 
-        if (vocabulary is not { Count: >= 3 })
+        if (vocabulary is not { Count: >= MinEchoTerms })
         {
             return false;
         }
 
         var terms = vocabulary.Select(Words).ToArray();
-        for (var start = 0; start + 3 <= terms.Length; start++)
+        for (var start = 0; start + MinEchoTerms <= terms.Length; start++)
         {
-            for (var end = start + 3; end <= terms.Length; end++)
+            for (var end = start + MinEchoTerms; end <= terms.Length; end++)
             {
                 if (words == string.Join(' ', terms[start..end]))
                 {

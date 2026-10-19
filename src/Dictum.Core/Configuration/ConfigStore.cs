@@ -17,11 +17,18 @@ public interface IConfigMigration
 /// <summary>Reads, migrates, validates and writes <c>config.json</c>.</summary>
 public sealed class ConfigStore
 {
+    private const string SchemaVersionKey = "schemaVersion";
+
+    /// <summary>The version of a file without <c>schemaVersion</c>.</summary>
+    private const int FirstSchemaVersion = 1;
+
     private static readonly JsonDocumentOptions DocumentOptions = new()
     {
         AllowTrailingCommas = true,
         CommentHandling = JsonCommentHandling.Skip,
     };
+
+    private static readonly JsonSerializerOptions MigratedWriteOptions = new() { WriteIndented = true };
 
     private readonly IReadOnlyList<IConfigMigration> _migrations;
     private readonly int _currentVersion;
@@ -109,7 +116,7 @@ public sealed class ConfigStore
             throw new ConfigException("Config must be a JSON object.", [new(ConfigIssueSeverity.Error, "", "Expected a JSON object.", 1)]);
         }
 
-        var version = root["schemaVersion"] is JsonValue value && value.TryGetValue<int>(out var v) ? v : 1;
+        var version = root[SchemaVersionKey] is JsonValue value && value.TryGetValue<int>(out var v) ? v : FirstSchemaVersion;
         if (version > _currentVersion)
         {
             throw new ConfigException(
@@ -130,10 +137,10 @@ public sealed class ConfigStore
                 ?? throw new ConfigException($"No migration from config schema version {version}.");
             migration.Apply(root);
             version++;
-            root["schemaVersion"] = version;
+            root[SchemaVersionKey] = version;
         }
 
-        var migrated = root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }) + "\n";
+        var migrated = root.ToJsonString(MigratedWriteOptions) + "\n";
         WriteAtomically(Path, migrated);
         _log.Info($"Migrated config to schema version {version}; backup saved to {backup}");
         return migrated;

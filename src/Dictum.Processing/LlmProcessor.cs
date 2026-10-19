@@ -27,10 +27,28 @@ public sealed partial class LlmProcessor(
     /// <summary>Longer answers usually mean the model replied to the dictation instead of fixing it.</summary>
     public const int MaxGrowthFactor = 3;
 
-    public string Id => id;
-
     /// <summary>The shrink guard needs at least this many input words; short phrases change a lot legitimately.</summary>
     public const int MinWordsForShrinkCheck = 6;
+
+    /// <summary>An answer with fewer than a third of the input's words dropped part of the dictation.</summary>
+    private const int MaxShrinkFactor = 3;
+
+    /// <summary>Upper bound of the token limit scaled to the input.</summary>
+    private const int MaxScaledTokens = 2048;
+
+    private const double CharsPerToken = 3.0;
+
+    /// <summary>Tokens added to the scaled limit so very short inputs still get room for an answer.</summary>
+    private const int TokenHeadroom = 64;
+
+    /// <summary>The <c>finish_reason</c> of an answer cut off at <c>max_tokens</c>.</summary>
+    private const string FinishReasonLength = "length";
+
+    private const int SnippetLength = 300;
+
+    private static readonly TimeSpan HealthCheckTimeout = TimeSpan.FromSeconds(5);
+
+    public string Id => id;
 
     public async Task<string> ProcessAsync(string text, ProcessingContext context, CancellationToken ct)
     {
@@ -56,14 +74,14 @@ public sealed partial class LlmProcessor(
 
     /// <summary>Room for an answer up to <see cref="MaxGrowthFactor"/> times the input, at about 3 characters per token.</summary>
     public static int MaxTokensFor(string input) =>
-        Math.Min(2048, (int)Math.Ceiling(input.Length / 3.0) * MaxGrowthFactor + 64);
+        Math.Min(MaxScaledTokens, (int)Math.Ceiling(input.Length / CharsPerToken) * MaxGrowthFactor + TokenHeadroom);
 
     private bool PreservesText => config.PreserveText ?? config.Prompt == "cleanup";
 
     /// <summary>Why the answer cannot replace the input, or null when it can.</summary>
     private string? Rejection(string input, string answer, string? finishReason)
     {
-        if (finishReason == "length")
+        if (finishReason == FinishReasonLength)
         {
             // An unclosed <think> block, or no content at all (llama-server moves reasoning to reasoning_content),
             // means the model spent the whole budget thinking.
@@ -94,7 +112,7 @@ public sealed partial class LlmProcessor(
 
         var inputWords = TextChecks.WordCount(input);
         var answerWords = TextChecks.WordCount(answer);
-        if (inputWords >= MinWordsForShrinkCheck && answerWords * 3 < inputWords)
+        if (inputWords >= MinWordsForShrinkCheck && answerWords * MaxShrinkFactor < inputWords)
         {
             return $"kept {answerWords} of {inputWords} words";
         }
@@ -110,7 +128,7 @@ public sealed partial class LlmProcessor(
             using var message = new HttpRequestMessage(HttpMethod.Get, Endpoint("models"));
             await AuthorizeAsync(message, ct).ConfigureAwait(false);
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeout.CancelAfter(TimeSpan.FromSeconds(5));
+            timeout.CancelAfter(HealthCheckTimeout);
             using var response = await http.SendAsync(message, timeout.Token).ConfigureAwait(false);
             return response.StatusCode switch
             {
@@ -176,7 +194,7 @@ public sealed partial class LlmProcessor(
 
     private Uri Endpoint(string path) => new($"{config.BaseUrl.TrimEnd('/')}/{path}");
 
-    private static string Snippet(string body) => body.Length <= 300 ? body : body[..300] + "…";
+    private static string Snippet(string body) => body.Length <= SnippetLength ? body : body[..SnippetLength] + "…";
 
     /// <summary>Reasoning models (e.g. Qwen3) may prepend a &lt;think&gt; block.</summary>
     private static string StripThinking(string answer) => ThinkBlock().Replace(answer, string.Empty);

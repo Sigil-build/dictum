@@ -13,14 +13,17 @@ namespace Dictum.Processing;
 /// </summary>
 public sealed partial class PromptTemplates(string userDirectory)
 {
+    /// <summary>The <c>LogicalName</c> prefix the project file gives the embedded templates.</summary>
     private const string ResourcePrefix = "Dictum.Processing.Prompts.";
+
+    private const string TemplateExtension = ".md";
 
     private readonly ConcurrentDictionary<string, (Stamp? Stamp, string Text)> _cache = new(StringComparer.Ordinal);
 
     public static IReadOnlyList<string> BuiltIn { get; } =
         [.. typeof(PromptTemplates).Assembly.GetManifestResourceNames()
             .Where(n => n.StartsWith(ResourcePrefix, StringComparison.Ordinal))
-            .Select(n => n[ResourcePrefix.Length..^".md".Length])
+            .Select(n => n[ResourcePrefix.Length..^TemplateExtension.Length])
             .Order(StringComparer.Ordinal)];
 
     /// <summary>
@@ -70,7 +73,7 @@ public sealed partial class PromptTemplates(string userDirectory)
     public static string DescribeLanguage(string? code)
     {
         // A profile's list ("uk, en") says which languages may come, not which one this text is in.
-        if (code is null or "auto" || code.Contains(','))
+        if (code is null or LanguageList.Auto || code.Contains(','))
         {
             return "the same language as the text";
         }
@@ -93,7 +96,7 @@ public sealed partial class PromptTemplates(string userDirectory)
             throw new ConfigException($"Invalid prompt name '{name}'.");
         }
 
-        return Path.Combine(userDirectory, name + ".md");
+        return Path.Combine(userDirectory, name + TemplateExtension);
     }
 
     private static Stamp? StampOf(string path)
@@ -104,7 +107,7 @@ public sealed partial class PromptTemplates(string userDirectory)
 
     private static string LoadBuiltIn(string name, string userFile)
     {
-        using var stream = typeof(PromptTemplates).Assembly.GetManifestResourceStream(ResourcePrefix + name + ".md");
+        using var stream = typeof(PromptTemplates).Assembly.GetManifestResourceStream(ResourcePrefix + name + TemplateExtension);
         if (stream is null)
         {
             throw new ConfigException(

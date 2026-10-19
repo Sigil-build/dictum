@@ -11,6 +11,11 @@ public static partial class NativeStderr
 {
     internal const string LibC = "libc";
 
+    private const int StderrFd = 2;
+
+    /// <summary><c>O_WRONLY</c>, the same on Linux and macOS.</summary>
+    private const int OpenWriteOnly = 1;
+
     /// <summary>When true (<c>--verbose</c>), native output is left alone.</summary>
     public static bool ShowDiagnostics { get; set; }
 
@@ -23,8 +28,8 @@ public static partial class NativeStderr
 
         PortAudioLibrary.EnsureResolver();
         Console.Error.Flush();
-        var saved = LibCNative.dup(2);
-        var devNull = LibCNative.open("/dev/null", 1 /* O_WRONLY */);
+        var saved = LibCNative.dup(StderrFd);
+        var devNull = LibCNative.open("/dev/null", OpenWriteOnly);
         if (saved < 0 || devNull < 0)
         {
             return action();
@@ -32,12 +37,12 @@ public static partial class NativeStderr
 
         try
         {
-            LibCNative.dup2(devNull, 2);
+            LibCNative.dup2(devNull, StderrFd);
             return action();
         }
         finally
         {
-            LibCNative.dup2(saved, 2);
+            LibCNative.dup2(saved, StderrFd);
             LibCNative.close(saved);
             LibCNative.close(devNull);
         }

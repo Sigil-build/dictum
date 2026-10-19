@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.RegularExpressions;
 using Dictum.Core.Hotkeys;
 using Dictum.Core.Vocabulary;
@@ -7,6 +8,15 @@ namespace Dictum.Core.Configuration;
 /// <summary>Semantic checks that JSON parsing alone does not cover.</summary>
 public static class ConfigValidator
 {
+    private const int MaxPasteDelayMs = 5000;
+    private const double MinOverlayOpacity = 0.3;
+    private const double MaxOverlayOpacity = 1.0;
+
+    /// <summary>The OpenAI chat API accepts temperatures from 0 to 2.</summary>
+    private const double MaxTemperature = 2;
+
+    private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(200);
+
     public static IReadOnlyList<ConfigIssue> Validate(DictumConfig config)
     {
         var issues = new List<ConfigIssue>();
@@ -16,14 +26,14 @@ public static class ConfigValidator
             Error(issues, "general.historySize", "must be zero or positive");
         }
 
-        if (config.General.PasteDelayMs is < 0 or > 5000)
+        if (config.General.PasteDelayMs is < 0 or > MaxPasteDelayMs)
         {
-            Error(issues, "general.pasteDelayMs", "must be between 0 and 5000");
+            Error(issues, "general.pasteDelayMs", $"must be between 0 and {MaxPasteDelayMs}");
         }
 
-        if (config.General.Overlay.Opacity is < 0.3 or > 1.0)
+        if (config.General.Overlay.Opacity is < MinOverlayOpacity or > MaxOverlayOpacity)
         {
-            Error(issues, "general.overlay.opacity", "must be between 0.3 and 1.0");
+            Error(issues, "general.overlay.opacity", string.Create(CultureInfo.InvariantCulture, $"must be between {MinOverlayOpacity} and {MaxOverlayOpacity:0.0}"));
         }
 
         if (config.General.UiLanguage is not (null or "en" or "uk"))
@@ -145,9 +155,9 @@ public static class ConfigValidator
                 Required(issues, $"{path}.model", llm.Model);
                 Required(issues, $"{path}.prompt", llm.Prompt);
                 ValidateApiKey(issues, $"{path}.apiKey", llm.ApiKey);
-                if (llm.Temperature is < 0 or > 2)
+                if (llm.Temperature is < 0 or > MaxTemperature)
                 {
-                    Error(issues, $"{path}.temperature", "must be between 0 and 2");
+                    Error(issues, $"{path}.temperature", $"must be between 0 and {MaxTemperature}");
                 }
 
                 if (llm.TimeoutMs <= 0)
@@ -186,7 +196,7 @@ public static class ConfigValidator
 
             try
             {
-                _ = new Regex(rule.Pattern!, RegexOptions.None, TimeSpan.FromMilliseconds(200));
+                _ = new Regex(rule.Pattern!, RegexOptions.None, RegexTimeout);
             }
             catch (ArgumentException ex)
             {
@@ -211,7 +221,7 @@ public static class ConfigValidator
             }
         }
 
-        if (profile.Vocabulary.Count > 0 && profile.Language is null or "auto")
+        if (profile.Vocabulary.Count > 0 && profile.Language is null or LanguageList.Auto)
         {
             Warning(issues, $"{path}.vocabulary", "a word list can pull language detection towards its own language; set 'language' for this profile");
         }

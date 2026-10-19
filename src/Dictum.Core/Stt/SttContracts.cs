@@ -31,7 +31,7 @@ public sealed record SttRequest(string? Language, string? Prompt, IReadOnlyList<
     public static SttRequest? ForSetting(string? language, string? prompt) => LanguageList.Parse(language) switch
     {
         null => null,
-        [] => new(language is null ? null : "auto", prompt),
+        [] => new(language is null ? null : LanguageList.Auto, prompt),
         [var single] => new(single, prompt),
         var codes => new(null, prompt, codes),
     };

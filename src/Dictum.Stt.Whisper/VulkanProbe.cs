@@ -31,6 +31,21 @@ public static unsafe partial class VulkanProbe
     private const string Library = "vulkan";
     private const int StructureTypeInstanceCreateInfo = 1;
 
+    // VkPhysicalDeviceProperties is about 824 bytes; only deviceType and deviceName are read.
+    private const int DevicePropertiesBufferSize = 1024;
+    private const int DeviceTypeOffset = 16;
+    private const int DeviceNameOffset = 20;
+
+    // VkPhysicalDeviceMemoryProperties: a type count, 32 memory types of 8 bytes, a heap count, then
+    // VK_MAX_MEMORY_HEAPS heaps of 16 bytes (size, then flags).
+    private const int MemoryPropertiesSize = 520;
+    private const int HeapCountOffset = 260;
+    private const int HeapsOffset = 264;
+    private const int HeapStride = 16;
+    private const int HeapFlagsOffset = 8;
+    private const uint MaxMemoryHeaps = 16;
+    private const uint HeapDeviceLocalBit = 1;
+
     private static readonly Lazy<IReadOnlyList<VulkanDevice>> Cached = new(Enumerate);
     private static int _resolverInstalled;
 
@@ -67,16 +82,15 @@ public static unsafe partial class VulkanProbe
                 vkEnumeratePhysicalDevices(instance, &count, handles);
                 var devices = new List<VulkanDevice>((int)count);
 
-                // VkPhysicalDeviceProperties is ~824 bytes; only deviceType (offset 16) and deviceName (offset 20) are read.
-                var properties = stackalloc byte[1024];
-                var memory = stackalloc byte[520];
+                var properties = stackalloc byte[DevicePropertiesBufferSize];
+                var memory = stackalloc byte[MemoryPropertiesSize];
                 for (var i = 0; i < count; i++)
                 {
                     vkGetPhysicalDeviceProperties(handles[i], properties);
-                    var type = (VulkanDeviceType)(*(uint*)(properties + 16));
-                    var name = Marshal.PtrToStringUTF8((nint)(properties + 20)) ?? "unknown";
+                    var type = (VulkanDeviceType)(*(uint*)(properties + DeviceTypeOffset));
+                    var name = Marshal.PtrToStringUTF8((nint)(properties + DeviceNameOffset)) ?? "unknown";
                     vkGetPhysicalDeviceMemoryProperties(handles[i], memory);
-                    devices.Add(new VulkanDevice(name, type, LargestDeviceLocalHeap(new ReadOnlySpan<byte>(memory, 520))));
+                    devices.Add(new VulkanDevice(name, type, LargestDeviceLocalHeap(new ReadOnlySpan<byte>(memory, MemoryPropertiesSize))));
                 }
 
                 return [.. devices.Distinct()];
@@ -95,13 +109,12 @@ public static unsafe partial class VulkanProbe
     /// <summary>The size of the largest DEVICE_LOCAL heap in a <c>VkPhysicalDeviceMemoryProperties</c>; 0 when there is none.</summary>
     public static long LargestDeviceLocalHeap(ReadOnlySpan<byte> memoryProperties)
     {
-        const int HeapCountOffset = 260, HeapsOffset = 264, HeapStride = 16, DeviceLocalBit = 1;
-        var count = Math.Min(BinaryPrimitives.ReadUInt32LittleEndian(memoryProperties[HeapCountOffset..]), 16u);
+        var count = Math.Min(BinaryPrimitives.ReadUInt32LittleEndian(memoryProperties[HeapCountOffset..]), MaxMemoryHeaps);
         long largest = 0;
         for (var i = 0; i < count; i++)
         {
             var heap = memoryProperties[(HeapsOffset + (i * HeapStride))..];
-            if ((BinaryPrimitives.ReadUInt32LittleEndian(heap[8..]) & DeviceLocalBit) != 0)
+            if ((BinaryPrimitives.ReadUInt32LittleEndian(heap[HeapFlagsOffset..]) & HeapDeviceLocalBit) != 0)
             {
                 largest = Math.Max(largest, (long)BinaryPrimitives.ReadUInt64LittleEndian(heap));
             }

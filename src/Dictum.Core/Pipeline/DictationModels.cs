@@ -21,8 +21,15 @@ public sealed record DictationProfile(
     IReadOnlyList<ITextProcessor> Processors,
     IReadOnlyList<string>? Vocabulary = null);
 
-/// <param name="Stage"><c>record</c>, <c>transcribe</c>, <c>process:&lt;id&gt;</c> or <c>output</c>.</param>
-public sealed record StageTiming(string Stage, TimeSpan Elapsed);
+/// <param name="Stage"><see cref="Record"/>, <see cref="Transcribe"/>, <c>process:&lt;id&gt;</c> or <see cref="Output"/>.</param>
+public sealed record StageTiming(string Stage, TimeSpan Elapsed)
+{
+    public const string Record = "record";
+    public const string Transcribe = "transcribe";
+    public const string Output = "output";
+
+    public static string Process(string processorId) => $"process:{processorId}";
+}
 
 /// <param name="Skipped">True when the clip was too short to transcribe.</param>
 public sealed record DictationResult(

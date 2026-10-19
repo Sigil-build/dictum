@@ -18,6 +18,8 @@ public sealed class AudioDeviceException(string message, string? hint = null) : 
 /// </remarks>
 public static class PortAudioLibrary
 {
+    private const string LibraryPathVariable = "DICTUM_PORTAUDIO_LIB";
+
     private static readonly Lock Gate = new();
     private static readonly Lock ResolverGate = new();
     private static bool _resolverInstalled;
@@ -123,25 +125,29 @@ public static class PortAudioLibrary
 
     private static IEnumerable<(string Path, string Label)> Candidates()
     {
-        if (Environment.GetEnvironmentVariable("DICTUM_PORTAUDIO_LIB") is { Length: > 0 } custom)
+        if (Environment.GetEnvironmentVariable(LibraryPathVariable) is { Length: > 0 } custom)
         {
-            yield return (custom, $"DICTUM_PORTAUDIO_LIB={custom}");
+            yield return (custom, $"{LibraryPathVariable}={custom}");
         }
 
-        var baseDir = AppContext.BaseDirectory;
         if (OperatingSystem.IsLinux())
         {
-            yield return ("libportaudio.so.2", "system libportaudio.so.2");
-            yield return (Path.Combine(baseDir, "libportaudio.so"), "bundled libportaudio.so");
+            yield return SystemLibrary("libportaudio.so.2");
+            yield return BundledLibrary("libportaudio.so");
         }
         else if (OperatingSystem.IsMacOS())
         {
-            yield return (Path.Combine(baseDir, "libportaudio.dylib"), "bundled libportaudio.dylib");
-            yield return ("libportaudio.2.dylib", "system libportaudio.2.dylib");
+            yield return BundledLibrary("libportaudio.dylib");
+            yield return SystemLibrary("libportaudio.2.dylib");
         }
         else if (OperatingSystem.IsWindows())
         {
-            yield return (Path.Combine(baseDir, "portaudio.dll"), "bundled portaudio.dll");
+            yield return BundledLibrary("portaudio.dll");
         }
     }
+
+    private static (string Path, string Label) SystemLibrary(string file) => (file, $"system {file}");
+
+    private static (string Path, string Label) BundledLibrary(string file) =>
+        (Path.Combine(AppContext.BaseDirectory, file), $"bundled {file}");
 }

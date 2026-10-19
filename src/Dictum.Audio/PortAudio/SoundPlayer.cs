@@ -24,6 +24,11 @@ public sealed class SoundPlayer(ILog log) : ISoundPlayer
 {
     private const int SampleRate = 48_000;
 
+    private const double Volume = 0.25;
+
+    /// <summary>A 5 ms fade in and out, so a tone starts and stops without a click.</summary>
+    private const int MaxFadeSamples = SampleRate / 200;
+
     private readonly SemaphoreSlim _gate = new(1, 1);
 
     public async Task PlayAsync(SoundCue cue, CancellationToken ct)
@@ -58,11 +63,11 @@ public sealed class SoundPlayer(ILog log) : ISoundPlayer
         foreach (var (frequency, seconds) in tones)
         {
             var count = (int)(seconds * SampleRate);
-            var fade = Math.Min(count / 4, SampleRate / 200);
+            var fade = Math.Min(count / 4, MaxFadeSamples);
             for (var i = 0; i < count; i++)
             {
                 var envelope = Math.Min(1.0, Math.Min(i, count - 1 - i) / (double)Math.Max(1, fade));
-                samples.Add((float)(0.25 * envelope * Math.Sin(2 * Math.PI * frequency * i / SampleRate)));
+                samples.Add((float)(Volume * envelope * Math.Sin(2 * Math.PI * frequency * i / SampleRate)));
             }
         }
 

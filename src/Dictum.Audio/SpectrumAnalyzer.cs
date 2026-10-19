@@ -9,6 +9,10 @@ public sealed class SpectrumAnalyzer
     private const float MaxFrequency = 8_000f;
     private const float FloorDb = -80f;
     private const float CeilingDb = -10f;
+    private const int MinFftSize = 64;
+
+    /// <summary>Magnitudes at or below this are read as <see cref="FloorDb"/>, which also avoids log10(0).</summary>
+    private const double MinMagnitude = 1e-9;
 
     private readonly int _sampleRate;
     private readonly int _bandCount;
@@ -21,7 +25,7 @@ public sealed class SpectrumAnalyzer
     {
         _sampleRate = sampleRate;
         _bandCount = bandCount;
-        _fftSize = (int)BitOperations.RoundUpToPowerOf2((uint)Math.Max(blockSize, 64));
+        _fftSize = (int)BitOperations.RoundUpToPowerOf2((uint)Math.Max(blockSize, MinFftSize));
         _buffer = new Complex[_fftSize];
 
         _window = new float[blockSize];
@@ -63,7 +67,7 @@ public sealed class SpectrumAnalyzer
                 peak = Math.Max(peak, _buffer[k].Magnitude * scale);
             }
 
-            var db = peak <= 1e-9 ? FloorDb : 20f * (float)Math.Log10(peak);
+            var db = peak <= MinMagnitude ? FloorDb : 20f * (float)Math.Log10(peak);
             bands[b] = Math.Clamp((db - FloorDb) / (CeilingDb - FloorDb), 0f, 1f);
         }
 

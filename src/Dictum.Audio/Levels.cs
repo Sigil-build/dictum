@@ -7,6 +7,12 @@ public static class Levels
     /// <summary>Floor used instead of -∞ for digital silence.</summary>
     public const float SilenceDb = -100f;
 
+    /// <summary>The length of the frames levels are measured over.</summary>
+    public const int FrameMs = 20;
+
+    /// <summary>The RMS of <see cref="SilenceDb"/>: 20·log10(1e-5) = -100 dB.</summary>
+    private const float SilenceRms = 1e-5f;
+
     public static float Rms(ReadOnlySpan<float> samples)
     {
         if (samples.IsEmpty)
@@ -23,10 +29,10 @@ public static class Levels
         return (float)Math.Sqrt(sum / samples.Length);
     }
 
-    public static float ToDb(float rms) => rms <= 1e-5f ? SilenceDb : 20f * MathF.Log10(rms);
+    public static float ToDb(float rms) => rms <= SilenceRms ? SilenceDb : 20f * MathF.Log10(rms);
 
     /// <summary>The level of the loudest <paramref name="frameMs"/> stretch, in dBFS.</summary>
-    public static float LoudestFrameDb(ReadOnlySpan<float> samples, int sampleRate, int frameMs = 20)
+    public static float LoudestFrameDb(ReadOnlySpan<float> samples, int sampleRate, int frameMs = FrameMs)
     {
         var frame = Math.Max(1, sampleRate * frameMs / 1000);
         var loudest = SilenceDb;
@@ -42,13 +48,11 @@ public static class Levels
 /// <summary>Removes leading and trailing silence, keeping some padding around speech.</summary>
 public static class SilenceTrimmer
 {
-    private const int FrameMs = 20;
-
     /// <param name="relativeDb">Frames quieter than the loudest frame minus this are treated as silence.</param>
     public static AudioClip Trim(AudioClip clip, float absoluteDb = -50f, float relativeDb = 40f, int paddingMs = 250)
     {
         var samples = clip.Samples.Span;
-        var frame = clip.SampleRate * FrameMs / 1000;
+        var frame = clip.SampleRate * Levels.FrameMs / 1000;
         var frames = samples.Length / frame;
         if (frames == 0)
         {
@@ -86,6 +90,9 @@ public sealed class SilenceDetector(TimeSpan silence, float speechAboveFloorDb =
 {
     private const float MinimumSpeechDb = -55f;
 
+    /// <summary>Per louder frame, the noise floor rises by this share of the gap, so speech barely lifts it.</summary>
+    private const float FloorRiseRate = 0.002f;
+
     private float _floor = float.NaN;
     private bool _heardSpeech;
     private TimeSpan _quietFor;
@@ -98,7 +105,7 @@ public sealed class SilenceDetector(TimeSpan silence, float speechAboveFloorDb =
         var db = Levels.ToDb(rms);
 
         // Noise floor: follows quiet frames quickly and loud frames very slowly.
-        _floor = float.IsNaN(_floor) ? db : db < _floor ? db : _floor + (0.002f * (db - _floor));
+        _floor = float.IsNaN(_floor) ? db : db < _floor ? db : _floor + (FloorRiseRate * (db - _floor));
 
         if (db > MinimumSpeechDb && db > _floor + speechAboveFloorDb)
         {
@@ -118,6 +125,8 @@ public sealed class SilenceDetector(TimeSpan silence, float speechAboveFloorDb =
 /// </summary>
 public static class GainNormalizer
 {
+    private const float MinGainDb = 0.5f;
+
     /// <param name="minLoudestFrameDb">
     /// A clip whose loudest 20 ms is quieter than this is an idle microphone and is left alone: boosted, a click in
     /// it would survive silence trimming and come back from Whisper as a word. Speech on a quiet headset still
@@ -138,7 +147,7 @@ public static class GainNormalizer
         }
 
         var gainDb = Math.Clamp(targetPeakDb - Levels.ToDb(peak), 0f, maxGainDb);
-        if (gainDb < 0.5f)
+        if (gainDb < MinGainDb)
         {
             return clip;
         }

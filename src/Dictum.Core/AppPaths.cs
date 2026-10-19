@@ -6,6 +6,13 @@ namespace Dictum.Core;
 /// </remarks>
 public sealed class AppPaths
 {
+    private const string AppFolder = "Dictum";
+
+    /// <summary>Folders under the XDG base directories are lower case by convention.</summary>
+    private const string XdgAppFolder = "dictum";
+
+    private const string MacApplicationSupport = "Application Support";
+
     public AppPaths(string configDirectory, string dataDirectory)
     {
         ConfigDirectory = configDirectory;
@@ -45,30 +52,30 @@ public sealed class AppPaths
     {
         if (OperatingSystem.IsWindows())
         {
-            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Dictum");
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), AppFolder);
         }
 
         if (OperatingSystem.IsMacOS())
         {
-            return Path.Combine(Home(), "Library", "Application Support", "Dictum");
+            return Path.Combine(Home(), "Library", MacApplicationSupport, AppFolder);
         }
 
-        return Path.Combine(XdgDirectory("XDG_CONFIG_HOME", ".config"), "dictum");
+        return Path.Combine(XdgDirectory("XDG_CONFIG_HOME", ".config"), XdgAppFolder);
     }
 
     private static string DefaultDataDirectory()
     {
         if (OperatingSystem.IsWindows())
         {
-            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Dictum");
+            return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), AppFolder);
         }
 
         if (OperatingSystem.IsMacOS())
         {
-            return Path.Combine(Home(), "Library", "Application Support", "Dictum", "Data");
+            return Path.Combine(Home(), "Library", MacApplicationSupport, AppFolder, "Data");
         }
 
-        return Path.Combine(XdgDirectory("XDG_DATA_HOME", Path.Combine(".local", "share")), "dictum");
+        return Path.Combine(XdgDirectory("XDG_DATA_HOME", Path.Combine(".local", "share")), XdgAppFolder);
     }
 
     private static string XdgDirectory(string variable, string fallbackUnderHome) =>

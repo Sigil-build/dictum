@@ -13,6 +13,12 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
 {
     private const int FramesPerSecond = 50;
 
+    /// <summary>Samples reserved per channel up front, so a dictation this long never regrows its buffer.</summary>
+    private const int ReservedSeconds = 30;
+
+    /// <summary>Up to two of the device's channels are captured, so the louder one can be picked.</summary>
+    private const int MaxCaptureChannels = 2;
+
     private readonly Lock _gate = new();
     private Thread? _thread;
     private nint _stream;
@@ -95,7 +101,7 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
 
             log.Info($"Recording from '{device.Name}' ({device.HostApi}, {_sampleRate} Hz, {channels} ch)");
             _keepSamples = keepSamples;
-            _channels = [.. Enumerable.Range(0, channels).Select(_ => new List<float>(keepSamples ? _sampleRate * 30 : 0))];
+            _channels = [.. Enumerable.Range(0, channels).Select(_ => new List<float>(keepSamples ? _sampleRate * ReservedSeconds : 0))];
             _captureError = null;
             _stopping = false;
             var handle = stream;
@@ -290,7 +296,7 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
     /// <summary>The device's own channels (up to two), so the loudest one can be picked; mono only as a fallback.</summary>
     private unsafe int ChooseChannelCount(int device, int maxChannels, double latency)
     {
-        foreach (var channels in new[] { Math.Min(2, maxChannels), 1, maxChannels })
+        foreach (var channels in new[] { Math.Min(MaxCaptureChannels, maxChannels), 1, maxChannels })
         {
             var parameters = new StreamParameters
             {
@@ -326,7 +332,7 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
     private static unsafe string HostApiName(int hostApi)
     {
         var info = Pa_GetHostApiInfo(hostApi);
-        return info is null ? "unknown" : Marshal.PtrToStringUTF8((nint)info->Name) ?? "unknown";
+        return (info is null ? null : Marshal.PtrToStringUTF8((nint)info->Name)) ?? "unknown";
     }
 
     private static void Check(int error, string action)

@@ -16,6 +16,17 @@ namespace Dictum.Stt.Whisper;
 public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig config, AppPaths paths, ILog log)
     : ISpeechToText, IDisposable
 {
+    /// <summary>Upper bound of the default thread count, which follows the CPU count.</summary>
+    private const int MaxDefaultThreads = 8;
+
+    /// <summary>Half a second; less speech than this after VAD is treated as none.</summary>
+    private const int MinSpeechSamples = AudioClip.WhisperSampleRate / 2;
+
+    private const string EnglishCode = "en";
+
+    /// <summary>Kept around each speech segment VAD finds, so word edges are not clipped.</summary>
+    private static readonly TimeSpan VadSpeechPadding = TimeSpan.FromMilliseconds(200);
+
     private static readonly Lock RuntimeGate = new();
     private static WhisperRuntime? _configuredRuntime;
 
@@ -51,14 +62,14 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
         {
             _ = Factory();
             var detail = $"{config.Model}, runtime {LoadedRuntime ?? "unknown"}";
-            if (LoadedRuntime == "Vulkan" && !VulkanProbe.HasHardwareGpu)
+            if (LoadedRuntime == nameof(RuntimeLibrary.Vulkan) && !VulkanProbe.HasHardwareGpu)
             {
                 return Task.FromResult(HealthStatus.Warning(
                     $"{detail} on a software Vulkan device ({string.Join(", ", VulkanProbe.Devices)})",
                     "This is slow and can produce wrong text; set \"runtime\": \"cpu\"."));
             }
 
-            if (LoadedRuntime == "Vulkan")
+            if (LoadedRuntime == nameof(RuntimeLibrary.Vulkan))
             {
                 detail += $" on {string.Join(", ", VulkanProbe.Devices.Where(d => d.IsHardware))}";
             }
@@ -98,7 +109,7 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
         if (config.Vad)
         {
             samples = KeepSpeech(samples);
-            if (samples.Length < AudioClip.WhisperSampleRate / 2)
+            if (samples.Length < MinSpeechSamples)
             {
                 log.Info("VAD found no speech");
                 return new Transcript(string.Empty, request.Language, watch.Elapsed, LoadedRuntime, Path.GetFileName(config.Model));
@@ -106,15 +117,15 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
         }
 
         var builder = Factory().CreateBuilder()
-            .WithThreads(config.Threads > 0 ? config.Threads : Math.Clamp(Environment.ProcessorCount, 1, 8));
+            .WithThreads(config.Threads > 0 ? config.Threads : Math.Clamp(Environment.ProcessorCount, 1, MaxDefaultThreads));
         var candidates = !IsEnglishOnly(config.Model) && request is { Language: null, Candidates.Count: > 1 } ? request.Candidates : null;
         if (candidates is not null && UnknownCandidate(candidates, Supported.Value) is { } unknown)
         {
             // Whisper skips a code it does not know, so "ua, en" would silently turn Ukrainian speech into English.
             throw new ProviderUnavailableException(unknown);
         }
-        var language = IsEnglishOnly(config.Model) ? "en" : request.Language ?? candidates?[0];
-        builder = language is null or "auto" ? builder.WithLanguageDetection() : builder.WithLanguage(language);
+        var language = IsEnglishOnly(config.Model) ? EnglishCode : request.Language ?? candidates?[0];
+        builder = language is null or LanguageList.Auto ? builder.WithLanguageDetection() : builder.WithLanguage(language);
         if (!string.IsNullOrWhiteSpace(request.Prompt))
         {
             builder = builder.WithPrompt(request.Prompt);
@@ -141,7 +152,7 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
         }
 
         log.Debug($"Whisper '{id}' ({LoadedRuntime}) took {watch.ElapsedMilliseconds} ms for {clip.Duration.TotalSeconds:F1} s");
-        return new Transcript(text.ToString().Trim(), language is null or "auto" ? detected : language, watch.Elapsed, LoadedRuntime, Path.GetFileName(config.Model));
+        return new Transcript(text.ToString().Trim(), language is null or LanguageList.Auto ? detected : language, watch.Elapsed, LoadedRuntime, Path.GetFileName(config.Model));
     }
 
     private static readonly Lazy<HashSet<string>> Supported = new(() => [.. WhisperFactory.GetSupportedLanguages()]);
@@ -178,9 +189,9 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
     private static bool Satisfies(WhisperRuntime wanted, string? loaded) => wanted switch
     {
         WhisperRuntime.Auto => true,
-        WhisperRuntime.Cpu => loaded is "Cpu" or "CpuNoAvx",
-        WhisperRuntime.Vulkan => loaded == "Vulkan",
-        WhisperRuntime.Cuda => loaded is "Cuda" or "Cuda12",
+        WhisperRuntime.Cpu => loaded is nameof(RuntimeLibrary.Cpu) or nameof(RuntimeLibrary.CpuNoAvx),
+        WhisperRuntime.Vulkan => loaded == nameof(RuntimeLibrary.Vulkan),
+        WhisperRuntime.Cuda => loaded is nameof(RuntimeLibrary.Cuda) or nameof(RuntimeLibrary.Cuda12),
         _ => false,
     };
 
@@ -227,7 +238,7 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
         }
 
         using var vad = vadFactory.CreateBuilder()
-            .WithSpeechPadding(TimeSpan.FromMilliseconds(200))
+            .WithSpeechPadding(VadSpeechPadding)
             .Build();
 
         var speech = new List<float>(samples.Length);
@@ -289,7 +300,7 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
         $"Download it into the models directory, e.g. https://huggingface.co/ggerganov/whisper.cpp/resolve/main/{Path.GetFileName(model)}";
 
     public static string VadDownloadHint() =>
-        "Download https://huggingface.co/sandrohanea/whisper.net/resolve/v4/vad/ggml-silero-v6.2.0.bin into the models directory, or set \"vad\": false.";
+        $"Download https://huggingface.co/sandrohanea/whisper.net/resolve/v4/vad/{WhisperLocalSttConfig.DefaultVadModel} into the models directory, or set \"vad\": false.";
 
     /// <summary>Whisper marks non-speech as e.g. "[BLANK_AUDIO]", "[Music]" or "(silence)".</summary>
     private static bool IsNonSpeechTag(string segment) => NonSpeechTag().IsMatch(segment);

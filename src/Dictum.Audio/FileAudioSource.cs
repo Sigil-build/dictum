@@ -11,7 +11,7 @@ public sealed class FileAudioSource(string path) : IAudioSource
     public event Action<AudioFrame>? FrameCaptured;
 
     public IReadOnlyList<AudioDevice> ListDevices() =>
-        [new AudioDevice("file", Path.GetFileName(path), "file", 1, AudioClip.WhisperSampleRate, IsDefault: true)];
+        [new AudioDevice("file", Path.GetFileName(path), "file", MaxInputChannels: 1, AudioClip.WhisperSampleRate, IsDefault: true)];
 
     public Task StartAsync(string? deviceId, CancellationToken ct, bool keepSamples = true)
     {

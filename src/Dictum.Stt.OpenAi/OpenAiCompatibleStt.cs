@@ -23,6 +23,13 @@ public sealed class OpenAiCompatibleStt(
     ConfigValueResolver values,
     ILog log) : ISpeechToText
 {
+    private const int SnippetLength = 300;
+
+    /// <summary>Half a second of silence, the clip the health check sends to a server without <c>/models</c>.</summary>
+    private const int ProbeClipSamples = AudioClip.WhisperSampleRate / 2;
+
+    private static readonly TimeSpan HealthCheckTimeout = TimeSpan.FromSeconds(5);
+
     public string Id => id;
 
     public SttCapabilities Capabilities { get; } = new(LanguageDetection: true, Prompt: true, Streaming: false);
@@ -61,7 +68,7 @@ public sealed class OpenAiCompatibleStt(
             using var message = new HttpRequestMessage(HttpMethod.Get, Endpoint("models"));
             await AuthorizeAsync(message, ct).ConfigureAwait(false);
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeout.CancelAfter(TimeSpan.FromSeconds(5));
+            timeout.CancelAfter(HealthCheckTimeout);
             using var response = await http.SendAsync(message, timeout.Token).ConfigureAwait(false);
 
             if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
@@ -75,7 +82,7 @@ public sealed class OpenAiCompatibleStt(
             }
 
             // Some servers (e.g. a bare whisper-server) have no /models; a short silent clip proves the endpoint works.
-            await TranscribeAsync(new AudioClip(new float[AudioClip.WhisperSampleRate / 2]), new SttRequest(null, null), ct).ConfigureAwait(false);
+            await TranscribeAsync(new AudioClip(new float[ProbeClipSamples]), new SttRequest(null, null), ct).ConfigureAwait(false);
             return HealthStatus.Ok($"{config.BaseUrl} transcribes with model {config.Model}");
         }
         catch (Exception ex) when (ex is HttpRequestException or ProviderUnavailableException or ConfigException or OperationCanceledException)
@@ -92,7 +99,7 @@ public sealed class OpenAiCompatibleStt(
         form.Add(audio, "file", "audio.wav");
         form.Add(new StringContent(config.Model), "model");
         form.Add(new StringContent("json"), "response_format");
-        if (request.Language is { Length: > 0 } language && language != "auto")
+        if (request.Language is { Length: > 0 } language && language != LanguageList.Auto)
         {
             form.Add(new StringContent(language), "language");
         }
@@ -139,7 +146,7 @@ public sealed class OpenAiCompatibleStt(
 
     private Uri Endpoint(string path) => new($"{config.BaseUrl.TrimEnd('/')}/{path}");
 
-    private static string Snippet(string body) => body.Length <= 300 ? body : body[..300] + "…";
+    private static string Snippet(string body) => body.Length <= SnippetLength ? body : body[..SnippetLength] + "…";
 }
 
 internal sealed record TranscriptionResponse(string? Text, string? Language);

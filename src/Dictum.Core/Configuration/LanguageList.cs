@@ -6,6 +6,9 @@ namespace Dictum.Core.Configuration;
 /// </summary>
 public static class LanguageList
 {
+    /// <summary>The setting that lets the recognizer detect any language.</summary>
+    public const string Auto = "auto";
+
     /// <returns>
     /// No codes for <c>auto</c> (or no setting), one for a fixed language, several to pick from; null when the setting is
     /// not valid. A single code and <c>auto</c> are written exactly; only list entries may have spaces around them, and a
@@ -13,7 +16,7 @@ public static class LanguageList
     /// </returns>
     public static IReadOnlyList<string>? Parse(string? setting)
     {
-        if (setting is null or "auto")
+        if (setting is null or Auto)
         {
             return [];
         }
@@ -28,7 +31,7 @@ public static class LanguageList
     }
 
     /// <summary>The setting as Dictum writes it: <c>auto</c>, <c>uk</c> or <c>uk, en</c>.</summary>
-    public static string Format(IReadOnlyList<string> codes) => codes.Count == 0 ? "auto" : string.Join(", ", codes);
+    public static string Format(IReadOnlyList<string> codes) => codes.Count == 0 ? Auto : string.Join(", ", codes);
 
     /// <summary>Languages Whisper often confuses with each other; with two of them in one list it may pick the wrong one.</summary>
     private static readonly string[][] SimilarGroups =
@@ -63,5 +66,6 @@ public static class LanguageList
             : $"{string.Join(", ", pairs.Select(p => $"'{p.First}' and '{p.Second}'"))} sound alike to Whisper; with both in the list it may pick the wrong one. Keep only the languages you dictate in.";
     }
 
+    /// <summary>ISO 639-1 codes have two letters; Whisper also knows a few three-letter ones, such as <c>haw</c>.</summary>
     private static bool IsCode(string code) => code.Length is 2 or 3 && code.All(char.IsAsciiLetterLower);
 }

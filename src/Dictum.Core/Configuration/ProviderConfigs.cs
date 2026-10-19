@@ -30,6 +30,7 @@ public enum WhisperRuntime
 public sealed record WhisperLocalSttConfig : SttConfig
 {
     public const string TypeName = "whisper-local";
+    public const string DefaultVadModel = "ggml-silero-v6.2.0.bin";
 
     /// <summary>File name in the models directory, or an absolute path.</summary>
     public required string Model { get; init; }
@@ -37,7 +38,7 @@ public sealed record WhisperLocalSttConfig : SttConfig
     public bool Vad { get; init; }
 
     /// <summary>Silero VAD model; file name in the models directory, or an absolute path.</summary>
-    public string VadModel { get; set; } = "ggml-silero-v6.2.0.bin";
+    public string VadModel { get; set; } = DefaultVadModel;
 
     public WhisperRuntime Runtime { get; set; } = WhisperRuntime.Auto;
 
@@ -48,6 +49,7 @@ public sealed record WhisperLocalSttConfig : SttConfig
 public sealed record OpenAiCompatibleSttConfig : SttConfig
 {
     public const string TypeName = "openai-compatible";
+    public const int DefaultTimeoutMs = 60_000;
 
     /// <summary>Base URL including the version segment, e.g. http://localhost:8080/v1.</summary>
     public required string BaseUrl { get; init; }
@@ -57,7 +59,7 @@ public sealed record OpenAiCompatibleSttConfig : SttConfig
     /// <summary>Literal key, <c>env:VAR</c> or <c>secret:name</c>.</summary>
     public string? ApiKey { get; init; }
 
-    public int TimeoutMs { get; set; } = 60_000;
+    public int TimeoutMs { get; set; } = DefaultTimeoutMs;
 }
 
 /// <summary>Base for text processor settings. The <c>type</c> property selects the derived record.</summary>
@@ -108,6 +110,7 @@ public enum LlmErrorMode
 public sealed record LlmProcessorConfig : ProcessorConfig
 {
     public const string TypeName = "llm";
+    public const int DefaultTimeoutMs = 4_000;
 
     public required string BaseUrl { get; init; }
 
@@ -120,7 +123,7 @@ public sealed record LlmProcessorConfig : ProcessorConfig
 
     public double Temperature { get; set; } = 0.2;
 
-    public int TimeoutMs { get; set; } = 4_000;
+    public int TimeoutMs { get; set; } = DefaultTimeoutMs;
 
     public LlmErrorMode OnError { get; set; } = LlmErrorMode.Passthrough;
 
