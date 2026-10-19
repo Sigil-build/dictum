@@ -1,8 +1,8 @@
-using Dictum.App.Settings;
+using Dictum.Processing;
 
-namespace Dictum.App.Tests.Settings;
+namespace Dictum.Core.Tests.Processing;
 
-public sealed class PromptFilesTests : IDisposable
+public sealed class PromptLibraryTests : IDisposable
 {
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-prompts", Guid.NewGuid().ToString("N")[..8]);
 
@@ -20,17 +20,17 @@ public sealed class PromptFilesTests : IDisposable
     [Fact]
     public void TheBuiltInsAreListedWithoutAFolder()
     {
-        var prompts = new PromptFiles(_dir);
+        var prompts = new PromptLibrary(_dir);
 
         Assert.Equal(["cleanup", "code-comment", "email"], prompts.Names());
-        Assert.True(PromptFiles.IsBuiltIn("cleanup"));
+        Assert.True(PromptLibrary.IsBuiltIn("cleanup"));
         Assert.Contains("{{text}}", prompts.Read("cleanup"), StringComparison.Ordinal);
     }
 
     [Fact]
     public void AWrittenPromptIsListedReadAndOverridesABuiltIn()
     {
-        var prompts = new PromptFiles(_dir);
+        var prompts = new PromptLibrary(_dir);
 
         prompts.Write("meeting-notes", "Make notes from {{text}}");
         prompts.Write("cleanup", "Fix {{text}}");
@@ -44,7 +44,7 @@ public sealed class PromptFilesTests : IDisposable
     [Fact]
     public void DeletingAnOverrideBringsTheBuiltInBack()
     {
-        var prompts = new PromptFiles(_dir);
+        var prompts = new PromptLibrary(_dir);
         prompts.Write("cleanup", "Fix {{text}}");
 
         prompts.Delete("cleanup");
@@ -54,7 +54,7 @@ public sealed class PromptFilesTests : IDisposable
     }
 
     [Fact]
-    public void AnUnknownPromptReadsEmpty() => Assert.Equal("", new PromptFiles(_dir).Read("nothing-here"));
+    public void AnUnknownPromptReadsEmpty() => Assert.Equal("", new PromptLibrary(_dir).Read("nothing-here"));
 
     [Theory]
     [InlineData("meeting-notes", true)]
@@ -63,5 +63,5 @@ public sealed class PromptFilesTests : IDisposable
     [InlineData("a/b", false)]
     [InlineData("..", false)]
     [InlineData(" spaced ", false)]
-    public void NamesMustBeFileNames(string name, bool valid) => Assert.Equal(valid, PromptFiles.IsValidName(name));
+    public void NamesMustBeFileNames(string name, bool valid) => Assert.Equal(valid, PromptLibrary.IsValidName(name));
 }

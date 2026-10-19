@@ -97,8 +97,11 @@ public sealed partial class PromptTemplates(string userDirectory)
             throw new ConfigException($"Invalid prompt name '{name}'.");
         }
 
-        return Path.Combine(userDirectory, name + Extension);
+        return FileIn(userDirectory, name);
     }
+
+    /// <summary>Where the prompts folder keeps the template <paramref name="name"/>.</summary>
+    internal static string FileIn(string directory, string name) => Path.Combine(directory, name + Extension);
 
     private static Stamp? StampOf(string path)
     {

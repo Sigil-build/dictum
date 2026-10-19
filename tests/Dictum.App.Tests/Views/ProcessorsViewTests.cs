@@ -8,6 +8,7 @@ using Dictum.App.ViewModels.Settings;
 using Dictum.App.Views.Settings;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Processing;
 
 namespace Dictum.App.Tests.Views;
 
@@ -34,7 +35,7 @@ public sealed class ProcessorsViewTests(AvaloniaFixture fx) : IDisposable
         store.Save(ProfilesPageTests.Sample());
         var session = new SettingsSession(store, new ManualTimers(), NullLog.Instance);
         session.Load();
-        var page = new ProcessorsPage(session, new ProcessorsServices(new FakeRunner(), new FakeSecrets(), new PromptFiles(Path.Combine(_dir, "prompts")),
+        var page = new ProcessorsPage(session, new ProcessorsServices(new FakeRunner(), new FakeSecrets(), new PromptLibrary(Path.Combine(_dir, "prompts")),
             new ManualTimers(), NullLog.Instance));
         var window = new Window { Content = new ViewLocator().Build(page), Width = 1100, Height = 1400 };
         window.Show();

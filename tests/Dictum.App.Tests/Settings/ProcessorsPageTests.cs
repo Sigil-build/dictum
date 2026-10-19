@@ -3,6 +3,7 @@ using Dictum.App.Settings;
 using Dictum.App.ViewModels.Settings;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Processing;
 
 namespace Dictum.App.Tests.Settings;
 
@@ -12,12 +13,12 @@ public sealed class ProcessorsPageTests : IDisposable
     private readonly ManualTimers _timers = new();
     private readonly FakeRunner _runner = new();
     private readonly FakeSecrets _secrets = new();
-    private readonly PromptFiles _prompts;
+    private readonly PromptLibrary _prompts;
 
     public ProcessorsPageTests()
     {
         Directory.CreateDirectory(_dir);
-        _prompts = new PromptFiles(Path.Combine(_dir, "prompts"));
+        _prompts = new PromptLibrary(Path.Combine(_dir, "prompts"));
     }
 
     private ConfigStore Store => new(Path.Combine(_dir, "config.json"), NullLog.Instance);

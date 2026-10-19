@@ -19,6 +19,7 @@ using Dictum.Core.Diagnostics;
 using Dictum.Core.Http;
 using Dictum.Host;
 using Dictum.Host.Ipc;
+using Dictum.Processing;
 using Dictum.Setup;
 
 namespace Dictum.App.Shell;
@@ -192,7 +193,7 @@ public static class SelfTest
                 new ProfilesPage(session, offline),
                 new SpeechProvidersPage(session, new SpeechServices(offline, new FrameHub(TimeProvider.System), UiTimers.Instance,
                     new UnavailableSecretStore(), _ => [], _ => false, _ => Task.CompletedTask, TimeProvider.System, NullLog.Instance)),
-                new ProcessorsPage(session, new ProcessorsServices(runner, new UnavailableSecretStore(), new PromptFiles(paths.PromptsDirectory),
+                new ProcessorsPage(session, new ProcessorsServices(runner, new UnavailableSecretStore(), new PromptLibrary(paths.PromptsDirectory),
                     UiTimers.Instance, NullLog.Instance)),
                 new ModelsPage(session, new ModelsServices(paths, Catalog.BuiltIn, IModelDownloads.None,
                     () => Task.FromResult(new HardwareInfo(null, 0)), () => long.MaxValue, 0, 1, new SpeedMeasurements(), offline, UiTimers.Instance,

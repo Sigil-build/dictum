@@ -20,6 +20,7 @@ using Dictum.Host;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
 using Dictum.Platform.Linux;
+using Dictum.Processing;
 using Dictum.Setup;
 
 namespace Dictum.App.Shell;
@@ -329,7 +330,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         var system = new SystemPage(new SystemServices(
             Supervisor, Status, () => OverlayRow(session), TrayRow, UiTimers.Instance, TimeProvider.System, DesktopName()));
         var runner = _runner ??= new ProcessorRunner(_paths, Secrets, _log);
-        var processors = new ProcessorsPage(session, new ProcessorsServices(runner, Secrets, new PromptFiles(_paths.PromptsDirectory), UiTimers.Instance, _log));
+        var processors = new ProcessorsPage(session, new ProcessorsServices(runner, Secrets, new PromptLibrary(_paths.PromptsDirectory), UiTimers.Instance, _log));
         var models = new ModelsPage(session, new ModelsServices(
             _paths, Catalog.BuiltIn, _modelDownloads ?? IModelDownloads.None,
             Hardware, FreeDiskBytes,

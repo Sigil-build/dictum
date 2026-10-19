@@ -5,6 +5,7 @@ using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.Core.Configuration;
 using Dictum.Core.Processing;
+using Dictum.Processing;
 
 namespace Dictum.App.ViewModels.Settings;
 
@@ -396,7 +397,7 @@ public sealed partial class LlmEditor : ObservableObject, IDisposable
     private void CreatePrompt()
     {
         var name = NewPromptName.Trim();
-        if (!PromptFiles.IsValidName(name))
+        if (!PromptLibrary.IsValidName(name))
         {
             NewPromptError = Strings.SettingsLlmPromptNameInvalid;
             return;
@@ -587,9 +588,9 @@ public sealed partial class LlmEditor : ObservableObject, IDisposable
     private void ShowPromptState(string name)
     {
         var prompts = _services.Prompts;
-        CanRestorePrompt = PromptFiles.IsBuiltIn(name) && prompts.HasFile(name);
+        CanRestorePrompt = PromptLibrary.IsBuiltIn(name) && prompts.HasFile(name);
         PromptNote = string.Format(CultureInfo.CurrentCulture,
-            !PromptFiles.IsBuiltIn(name) ? Strings.SettingsLlmPromptFile
+            !PromptLibrary.IsBuiltIn(name) ? Strings.SettingsLlmPromptFile
             : prompts.HasFile(name) ? Strings.SettingsLlmPromptOverride
             : Strings.SettingsLlmPromptBuiltIn,
             name);

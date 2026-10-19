@@ -1,14 +1,12 @@
 using Dictum.Core.Configuration;
-using Dictum.Processing;
 
-namespace Dictum.App.Settings;
+namespace Dictum.Processing;
 
 /// <summary>
-/// LLM prompt templates as the Processors page edits them. Built-ins ship with Dictum; <c>prompts/&lt;name&gt;.md</c>
-/// in the config folder adds a prompt or replaces a built-in of the same name, which is how <see cref="PromptTemplates"/>
-/// loads them.
+/// The prompts a user can pick and edit. Built-ins ship with Dictum; <c>&lt;name&gt;.md</c> in the prompts folder adds a
+/// prompt or replaces a built-in of the same name, which is how <see cref="PromptTemplates"/> loads them.
 /// </summary>
-public sealed class PromptFiles(string directory)
+public sealed class PromptLibrary(string directory)
 {
     private const string TempSuffix = ".tmp";
 
@@ -65,9 +63,10 @@ public sealed class PromptFiles(string directory)
         }
     }
 
+    /// <summary>A name the prompts folder can hold as one file: not empty, not padded, no folder or parent part.</summary>
     public static bool IsValidName(string name) =>
         name.Length > 0 && name == name.Trim() && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0
         && name.IndexOfAny(['/', '\\']) < 0 && !name.Contains("..", StringComparison.Ordinal);
 
-    private string PathOf(string name) => Path.Combine(directory, name + PromptTemplates.Extension);
+    private string PathOf(string name) => PromptTemplates.FileIn(directory, name);
 }

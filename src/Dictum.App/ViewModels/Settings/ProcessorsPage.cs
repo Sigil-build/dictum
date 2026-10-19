@@ -5,11 +5,12 @@ using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Processing;
 
 namespace Dictum.App.ViewModels.Settings;
 
 /// <summary>What the Processors page uses besides the config; fakes in tests.</summary>
-public sealed record ProcessorsServices(IProcessorRunner Runner, ISecretStore Secrets, PromptFiles Prompts, ITimers Timers, ILog Log);
+public sealed record ProcessorsServices(IProcessorRunner Runner, ISecretStore Secrets, PromptLibrary Prompts, ITimers Timers, ILog Log);
 
 public sealed record ProcessorItem(string Id, string Caption)
 {
