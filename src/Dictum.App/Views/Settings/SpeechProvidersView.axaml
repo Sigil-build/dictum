@@ -3,6 +3,7 @@
              xmlns:vm="using:Dictum.App.ViewModels.Settings"
              xmlns:controls="using:Dictum.App.Controls"
              xmlns:res="using:Dictum.App.Resources"
+             xmlns:views="using:Dictum.App.Views.Settings"
              x:Class="Dictum.App.Views.Settings.SpeechProvidersView"
              x:DataType="vm:SpeechProvidersPage">
   <ScrollViewer>
@@ -61,21 +62,7 @@
                     <TextBox Text="{Binding ModelName}" AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersModel}" />
                     <TextBlock Text="{Binding ModelNameError}" Classes="error" IsVisible="{Binding ModelNameError, Converter={x:Static ObjectConverters.IsNotNull}}" />
                   </StackPanel>
-                  <StackPanel Grid.Row="2" Spacing="4">
-                    <TextBlock Text="{x:Static res:Strings.SettingsProvidersApiKey}" Classes="hint" />
-                    <TextBox Classes="apiKey" Text="{Binding KeyText}" PasswordChar="•"
-                             PlaceholderText="{x:Static res:Strings.SettingsProvidersApiKeyPlaceholder}"
-                             AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersApiKey}">
-                      <TextBox.KeyBindings>
-                        <KeyBinding Gesture="Enter" Command="{Binding CommitKeyCommand}" />
-                      </TextBox.KeyBindings>
-                    </TextBox>
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                      <TextBlock Text="{Binding KeyState}" Classes="hint" VerticalAlignment="Center" />
-                      <Button Classes="link" Content="{x:Static res:Strings.SettingsProvidersRemoveKey}" Command="{Binding RemoveKeyCommand}" />
-                    </StackPanel>
-                    <TextBlock Text="{Binding KeyError}" Classes="error" IsVisible="{Binding KeyError, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                  </StackPanel>
+                  <views:ApiKeyRow Grid.Row="2" DataContext="{Binding Key}" />
                   <StackPanel Grid.Row="2" Grid.Column="2" Spacing="4">
                     <TextBlock Text="{x:Static res:Strings.SettingsProvidersTimeout}" Classes="hint" />
                     <NumericUpDown Value="{Binding TimeoutSeconds}" Minimum="1" Maximum="600" Increment="5" FormatString="0" Width="120"

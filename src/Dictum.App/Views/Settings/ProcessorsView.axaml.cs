@@ -12,7 +12,6 @@ public sealed partial class ProcessorsView : UserControl
     {
         InitializeComponent();
         ImportButton.Click += async (_, _) => await ImportAsync();
-        TextBoxes.CommitKeysOnLeave(this, _ => (DataContext as ProcessorsPage)?.Llm.CommitKeyCommand);
     }
 
     private async Task ImportAsync()

@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:Dictum.App.ViewModels.Settings"
              xmlns:res="using:Dictum.App.Resources"
+             xmlns:views="using:Dictum.App.Views.Settings"
              x:Class="Dictum.App.Views.Settings.ProcessorsView"
              x:DataType="vm:ProcessorsPage">
   <Grid ColumnDefinitions="180,16,*" Margin="16,4,24,16">
@@ -47,21 +48,7 @@
                 <TextBox Text="{Binding Llm.Model}" AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersModel}" />
                 <TextBlock Text="{Binding Llm.ModelError}" Classes="error" IsVisible="{Binding Llm.ModelError, Converter={x:Static ObjectConverters.IsNotNull}}" />
               </StackPanel>
-              <StackPanel Grid.Row="2" Spacing="4">
-                <TextBlock Text="{x:Static res:Strings.SettingsProvidersApiKey}" Classes="hint" />
-                <TextBox Classes="apiKey" Text="{Binding Llm.KeyText}" PasswordChar="•"
-                         PlaceholderText="{x:Static res:Strings.SettingsProvidersApiKeyPlaceholder}"
-                         AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersApiKey}">
-                  <TextBox.KeyBindings>
-                    <KeyBinding Gesture="Enter" Command="{Binding Llm.CommitKeyCommand}" />
-                  </TextBox.KeyBindings>
-                </TextBox>
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                  <TextBlock Text="{Binding Llm.KeyState}" Classes="hint" VerticalAlignment="Center" />
-                  <Button Classes="link" Content="{x:Static res:Strings.SettingsProvidersRemoveKey}" Command="{Binding Llm.RemoveKeyCommand}" />
-                </StackPanel>
-                <TextBlock Text="{Binding Llm.KeyError}" Classes="error" IsVisible="{Binding Llm.KeyError, Converter={x:Static ObjectConverters.IsNotNull}}" />
-              </StackPanel>
+              <views:ApiKeyRow Grid.Row="2" DataContext="{Binding Llm.Key}" />
               <StackPanel Grid.Row="2" Grid.Column="2" Spacing="4">
                 <TextBlock Text="{x:Static res:Strings.SettingsProvidersTimeout}" Classes="hint" />
                 <NumericUpDown Value="{Binding Llm.TimeoutSeconds}" Minimum="1" Maximum="600" Increment="1" FormatString="0" Width="120"
@@ -97,22 +84,22 @@
             <StackPanel Spacing="8">
               <Grid ColumnDefinitions="Auto,12,*,Auto">
                 <TextBlock Text="{x:Static res:Strings.SettingsLlmPrompt}" VerticalAlignment="Center" />
-                <ComboBox Grid.Column="2" Width="260" ItemsSource="{Binding Llm.Prompts}" SelectedItem="{Binding Llm.Prompt}"
+                <ComboBox Grid.Column="2" Width="260" ItemsSource="{Binding Llm.Prompt.Names}" SelectedItem="{Binding Llm.Prompt.Selected}"
                           AutomationProperties.Name="{x:Static res:Strings.SettingsLlmPrompt}" />
-                <Button Grid.Column="3" Classes="link" Content="{x:Static res:Strings.SettingsLlmRestorePrompt}" Command="{Binding Llm.RestorePromptCommand}" />
+                <Button Grid.Column="3" Classes="link" Content="{x:Static res:Strings.SettingsLlmRestorePrompt}" Command="{Binding Llm.Prompt.RestoreCommand}" />
               </Grid>
-              <TextBlock Text="{Binding Llm.PromptNote}" Classes="hint" />
-              <TextBlock Text="{Binding Llm.PromptShared}" Classes="hint" TextWrapping="Wrap"
-                         IsVisible="{Binding Llm.PromptShared, Converter={x:Static ObjectConverters.IsNotNull}}" />
-              <TextBox x:Name="PromptBox" Text="{Binding Llm.PromptText}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="160"
+              <TextBlock Text="{Binding Llm.Prompt.Note}" Classes="hint" />
+              <TextBlock Text="{Binding Llm.Prompt.Shared}" Classes="hint" TextWrapping="Wrap"
+                         IsVisible="{Binding Llm.Prompt.Shared, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <TextBox x:Name="PromptBox" Text="{Binding Llm.Prompt.Text}" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="160"
                        FontFamily="{DynamicResource font.family.mono}" AutomationProperties.Name="{x:Static res:Strings.SettingsLlmPrompt}" />
-              <TextBlock Text="{Binding Llm.PromptError}" Classes="error" IsVisible="{Binding Llm.PromptError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <TextBlock Text="{Binding Llm.Prompt.Error}" Classes="error" IsVisible="{Binding Llm.Prompt.Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
               <StackPanel Orientation="Horizontal" Spacing="8">
-                <TextBox Width="220" Text="{Binding Llm.NewPromptName}" PlaceholderText="{x:Static res:Strings.SettingsLlmNewPrompt}"
+                <TextBox Width="220" Text="{Binding Llm.Prompt.NewName}" PlaceholderText="{x:Static res:Strings.SettingsLlmNewPrompt}"
                          AutomationProperties.Name="{x:Static res:Strings.SettingsLlmNewPrompt}" />
-                <Button Content="{x:Static res:Strings.SettingsLlmCreatePrompt}" Command="{Binding Llm.CreatePromptCommand}" />
+                <Button Content="{x:Static res:Strings.SettingsLlmCreatePrompt}" Command="{Binding Llm.Prompt.CreateCommand}" />
               </StackPanel>
-              <TextBlock Text="{Binding Llm.NewPromptError}" Classes="error" IsVisible="{Binding Llm.NewPromptError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <TextBlock Text="{Binding Llm.Prompt.NewNameError}" Classes="error" IsVisible="{Binding Llm.Prompt.NewNameError, Converter={x:Static ObjectConverters.IsNotNull}}" />
             </StackPanel>
           </Border>
 
@@ -120,15 +107,15 @@
             <StackPanel Spacing="8">
               <Grid ColumnDefinitions="Auto,12,*,Auto">
                 <TextBlock Text="{x:Static res:Strings.SettingsLlmPreview}" FontWeight="SemiBold" VerticalAlignment="Center" />
-                <ListBox Grid.Column="2" Classes="segmented" ItemsSource="{Binding Llm.Languages}" SelectedItem="{Binding Llm.SampleLanguage}"
+                <ListBox Grid.Column="2" Classes="segmented" ItemsSource="{Binding Llm.Preview.Languages}" SelectedItem="{Binding Llm.Preview.SampleLanguage}"
                          AutomationProperties.Name="{x:Static res:Strings.SettingsLlmSample}" />
-                <Button Grid.Column="3" Content="{x:Static res:Strings.SettingsLlmPreviewNow}" Command="{Binding Llm.PreviewNowCommand}" />
+                <Button Grid.Column="3" Content="{x:Static res:Strings.SettingsLlmPreviewNow}" Command="{Binding Llm.Preview.RunCommand}" />
               </Grid>
-              <TextBox Text="{Binding Llm.SampleText}" TextWrapping="Wrap" AutomationProperties.Name="{x:Static res:Strings.SettingsLlmSample}" />
-              <ProgressBar IsIndeterminate="True" IsVisible="{Binding Llm.Previewing}" Height="2" />
-              <SelectableTextBlock Text="{Binding Llm.PreviewText}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
-              <TextBlock Text="{Binding Llm.PreviewLatency}" Classes="hint" />
-              <TextBlock Text="{Binding Llm.PreviewError}" Classes="error" IsVisible="{Binding Llm.PreviewError, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <TextBox Text="{Binding Llm.Preview.SampleText}" TextWrapping="Wrap" AutomationProperties.Name="{x:Static res:Strings.SettingsLlmSample}" />
+              <ProgressBar IsIndeterminate="True" IsVisible="{Binding Llm.Preview.Running}" Height="2" />
+              <SelectableTextBlock Text="{Binding Llm.Preview.Text}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
+              <TextBlock Text="{Binding Llm.Preview.Latency}" Classes="hint" />
+              <TextBlock Text="{Binding Llm.Preview.Error}" Classes="error" IsVisible="{Binding Llm.Preview.Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
             </StackPanel>
           </Border>
         </StackPanel>

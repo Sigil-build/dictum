@@ -42,7 +42,7 @@ public sealed class SpeechProvidersViewTests(AvaloniaFixture fx) : IDisposable
         Dispatcher.UIThread.RunJobs();
 
         Assert.Single(window.GetVisualDescendants().OfType<SpeechProvidersView>());
-        var key = window.GetVisualDescendants().OfType<TextBox>().Single(t => t.Classes.Contains("apiKey") && t.IsEffectivelyVisible);
+        var key = window.GetVisualDescendants().OfType<TextBox>().Single(t => t.Name == "KeyBox" && t.IsEffectivelyVisible);
         key.Focus();
         key.Text = "sk-123";
         other.Focus();

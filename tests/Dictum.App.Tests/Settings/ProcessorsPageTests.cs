@@ -70,10 +70,10 @@ public sealed class ProcessorsPageTests : IDisposable
     {
         var (page, _) = Open();
 
-        Assert.Equal(("http://localhost:11434/v1", "qwen2.5:7b", "cleanup"), (page.Llm.Url, page.Llm.Model, page.Llm.Prompt));
-        Assert.Contains("{{text}}", page.Llm.PromptText, StringComparison.Ordinal);
-        Assert.Equal("A built-in prompt. Editing it saves your version as prompts/cleanup.md.", page.Llm.PromptNote);
-        Assert.Contains("cleanup", page.Llm.Prompts);
+        Assert.Equal(("http://localhost:11434/v1", "qwen2.5:7b", "cleanup"), (page.Llm.Url, page.Llm.Model, page.Llm.Prompt.Selected));
+        Assert.Contains("{{text}}", page.Llm.Prompt.Text, StringComparison.Ordinal);
+        Assert.Equal("A built-in prompt. Editing it saves your version as prompts/cleanup.md.", page.Llm.Prompt.Note);
+        Assert.Contains("cleanup", page.Llm.Prompt.Names);
     }
 
     [Fact]
@@ -114,13 +114,13 @@ public sealed class ProcessorsPageTests : IDisposable
     {
         var (page, _) = Open();
 
-        page.Llm.PromptText = "Fix {{text}}";
+        page.Llm.Prompt.Text = "Fix {{text}}";
         Assert.False(_prompts.HasFile("cleanup"));
 
         _timers.Fire();
         Assert.Equal("Fix {{text}}", _prompts.Read("cleanup"));
-        Assert.Equal("Your version in prompts/cleanup.md replaces the built-in prompt.", page.Llm.PromptNote);
-        Assert.True(page.Llm.CanRestorePrompt);
+        Assert.Equal("Your version in prompts/cleanup.md replaces the built-in prompt.", page.Llm.Prompt.Note);
+        Assert.True(page.Llm.Prompt.CanRestore);
     }
 
     // Review focus 2.
@@ -131,8 +131,8 @@ public sealed class ProcessorsPageTests : IDisposable
         string? promptAtRun = null;
         _runner.OnRun = () => promptAtRun = _prompts.Read("cleanup");
 
-        page.Llm.PromptText = "X {{text}}";
-        await page.Llm.PreviewNowCommand.ExecuteAsync(null);
+        page.Llm.Prompt.Text = "X {{text}}";
+        await page.Llm.Preview.RunCommand.ExecuteAsync(null);
 
         Assert.Equal("X {{text}}", promptAtRun);
     }
@@ -143,15 +143,15 @@ public sealed class ProcessorsPageTests : IDisposable
         var (page, session) = Open();
         _runner.Answer = _ => new RunResult("So I want you to check this code.", 812, null);
 
-        page.Llm.SampleLanguage = page.Llm.Languages.Single(l => l.Value == "en");
+        page.Llm.Preview.SampleLanguage = page.Llm.Preview.Languages.Single(l => l.Value == "en");
         _timers.Fire();
 
         var run = _runner.Runs.Last();
-        Assert.Equal(LlmEditor.Samples["en"], run.Text);
+        Assert.Equal(LlmPreview.Samples["en"], run.Text);
         Assert.Equal("en", run.Context.Language);
         Assert.Equal("cleanup", run.Steps.Single().Id);
         Assert.Same(Llm(session), run.Steps.Single().Config);
-        Assert.Equal(("So I want you to check this code.", "812 ms", (string?)null), (page.Llm.PreviewText, page.Llm.PreviewLatency, page.Llm.PreviewError));
+        Assert.Equal(("So I want you to check this code.", "812 ms", (string?)null), (page.Llm.Preview.Text, page.Llm.Preview.Latency, page.Llm.Preview.Error));
     }
 
     // Review focus 2.
@@ -162,14 +162,14 @@ public sealed class ProcessorsPageTests : IDisposable
         var first = new TaskCompletionSource<RunResult>();
         _runner.Held.Enqueue(first);
 
-        var older = page.Llm.PreviewNowCommand.ExecuteAsync(null);
+        var older = page.Llm.Preview.RunCommand.ExecuteAsync(null);
         _runner.Answer = _ => new RunResult("newer", 5, null);
-        page.Llm.SampleText = "інший текст";
-        await page.Llm.PreviewNowCommand.ExecuteAsync(null);
+        page.Llm.Preview.SampleText = "інший текст";
+        await page.Llm.Preview.RunCommand.ExecuteAsync(null);
         first.SetResult(new RunResult("older", 900, null));
         await older;
 
-        Assert.Equal("newer", page.Llm.PreviewText);
+        Assert.Equal("newer", page.Llm.Preview.Text);
     }
 
     [Fact]
@@ -178,23 +178,23 @@ public sealed class ProcessorsPageTests : IDisposable
         var (page, _) = Open();
         _runner.Answer = text => new RunResult(text, 7, "Connection refused (127.0.0.1:11434)");
 
-        await page.Llm.PreviewNowCommand.ExecuteAsync(null);
+        await page.Llm.Preview.RunCommand.ExecuteAsync(null);
 
-        Assert.Equal("Connection refused (127.0.0.1:11434)", page.Llm.PreviewError);
+        Assert.Equal("Connection refused (127.0.0.1:11434)", page.Llm.Preview.Error);
     }
 
     [Fact]
     public void RestoringTheBuiltInPromptDeletesYourVersion()
     {
         var (page, _) = Open();
-        page.Llm.PromptText = "Fix {{text}}";
+        page.Llm.Prompt.Text = "Fix {{text}}";
         _timers.Fire();
 
-        page.Llm.RestorePromptCommand.Execute(null);
+        page.Llm.Prompt.RestoreCommand.Execute(null);
 
         Assert.False(_prompts.HasFile("cleanup"));
-        Assert.NotEqual("Fix {{text}}", page.Llm.PromptText);
-        Assert.False(page.Llm.CanRestorePrompt);
+        Assert.NotEqual("Fix {{text}}", page.Llm.Prompt.Text);
+        Assert.False(page.Llm.Prompt.CanRestore);
         _timers.Fire();
         Assert.False(_prompts.HasFile("cleanup"));
     }
@@ -203,15 +203,15 @@ public sealed class ProcessorsPageTests : IDisposable
     public void ANewPromptCopiesTheTextAndIsChosen()
     {
         var (page, session) = Open();
-        page.Llm.PromptText = "Notes from {{text}}";
+        page.Llm.Prompt.Text = "Notes from {{text}}";
 
-        page.Llm.NewPromptName = "notes";
-        page.Llm.CreatePromptCommand.Execute(null);
+        page.Llm.Prompt.NewName = "notes";
+        page.Llm.Prompt.CreateCommand.Execute(null);
 
         Assert.Equal("Notes from {{text}}", _prompts.Read("notes"));
         Assert.Equal("notes", Llm(session).Prompt);
-        Assert.Contains("notes", page.Llm.Prompts);
-        Assert.Equal("", page.Llm.NewPromptName);
+        Assert.Contains("notes", page.Llm.Prompt.Names);
+        Assert.Equal("", page.Llm.Prompt.NewName);
         Assert.False(_prompts.HasFile("cleanup"));
     }
 
@@ -223,10 +223,10 @@ public sealed class ProcessorsPageTests : IDisposable
     {
         var (page, session) = Open();
 
-        page.Llm.NewPromptName = name;
-        page.Llm.CreatePromptCommand.Execute(null);
+        page.Llm.Prompt.NewName = name;
+        page.Llm.Prompt.CreateCommand.Execute(null);
 
-        Assert.Equal(Strings.ResourceManager.GetString(error, Strings.Culture), page.Llm.NewPromptError);
+        Assert.Equal(Strings.ResourceManager.GetString(error, Strings.Culture), page.Llm.Prompt.NewNameError);
         Assert.Equal("cleanup", Llm(session).Prompt);
     }
 
@@ -235,12 +235,12 @@ public sealed class ProcessorsPageTests : IDisposable
     {
         var (page, session) = Open();
 
-        page.Llm.KeyText = "sk-llm";
-        await page.Llm.CommitKeyCommand.ExecuteAsync(null);
+        page.Llm.Key.Text = "sk-llm";
+        await page.Llm.Key.CommitCommand.ExecuteAsync(null);
 
         Assert.Equal("sk-llm", _secrets.Values["dictum-processor-cleanup"]);
         Assert.Equal("secret:dictum-processor-cleanup", Llm(session).ApiKey);
-        Assert.Equal("", page.Llm.KeyText);
+        Assert.Equal("", page.Llm.Key.Text);
     }
 
     [Fact]
@@ -249,8 +249,8 @@ public sealed class ProcessorsPageTests : IDisposable
         _secrets.Values["dictum-cleanup"] = "sk-old";
         var (page, session) = Open(cleanupKey: "secret:dictum-cleanup");
 
-        page.Llm.KeyText = "sk-new";
-        await page.Llm.CommitKeyCommand.ExecuteAsync(null);
+        page.Llm.Key.Text = "sk-new";
+        await page.Llm.Key.CommitCommand.ExecuteAsync(null);
 
         Assert.Equal("secret:dictum-processor-cleanup", Llm(session).ApiKey);
         Assert.Equal(new Dictionary<string, string> { ["dictum-processor-cleanup"] = "sk-new" }, _secrets.Values);
@@ -262,7 +262,7 @@ public sealed class ProcessorsPageTests : IDisposable
         _secrets.Values["dictum-cleanup"] = "sk-old";
         var (page, session) = Open(cleanupKey: "secret:dictum-cleanup");
 
-        await page.Llm.RemoveKeyCommand.ExecuteAsync(null);
+        await page.Llm.Key.RemoveCommand.ExecuteAsync(null);
 
         Assert.Null(Llm(session).ApiKey);
         Assert.Empty(_secrets.Values);
@@ -301,7 +301,7 @@ public sealed class ProcessorsPageTests : IDisposable
     public void LeavingThePageWritesAPendingPrompt()
     {
         var (page, _) = Open();
-        page.Llm.PromptText = "Fix {{text}}";
+        page.Llm.Prompt.Text = "Fix {{text}}";
 
         page.OnHidden();
 
@@ -330,7 +330,7 @@ public sealed class ProcessorsPageTests : IDisposable
         var (page, _) = Open();
         _timers.Fire();
         _runner.Runs.Clear();
-        page.Llm.SampleText = "інший текст";
+        page.Llm.Preview.SampleText = "інший текст";
 
         page.Selected = page.Processors.Single(p => p.Id == "terms");
         _timers.Fire();
@@ -348,15 +348,15 @@ public sealed class ProcessorsPageTests : IDisposable
         var (page, _) = Open();
         var held = new TaskCompletionSource<RunResult>();
         _runner.Held.Enqueue(held);
-        var running = page.Llm.PreviewNowCommand.ExecuteAsync(null);
-        Assert.True(page.Llm.Previewing);
+        var running = page.Llm.Preview.RunCommand.ExecuteAsync(null);
+        Assert.True(page.Llm.Preview.Running);
 
         page.OnHidden();
         held.SetResult(new RunResult("late", 900, null));
         await running;
 
-        Assert.Null(page.Llm.PreviewText);
-        Assert.False(page.Llm.Previewing);
+        Assert.Null(page.Llm.Preview.Text);
+        Assert.False(page.Llm.Preview.Running);
     }
 
     // Final review I2.
@@ -368,10 +368,10 @@ public sealed class ProcessorsPageTests : IDisposable
 
         page.AddLlmCommand.Execute(null);
         Assert.Equal(cleanup, _prompts.Read("llm"));
-        Assert.Equal("llm", page.Llm.Prompt);
-        Assert.Null(page.Llm.PromptShared);
+        Assert.Equal("llm", page.Llm.Prompt.Selected);
+        Assert.Null(page.Llm.Prompt.Shared);
 
-        page.Llm.PromptText = "Mine {{text}}";
+        page.Llm.Prompt.Text = "Mine {{text}}";
         _timers.Fire();
         Assert.Equal("Mine {{text}}", _prompts.Read("llm"));
         Assert.False(_prompts.HasFile("cleanup"));
@@ -401,7 +401,7 @@ public sealed class ProcessorsPageTests : IDisposable
             return c;
         });
 
-        Assert.Equal(string.Format(Strings.Culture, Strings.SettingsLlmPromptShared, "summary"), page.Llm.PromptShared);
+        Assert.Equal(string.Format(Strings.Culture, Strings.SettingsLlmPromptShared, "summary"), page.Llm.Prompt.Shared);
     }
 
     // Final review I3: "+ LLM prompt" copies the first processor's key reference.
@@ -409,13 +409,13 @@ public sealed class ProcessorsPageTests : IDisposable
     public async Task ACopiedKeyOutlivesTheOriginal()
     {
         var (page, session) = Open();
-        page.Llm.KeyText = "sk-llm";
-        await page.Llm.CommitKeyCommand.ExecuteAsync(null);
+        page.Llm.Key.Text = "sk-llm";
+        await page.Llm.Key.CommitCommand.ExecuteAsync(null);
         page.AddLlmCommand.Execute(null);
         Assert.Equal("secret:dictum-processor-cleanup", Llm(session, "llm").ApiKey);
 
         page.Selected = page.Processors.Single(p => p.Id == "cleanup");
-        await page.Llm.RemoveKeyCommand.ExecuteAsync(null);
+        await page.Llm.Key.RemoveCommand.ExecuteAsync(null);
 
         Assert.Null(Llm(session).ApiKey);
         Assert.Equal("sk-llm", _secrets.Values["dictum-processor-cleanup"]);
@@ -432,8 +432,8 @@ public sealed class ProcessorsPageTests : IDisposable
         var held = new TaskCompletionSource();
         _secrets.Held = held;
 
-        page.Llm.KeyText = "sk-cleanup";
-        var committing = page.Llm.CommitKeyCommand.ExecuteAsync(null);
+        page.Llm.Key.Text = "sk-cleanup";
+        var committing = page.Llm.Key.CommitCommand.ExecuteAsync(null);
         page.Selected = page.Processors.Single(p => p.Id == "llm");
         held.SetResult();
         await committing;
@@ -454,7 +454,7 @@ public sealed class ProcessorsPageTests : IDisposable
             page.Selected = page.Processors.Single(p => p.Id == "cleanup");
         }
 
-        Assert.NotNull(page.Llm.PromptError);
+        Assert.NotNull(page.Llm.Prompt.Error);
         Assert.Equal("Mine {{text}}", _prompts.Read("cleanup"));
     }
 
@@ -464,16 +464,16 @@ public sealed class ProcessorsPageTests : IDisposable
     {
         Assert.SkipUnless(OperatingSystem.IsWindows(), "Only Windows refuses to delete a file that is open");
         var (page, _) = Open();
-        page.Llm.PromptText = "Fix {{text}}";
+        page.Llm.Prompt.Text = "Fix {{text}}";
         _timers.Fire();
 
         using (File.Open(Path.Combine(_dir, "prompts", "cleanup.md"), FileMode.Open, FileAccess.Read, FileShare.Read))
         {
-            page.Llm.RestorePromptCommand.Execute(null);
+            page.Llm.Prompt.RestoreCommand.Execute(null);
         }
 
-        Assert.NotNull(page.Llm.PromptError);
+        Assert.NotNull(page.Llm.Prompt.Error);
         Assert.Equal("Fix {{text}}", _prompts.Read("cleanup"));
-        Assert.Equal("Fix {{text}}", page.Llm.PromptText);
+        Assert.Equal("Fix {{text}}", page.Llm.Prompt.Text);
     }
 }

@@ -143,14 +143,14 @@ public sealed class SpeechProvidersPageTests : IDisposable
         var (page, session) = Open();
         var card = Card(page, "remote");
 
-        card.KeyText = "sk-123";
-        await card.CommitKeyCommand.ExecuteAsync(null);
+        card.Key.Text = "sk-123";
+        await card.Key.CommitCommand.ExecuteAsync(null);
         session.Flush();
 
         Assert.Equal("sk-123", _secrets.Values["dictum-stt-remote"]);
         Assert.Equal("secret:dictum-stt-remote", Saved<OpenAiCompatibleSttConfig>(session, "remote").ApiKey);
-        Assert.Equal("", card.KeyText);
-        Assert.Equal(Strings.SettingsProvidersKeyStored, card.KeyState);
+        Assert.Equal("", card.Key.Text);
+        Assert.Equal(Strings.SettingsProvidersKeyStored, card.Key.State);
         Assert.DoesNotContain("sk-123", File.ReadAllText(Store.Path));
         Assert.DoesNotContain(_log.Lines, l => l.Message.Contains("sk-123", StringComparison.Ordinal));
     }
@@ -162,10 +162,10 @@ public sealed class SpeechProvidersPageTests : IDisposable
         var (page, session) = Open();
         var card = Card(page, "remote");
 
-        card.KeyText = "sk-123";
-        await card.CommitKeyCommand.ExecuteAsync(null);
+        card.Key.Text = "sk-123";
+        await card.Key.CommitCommand.ExecuteAsync(null);
 
-        Assert.Equal("The key could not be stored: The keyring prompt was dismissed.", card.KeyError);
+        Assert.Equal("The key could not be stored: The keyring prompt was dismissed.", card.Key.Error);
         Assert.Null(Saved<OpenAiCompatibleSttConfig>(session, "remote").ApiKey);
     }
 
@@ -178,8 +178,8 @@ public sealed class SpeechProvidersPageTests : IDisposable
         var (page, session) = Open(config);
         var card = Card(page, "remote");
 
-        card.KeyText = "sk-new";
-        await card.CommitKeyCommand.ExecuteAsync(null);
+        card.Key.Text = "sk-new";
+        await card.Key.CommitCommand.ExecuteAsync(null);
 
         Assert.Equal("secret:dictum-stt-remote", Saved<OpenAiCompatibleSttConfig>(session, "remote").ApiKey);
         Assert.Equal(new Dictionary<string, string> { ["dictum-stt-remote"] = "sk-new" }, _secrets.Values);
@@ -190,14 +190,14 @@ public sealed class SpeechProvidersPageTests : IDisposable
     {
         var (page, session) = Open();
         var card = Card(page, "remote");
-        card.KeyText = "sk-123";
-        await card.CommitKeyCommand.ExecuteAsync(null);
+        card.Key.Text = "sk-123";
+        await card.Key.CommitCommand.ExecuteAsync(null);
 
-        await card.RemoveKeyCommand.ExecuteAsync(null);
+        await card.Key.RemoveCommand.ExecuteAsync(null);
 
         Assert.Null(Saved<OpenAiCompatibleSttConfig>(session, "remote").ApiKey);
         Assert.Empty(_secrets.Values);
-        Assert.Equal(Strings.SettingsProvidersNoKey, card.KeyState);
+        Assert.Equal(Strings.SettingsProvidersNoKey, card.Key.State);
     }
 
     [Fact]
@@ -219,8 +219,8 @@ public sealed class SpeechProvidersPageTests : IDisposable
     {
         var (page, session) = Open();
         var remote = Card(page, "remote");
-        remote.KeyText = "sk-123";
-        await remote.CommitKeyCommand.ExecuteAsync(null);
+        remote.Key.Text = "sk-123";
+        await remote.Key.CommitCommand.ExecuteAsync(null);
 
         remote.RemoveCommand.Execute(null);
 
@@ -384,9 +384,9 @@ public sealed class SpeechProvidersPageTests : IDisposable
         _secrets.Held = held;
         var (page, _) = Open();
         var card = Card(page, "remote");
-        card.KeyText = "sk-123";
+        card.Key.Text = "sk-123";
 
-        var commit = card.CommitKeyCommand.ExecuteAsync(null);
+        var commit = card.Key.CommitCommand.ExecuteAsync(null);
         var test = card.TestCommand.ExecuteAsync(null);
         Assert.DoesNotContain(_channel.Commands, c => c == IpcCommand.TestStt);
 

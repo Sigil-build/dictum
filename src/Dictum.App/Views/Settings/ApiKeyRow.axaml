@@ -1,0 +1,22 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Dictum.App.ViewModels.Settings"
+             xmlns:res="using:Dictum.App.Resources"
+             x:Class="Dictum.App.Views.Settings.ApiKeyRow"
+             x:DataType="vm:ApiKeyField">
+  <StackPanel Spacing="4">
+    <TextBlock Text="{x:Static res:Strings.SettingsProvidersApiKey}" Classes="hint" />
+    <TextBox x:Name="KeyBox" Text="{Binding Text}" PasswordChar="•"
+             PlaceholderText="{x:Static res:Strings.SettingsProvidersApiKeyPlaceholder}"
+             AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersApiKey}">
+      <TextBox.KeyBindings>
+        <KeyBinding Gesture="Enter" Command="{Binding CommitCommand}" />
+      </TextBox.KeyBindings>
+    </TextBox>
+    <StackPanel Orientation="Horizontal" Spacing="8">
+      <TextBlock Text="{Binding State}" Classes="hint" VerticalAlignment="Center" />
+      <Button Classes="link" Content="{x:Static res:Strings.SettingsProvidersRemoveKey}" Command="{Binding RemoveCommand}" />
+    </StackPanel>
+    <TextBlock Text="{Binding Error}" Classes="error" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+  </StackPanel>
+</UserControl>

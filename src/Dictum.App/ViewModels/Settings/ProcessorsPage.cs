@@ -130,7 +130,7 @@ public sealed partial class ProcessorsPage : SettingsPage
         }
 
         var key = (_session.Config.Processors.GetValueOrDefault(id) as LlmProcessorConfig)?.ApiKey;
-        Llm.CancelPreview();
+        Llm.Preview.Cancel();
         _id = null;
         _session.Edit(c =>
         {

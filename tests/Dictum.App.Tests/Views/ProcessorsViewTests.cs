@@ -53,7 +53,7 @@ public sealed class ProcessorsViewTests(AvaloniaFixture fx) : IDisposable
 
         Assert.IsType<ProcessorsView>(window.Content);
         var prompt = window.GetVisualDescendants().OfType<TextBox>().Single(t => t.Name == "PromptBox");
-        Assert.Equal(page.Llm.PromptText, prompt.Text);
+        Assert.Equal(page.Llm.Prompt.Text, prompt.Text);
         window.Close();
     });
 

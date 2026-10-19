@@ -35,7 +35,7 @@ public enum ProviderKind
 /// One provider on the Speech providers page.
 /// <list type="bullet">
 /// <item>Local Whisper: model, runtime, threads, VAD.</item>
-/// <item>Remote server: URL, model, key, timeout.</item>
+/// <item>Remote server: URL, model, <see cref="Key"/>, timeout.</item>
 /// <item>Both: Test, by a recording of <see cref="TestSeconds"/> seconds with the live meter or by the built-in sample.</item>
 /// </list>
 /// The daemon tests its own copy of the config, so Test saves pending edits first and gives the daemon time to reload.
@@ -58,7 +58,6 @@ public sealed partial class ProviderCard : ObservableObject
     private readonly DateTimeOffset _epoch;
     private bool _loading;
     private bool _timeoutEmpty;
-    private Task? _committing;
 
     /// <param name="lastSave">When the session last wrote the file, whoever asked: the daemon reloads after any write.</param>
     public ProviderCard(string id, ProviderKind kind, SettingsSession session, SpeechServices services, Action<ProviderCard> remove, Func<DateTimeOffset?> lastSave)
@@ -70,6 +69,11 @@ public sealed partial class ProviderCard : ObservableObject
         _remove = remove;
         _lastSave = lastSave;
         _epoch = services.Time.GetUtcNow();
+        var target = new KeyTarget(
+            SecretName,
+            () => (_session.Config.Stt.GetValueOrDefault(Id) as OpenAiCompatibleSttConfig)?.ApiKey,
+            value => EditRemote(r => r with { ApiKey = value }));
+        Key = new ApiKeyField(() => target, () => _session.Config, services.Secrets, services.Log);
     }
 
     public string Id { get; }
@@ -81,6 +85,8 @@ public sealed partial class ProviderCard : ObservableObject
     public bool IsRemote => Kind == ProviderKind.Remote;
 
     public string SecretName => SecretNames.Stt(Id);
+
+    public ApiKeyField Key { get; }
 
     [ObservableProperty]
     public partial string Title { get; private set; } = "";
@@ -133,20 +139,6 @@ public sealed partial class ProviderCard : ObservableObject
 
     [ObservableProperty]
     public partial string? ModelNameError { get; private set; }
-
-    /// <summary>The key being typed; cleared once it is committed. The stored key never comes back here.</summary>
-    [ObservableProperty]
-    public partial string KeyText { get; set; } = "";
-
-    [ObservableProperty]
-    public partial string KeyState { get; private set; } = "";
-
-    [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(RemoveKeyCommand))]
-    public partial bool HasKey { get; private set; }
-
-    [ObservableProperty]
-    public partial string? KeyError { get; private set; }
 
     [ObservableProperty]
     public partial decimal? TimeoutSeconds { get; set; }
@@ -257,44 +249,6 @@ public sealed partial class ProviderCard : ObservableObject
     [RelayCommand(CanExecute = nameof(CanRemove))]
     private void Remove() => _remove(this);
 
-    /// <summary>Enter or leaving the key field: the typed key goes to the secret store; an empty field keeps the stored key.</summary>
-    [RelayCommand]
-    private Task CommitKeyAsync()
-    {
-        if (KeyText.Length == 0)
-        {
-            return _committing ?? Task.CompletedTask;
-        }
-
-        var typed = KeyText;
-        KeyText = "";
-        _committing = StoreKeyAsync(typed);
-        return _committing;
-    }
-
-    private async Task StoreKeyAsync(string typed)
-    {
-        var result = await ApiKeys.StoreAsync(_services.Secrets, SecretName, typed, CancellationToken.None);
-        if (result.Error is { } error)
-        {
-            KeyError = string.Format(CultureInfo.CurrentCulture, Strings.SettingsProvidersKeyFailed, error);
-            return;
-        }
-
-        KeyError = null;
-        var previous = (_session.Config.Stt.GetValueOrDefault(Id) as OpenAiCompatibleSttConfig)?.ApiKey;
-        EditRemote(r => r with { ApiKey = result.Value });
-        await ApiKeys.DeleteLegacyCleanupAsync(_services.Secrets, previous, _session.Config, _services.Log, CancellationToken.None);
-    }
-
-    [RelayCommand(CanExecute = nameof(HasKey))]
-    private async Task RemoveKeyAsync()
-    {
-        var current = (_session.Config.Stt.GetValueOrDefault(Id) as OpenAiCompatibleSttConfig)?.ApiKey;
-        EditRemote(r => r with { ApiKey = null });
-        await ApiKeys.RemoveAsync(_services.Secrets, SecretName, current, _session.Config, _services.Log, CancellationToken.None);
-    }
-
     [RelayCommand(CanExecute = nameof(CanTest))]
     private Task TestAsync() => RunTestAsync(sample: false);
 
@@ -309,7 +263,7 @@ public sealed partial class ProviderCard : ObservableObject
         }
 
         // A typed key, or one still being stored behind a keyring prompt, is part of what the test must use.
-        await CommitKeyAsync();
+        await Key.CommitAsync();
         if (_session.HasErrors)
         {
             Result = new SystemRow(Strings.SettingsProvidersTest, HealthLevel.Error, Strings.SettingsProvidersFixFirst);
@@ -386,8 +340,7 @@ public sealed partial class ProviderCard : ObservableObject
         UrlError = _session.IssueAt(ConfigPaths.Field(path, nameof(OpenAiCompatibleSttConfig.BaseUrl)));
         ModelName = remote.Model;
         ModelNameError = _session.IssueAt(ConfigPaths.Field(path, nameof(OpenAiCompatibleSttConfig.Model)));
-        HasKey = remote.ApiKey is not null;
-        KeyState = ApiKeys.Describe(remote.ApiKey);
+        Key.Show(remote.ApiKey);
         if (!_timeoutEmpty)
         {
             TimeoutSeconds = TimeoutFields.Seconds(remote.TimeoutMs);
