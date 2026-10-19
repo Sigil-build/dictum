@@ -20,7 +20,7 @@ public sealed record QueuedDownload(CatalogEntry Entry, DownloadState State, lon
 /// Downloads catalog files one at a time in the background. Pausing keeps the partial file; pending ids are saved to
 /// <see cref="AppPaths.DownloadsFile"/>, so a restarted app continues where it stopped.
 /// </summary>
-public sealed class DownloadQueue(FileDownloader downloader, AppPaths paths, Catalog catalog, Func<long> freeDiskBytes) : IAsyncDisposable
+public sealed class ModelDownloads(FileDownloader downloader, AppPaths paths, Catalog catalog, Func<long> freeDiskBytes) : IAsyncDisposable
 {
     private readonly Lock _gate = new();
 
@@ -173,7 +173,7 @@ public sealed class DownloadQueue(FileDownloader downloader, AppPaths paths, Cat
         SavedDownloads? saved;
         try
         {
-            saved = JsonSerializer.Deserialize(File.ReadAllText(paths.DownloadsFile), DownloadQueueJsonContext.Default.SavedDownloads);
+            saved = JsonSerializer.Deserialize(File.ReadAllText(paths.DownloadsFile), ModelDownloadsJsonContext.Default.SavedDownloads);
         }
         catch (JsonException)
         {
@@ -337,7 +337,7 @@ public sealed class DownloadQueue(FileDownloader downloader, AppPaths paths, Cat
 
             Directory.CreateDirectory(paths.DataDirectory);
             var temp = paths.DownloadsFile + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(saved, DownloadQueueJsonContext.Default.SavedDownloads));
+            File.WriteAllText(temp, JsonSerializer.Serialize(saved, ModelDownloadsJsonContext.Default.SavedDownloads));
             File.Move(temp, paths.DownloadsFile, overwrite: true);
         }
     }
@@ -367,4 +367,4 @@ internal sealed record SavedDownloads(bool Paused, IReadOnlyList<string> Ids);
 
 [JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, WriteIndented = true)]
 [JsonSerializable(typeof(SavedDownloads))]
-internal sealed partial class DownloadQueueJsonContext : JsonSerializerContext;
+internal sealed partial class ModelDownloadsJsonContext : JsonSerializerContext;

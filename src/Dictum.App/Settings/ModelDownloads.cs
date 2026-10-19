@@ -23,14 +23,17 @@ public interface IModelDownloads
     void Resume();
 
     void Cancel(string id);
+
+    /// <summary>No queue: the self-test, and Settings opened before the shell started one.</summary>
+    static IModelDownloads None { get; } = new NoModelDownloads();
 }
 
-/// <summary><see cref="IModelDownloads"/> over the shell's <see cref="DownloadQueue"/>; the worker's changes reach the UI thread through <c>post</c>.</summary>
+/// <summary><see cref="IModelDownloads"/> over the shell's <see cref="ModelDownloads"/>; the worker's changes reach the UI thread through <c>post</c>.</summary>
 public sealed class QueueDownloads : IModelDownloads
 {
-    private readonly DownloadQueue _queue;
+    private readonly ModelDownloads _queue;
 
-    public QueueDownloads(DownloadQueue queue, Action<Action> post)
+    public QueueDownloads(ModelDownloads queue, Action<Action> post)
     {
         _queue = queue;
         queue.Changed += _ => post(() => Changed?.Invoke());
@@ -73,37 +76,31 @@ public sealed class QueueDownloads : IModelDownloads
     }
 }
 
-/// <summary>No queue: the self-test, and Settings opened before the shell started one.</summary>
-public static class ModelDownloads
+internal sealed class NoModelDownloads : IModelDownloads
 {
-    public static IModelDownloads None { get; } = new NoQueue();
-
-    private sealed class NoQueue : IModelDownloads
+    public event Action? Changed
     {
-        public event Action? Changed
-        {
-            add { }
-            remove { }
-        }
+        add { }
+        remove { }
+    }
 
-        public IReadOnlyList<QueuedDownload> Items => [];
+    public IReadOnlyList<QueuedDownload> Items => [];
 
-        public bool IsPaused => false;
+    public bool IsPaused => false;
 
-        public void Download(CatalogEntry entry)
-        {
-        }
+    public void Download(CatalogEntry entry)
+    {
+    }
 
-        public void Pause()
-        {
-        }
+    public void Pause()
+    {
+    }
 
-        public void Resume()
-        {
-        }
+    public void Resume()
+    {
+    }
 
-        public void Cancel(string id)
-        {
-        }
+    public void Cancel(string id)
+    {
     }
 }

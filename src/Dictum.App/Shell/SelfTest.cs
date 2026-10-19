@@ -192,7 +192,7 @@ public static class SelfTest
                     new UnavailableSecretStore(), _ => [], _ => false, _ => Task.CompletedTask, TimeProvider.System, NullLog.Instance)),
                 new ProcessorsPage(session, new ProcessorsServices(runner, new UnavailableSecretStore(), new PromptFiles(Path.Combine(folder, "prompts")),
                     UiTimers.Instance, NullLog.Instance)),
-                new ModelsPage(session, new ModelsServices(new AppPaths(folder, folder), Catalog.BuiltIn, ModelDownloads.None,
+                new ModelsPage(session, new ModelsServices(new AppPaths(folder, folder), Catalog.BuiltIn, IModelDownloads.None,
                     () => Task.FromResult(new HardwareInfo(null, 0)), () => long.MaxValue, 0, 1, new SpeedMeasurements(), offline, UiTimers.Instance,
                     _ => Task.CompletedTask, TimeProvider.System, NullLog.Instance)),
                 new SystemPage(new SystemServices(offline, new StatusViewModel("config.json", "dictum-gui.log", () => { }),
@@ -202,7 +202,7 @@ public static class SelfTest
             ];
             var locator = new ViewLocator();
             using var http = new HttpClient();
-            var setup = new SetupViewModel(new SetupServices(new AppPaths(folder, folder), store, Catalog.BuiltIn, ModelDownloads.None,
+            var setup = new SetupViewModel(new SetupServices(new AppPaths(folder, folder), store, Catalog.BuiltIn, IModelDownloads.None,
                 () => Task.FromResult(new HardwareInfo(null, 0)), () => long.MaxValue, 0, 1, new SpeedMeasurements(),
                 new ServerProbe(http, new UnavailableSecretStore(), TimeProvider.System), new UnavailableSecretStore(), null, null,
                 new TrayHint(TrayDesktop.Other, () => null, null), offline, () => { }, UiTimers.Instance, TimeProvider.System, NullLog.Instance));

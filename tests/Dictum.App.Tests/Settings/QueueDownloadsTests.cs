@@ -12,7 +12,7 @@ public sealed class QueueDownloadsTests : IAsyncDisposable
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-settings", Guid.NewGuid().ToString("N")[..8]);
     private readonly List<Action> _posted = [];
     private readonly HttpClient _http = new(new Serve());
-    private readonly DownloadQueue _queue;
+    private readonly ModelDownloads _queue;
     private readonly QueueDownloads _downloads;
     private readonly CatalogEntry _entry;
 
@@ -25,7 +25,7 @@ public sealed class QueueDownloadsTests : IAsyncDisposable
                 "licence": { "name": "MIT", "url": "https://example.com" } } ] }
             """);
         _entry = catalog.Get("a");
-        _queue = new DownloadQueue(new FileDownloader(_http, [TimeSpan.Zero]), new AppPaths(_dir, _dir), catalog, () => long.MaxValue);
+        _queue = new ModelDownloads(new FileDownloader(_http, [TimeSpan.Zero]), new AppPaths(_dir, _dir), catalog, () => long.MaxValue);
         _downloads = new QueueDownloads(_queue, action =>
         {
             lock (_posted)
@@ -100,11 +100,11 @@ public sealed class QueueDownloadsTests : IAsyncDisposable
     [Fact]
     public void WithoutAQueueNothingHappens()
     {
-        ModelDownloads.None.Download(_entry);
-        ModelDownloads.None.Pause();
+        IModelDownloads.None.Download(_entry);
+        IModelDownloads.None.Pause();
 
-        Assert.Empty(ModelDownloads.None.Items);
-        Assert.False(ModelDownloads.None.IsPaused);
+        Assert.Empty(IModelDownloads.None.Items);
+        Assert.False(IModelDownloads.None.IsPaused);
     }
 
     private sealed class Serve : HttpMessageHandler

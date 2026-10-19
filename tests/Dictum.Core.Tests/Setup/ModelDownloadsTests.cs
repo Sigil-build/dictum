@@ -5,7 +5,7 @@ using Dictum.Setup;
 
 namespace Dictum.Core.Tests.Setup;
 
-public class DownloadQueueTests : IDisposable
+public sealed class ModelDownloadsTests : IDisposable
 {
     private static readonly byte[] DataA = [.. Enumerable.Range(0, 4000).Select(i => (byte)(i * 3))];
     private static readonly byte[] DataB = [.. Enumerable.Range(0, 3000).Select(i => (byte)(i * 5))];
@@ -26,7 +26,7 @@ public class DownloadQueueTests : IDisposable
             "licence": { "name": "MIT", "url": "https://example.com" } } ] }
         """);
 
-    private DownloadQueue Queue(FakeHttpHandler http, long freeDisk = long.MaxValue) =>
+    private ModelDownloads Queue(FakeHttpHandler http, long freeDisk = long.MaxValue) =>
         new(new FileDownloader(http.Client(), [TimeSpan.Zero]), Paths, TestCatalog(), () => freeDisk);
 
     [Fact]

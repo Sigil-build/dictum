@@ -52,7 +52,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     private ITrayPresenter? _presenter;
     private ConfigWatcher? _watcher;
     private HttpClient? _http;
-    private DownloadQueue? _downloads;
+    private ModelDownloads? _downloads;
     private IModelDownloads? _modelDownloads;
     private Task<HardwareInfo>? _hardware;
     private SetupViewModel? _setup;
@@ -331,7 +331,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         var runner = _runner ??= new ProcessorRunner(_paths, Secrets, _log);
         var processors = new ProcessorsPage(session, new ProcessorsServices(runner, Secrets, new PromptFiles(_paths.PromptsDirectory), UiTimers.Instance, _log));
         var models = new ModelsPage(session, new ModelsServices(
-            _paths, Catalog.BuiltIn, _modelDownloads ?? ModelDownloads.None,
+            _paths, Catalog.BuiltIn, _modelDownloads ?? IModelDownloads.None,
             Hardware, FreeDiskBytes,
             GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, Environment.ProcessorCount, _measurements, Supervisor, UiTimers.Instance,
             wait => Task.Delay(wait), TimeProvider.System, _log));
@@ -389,7 +389,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     {
         var secrets = Secrets;
         var setup = new SetupViewModel(new SetupServices(
-            _paths, _store, Catalog.BuiltIn, _modelDownloads ?? ModelDownloads.None, Hardware, FreeDiskBytes,
+            _paths, _store, Catalog.BuiltIn, _modelDownloads ?? IModelDownloads.None, Hardware, FreeDiskBytes,
             GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, Environment.ProcessorCount, _measurements,
             new ServerProbe(_serverHttp ??= new HttpClient(), secrets, TimeProvider.System), secrets, _autostart, OwnExecutable(),
             SetupTray(), Supervisor, Supervisor.Restart, UiTimers.Instance, TimeProvider.System, _log),
@@ -536,7 +536,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     private void StartDownloads()
     {
         _http = FileDownloader.CreateHttpClient(LoginItem.DesktopAppName);
-        _downloads = new DownloadQueue(new FileDownloader(_http), _paths, Catalog.BuiltIn, FreeDiskBytes);
+        _downloads = new ModelDownloads(new FileDownloader(_http), _paths, Catalog.BuiltIn, FreeDiskBytes);
         var queue = _downloads;
         _modelDownloads = new QueueDownloads(queue, action => Dispatcher.UIThread.Post(action));
         queue.Changed += _ => Dispatcher.UIThread.Post(() => _tray.OnDownloads(QueueProgress.Of(queue.Items)));
