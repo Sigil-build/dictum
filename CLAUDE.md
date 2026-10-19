@@ -24,14 +24,16 @@ https://claude.ai/code/artifact/ba039eea-3640-41cc-898a-b1b024e07370
 - Native AOT cannot cross-compile between OSes. Publish on the target OS or in a container.
 
 ## Layout
-- `src/Dictum.Core`: contracts, pipeline, profiles, history. No references and no OS code.
-- `src/Dictum.Audio`, `Dictum.Stt.Whisper`, `Dictum.Stt.OpenAi`, `Dictum.Processing`: reference Core.
+- `src/Dictum.Core`: contracts, pipeline, profiles, history. No project references, no interop or OS APIs; plain .NET `OperatingSystem` branches are fine.
+- `src/Dictum.Audio`, `Dictum.Processing`: reference Core. `src/Dictum.Stt.Whisper`, `Dictum.Stt.OpenAi`: reference Core and Audio.
 - `src/Dictum.Setup`: model catalog, downloader, setup planner and runner (`dictum init`). References Core only.
-- `src/Dictum.Platform`: platform abstractions (hotkeys, injection, clipboard, secrets, autostart). References Core.
-- `src/Dictum.Platform.{Windows,Linux,MacOS}`: per-OS implementations. Reference Platform.
-- `src/Dictum.Host`: composition root, provider registry, IPC server. References everything above.
+- `src/Dictum.Platform`: platform abstractions (hotkeys, injection, clipboard, secrets, autostart) and the SharpHook implementations that Windows and X11 share. References Core.
+- `src/Dictum.Platform.{Windows,Linux}`: per-OS implementations. Reference Platform. macOS is unsupported and has no project: it gets Platform's `UnsupportedPlatform`.
+- `src/Dictum.Host`: composition root, daemon, IPC server. Core defines the `ProviderRegistry`; Host fills it. References everything above.
 - `src/Dictum.App`: Avalonia tray UI, exe `dictum-gui`. `src/Dictum.Cli`: CLI + IPC client, exe `dictum`. Both reference Host.
-- `tests/Dictum.Core.Tests`: unit tests on fakes. `tests/Dictum.Integration.Tests`: real STT/LLM, gated by `DICTUM_INTEGRATION=1`.
+- `tests/Dictum.Core.Tests`: unit tests on fakes for the libraries under Host.
+- `tests/Dictum.App.Tests`: the desktop app on fakes and Avalonia.Headless; the real-daemon test is gated by `DICTUM_INTEGRATION=1`.
+- `tests/Dictum.Integration.Tests`: real STT/LLM tests, gated by `DICTUM_INTEGRATION=1`, plus ungated Host tests on fakes and tests against the current OS.
 
 ## Conventions
 English for code, comments, docs and commits. Keep the repo lean: no docs/ folder, ADRs or copies of the plan.
