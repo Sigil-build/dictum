@@ -57,7 +57,7 @@ public static class ConfigValidator
         }
         else if (general.HistorySize > MaxHistorySize)
         {
-            Error(issues, ConfigPaths.General(nameof(GeneralSettings.HistorySize)), $"must be between 0 and {MaxHistorySize}");
+            Warning(issues, ConfigPaths.General(nameof(GeneralSettings.HistorySize)), $"is above {MaxHistorySize}, the most Settings offers");
         }
 
         if (general.PasteDelayMs is < 0 or > MaxPasteDelayMs)

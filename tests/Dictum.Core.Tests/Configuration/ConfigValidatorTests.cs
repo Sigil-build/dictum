@@ -213,16 +213,27 @@ public class ConfigValidatorTests
         Assert.Equal(path, Assert.Single(ConfigValidator.Validate(config)).Path);
     }
 
-    [Theory]
-    [InlineData(-1, "must be zero or positive")]
-    [InlineData(ConfigValidator.MaxHistorySize + 1, "must be between 0 and 5000")]
-    public void HistorySizeMustBeWithinWhatSettingsOffers(int size, string message)
+    [Fact]
+    public void ANegativeHistorySizeIsAnError()
     {
-        var config = DefaultConfig.Create() with { General = new GeneralSettings { HistorySize = size } };
+        var config = DefaultConfig.Create() with { General = new GeneralSettings { HistorySize = -1 } };
 
         var issue = Assert.Single(ConfigValidator.Validate(config));
 
-        Assert.Equal((ConfigIssueSeverity.Error, "general.historySize", message), (issue.Severity, issue.Path, issue.Message));
+        Assert.Equal((ConfigIssueSeverity.Error, "general.historySize", "must be zero or positive"), (issue.Severity, issue.Path, issue.Message));
+    }
+
+    // A hand-edited size above what Settings offers still loads: an error would stop Dictum from using the config at all.
+    [Fact]
+    public void AHistorySizeAboveWhatSettingsOffersIsAWarning()
+    {
+        var config = DefaultConfig.Create() with { General = new GeneralSettings { HistorySize = ConfigValidator.MaxHistorySize + 1 } };
+
+        var issue = Assert.Single(ConfigValidator.Validate(config));
+
+        Assert.Equal(
+            (ConfigIssueSeverity.Warning, "general.historySize", "is above 5000, the most Settings offers"),
+            (issue.Severity, issue.Path, issue.Message));
     }
 
     [Fact]
