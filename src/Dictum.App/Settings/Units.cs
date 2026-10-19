@@ -1,5 +1,6 @@
 using System.Globalization;
 using Dictum.App.Resources;
+using Dictum.Core;
 
 namespace Dictum.App.Settings;
 
@@ -9,9 +10,9 @@ namespace Dictum.App.Settings;
 /// </summary>
 public static class Units
 {
-    private const double BytesPerMegabyte = 1e6;
-    private const double BytesPerGigabyte = 1e9;
-    private const double BytesPerGibibyte = 1L << 30;
+    private const double BytesPerMegabyte = ByteUnits.Megabyte;
+    private const double BytesPerGigabyte = ByteUnits.Gigabyte;
+    private const double BytesPerGibibyte = ByteUnits.Gibibyte;
 
     /// <summary>From ten units up, a decimal adds nothing: "16 MB", "16 s", but "1.5 MB", "0.6 s".</summary>
     private const double WholeFrom = 10;

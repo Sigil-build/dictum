@@ -1,3 +1,4 @@
+using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Vocabulary;
 
@@ -51,7 +52,7 @@ public static class SetupPlanner
     public const string LlmCleanupFallbackId = "llm-cleanup";
 
     /// <summary>Turbo-q8 with its buffers needs about 1.5 GB of GPU memory; below this the CPU model is the safer pick.</summary>
-    public const long MinGpuMemoryBytes = 2L * 1024 * 1024 * 1024;
+    public const long MinGpuMemoryBytes = 2 * ByteUnits.Gibibyte;
 
     /// <summary>Used when <see cref="SttId"/> already names a provider that is not a local Whisper.</summary>
     private const string FallbackSttId = "whisper-local";

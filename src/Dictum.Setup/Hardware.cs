@@ -1,4 +1,5 @@
 using System.Globalization;
+using Dictum.Core;
 
 namespace Dictum.Setup;
 
@@ -8,8 +9,6 @@ public sealed record HardwareInfo(string? GpuName, long FreeDiskBytes, long? Gpu
 
 public static class HardwareText
 {
-    private const double BytesPerGibibyte = 1L << 30;
-
     /// <summary>"Intel(R) Iris(R) Xe Graphics, 15.8 GB shared memory", "RTX 3060, 12.0 GB VRAM", or null without a GPU.</summary>
     public static string? Gpu(HardwareInfo hardware) =>
         hardware.GpuName is not { } name ? null
@@ -17,5 +16,5 @@ public static class HardwareText
         : name;
 
     /// <summary>Binary gigabytes with one decimal, as Windows Task Manager labels them ("15.8 GB").</summary>
-    public static string Memory(long bytes) => string.Create(CultureInfo.InvariantCulture, $"{bytes / BytesPerGibibyte:F1} GB");
+    public static string Memory(long bytes) => string.Create(CultureInfo.InvariantCulture, $"{bytes / (double)ByteUnits.Gibibyte:F1} GB");
 }
