@@ -66,9 +66,13 @@ public sealed class DaemonHostTests : IDisposable
         });
     }
 
-    /// <summary>Runs the daemon on a temp config and socket while <paramref name="body"/> talks to it, then stops it.</summary>
+    /// <summary>
+    /// Runs the daemon on a temp config and socket while <paramref name="body"/> talks to it, waits until it has started,
+    /// then stops it.
+    /// </summary>
     private async Task RunAsync(Func<Task> body)
     {
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var store = new ConfigStore(Path.Combine(_dir, "config.json"), NullLog.Instance);
         store.Save(Config());
         var (config, warnings) = store.LoadWithIssues();
@@ -90,7 +94,7 @@ public sealed class DaemonHostTests : IDisposable
             NullLog.Instance,
             CreateEngine,
             _ => { },
-            _ => { },
+            _ => started.TrySetResult(),
             new FakeSounds());
 
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(_ct);
@@ -98,11 +102,19 @@ public sealed class DaemonHostTests : IDisposable
         try
         {
             await body();
+            await started.Task.WaitAsync(Patience, _ct);
         }
         finally
         {
             await stop.CancelAsync();
-            await run.WaitAsync(Patience, _ct);
+            try
+            {
+                await run.WaitAsync(Patience, _ct);
+            }
+            catch (OperationCanceledException) when (run.IsCanceled)
+            {
+                // A body that failed early stops the daemon while it still starts.
+            }
         }
     }
 
