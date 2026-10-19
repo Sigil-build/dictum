@@ -32,8 +32,6 @@ public sealed class OpenAiCompatibleStt(
 
     public string Id => id;
 
-    public SttCapabilities Capabilities { get; } = new(LanguageDetection: true, Prompt: true, Streaming: false);
-
     public async Task<Transcript> TranscribeAsync(AudioClip clip, SttRequest request, CancellationToken ct)
     {
         var watch = Stopwatch.StartNew();

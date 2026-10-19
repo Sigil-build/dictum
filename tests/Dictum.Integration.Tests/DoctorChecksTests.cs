@@ -81,8 +81,6 @@ public sealed class DoctorChecksTests : IDisposable
     {
         public string Id => "silent";
 
-        public SttCapabilities Capabilities { get; } = new(true, true, false);
-
         public Task<Transcript> TranscribeAsync(AudioClip clip, SttRequest request, CancellationToken ct) => throw new NotSupportedException();
 
         public async Task<HealthStatus> CheckAsync(CancellationToken ct)

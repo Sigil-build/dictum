@@ -39,8 +39,6 @@ internal sealed class FakeStt(string text, string? language = "uk") : ISpeechToT
 {
     public string Id => "fake-stt";
 
-    public SttCapabilities Capabilities { get; } = new(true, true, false);
-
     public SttRequest? LastRequest { get; private set; }
 
     public Exception? Throw { get; init; }

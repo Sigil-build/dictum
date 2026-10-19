@@ -45,8 +45,6 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
 
     public string Id => id;
 
-    public SttCapabilities Capabilities { get; } = new(LanguageDetection: true, Prompt: true, Streaming: false);
-
     public string ModelPath => paths.ResolveModel(config.Model);
 
     /// <summary>The native runtime Whisper.net picked, once a model has been loaded.</summary>

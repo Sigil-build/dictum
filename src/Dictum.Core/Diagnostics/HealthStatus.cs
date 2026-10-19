@@ -17,7 +17,7 @@ public sealed record HealthStatus(HealthLevel Level, string Detail, string? Hint
     public static HealthStatus Error(string detail, string? hint = null) => new(HealthLevel.Error, detail, hint);
 }
 
-/// <summary>Optional self-check for providers and processors that talk to something external.</summary>
+/// <summary>A self-check of something external: every STT provider has one, a processor that calls a server too.</summary>
 public interface IHealthCheck
 {
     /// <summary>How long a check waits for the server it asks.</summary>

@@ -4,20 +4,14 @@ using Dictum.Core.Diagnostics;
 
 namespace Dictum.Core.Stt;
 
-public interface ISpeechToText
+/// <summary>A speech-to-text provider. Every provider checks itself, for <c>dictum doctor</c> and the "Check" button.</summary>
+public interface ISpeechToText : IHealthCheck
 {
     /// <summary>Provider instance id from the config, e.g. "local-turbo".</summary>
     string Id { get; }
 
-    SttCapabilities Capabilities { get; }
-
     Task<Transcript> TranscribeAsync(AudioClip clip, SttRequest request, CancellationToken ct);
-
-    /// <summary>Used by <c>dictum doctor</c> and the "Check" button.</summary>
-    Task<HealthStatus> CheckAsync(CancellationToken ct);
 }
-
-public sealed record SttCapabilities(bool LanguageDetection, bool Prompt, bool Streaming);
 
 /// <param name="Language">ISO 639-1 code, or null to auto-detect.</param>
 /// <param name="Prompt">Vocabulary hint passed to the model.</param>

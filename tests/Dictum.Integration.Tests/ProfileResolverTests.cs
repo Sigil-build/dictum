@@ -122,8 +122,6 @@ public class ProfileResolverTests
     {
         public string Id => id;
 
-        public SttCapabilities Capabilities { get; } = new(true, true, false);
-
         public Task<Transcript> TranscribeAsync(AudioClip clip, SttRequest request, CancellationToken ct) =>
             throw new NotSupportedException();
 

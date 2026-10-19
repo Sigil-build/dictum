@@ -63,8 +63,6 @@ internal sealed class EchoStt(string text) : ISpeechToText
 {
     public string Id => "echo";
 
-    public SttCapabilities Capabilities { get; } = new(true, true, false);
-
     public TaskCompletionSource? Gate { get; set; }
 
     public string Text { get; set; } = text;
