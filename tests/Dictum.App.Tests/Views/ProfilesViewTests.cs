@@ -114,7 +114,7 @@ public sealed class ProfilesViewTests(AvaloniaFixture fx) : IDisposable
         Assert.Equal("", box.Text);
 
         var page = (ProfilesPage)((ProfilesView)window.Content!).DataContext!;
-        page.Words.Single(w => w.Text == "KDE").Remove.Execute(null);
+        page.Words.Chips.Single(w => w.Text == "KDE").Remove.Execute(null);
         Type(window, box, "W");
 
         Assert.DoesNotContain("KDE", session.Config.Profiles[0].Vocabulary);

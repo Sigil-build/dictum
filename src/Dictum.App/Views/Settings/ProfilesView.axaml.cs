@@ -12,7 +12,7 @@ namespace Dictum.App.Views.Settings;
 
 /// <summary>
 /// The chain reorder. Dragging a row by its handle, or Alt+↑ / Alt+↓ on a focused row, moves the step
-/// through <see cref="ProfilesPage.MoveStep"/>, and focus follows the moved row.
+/// through <see cref="ProfileChain.Move"/>, and focus follows the moved row.
 /// </summary>
 public sealed partial class ProfilesView : UserControl
 {
@@ -38,7 +38,7 @@ public sealed partial class ProfilesView : UserControl
 
         // The view owns the words box and the pickers: the page takes the text and gives back the part still being
         // typed; a picker clears itself once its pick has been taken.
-        WordBox.TextChanged += (_, _) => TextBoxes.Typed(WordBox, text => Page?.AddWords(text));
+        WordBox.TextChanged += (_, _) => TextBoxes.Typed(WordBox, text => Page?.Words.Add(text));
         Pickers.ClearAfterPick(this);
         DataContextChanged += (_, _) =>
         {
@@ -100,7 +100,7 @@ public sealed partial class ProfilesView : UserControl
             return;
         }
 
-        var count = Page?.Chain.Count ?? 0;
+        var count = Page?.Chain.Steps.Count ?? 0;
         var to = Math.Clamp(from + (int)Math.Round((e.GetPosition(ChainList).Y - _dragStart) / RowPitch), 0, Math.Max(count - 1, 0));
         _dragged.Classes.Remove(DraggedClass);
         _dragged.RenderTransform = null;
@@ -125,12 +125,12 @@ public sealed partial class ProfilesView : UserControl
 
     private void Move(int from, int to)
     {
-        if (Page is not { } page || to < 0 || to >= page.Chain.Count || to == from)
+        if (Page is not { } page || to < 0 || to >= page.Chain.Steps.Count || to == from)
         {
             return;
         }
 
-        page.MoveStep(from, to);
+        page.Chain.Move(from, to);
 
         // The rows are rebuilt from the new chain; focus the moved one once they exist.
         Dispatcher.UIThread.Post(() => Row(ChainList.ContainerFromIndex(to)?.GetVisualDescendants().OfType<Border>()

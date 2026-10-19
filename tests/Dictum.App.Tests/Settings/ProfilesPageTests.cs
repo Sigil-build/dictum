@@ -83,9 +83,9 @@ public sealed class ProfilesPageTests : IDisposable
         page.Selected = page.Profiles[1];
 
         Assert.Equal(("Home", "Ctrl+Alt+H"), (page.Name, page.Hotkey));
-        Assert.Equal(LanguageMode.One, page.LanguagesMode?.Value);
-        Assert.Equal("uk", page.SingleLanguage?.Value);
-        Assert.True(page.ChainEmpty);
+        Assert.Equal(LanguageMode.One, page.Languages.Mode?.Value);
+        Assert.Equal("uk", page.Languages.One?.Value);
+        Assert.True(page.Chain.Empty);
     }
 
     [Fact]
@@ -212,16 +212,16 @@ public sealed class ProfilesPageTests : IDisposable
     {
         var (page, session) = Open();
 
-        page.LanguagesMode = page.LanguageModes.Single(m => m.Value == LanguageMode.One);
+        page.Languages.Mode = page.Languages.Modes.Single(m => m.Value == LanguageMode.One);
         Assert.Equal("uk", Saved(session, "work").Language);
 
-        page.LanguagesMode = page.LanguageModes.Single(m => m.Value == LanguageMode.Auto);
+        page.Languages.Mode = page.Languages.Modes.Single(m => m.Value == LanguageMode.Auto);
         Assert.Equal("auto", Saved(session, "work").Language);
-        Assert.True(page.ShowsAuto);
+        Assert.True(page.Languages.ShowsAuto);
 
-        page.LanguagesMode = page.LanguageModes.Single(m => m.Value == LanguageMode.Several);
+        page.Languages.Mode = page.Languages.Modes.Single(m => m.Value == LanguageMode.Several);
         Assert.Equal("en", Saved(session, "work").Language);
-        Assert.Equal(LanguageMode.Several, page.LanguagesMode?.Value);
+        Assert.Equal(LanguageMode.Several, page.Languages.Mode?.Value);
     }
 
     [Fact]
@@ -229,11 +229,11 @@ public sealed class ProfilesPageTests : IDisposable
     {
         var (page, session) = Open();
 
-        page.Languages.Single(l => l.Code == "en").Remove.Execute(null);
+        page.Languages.Chips.Single(l => l.Code == "en").Remove.Execute(null);
 
         Assert.Equal("uk", Saved(session, "work").Language);
-        Assert.Equal(LanguageMode.Several, page.LanguagesMode?.Value);
-        Assert.False(page.Languages.Single().Remove.CanExecute(null));
+        Assert.Equal(LanguageMode.Several, page.Languages.Mode?.Value);
+        Assert.False(page.Languages.Chips.Single().Remove.CanExecute(null));
     }
 
     [Fact]
@@ -241,10 +241,10 @@ public sealed class ProfilesPageTests : IDisposable
     {
         var (page, session) = Open();
 
-        page.LanguageToAdd = page.AllLanguages.Single(l => l.Value == "pl");
+        page.Languages.ToAdd = page.Languages.All.Single(l => l.Value == "pl");
 
         Assert.Equal("uk, en, pl", Saved(session, "work").Language);
-        Assert.Null(page.LanguageToAdd);
+        Assert.Null(page.Languages.ToAdd);
     }
 
     [Fact]
@@ -252,10 +252,10 @@ public sealed class ProfilesPageTests : IDisposable
     {
         var (page, _) = Open();
 
-        page.LanguageToAdd = page.AllLanguages.Single(l => l.Value == "be");
+        page.Languages.ToAdd = page.Languages.All.Single(l => l.Value == "be");
 
-        Assert.Equal("Українська and Беларуская are closely related — Whisper often picks the wrong one. Keep one here and move the other to its own profile.", page.SimilarWarning);
-        Assert.Equal([true, false, true], page.Languages.Select(l => l.Warned));
+        Assert.Equal("Українська and Беларуская are closely related — Whisper often picks the wrong one. Keep one here and move the other to its own profile.", page.Languages.SimilarWarning);
+        Assert.Equal([true, false, true], page.Languages.Chips.Select(l => l.Warned));
     }
 
     // Review focus 4.
@@ -264,12 +264,12 @@ public sealed class ProfilesPageTests : IDisposable
     {
         var (page, session) = Open();
 
-        Assert.Equal("", page.AddWords("KDE,"));
+        Assert.Equal("", page.Words.Add("KDE,"));
         Assert.Equal(["Nexus5", "Avalonia", "KDE"], Saved(session, "work").Vocabulary);
 
-        Assert.Equal("pull re", page.AddWords("Wayland\nydotool; nexus5, pull re"));
+        Assert.Equal("pull re", page.Words.Add("Wayland\nydotool; nexus5, pull re"));
         Assert.Equal(["Nexus5", "Avalonia", "KDE", "Wayland", "ydotool"], Saved(session, "work").Vocabulary);
-        Assert.Equal("Words: 5", page.WordCount);
+        Assert.Equal("Words: 5", page.Words.Count);
     }
 
     [Fact]
@@ -277,7 +277,7 @@ public sealed class ProfilesPageTests : IDisposable
     {
         var (page, session) = Open();
 
-        page.Words[0].Remove.Execute(null);
+        page.Words.Chips[0].Remove.Execute(null);
 
         Assert.Equal(["Avalonia"], Saved(session, "work").Vocabulary);
     }
@@ -287,13 +287,13 @@ public sealed class ProfilesPageTests : IDisposable
     {
         var (page, session) = Open();
 
-        Assert.Equal(["LLM prompt", "Rules: 1"], page.Chain.Select(s => s.Kind));
-        Assert.Equal([1, 2], page.Chain.Select(s => s.Position));
+        Assert.Equal(["LLM prompt", "Rules: 1"], page.Chain.Steps.Select(s => s.Kind));
+        Assert.Equal([1, 2], page.Chain.Steps.Select(s => s.Position));
 
-        page.MoveStep(0, 1);
+        page.Chain.Move(0, 1);
         Assert.Equal(["terms", "cleanup"], Saved(session, "work").Pipeline);
 
-        page.MoveStep(1, 5);
+        page.Chain.Move(1, 5);
         Assert.Equal(["terms", "cleanup"], Saved(session, "work").Pipeline);
     }
 
@@ -302,13 +302,13 @@ public sealed class ProfilesPageTests : IDisposable
     {
         var (page, session) = Open();
 
-        page.Chain[0].Remove.Execute(null);
+        page.Chain.Steps[0].Remove.Execute(null);
         Assert.Equal(["terms"], Saved(session, "work").Pipeline);
-        Assert.Equal(["cleanup", "filler"], page.StepsToAdd.Select(s => s.Value));
+        Assert.Equal(["cleanup", "filler"], page.Chain.Choices.Select(s => s.Value));
 
-        page.StepToAdd = page.StepsToAdd[0];
+        page.Chain.ToAdd = page.Chain.Choices[0];
         Assert.Equal(["terms", "cleanup"], Saved(session, "work").Pipeline);
-        Assert.Null(page.StepToAdd);
+        Assert.Null(page.Chain.ToAdd);
     }
 
     [Fact]
@@ -335,7 +335,7 @@ public sealed class ProfilesPageTests : IDisposable
         page.Provider = page.Providers[1];
 
         Assert.Equal("remote", Saved(session, "work").Stt);
-        Assert.Equal("'remote' takes a single language, so with a list the server detects any language", page.LanguageNote);
+        Assert.Equal("'remote' takes a single language, so with a list the server detects any language", page.Languages.Note);
     }
 
     [Fact]

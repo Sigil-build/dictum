@@ -58,13 +58,13 @@
               <TextBlock Text="{x:Static res:Strings.SettingsProfilesLanguagesHint}" Classes="hint" />
             </StackPanel>
             <StackPanel Grid.Column="2" Spacing="8">
-              <ListBox Classes="segmented" ItemsSource="{Binding LanguageModes}" SelectedItem="{Binding LanguagesMode}"
+              <ListBox Classes="segmented" ItemsSource="{Binding Languages.Modes}" SelectedItem="{Binding Languages.Mode}"
                        AutomationProperties.Name="{x:Static res:Strings.SettingsProfilesLanguageMode}" />
-              <ComboBox Width="260" ItemsSource="{Binding AllLanguages}" SelectedItem="{Binding SingleLanguage}"
-                        IsTextSearchEnabled="True" IsVisible="{Binding ShowsOneLanguage}"
+              <ComboBox Width="260" ItemsSource="{Binding Languages.All}" SelectedItem="{Binding Languages.One}"
+                        IsTextSearchEnabled="True" IsVisible="{Binding Languages.ShowsOne}"
                         AutomationProperties.Name="{x:Static res:Strings.SettingsProfilesLanguages}" />
-              <StackPanel Spacing="6" IsVisible="{Binding ShowsSeveralLanguages}">
-                <ItemsControl ItemsSource="{Binding Languages}">
+              <StackPanel Spacing="6" IsVisible="{Binding Languages.ShowsSeveral}">
+                <ItemsControl ItemsSource="{Binding Languages.Chips}">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                       <WrapPanel />
@@ -82,17 +82,17 @@
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <ComboBox x:Name="LanguagePicker" Classes="picker" Width="260" ItemsSource="{Binding AllLanguages}" SelectedItem="{Binding LanguageToAdd}"
+                <ComboBox x:Name="LanguagePicker" Classes="picker" Width="260" ItemsSource="{Binding Languages.All}" SelectedItem="{Binding Languages.ToAdd}"
                           IsTextSearchEnabled="True" PlaceholderText="{x:Static res:Strings.SettingsProfilesLanguageAdd}"
                           AutomationProperties.Name="{x:Static res:Strings.SettingsProfilesLanguageAdd}" />
               </StackPanel>
-              <TextBlock Text="{x:Static res:Strings.SettingsProfilesLanguageAutoHint}" Classes="hint" IsVisible="{Binding ShowsAuto}" />
-              <TextBlock Text="{Binding LanguageNote}" Classes="warning" IsVisible="{Binding LanguageNote, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <TextBlock Text="{x:Static res:Strings.SettingsProfilesLanguageAutoHint}" Classes="hint" IsVisible="{Binding Languages.ShowsAuto}" />
+              <TextBlock Text="{Binding Languages.Note}" Classes="warning" IsVisible="{Binding Languages.Note, Converter={x:Static ObjectConverters.IsNotNull}}" />
             </StackPanel>
           </Grid>
         </Border>
-        <Border Classes="banner" Margin="0,-4,0,0" IsVisible="{Binding SimilarWarning, Converter={x:Static ObjectConverters.IsNotNull}}">
-          <TextBlock Text="{Binding SimilarWarning}" Margin="156,0,0,0" />
+        <Border Classes="banner" Margin="0,-4,0,0" IsVisible="{Binding Languages.SimilarWarning, Converter={x:Static ObjectConverters.IsNotNull}}">
+          <TextBlock Text="{Binding Languages.SimilarWarning}" Margin="156,0,0,0" />
         </Border>
 
         <Border Classes="editorRow">
@@ -102,7 +102,7 @@
               <TextBlock Text="{x:Static res:Strings.SettingsProfilesWordsHint}" Classes="hint" />
             </StackPanel>
             <StackPanel Grid.Column="2" Spacing="8">
-              <ItemsControl ItemsSource="{Binding Words}">
+              <ItemsControl ItemsSource="{Binding Words.Chips}">
                 <ItemsControl.ItemsPanel>
                   <ItemsPanelTemplate>
                     <WrapPanel />
@@ -124,9 +124,9 @@
                 <TextBox x:Name="WordBox" AcceptsReturn="True" TextWrapping="NoWrap"
                          PlaceholderText="{x:Static res:Strings.SettingsProfilesWordsPlaceholder}"
                          AutomationProperties.Name="{x:Static res:Strings.SettingsProfilesWords}" />
-                <TextBlock Grid.Column="2" Text="{Binding WordCount}" Classes="hint" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Text="{Binding Words.Count}" Classes="hint" VerticalAlignment="Center" />
               </Grid>
-              <TextBlock Text="{Binding WordsNote}" Classes="warning" IsVisible="{Binding WordsNote, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <TextBlock Text="{Binding Words.Note}" Classes="warning" IsVisible="{Binding Words.Note, Converter={x:Static ObjectConverters.IsNotNull}}" />
             </StackPanel>
           </Grid>
         </Border>
@@ -149,7 +149,7 @@
               <TextBlock Text="{x:Static res:Strings.SettingsProfilesChainHint}" Classes="hint" />
             </StackPanel>
             <StackPanel Grid.Column="2" Spacing="6">
-              <ItemsControl x:Name="ChainList" ItemsSource="{Binding Chain}">
+              <ItemsControl x:Name="ChainList" ItemsSource="{Binding Chain.Steps}">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="vm:ChainStep">
                     <Border Classes="chainRow">
@@ -169,11 +169,11 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <TextBlock Text="{x:Static res:Strings.SettingsProfilesChainEmpty}" Classes="hint" IsVisible="{Binding ChainEmpty}" />
-              <ComboBox x:Name="StepPicker" Classes="picker" Width="260" ItemsSource="{Binding StepsToAdd}" SelectedItem="{Binding StepToAdd}" IsVisible="{Binding CanAddStep}"
+              <TextBlock Text="{x:Static res:Strings.SettingsProfilesChainEmpty}" Classes="hint" IsVisible="{Binding Chain.Empty}" />
+              <ComboBox x:Name="StepPicker" Classes="picker" Width="260" ItemsSource="{Binding Chain.Choices}" SelectedItem="{Binding Chain.ToAdd}" IsVisible="{Binding Chain.CanAdd}"
                         PlaceholderText="{x:Static res:Strings.SettingsProfilesChainAdd}"
                         AutomationProperties.Name="{x:Static res:Strings.SettingsProfilesChainAdd}" />
-              <TextBlock Text="{Binding ChainNote}" Classes="error" IsVisible="{Binding ChainNote, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              <TextBlock Text="{Binding Chain.Note}" Classes="error" IsVisible="{Binding Chain.Note, Converter={x:Static ObjectConverters.IsNotNull}}" />
             </StackPanel>
           </Grid>
         </Border>

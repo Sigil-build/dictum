@@ -62,7 +62,7 @@ public sealed partial class PastingPage : SettingsPage
     [ObservableProperty]
     public partial Option<InjectorBackend>? Injector { get; set; }
 
-    /// <summary>Text from the apps box: complete names are added; the part still being typed comes back, as in <see cref="ProfilesPage.AddWords"/>.</summary>
+    /// <summary>Text from the apps box: complete names are added; the part still being typed comes back, as in <see cref="ProfileWords.Add"/>.</summary>
     public string AddApps(string text)
     {
         var (apps, typing) = WordList.Split(text);

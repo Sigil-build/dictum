@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Daemon;
@@ -10,21 +8,11 @@ using Dictum.Host.Ipc;
 
 namespace Dictum.App.ViewModels.Settings;
 
-public sealed record ProfileItem(string Id, string Name, string Caption)
-{
-    public override string ToString() => Name;
-}
-
-public sealed record LanguageChip(string Code, string Name, bool Warned, ICommand Remove);
-
-public sealed record WordChip(string Text, ICommand Remove);
-
-public sealed record ChainStep(string Id, string Kind, int Position, ICommand Remove);
-
 /// <summary>
-/// Settings → Profiles: the profile list and the editor of the selected one. Every edit finds the profile by id inside
-/// the change, as an outside edit may reorder the list. While the recorder listens, the daemon's hotkeys are paused
-/// through a request queue, unless they were paused already.
+/// Settings → Profiles: the profile list and the editor of the selected one, whose <see cref="Languages"/>,
+/// <see cref="Words"/> and <see cref="Chain"/> have editors of their own. Every edit finds the profile by id inside the
+/// change, as an outside edit may reorder the list. While the recorder listens, the daemon's hotkeys are paused through
+/// a request queue, unless they were paused already.
 /// </summary>
 public sealed partial class ProfilesPage : SettingsPage
 {
@@ -32,7 +20,6 @@ public sealed partial class ProfilesPage : SettingsPage
     private readonly IDaemonChannel _channel;
     private readonly RequestQueue _requests = new();
     private string? _id;
-    private LanguageMode? _shownMode;
     private bool _pausedByUs;
     private bool _loading;
 
@@ -41,14 +28,9 @@ public sealed partial class ProfilesPage : SettingsPage
         _session = session;
         _channel = channel;
         Modes = [new(HotkeyMode.PushToTalk, Strings.SettingsProfilesPushToTalk), new(HotkeyMode.Toggle, Strings.SettingsProfilesToggle)];
-        LanguageModes =
-        [
-            new(LanguageMode.One, Strings.SettingsProfilesLanguageOne),
-            new(LanguageMode.Several, Strings.SettingsProfilesLanguageSeveral),
-            new(LanguageMode.Auto, Strings.SettingsProfilesLanguageAuto),
-        ];
-        AllLanguages = [.. WhisperLanguages.Codes.Select(code => new Option<string>(code, WhisperLanguages.Name(code)))
-            .OrderBy(o => o.Label, StringComparer.Create(CultureInfo.CurrentCulture, ignoreCase: true))];
+        Languages = new ProfileLanguages(session, () => Current, EditProfile);
+        Words = new ProfileWords(session, EditProfile);
+        Chain = new ProfileChain(session, EditProfile);
         PasteShortcuts =
         [
             new(PasteShortcut.Auto, Strings.SettingsProfilesShortcutAuto),
@@ -63,9 +45,11 @@ public sealed partial class ProfilesPage : SettingsPage
 
     public IReadOnlyList<Option<HotkeyMode>> Modes { get; }
 
-    public IReadOnlyList<Option<LanguageMode>> LanguageModes { get; }
+    public ProfileLanguages Languages { get; }
 
-    public IReadOnlyList<Option<string>> AllLanguages { get; }
+    public ProfileWords Words { get; }
+
+    public ProfileChain Chain { get; }
 
     public IReadOnlyList<Option<PasteShortcut>> PasteShortcuts { get; }
 
@@ -106,62 +90,7 @@ public sealed partial class ProfilesPage : SettingsPage
     public partial Option<HotkeyMode>? Mode { get; set; }
 
     [ObservableProperty]
-    public partial Option<LanguageMode>? LanguagesMode { get; set; }
-
-    [ObservableProperty]
-    public partial bool ShowsOneLanguage { get; private set; }
-
-    [ObservableProperty]
-    public partial bool ShowsSeveralLanguages { get; private set; }
-
-    [ObservableProperty]
-    public partial bool ShowsAuto { get; private set; }
-
-    [ObservableProperty]
-    public partial Option<string>? SingleLanguage { get; set; }
-
-    [ObservableProperty]
-    public partial IReadOnlyList<LanguageChip> Languages { get; private set; } = [];
-
-    [ObservableProperty]
-    public partial Option<string>? LanguageToAdd { get; set; }
-
-    [ObservableProperty]
-    public partial string? SimilarWarning { get; private set; }
-
-    /// <summary>A validator warning on the languages other than the similar pair, such as a list sent to a remote server.</summary>
-    [ObservableProperty]
-    public partial string? LanguageNote { get; private set; }
-
-    [ObservableProperty]
-    public partial IReadOnlyList<WordChip> Words { get; private set; } = [];
-
-    [ObservableProperty]
-    public partial string WordCount { get; private set; } = "";
-
-    [ObservableProperty]
-    public partial string? WordsNote { get; private set; }
-
-    [ObservableProperty]
     public partial string SpeechHint { get; set; } = "";
-
-    [ObservableProperty]
-    public partial IReadOnlyList<ChainStep> Chain { get; private set; } = [];
-
-    [ObservableProperty]
-    public partial bool ChainEmpty { get; private set; }
-
-    [ObservableProperty]
-    public partial IReadOnlyList<Option<string>> StepsToAdd { get; private set; } = [];
-
-    [ObservableProperty]
-    public partial Option<string>? StepToAdd { get; set; }
-
-    [ObservableProperty]
-    public partial bool CanAddStep { get; private set; }
-
-    [ObservableProperty]
-    public partial string? ChainNote { get; private set; }
 
     [ObservableProperty]
     public partial bool OutputPaste { get; set; }
@@ -188,22 +117,6 @@ public sealed partial class ProfilesPage : SettingsPage
 
     public override void OnHidden() => IsRecording = false;
 
-    /// <summary>
-    /// Text from the words box: complete words are added, and the part still being typed comes back for the box. The
-    /// view owns the box, since a reset made inside the box's own binding write never reaches it.
-    /// </summary>
-    public string AddWords(string text)
-    {
-        var (words, typing) = WordList.Split(text);
-        if (words.Count == 0)
-        {
-            return text;
-        }
-
-        EditProfile(p => p with { Vocabulary = WordList.Add(p.Vocabulary, words) });
-        return typing;
-    }
-
     public override void OnLink(DaemonLink link)
     {
         // The daemon can outlive a dropped event stream, still paused by us: lift the pause once it answers again.
@@ -216,21 +129,6 @@ public sealed partial class ProfilesPage : SettingsPage
         HotkeyWarning = RegistrationWarning(link);
     }
 
-    /// <summary>Moves a chain step; out-of-range positions change nothing.</summary>
-    public void MoveStep(int from, int to) => EditProfile(p =>
-    {
-        if (from == to || from < 0 || to < 0 || from >= p.Pipeline.Count || to >= p.Pipeline.Count)
-        {
-            return p;
-        }
-
-        var steps = p.Pipeline.ToList();
-        var step = steps[from];
-        steps.RemoveAt(from);
-        steps.Insert(to, step);
-        return p with { Pipeline = steps };
-    });
-
     partial void OnSelectedChanged(ProfileItem? value)
     {
         if (_loading || value is null)
@@ -240,7 +138,7 @@ public sealed partial class ProfilesPage : SettingsPage
 
         IsRecording = false;
         _id = value.Id;
-        _shownMode = null;
+        Languages.Reset();
         Reload();
     }
 
@@ -272,39 +170,7 @@ public sealed partial class ProfilesPage : SettingsPage
         }
     }
 
-    partial void OnLanguagesModeChanged(Option<LanguageMode>? value)
-    {
-        if (value is not null)
-        {
-            EditLanguage(s => s.WithMode(value.Value, WhisperLanguages.Fallback()));
-        }
-    }
-
-    partial void OnSingleLanguageChanged(Option<string>? value)
-    {
-        if (value is not null)
-        {
-            EditLanguage(s => s.With(value.Value));
-        }
-    }
-
-    partial void OnLanguageToAddChanged(Option<string>? value)
-    {
-        if (value is not null)
-        {
-            EditLanguage(s => s.With(value.Value));
-        }
-    }
-
     partial void OnSpeechHintChanged(string value) => EditProfile(p => p with { SttPrompt = value.Length == 0 ? null : value });
-
-    partial void OnStepToAddChanged(Option<string>? value)
-    {
-        if (value is not null)
-        {
-            EditProfile(p => p with { Pipeline = [.. p.Pipeline, value.Value] });
-        }
-    }
 
     partial void OnOutputPasteChanged(bool value) => SetOutput(value, OutputMode.Paste);
 
@@ -341,7 +207,7 @@ public sealed partial class ProfilesPage : SettingsPage
         var id = UniqueIds.For("profile", candidate => config.Profiles.Any(p => p.Id == candidate));
         IsRecording = false;
         _id = id;
-        _shownMode = null;
+        Languages.Reset();
         _session.Edit(c =>
         {
             c.Profiles.Add(new ProfileConfig
@@ -378,18 +244,6 @@ public sealed partial class ProfilesPage : SettingsPage
         {
             EditProfile(p => p with { Output = output });
         }
-    }
-
-    private void EditLanguage(Func<LanguageSetting, LanguageSetting> change)
-    {
-        if (_loading)
-        {
-            return;
-        }
-
-        var next = change(LanguageSetting.Parse(Current?.Language, _shownMode));
-        _shownMode = next.Mode;
-        EditProfile(p => p with { Language = next.Format() });
     }
 
     private void EditProfile(Func<ProfileConfig, ProfileConfig> change)
@@ -480,53 +334,12 @@ public sealed partial class ProfilesPage : SettingsPage
         HotkeyError = _session.IssueAt(ConfigPaths.Field(path, nameof(ProfileConfig.Hotkey))) ?? DuplicateHotkey(config, index);
         HotkeyWarning = RegistrationWarning(_channel.Link);
         Mode = Modes.FirstOrDefault(m => m.Value == profile.Mode) ?? Modes[0];
-        LoadLanguages(profile, path);
-        LoadWords(profile, path);
+        Languages.Load(profile, path);
+        Words.Load(profile, path);
         SpeechHint = profile.SttPrompt ?? "";
-        LoadChain(config, profile, path);
+        Chain.Load(config, profile, path);
         LoadOutput(profile);
         LoadProvider(config, profile, path);
-    }
-
-    private void LoadLanguages(ProfileConfig profile, string path)
-    {
-        var setting = LanguageSetting.Parse(profile.Language, _shownMode);
-        LanguagesMode = LanguageModes.Single(m => m.Value == setting.Mode);
-        ShowsOneLanguage = setting.Mode == LanguageMode.One;
-        ShowsSeveralLanguages = setting.Mode == LanguageMode.Several;
-        ShowsAuto = setting.Mode == LanguageMode.Auto;
-        var pairs = LanguageList.SimilarPairs(setting.Codes);
-        var warned = pairs.SelectMany(p => new[] { p.First, p.Second }).ToHashSet();
-        var removable = setting.Codes.Count > 1;
-        Languages = [.. setting.Codes.Select(code => new LanguageChip(code, WhisperLanguages.Name(code), warned.Contains(code),
-            new RelayCommand(() => EditLanguage(s => s.Without(code)), () => removable)))];
-        SingleLanguage = ShowsOneLanguage ? AllLanguages.FirstOrDefault(o => o.Value == setting.Codes[0]) : null;
-        LanguageToAdd = null;
-        SimilarWarning = pairs.Count > 0
-            ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsProfilesSimilar, WhisperLanguages.Name(pairs[0].First), WhisperLanguages.Name(pairs[0].Second))
-            : null;
-        var similarText = LanguageList.SimilarWarning(setting.Codes);
-        LanguageNote = _session.Issues.FirstOrDefault(i => i.Path == ConfigPaths.Field(path, nameof(ProfileConfig.Language)) && i.Message != similarText)?.Message;
-    }
-
-    private void LoadWords(ProfileConfig profile, string path)
-    {
-        Words = [.. profile.Vocabulary.Select(word => new WordChip(word,
-            new RelayCommand(() => EditProfile(p => p with { Vocabulary = [.. p.Vocabulary.Where(w => w != word)] }))))];
-        WordCount = string.Format(CultureInfo.CurrentCulture, Strings.SettingsProfilesWordCount, profile.Vocabulary.Count);
-        WordsNote = _session.Issues.FirstOrDefault(i => i.Path.StartsWith(ConfigPaths.Field(path, nameof(ProfileConfig.Vocabulary)), StringComparison.Ordinal))?.Message;
-    }
-
-    private void LoadChain(DictumConfig config, ProfileConfig profile, string path)
-    {
-        Chain = [.. profile.Pipeline.Select((id, i) => new ChainStep(id, Kind(config, id), i + 1,
-            new RelayCommand(() => EditProfile(p => p with { Pipeline = [.. p.Pipeline.Where(s => s != id)] }))))];
-        ChainEmpty = Chain.Count == 0;
-        StepsToAdd = [.. config.Processors.Keys.Where(id => !profile.Pipeline.Contains(id)).Order(StringComparer.Ordinal)
-            .Select(id => new Option<string>(id, string.Format(CultureInfo.CurrentCulture, Strings.SettingsProfilesStep, id, Kind(config, id))))];
-        StepToAdd = null;
-        CanAddStep = StepsToAdd.Count > 0;
-        ChainNote = _session.IssueAt(ConfigPaths.Field(path, nameof(ProfileConfig.Pipeline)));
     }
 
     private void LoadOutput(ProfileConfig profile)
@@ -542,7 +355,7 @@ public sealed partial class ProfilesPage : SettingsPage
         List<Option<string>> providers = [.. config.Stt.Select(kv => new Option<string>(kv.Key, ProviderLabels.For(kv.Value)))];
         if (!config.Stt.ContainsKey(profile.Stt))
         {
-            providers.Add(new Option<string>(profile.Stt, string.Format(CultureInfo.CurrentCulture, Strings.SettingsProfilesProviderMissing, profile.Stt)));
+            providers.Add(new Option<string>(profile.Stt, UiText.Format(Strings.SettingsProfilesProviderMissing, profile.Stt)));
         }
 
         if (!providers.SequenceEqual(Providers))
@@ -580,13 +393,6 @@ public sealed partial class ProfilesPage : SettingsPage
     private static string Caption(ProfileConfig profile)
     {
         var languages = LanguageList.Parse(profile.Language) is { } codes ? LanguageList.Format(codes) : profile.Language ?? "";
-        return string.Format(CultureInfo.CurrentCulture, Strings.SettingsProfilesCaption, languages, profile.Hotkey ?? Strings.SettingsHotkeyNone);
+        return UiText.Format(Strings.SettingsProfilesCaption, languages, profile.Hotkey ?? Strings.SettingsHotkeyNone);
     }
-
-    private static string Kind(DictumConfig config, string id) => config.Processors.GetValueOrDefault(id) switch
-    {
-        LlmProcessorConfig => Strings.SettingsChainLlm,
-        ReplaceProcessorConfig replace => string.Format(CultureInfo.CurrentCulture, Strings.SettingsChainRules, replace.Rules.Count),
-        _ => Strings.SettingsChainMissing,
-    };
 }
