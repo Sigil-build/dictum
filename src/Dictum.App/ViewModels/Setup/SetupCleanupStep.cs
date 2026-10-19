@@ -15,9 +15,6 @@ namespace Dictum.App.ViewModels.Setup;
 /// </summary>
 public sealed partial class SetupCleanupStep : SetupStep
 {
-    /// <summary><c>init</c>'s default: llama-server's port.</summary>
-    public const string DefaultUrl = "http://localhost:8080/v1";
-
     private readonly IServerProbe _probe;
     private readonly ExistingLlmServer? _current;
     private (string Url, string Model, string Key)? _tested;
@@ -28,7 +25,7 @@ public sealed partial class SetupCleanupStep : SetupStep
     {
         _probe = probe;
         _current = current;
-        Url = current?.BaseUrl ?? DefaultUrl;
+        Url = current?.BaseUrl ?? DefaultConfig.LocalServerUrl;
         Model = current?.Model ?? "";
         UseServer = current is not null;
         Update();

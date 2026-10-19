@@ -1,5 +1,6 @@
 using Dictum.App.Settings;
 using Dictum.App.ViewModels.Setup;
+using Dictum.Core.Configuration;
 using Dictum.Setup;
 
 namespace Dictum.App.Tests.Setup;
@@ -22,7 +23,7 @@ public sealed class SetupCleanupStepTests
         var step = new SetupCleanupStep(_probe, null);
 
         Assert.Equal(("Text clean-up", false, true, true), (step.Name, step.UseServer, step.Off, step.CanContinue));
-        Assert.Equal(SetupCleanupStep.DefaultUrl, step.Url);
+        Assert.Equal(DefaultConfig.LocalServerUrl, step.Url);
         Assert.Equal((CleanupChoice.None, (ExistingLlmServer?)null, (string?)null), step.Answer(Reference));
     }
 

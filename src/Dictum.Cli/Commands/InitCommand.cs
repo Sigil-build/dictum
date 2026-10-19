@@ -22,7 +22,6 @@ internal static class InitCommand
     private const string NoCleanup = "none";
     private const string GpuAuto = "auto";
     private const string GpuCpu = "cpu";
-    private const string DefaultServerUrl = "http://localhost:8080/v1";
 
     public static Command Create()
     {
@@ -188,7 +187,7 @@ internal static class InitCommand
         var baseUrl = AskServerUrl();
         while (!ConfigValidator.IsHttpUrl(baseUrl))
         {
-            context.Error.WriteLine($"'{baseUrl}' is not a server URL; it starts with http:// or https://, e.g. {DefaultServerUrl}.");
+            context.Error.WriteLine($"'{baseUrl}' is not a server URL; it starts with http:// or https://, e.g. {DefaultConfig.LocalServerUrl}.");
             baseUrl = AskServerUrl();
         }
 
@@ -216,7 +215,7 @@ internal static class InitCommand
 
         return (new ExistingLlmServer(baseUrl, modelName, apiKey), pendingSecret);
 
-        string AskServerUrl() => prompt.Ask("Server URL, including /v1", current?.BaseUrl ?? DefaultServerUrl);
+        string AskServerUrl() => prompt.Ask("Server URL, including /v1", current?.BaseUrl ?? DefaultConfig.LocalServerUrl);
     }
 
     private static async Task<List<string>> AskWordsAsync(ConsolePrompt prompt, bool interactive, string? vocabFile, CancellationToken ct)

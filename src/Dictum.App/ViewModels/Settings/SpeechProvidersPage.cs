@@ -12,9 +12,6 @@ namespace Dictum.App.ViewModels.Settings;
 /// </summary>
 public sealed partial class SpeechProvidersPage : SettingsPage
 {
-    /// <summary>Where whisper-server listens by default.</summary>
-    private const string DefaultServerUrl = "http://localhost:8080/v1";
-
     /// <summary>OpenAI's model name for Whisper.</summary>
     private const string DefaultServerModel = "whisper-1";
 
@@ -61,7 +58,7 @@ public sealed partial class SpeechProvidersPage : SettingsPage
         var id = UniqueIds.For("remote", _session.Config.Stt.ContainsKey);
         _session.Edit(c =>
         {
-            c.Stt[id] = new OpenAiCompatibleSttConfig { BaseUrl = DefaultServerUrl, Model = DefaultServerModel };
+            c.Stt[id] = new OpenAiCompatibleSttConfig { BaseUrl = DefaultConfig.LocalServerUrl, Model = DefaultServerModel };
             return c;
         });
     }

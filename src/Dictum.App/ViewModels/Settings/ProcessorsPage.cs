@@ -23,9 +23,6 @@ public sealed record ProcessorItem(string Id, string Caption)
 /// </summary>
 public sealed partial class ProcessorsPage : SettingsPage
 {
-    /// <summary>Where llama-server listens by default.</summary>
-    private const string DefaultServerUrl = "http://localhost:8080/v1";
-
     /// <summary>llama-server answers to any model name.</summary>
     private const string DefaultModel = "local";
 
@@ -102,7 +99,7 @@ public sealed partial class ProcessorsPage : SettingsPage
         {
             c.Processors[id] = new LlmProcessorConfig
             {
-                BaseUrl = model?.BaseUrl ?? DefaultServerUrl,
+                BaseUrl = model?.BaseUrl ?? DefaultConfig.LocalServerUrl,
                 Model = model?.Model ?? DefaultModel,
                 Prompt = prompt,
                 ApiKey = model?.ApiKey,
