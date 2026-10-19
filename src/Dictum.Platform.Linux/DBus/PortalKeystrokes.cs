@@ -9,7 +9,7 @@ namespace Dictum.Platform.Linux.DBus;
 /// whether Dictum may control the keyboard, and a restore token (kept in the data directory) lets it
 /// reconnect later without asking again. Needs no root and no extra daemon.
 /// </summary>
-public sealed class PortalKeystrokes(Portal portal, string restoreTokenFile, ILog log) : IKeystrokeSender, IPreparable
+public sealed class PortalKeystrokes(Portal portal, string restoreTokenFile, ILog log) : IKeystrokeSender, IPreparable, IDisposable
 {
     public const string Interface = "org.freedesktop.portal.RemoteDesktop";
 
@@ -40,6 +40,12 @@ public sealed class PortalKeystrokes(Portal portal, string restoreTokenFile, ILo
             await connection.CallMethodAsync(BuildKey(connection, session, code, pressed: false)).ConfigureAwait(false);
             await Task.Delay(8, ct).ConfigureAwait(false);
         }
+    }
+
+    public void Dispose()
+    {
+        _closed?.Dispose();
+        _gate.Dispose();
     }
 
     private async Task<string> EnsureSessionAsync(CancellationToken ct)

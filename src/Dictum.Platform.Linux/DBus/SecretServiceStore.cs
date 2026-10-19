@@ -10,7 +10,7 @@ namespace Dictum.Platform.Linux.DBus;
 /// attributes application=dictum and name=&lt;key&gt; in the default collection. Uses the "plain" session:
 /// the secret travels over the local session bus only.
 /// </summary>
-public sealed class SecretServiceStore(Portal portal, ILog log) : ISecretStore
+public sealed class SecretServiceStore(Portal portal, ILog log) : ISecretStore, IDisposable
 {
     private const string Service = "org.freedesktop.secrets";
     private const string ServicePath = "/org/freedesktop/secrets";
@@ -68,6 +68,9 @@ public sealed class SecretServiceStore(Portal portal, ILog log) : ISecretStore
         }
     }
 
+    /// <summary>Releases the gate only; the portal connection is shared and stays with its owner.</summary>
+    public void Dispose() => _gate.Dispose();
+
     private async Task<(DBusConnection Connection, string Session)> OpenAsync(CancellationToken ct)
     {
         await _gate.WaitAsync(ct).ConfigureAwait(false);
@@ -91,7 +94,7 @@ public sealed class SecretServiceStore(Portal portal, ILog log) : ISecretStore
         }
     }
 
-    private async Task<string[]> UnlockAsync(DBusConnection connection, string[] items, CancellationToken ct)
+    private static async Task<string[]> UnlockAsync(DBusConnection connection, string[] items, CancellationToken ct)
     {
         var (unlocked, prompt) = await CallAsync(
             connection,

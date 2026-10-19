@@ -29,14 +29,15 @@ public static unsafe partial class X11Overlay
             return false;
         }
 
+        // These Xlib calls always return 1: X errors arrive later, through the error handler.
         var attributes = new SetWindowAttributes { OverrideRedirect = 1 };
-        XChangeWindowAttributes(display, window, OverrideRedirectMask, ref attributes);
+        _ = XChangeWindowAttributes(display, window, OverrideRedirectMask, ref attributes);
         var type = XInternAtom(display, "_NET_WM_WINDOW_TYPE", 0);
         var notification = XInternAtom(display, "_NET_WM_WINDOW_TYPE_NOTIFICATION", 0);
-        XChangeProperty(display, window, type, AtomType, 32, PropModeReplace, &notification, 1);
+        _ = XChangeProperty(display, window, type, AtomType, 32, PropModeReplace, &notification, 1);
         Rectangle none = default;
         XShapeCombineRectangles(display, window, ShapeInput, 0, 0, &none, 0, ShapeSet, 0);
-        XFlush(display);
+        _ = XFlush(display);
         return true;
     }
 
@@ -111,6 +112,6 @@ public static unsafe partial class X11Overlay
     private static partial nint XResourceManagerString(nint display);
 
     [LibraryImport(LibXext)]
-    private static partial int XShapeCombineRectangles(
+    private static partial void XShapeCombineRectangles(
         nint display, nuint window, int kind, int x, int y, Rectangle* rectangles, int count, int operation, int ordering);
 }

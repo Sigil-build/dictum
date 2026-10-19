@@ -8,7 +8,7 @@ namespace Dictum.Platform.Linux.DBus;
 /// registration and interface versions. Messages are built by hand with <see cref="MessageWriter"/>
 /// (no code generator, no reflection).
 /// </summary>
-public sealed class Portal
+public sealed class Portal : IDisposable
 {
     public const string Destination = "org.freedesktop.portal.Desktop";
     public const string ObjectPath = "/org/freedesktop/portal/desktop";
@@ -22,6 +22,8 @@ public sealed class Portal
     public Portal(ILog log) => _log = log;
 
     public Task<DBusConnection> ConnectAsync(CancellationToken ct) => _bus.ConnectAsync(ct);
+
+    public void Dispose() => _bus.Dispose();
 
     /// <summary>A fresh handle_token, unique within this connection.</summary>
     public string NextToken() => $"dictum{Interlocked.Increment(ref _token)}";

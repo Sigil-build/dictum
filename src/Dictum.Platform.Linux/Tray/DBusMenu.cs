@@ -282,7 +282,7 @@ public sealed class DBusMenu(DBusConnection connection) : IPathMethodHandler
         }
     }
 
-    private void HandleProperties(MethodContext context)
+    private static void HandleProperties(MethodContext context)
     {
         var request = context.Request;
         var reader = request.GetBodyReader();
