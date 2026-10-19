@@ -125,6 +125,8 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
             _stopping = true;
         }
 
+        // The join and close are not cancellable: a stop given up halfway would leave the stream open and the capture
+        // marked as running. The token only stops the wait for them.
         return Task.Run(
             () =>
             {
@@ -150,7 +152,7 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
                     return new AudioClip(samples);
                 }
             },
-            ct);
+            CancellationToken.None).WaitAsync(ct);
     }
 
     public async ValueTask DisposeAsync()
