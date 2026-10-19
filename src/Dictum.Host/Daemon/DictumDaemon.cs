@@ -53,17 +53,17 @@ public sealed class DictumDaemon : IAsyncDisposable
         IpcEventHub? events = null,
         IReadOnlyList<ConfigIssue>? configWarnings = null,
         DaemonHostCommands? host = null,
-        TimeSpan? monitorLifetime = null)
+        TimeProvider? time = null)
     {
         _createEngine = createEngine;
         _platform = platform;
         _sounds = sounds;
         _log = log;
-        _events = events ?? new IpcEventHub();
+        _events = events ?? new IpcEventHub(time);
         _configWarnings = configWarnings ?? [];
         _engine = createEngine(config);
         _hotkeys = new HotkeyRegistrar(platform, log, () => Config, PublishStatus);
-        _monitor = new LevelMonitor(_gate, () => _engine, monitorLifetime ?? IpcProtocol.MonitorLifetime, task => _ = Observe(task), _stopping.Token);
+        _monitor = new LevelMonitor(_gate, () => _engine, time ?? TimeProvider.System, task => _ = Observe(task), _stopping.Token);
         _tester = new SttTester(_gate, () => _engine, _monitor, ApplyPendingConfigAsync);
         _router = new DaemonCommandRouter(this, _hotkeys, _tester, _monitor, host, log);
     }

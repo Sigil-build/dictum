@@ -3,10 +3,12 @@ using System.Collections.Concurrent;
 namespace Dictum.Host.Ipc;
 
 /// <summary>Fans daemon events out to every subscriber, never waiting on one.</summary>
-public sealed class IpcEventHub
+/// <param name="time">The clock <see cref="WhenDeliveredAsync"/> waits on; the system clock by default.</param>
+public sealed class IpcEventHub(TimeProvider? time = null)
 {
     private static readonly TimeSpan DeliveryPollInterval = TimeSpan.FromMilliseconds(10);
 
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
     private readonly Lock _gate = new();
     private readonly List<IpcSubscriber> _subscribers = [];
 
@@ -50,7 +52,7 @@ public sealed class IpcEventHub
     /// <remarks>The daemon calls this after announcing that it stops, so the announcement reaches clients before the socket closes.</remarks>
     public async Task<bool> WhenDeliveredAsync(TimeSpan timeout)
     {
-        var deadline = DateTime.UtcNow + timeout;
+        var deadline = _time.GetUtcNow() + timeout;
         while (true)
         {
             IpcSubscriber[] targets;
@@ -64,12 +66,12 @@ public sealed class IpcEventHub
                 return true;
             }
 
-            if (DateTime.UtcNow >= deadline)
+            if (_time.GetUtcNow() >= deadline)
             {
                 return false;
             }
 
-            await Task.Delay(DeliveryPollInterval).ConfigureAwait(false);
+            await Task.Delay(DeliveryPollInterval, _time).ConfigureAwait(false);
         }
     }
 

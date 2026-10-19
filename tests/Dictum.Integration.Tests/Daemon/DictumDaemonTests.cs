@@ -495,9 +495,11 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     [Fact]
     public async Task MonitorExpiresWithoutRenewal()
     {
-        await using var daemon = await StartAsync(Config(), monitorLifetime: TimeSpan.FromMilliseconds(200));
-
+        var time = new ManualTimeProvider();
+        await using var daemon = await StartAsync(Config(), time: time);
         await Send(daemon, IpcCommand.MonitorStart);
+
+        time.Advance(IpcProtocol.MonitorLifetime);
 
         await WaitForAsync(() => _engines[^1].Audio.Stops == 1);
     }
@@ -505,12 +507,13 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     [Fact]
     public async Task RenewingKeepsTheMonitorOpen()
     {
-        await using var daemon = await StartAsync(Config(), monitorLifetime: TimeSpan.FromMilliseconds(400));
+        var time = new ManualTimeProvider();
+        await using var daemon = await StartAsync(Config(), time: time);
 
         for (var i = 0; i < 6; i++)
         {
             await Send(daemon, IpcCommand.MonitorStart);
-            await Task.Delay(100, _ct);
+            time.Advance(IpcProtocol.MonitorLifetime / 2);
         }
 
         Assert.Equal((1, 0), (_engines[^1].Audio.Starts, _engines[^1].Audio.Stops));
@@ -785,7 +788,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     }
 
     private async Task<DictumDaemon> StartAsync(
-        DictumConfig config, bool withHotkeys = true, TimeSpan? monitorLifetime = null, DaemonHostCommands? host = null)
+        DictumConfig config, bool withHotkeys = true, TimeProvider? time = null, DaemonHostCommands? host = null)
     {
         var platform = new PlatformServices(
             "test",
@@ -800,7 +803,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
             var engine = new FakeEngine(c, _stt) { WarmingUp = _warmUp };
             _engines.Add(engine);
             return engine;
-        }, platform, _sounds, NullLog.Instance, _events, host: host, monitorLifetime: monitorLifetime);
+        }, platform, _sounds, NullLog.Instance, _events, host: host, time: time);
         await daemon.StartAsync(_ct);
         return daemon;
     }

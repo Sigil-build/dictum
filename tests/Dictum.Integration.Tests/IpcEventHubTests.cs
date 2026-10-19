@@ -6,6 +6,8 @@ namespace Dictum.Integration.Tests;
 
 public class IpcEventHubTests
 {
+    private static readonly TimeSpan DeliveryTimeout = TimeSpan.FromSeconds(1);
+
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
 
     [Fact]
@@ -58,15 +60,24 @@ public class IpcEventHubTests
     [Fact]
     public async Task WhenDeliveredWaitsUntilTheWriterHasSentEverything()
     {
-        var hub = new IpcEventHub();
+        var time = new ManualTimeProvider();
+        var hub = new IpcEventHub(time);
         using var subscriber = hub.Subscribe();
         hub.Publish(IpcEvent.Stopping(StoppingReason.Shutdown));
 
-        Assert.False(await hub.WhenDeliveredAsync(TimeSpan.FromMilliseconds(50)));
+        Assert.False(await DeliveredInTimeAsync(hub, time));
         await subscriber.NextAsync(_ct);
-        Assert.False(await hub.WhenDeliveredAsync(TimeSpan.FromMilliseconds(50)));
+        Assert.False(await DeliveredInTimeAsync(hub, time));
         subscriber.Written();
 
-        Assert.True(await hub.WhenDeliveredAsync(TimeSpan.FromMilliseconds(50)));
+        Assert.True(await hub.WhenDeliveredAsync(DeliveryTimeout));
+    }
+
+    /// <summary>Waits for delivery while the clock runs past the timeout.</summary>
+    private static Task<bool> DeliveredInTimeAsync(IpcEventHub hub, ManualTimeProvider time)
+    {
+        var delivered = hub.WhenDeliveredAsync(DeliveryTimeout);
+        time.Advance(DeliveryTimeout);
+        return delivered;
     }
 }

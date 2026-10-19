@@ -1,10 +1,11 @@
 using Dictum.Core.Pipeline;
+using Dictum.Host.Ipc;
 
 namespace Dictum.Host.Daemon;
 
 /// <summary>
 /// The level meter behind <c>monitor-start</c>: the microphone runs without keeping samples, and stops when its client
-/// no longer renews it, e.g. after the desktop app crashed.
+/// no longer renews it within <see cref="IpcProtocol.MonitorLifetime"/>, e.g. after the desktop app crashed.
 /// </summary>
 /// <param name="gate">The daemon's gate, which a dictation, a provider test and an engine swap also hold.</param>
 /// <param name="background">Runs the expiry loop and reports its failure.</param>
@@ -12,14 +13,14 @@ namespace Dictum.Host.Daemon;
 internal sealed class LevelMonitor(
     SemaphoreSlim gate,
     Func<IDictationEngine> engine,
-    TimeSpan lifetime,
+    TimeProvider time,
     Action<Task> background,
     CancellationToken stopping)
 {
-    /// <summary>The expiry check runs a few times per lifetime, within these bounds.</summary>
-    private const int ChecksPerLifetime = 4;
-    private const double MinCheckMs = 20;
-    private const double MaxCheckMs = 1000;
+    private static readonly TimeSpan Lifetime = IpcProtocol.MonitorLifetime;
+
+    /// <summary>How often the expiry is checked, so a meter outlives its lifetime by at most this.</summary>
+    private static readonly TimeSpan CheckInterval = TimeSpan.FromSeconds(1);
 
     private volatile bool _monitoring;
     private DateTimeOffset _until;
@@ -39,7 +40,7 @@ internal sealed class LevelMonitor(
                 throw new InvalidOperationException("A dictation is running; the level meter can start when it has finished.");
             }
 
-            _until = DateTimeOffset.UtcNow + lifetime;
+            _until = time.GetUtcNow() + Lifetime;
             if (_monitoring)
             {
                 return;
@@ -83,16 +84,15 @@ internal sealed class LevelMonitor(
 
     private async Task ExpireAsync()
     {
-        var step = TimeSpan.FromMilliseconds(Math.Clamp(lifetime.TotalMilliseconds / ChecksPerLifetime, MinCheckMs, MaxCheckMs));
         while (_monitoring)
         {
-            await Task.Delay(step, stopping).ConfigureAwait(false);
-            if (_monitoring && DateTimeOffset.UtcNow >= _until)
+            await Task.Delay(CheckInterval, time, stopping).ConfigureAwait(false);
+            if (_monitoring && time.GetUtcNow() >= _until)
             {
                 await gate.WaitAsync(stopping).ConfigureAwait(false);
                 try
                 {
-                    if (DateTimeOffset.UtcNow >= _until)
+                    if (time.GetUtcNow() >= _until)
                     {
                         await StopCoreAsync().ConfigureAwait(false);
                     }
