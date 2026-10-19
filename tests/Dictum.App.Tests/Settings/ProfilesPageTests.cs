@@ -54,7 +54,7 @@ public sealed class ProfilesPageTests : IDisposable
         Store.Save(config ?? Sample());
         var session = new SettingsSession(Store, _timers, NullLog.Instance);
         session.Load();
-        return (new ProfilesPage(session, _channel, NullLog.Instance), session);
+        return (new ProfilesPage(session, _channel), session);
     }
 
     private static ProfileConfig Saved(SettingsSession session, string id) => session.Config.Profiles.Single(p => p.Id == id);

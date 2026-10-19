@@ -321,7 +321,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         var general = new GeneralPage(session, new GeneralServices(
             Supervisor, Frames, UiTimers.Instance, _autostart, OwnExecutable(), _sounds, TimeProvider.System, _log));
         general.SetupRequested += ShowSetup;
-        var profiles = new ProfilesPage(session, Supervisor, _log);
+        var profiles = new ProfilesPage(session, Supervisor);
         var providers = new SpeechProvidersPage(session, new SpeechServices(
             Supervisor, Frames, UiTimers.Instance, Secrets,
             current => WhisperModels.Choices(_paths, Catalog.BuiltIn, current), model => WhisperModels.IsPresent(_paths, model),

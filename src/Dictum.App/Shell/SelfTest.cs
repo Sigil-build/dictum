@@ -187,7 +187,7 @@ public static class SelfTest
                 general,
                 general.Overlay,
                 general.Pasting,
-                new ProfilesPage(session, offline, NullLog.Instance),
+                new ProfilesPage(session, offline),
                 new SpeechProvidersPage(session, new SpeechServices(offline, new FrameHub(TimeProvider.System), UiTimers.Instance,
                     new UnavailableSecretStore(), _ => [], _ => false, _ => Task.CompletedTask, TimeProvider.System, NullLog.Instance)),
                 new ProcessorsPage(session, new ProcessorsServices(runner, new UnavailableSecretStore(), new PromptFiles(Path.Combine(folder, "prompts")),

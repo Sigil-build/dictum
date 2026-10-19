@@ -38,7 +38,7 @@ public sealed class ProfilesViewTests(AvaloniaFixture fx) : IDisposable
         store.Save(config);
         var session = new SettingsSession(store, new ManualTimers(), NullLog.Instance);
         session.Load();
-        var page = new ProfilesPage(session, new FakeChannel(), NullLog.Instance);
+        var page = new ProfilesPage(session, new FakeChannel());
         var window = new Window { Content = new ViewLocator().Build(page), Width = 960, Height = 1400 };
         window.Show();
         Dispatcher.UIThread.RunJobs();

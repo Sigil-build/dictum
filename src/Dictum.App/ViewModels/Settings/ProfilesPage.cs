@@ -6,7 +6,6 @@ using Dictum.App.Daemon;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.Core.Configuration;
-using Dictum.Core.Diagnostics;
 using Dictum.Host.Ipc;
 
 namespace Dictum.App.ViewModels.Settings;
@@ -31,18 +30,16 @@ public sealed partial class ProfilesPage : SettingsPage
 {
     private readonly SettingsSession _session;
     private readonly IDaemonChannel _channel;
-    private readonly ILog _log;
     private readonly RequestQueue _requests = new();
     private string? _id;
     private LanguageMode? _shownMode;
     private bool _pausedByUs;
     private bool _loading;
 
-    public ProfilesPage(SettingsSession session, IDaemonChannel channel, ILog log)
+    public ProfilesPage(SettingsSession session, IDaemonChannel channel)
     {
         _session = session;
         _channel = channel;
-        _log = log;
         Modes = [new(HotkeyMode.PushToTalk, Strings.SettingsProfilesPushToTalk), new(HotkeyMode.Toggle, Strings.SettingsProfilesToggle)];
         LanguageModes =
         [
