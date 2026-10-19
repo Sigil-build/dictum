@@ -130,6 +130,8 @@ internal sealed class FakeEngine : IDictationEngine
 
 internal sealed class FakeHotkeys : IHotkeyService
 {
+    private TaskCompletionSource? _hold;
+
     public event Action<HotkeyEvent>? Triggered;
 
     public IReadOnlyList<HotkeyBinding> Bindings { get; private set; } = [];
@@ -138,15 +140,31 @@ internal sealed class FakeHotkeys : IHotkeyService
 
     public HotkeyCapabilities Capabilities { get; } = new(true, false, false, "fake hotkeys");
 
-    public Task SetBindingsAsync(IReadOnlyList<HotkeyBinding> bindings, CancellationToken ct)
+    /// <summary>Completes when a registration held by <see cref="HoldNext"/> has started and waits.</summary>
+    public TaskCompletionSource Held { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>The next registration waits, as a slow portal does, until the returned source completes.</summary>
+    public TaskCompletionSource HoldNext()
+    {
+        var hold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _hold = hold;
+        return hold;
+    }
+
+    public async Task SetBindingsAsync(IReadOnlyList<HotkeyBinding> bindings, CancellationToken ct)
     {
         if (FailWith is not null)
         {
             throw FailWith;
         }
 
+        if (Interlocked.Exchange(ref _hold, null) is { } hold)
+        {
+            Held.TrySetResult();
+            await hold.Task.WaitAsync(ct);
+        }
+
         Bindings = bindings;
-        return Task.CompletedTask;
     }
 
     public void Raise(string id, HotkeyPhase phase) => Triggered?.Invoke(new HotkeyEvent(id, phase));

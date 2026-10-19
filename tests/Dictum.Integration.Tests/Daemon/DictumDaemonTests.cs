@@ -375,20 +375,18 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task ReloadRunsTheHandlerAndFailsWithoutOne()
+    public async Task ReloadAppliesWhatTheHostReadsAndFailsWithoutAHost()
     {
-        await using var daemon = await StartAsync(Config());
-        Assert.False((await daemon.HandleAsync(new IpcRequest(IpcCommand.Reload), _ct)).Ok);
-
-        var reloaded = false;
-        daemon.ReloadHandler = _ =>
+        await using (var hostless = await StartAsync(Config()))
         {
-            reloaded = true;
-            return Task.CompletedTask;
-        };
+            Assert.False((await hostless.HandleAsync(new IpcRequest(IpcCommand.Reload), _ct)).Ok);
+        }
+
+        var changed = Config() with { Profiles = [new ProfileConfig { Id = "only", Stt = "s", Hotkey = "Ctrl+F9" }] };
+        await using var daemon = await StartAsync(Config(), host: HostCommands(reload: () => (changed, [])));
 
         Assert.True((await daemon.HandleAsync(new IpcRequest(IpcCommand.Reload), _ct)).Ok);
-        Assert.True(reloaded);
+        Assert.Equal(["only"], _hotkeys.Bindings.Select(b => b.Id));
     }
 
     [Fact]
@@ -514,16 +512,26 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     }
 
     [Fact]
-    public async Task DoctorAnswersWithTheHandlersChecksAndFailsWithoutOne()
+    public async Task DoctorAnswersWithTheHostsChecksAndFailsWithoutAHost()
     {
-        await using var daemon = await StartAsync(Config());
-        Assert.False((await daemon.HandleAsync(new IpcRequest(IpcCommand.Doctor), _ct)).Ok);
+        await using (var hostless = await StartAsync(Config()))
+        {
+            Assert.False((await hostless.HandleAsync(new IpcRequest(IpcCommand.Doctor), _ct)).Ok);
+        }
 
-        daemon.DoctorHandler = _ => Task.FromResult<IReadOnlyList<PlatformCheck>>([new PlatformCheck("daemon", HealthStatus.Ok("this process"))]);
+        await using var daemon = await StartAsync(Config(), host: HostCommands(
+            doctor: (_, _) => Task.FromResult<IReadOnlyList<PlatformCheck>>([new PlatformCheck("daemon", HealthStatus.Ok("this process"))])));
         var response = await daemon.HandleAsync(new IpcRequest(IpcCommand.Doctor), _ct);
 
         Assert.Equal("daemon", Assert.Single(response.Checks!).Name);
     }
+
+    private static DaemonHostCommands HostCommands(
+        Func<(DictumConfig, IReadOnlyList<ConfigIssue>)>? reload = null,
+        Func<DictumDaemon, CancellationToken, Task<IReadOnlyList<PlatformCheck>>>? doctor = null) =>
+        new(
+            reload ?? (() => throw new InvalidOperationException("No reload in this test.")),
+            doctor ?? ((_, _) => throw new InvalidOperationException("No doctor in this test.")));
 
     [Fact]
     public async Task StoppingIsAnnouncedOnceWithTheReason()
@@ -712,7 +720,8 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         return events;
     }
 
-    private async Task<DictumDaemon> StartAsync(DictumConfig config, bool withHotkeys = true, TimeSpan? monitorLifetime = null)
+    private async Task<DictumDaemon> StartAsync(
+        DictumConfig config, bool withHotkeys = true, TimeSpan? monitorLifetime = null, DaemonHostCommands? host = null)
     {
         var platform = new PlatformServices(
             "test",
@@ -727,7 +736,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
             var engine = new FakeEngine(c, _stt) { WarmingUp = _warmUp };
             _engines.Add(engine);
             return engine;
-        }, platform, _sounds, NullLog.Instance, _events, monitorLifetime: monitorLifetime);
+        }, platform, _sounds, NullLog.Instance, _events, host: host, monitorLifetime: monitorLifetime);
         await daemon.StartAsync(_ct);
         return daemon;
     }

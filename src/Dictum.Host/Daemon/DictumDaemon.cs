@@ -35,6 +35,7 @@ public sealed class DictumDaemon : IAsyncDisposable
     private readonly ISoundPlayer _sounds;
     private readonly ILog _log;
     private readonly IpcEventHub _events;
+    private readonly DaemonHostCommands? _host;
     private readonly TimeSpan _monitorLifetime;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly CancellationTokenSource _stopping = new();
@@ -66,6 +67,7 @@ public sealed class DictumDaemon : IAsyncDisposable
         ILog log,
         IpcEventHub? events = null,
         IReadOnlyList<ConfigIssue>? configWarnings = null,
+        DaemonHostCommands? host = null,
         TimeSpan? monitorLifetime = null)
     {
         _createEngine = createEngine;
@@ -74,6 +76,7 @@ public sealed class DictumDaemon : IAsyncDisposable
         _log = log;
         _events = events ?? new IpcEventHub();
         _configWarnings = configWarnings ?? [];
+        _host = host;
         _monitorLifetime = monitorLifetime ?? IpcProtocol.MonitorLifetime;
         _engine = createEngine(config);
     }
@@ -82,12 +85,6 @@ public sealed class DictumDaemon : IAsyncDisposable
 
     /// <summary>Completes when a client sent <c>shutdown</c>; the host then disposes the daemon and exits.</summary>
     public Task ShutdownRequested => _shutdown.Task;
-
-    /// <summary>Re-reads the config for the <c>reload</c> command; set by the host that owns the config file.</summary>
-    public Func<CancellationToken, Task>? ReloadHandler { get; set; }
-
-    /// <summary>Runs the doctor checks for the <c>doctor</c> command; set by the host, which knows the paths.</summary>
-    public Func<CancellationToken, Task<IReadOnlyList<PlatformCheck>>>? DoctorHandler { get; set; }
 
     public IDictationEngine Engine => _engine;
 
@@ -234,12 +231,13 @@ public sealed class DictumDaemon : IAsyncDisposable
                 await CancelAsync().ConfigureAwait(false);
                 break;
             case IpcCommand.Reload:
-                if (ReloadHandler is null)
+                if (_host is null)
                 {
                     return IpcResponse.Failure("This daemon cannot reload its config.");
                 }
 
-                await ReloadHandler(ct).ConfigureAwait(false);
+                var (fresh, freshWarnings) = _host.Reload();
+                await ApplyConfigAsync(fresh, ct, freshWarnings).ConfigureAwait(false);
                 break;
             case IpcCommand.Shutdown:
                 await CancelAsync().ConfigureAwait(false);
@@ -256,12 +254,12 @@ public sealed class DictumDaemon : IAsyncDisposable
             case IpcCommand.Devices:
                 return new IpcResponse(true, Status: Status(), Devices: _engine.Audio.ListDevices());
             case IpcCommand.Doctor:
-                if (DoctorHandler is null)
+                if (_host is null)
                 {
                     return IpcResponse.Failure("This daemon cannot run the checks.");
                 }
 
-                return new IpcResponse(true, Status: Status(), Checks: await DoctorHandler(ct).ConfigureAwait(false));
+                return new IpcResponse(true, Status: Status(), Checks: await _host.Doctor(this, ct).ConfigureAwait(false));
             case IpcCommand.TestStt:
                 return new IpcResponse(true, Status: Status(), Test: await TestSttAsync(request, ct).ConfigureAwait(false));
             case IpcCommand.MonitorStart:

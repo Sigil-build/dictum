@@ -40,8 +40,16 @@ public static class DaemonHost
     {
         var (store, platform, log) = (options.Store, options.Platform, options.Log);
         var events = new IpcEventHub();
+        var commands = new DaemonHostCommands(
+            () =>
+            {
+                var loaded = store.LoadWithIssues();
+                options.UseConfig(loaded.Config);
+                return loaded;
+            },
+            (d, c) => DoctorChecks.RunAsync(DoctorInputs.ForEngine(store.Path, () => d.Engine, d.ConfigWarnings, options.Paths, platform), c));
         await using var daemon = new DictumDaemon(
-            options.Config, options.CreateEngine, platform, options.Sounds ?? DictumHost.CreateSoundPlayer(log), log, events, options.Warnings);
+            options.Config, options.CreateEngine, platform, options.Sounds ?? DictumHost.CreateSoundPlayer(log), log, events, options.Warnings, commands);
 
         // The server listens before the hotkeys are registered, which can take seconds on a portal.
         await using var server = new IpcServer(options.SocketPath, log, events);
@@ -56,15 +64,6 @@ public static class DaemonHost
             },
             invalid => platform.Notifier.NotifyAsync("Dictum: config not applied", invalid.Message, NotificationKind.Error, ct),
             log);
-
-        daemon.ReloadHandler = async c =>
-        {
-            var (fresh, freshWarnings) = store.LoadWithIssues();
-            options.UseConfig(fresh);
-            await daemon.ApplyConfigAsync(fresh, c, freshWarnings).ConfigureAwait(false);
-        };
-        daemon.DoctorHandler = c => DoctorChecks.RunAsync(
-            DoctorInputs.ForEngine(store.Path, () => daemon.Engine, daemon.ConfigWarnings, options.Paths, platform), c);
 
         options.Started(daemon.Status());
 
