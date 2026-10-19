@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Net.Sockets;
-using System.Text.Json;
 using Dictum.App.Resources;
 using Dictum.Core.Diagnostics;
 using Dictum.Host.Ipc;
@@ -114,7 +113,7 @@ public sealed class DaemonSupervisor : IDaemonChannel, IAsyncDisposable
                 await SendAsync(new IpcRequest(IpcCommand.Shutdown), timeout.Token, _options.QuitTimeout).ConfigureAwait(false);
                 await _stopping.Task.WaitAsync(timeout.Token).ConfigureAwait(false);
             }
-            catch (Exception ex) when (ex is DaemonNotRunningException or IOException or SocketException or OperationCanceledException)
+            catch (Exception ex) when (IpcFailure.IsTransport(ex, CancellationToken.None))
             {
                 _log.Warn($"The daemon did not confirm that it stopped: {ex.Message}");
             }
@@ -421,8 +420,7 @@ public sealed class DaemonSupervisor : IDaemonChannel, IAsyncDisposable
         {
             return null;
         }
-        catch (Exception ex) when (ex is IOException or SocketException or JsonException or InvalidOperationException
-                                       || ex is OperationCanceledException && !ct.IsCancellationRequested)
+        catch (Exception ex) when (IpcFailure.IsTransport(ex, ct) || IpcFailure.IsBadReply(ex))
         {
             // A daemon on its way out, or one that does not answer within the client's timeout.
             _log.Debug($"Could not subscribe: {ex.Message}");
@@ -436,8 +434,7 @@ public sealed class DaemonSupervisor : IDaemonChannel, IAsyncDisposable
         {
             return (await SendAsync(new IpcRequest(IpcCommand.Status), ct).ConfigureAwait(false)).Status?.ProcessId;
         }
-        catch (Exception ex) when (ex is DaemonNotRunningException or IOException or SocketException or JsonException or InvalidOperationException
-                                       || ex is OperationCanceledException && !ct.IsCancellationRequested)
+        catch (Exception ex) when (IpcFailure.IsTransport(ex, ct) || IpcFailure.IsBadReply(ex))
         {
             // An old daemon that is slow or odd to answer: it is replaced by asking it to stop, without its pid.
             _log.Debug($"No pid from the other daemon: {ex.Message}");
@@ -456,8 +453,7 @@ public sealed class DaemonSupervisor : IDaemonChannel, IAsyncDisposable
                 _log.Info($"The other daemon refused 'shutdown': {answer.Error}");
             }
         }
-        catch (Exception ex) when (ex is DaemonNotRunningException or IOException or SocketException
-                                       || ex is OperationCanceledException && !ct.IsCancellationRequested)
+        catch (Exception ex) when (IpcFailure.IsTransport(ex, ct))
         {
             _log.Debug($"Could not send 'shutdown': {ex.Message}");
         }

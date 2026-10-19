@@ -1,5 +1,4 @@
-using System.Net.Sockets;
-using System.Text.Json;
+using Dictum.App.Daemon;
 using Dictum.Core.Diagnostics;
 using Dictum.Host.Ipc;
 
@@ -164,15 +163,7 @@ public sealed class SingleInstance : IAsyncDisposable
             var response = await new IpcClient(socket).SendAsync(new IpcRequest(IpcCommand.Status), ct, ProbeTimeout).ConfigureAwait(false);
             return response.Status?.ProcessId;
         }
-        catch (DaemonNotRunningException)
-        {
-            return null;
-        }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
-        {
-            return null;
-        }
-        catch (Exception ex) when (ex is IOException or SocketException or JsonException or InvalidOperationException)
+        catch (Exception ex) when (IpcFailure.IsTransport(ex, ct) || IpcFailure.IsBadReply(ex))
         {
             return null;
         }
@@ -197,11 +188,7 @@ public sealed class SingleInstance : IAsyncDisposable
         {
             return Reply.Gone;
         }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
-        {
-            return Reply.Silent;
-        }
-        catch (Exception ex) when (ex is IOException or SocketException or JsonException or InvalidOperationException)
+        catch (Exception ex) when (IpcFailure.IsTransport(ex, ct) || IpcFailure.IsBadReply(ex))
         {
             return Reply.Silent;
         }

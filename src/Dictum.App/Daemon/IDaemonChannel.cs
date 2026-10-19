@@ -1,5 +1,3 @@
-using System.Net.Sockets;
-using System.Text.Json;
 using Dictum.Host.Ipc;
 
 namespace Dictum.App.Daemon;
@@ -17,7 +15,8 @@ public static class DaemonChannelExtensions
     /// <summary>
     /// Sends when the daemon is connected. Null when it is not, or when it did not answer (it stopped, or the time ran
     /// out): the page then says that the daemon is not running. An answer that cannot be read becomes a failure with
-    /// its reason, never an exception on the UI thread. The continuation stays on the caller's thread.
+    /// its reason, never an exception on the UI thread. Only the caller's own cancellation is thrown. The continuation
+    /// stays on the caller's thread.
     /// </summary>
     public static async Task<IpcResponse?> TrySendAsync(this IDaemonChannel channel, IpcRequest request, CancellationToken ct, TimeSpan? timeout = null)
     {
@@ -30,11 +29,11 @@ public static class DaemonChannelExtensions
         {
             return await channel.SendAsync(request, ct, timeout);
         }
-        catch (Exception ex) when (ex is DaemonNotRunningException or IOException or SocketException or TimeoutException or OperationCanceledException)
+        catch (Exception ex) when (IpcFailure.IsTransport(ex, ct))
         {
             return null;
         }
-        catch (Exception ex) when (ex is JsonException or InvalidOperationException)
+        catch (Exception ex) when (IpcFailure.IsBadReply(ex))
         {
             return IpcResponse.Failure(ex.Message);
         }

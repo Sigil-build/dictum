@@ -437,7 +437,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
                 _log.Warn($"'{request.Command}' refused: {answer.Error}");
             }
         }
-        catch (Exception ex) when (ex is DaemonNotRunningException or IOException or System.Net.Sockets.SocketException or OperationCanceledException)
+        catch (Exception ex) when (IpcFailure.IsTransport(ex, CancellationToken.None))
         {
             _log.Warn($"'{request.Command}' not sent: {ex.Message}");
         }
