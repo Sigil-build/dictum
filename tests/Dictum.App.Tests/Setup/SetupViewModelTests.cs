@@ -154,6 +154,25 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.Contains("cleanup", config.Profiles[0].Pipeline);
     }
 
+    [Fact]
+    public async Task ANewKeyOnARerunDeletesTheOldCleanupEntry()
+    {
+        _fx.InstallAll();
+        var config = ProfilesPageTests.Sample();
+        config.Processors["cleanup"] = (LlmProcessorConfig)config.Processors["cleanup"] with { ApiKey = "secret:dictum-cleanup" };
+        _fx.Store.Save(config);
+        _fx.Secrets.Values[SecretNames.LegacyCleanup] = "sk-old";
+        var wizard = Open();
+        await WalkTo(wizard, 2);
+        wizard.Cleanup.KeyText = "sk-new";
+        await wizard.Cleanup.TestCommand.ExecuteAsync(null);
+
+        await WalkTo(wizard, 6);
+
+        Assert.Equal("secret:dictum-processor-cleanup", Assert.IsType<LlmProcessorConfig>(_fx.Store.Load().Processors["cleanup"]).ApiKey);
+        Assert.Equal(new Dictionary<string, string> { ["dictum-processor-cleanup"] = "sk-new" }, _fx.Secrets.Values);
+    }
+
     // Review focus 1.
     [Fact]
     public async Task AKeyStoreFailureStopsTheSave()
