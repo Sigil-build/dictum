@@ -278,8 +278,7 @@ public sealed partial class ModelsPage : SettingsPage
         }
     }
 
-    private static bool SamePath(string a, string b) => string.Equals(Path.GetFullPath(a), Path.GetFullPath(b),
-        OperatingSystem.IsLinux() ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase);
+    private static bool SamePath(string a, string b) => string.Equals(Path.GetFullPath(a), Path.GetFullPath(b), PathComparison.Current);
 
     private async Task ProbeOnceAsync()
     {

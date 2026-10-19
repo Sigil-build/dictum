@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using Dictum.Core;
 using Dictum.Platform;
 
 namespace Dictum.App.Shell;
@@ -21,7 +22,6 @@ public sealed class SystemDictumProcesses : IDictumProcesses
     public IReadOnlyList<int> RunningFrom(string folder)
     {
         var root = Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
         var found = new List<int>();
         foreach (var name in Names)
         {
@@ -31,7 +31,7 @@ public sealed class SystemDictumProcesses : IDictumProcesses
                 {
                     try
                     {
-                        if (process.Id != Environment.ProcessId && process.MainModule?.FileName is { } image && image.StartsWith(root, comparison))
+                        if (process.Id != Environment.ProcessId && process.MainModule?.FileName is { } image && image.StartsWith(root, PathComparison.Current))
                         {
                             found.Add(process.Id);
                         }

@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Text.Json;
 using Dictum.Cli.Output;
+using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Vocabulary;
@@ -385,9 +386,8 @@ internal static class InitCommand
 
         var executable = InstallLocation.Lasting(running, InstallLocation.AppImage);
 
-        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
         var downloads = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
-        return executable.StartsWith(downloads, comparison) || executable.StartsWith(Path.GetTempPath(), comparison)
+        return executable.StartsWith(downloads, PathComparison.Current) || executable.StartsWith(Path.GetTempPath(), PathComparison.Current)
             ? $"warning: Dictum runs from {Path.GetDirectoryName(executable)}; login start breaks if that folder is moved or cleaned. Move Dictum to a permanent folder first."
             : null;
     }
