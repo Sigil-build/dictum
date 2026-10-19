@@ -1,3 +1,4 @@
+using System.Globalization;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.Setup;
@@ -23,9 +24,19 @@ public sealed class ModelTextTests
     [Fact]
     public void EverySpeechModelOfTheCatalogHasATranslatedNote()
     {
-        string[] translated = [Strings.ModelNoteTurbo, Strings.ModelNoteMedium, Strings.ModelNoteSmall, Strings.ModelNoteTiny];
+        // In English most notes are the catalog title's own words, so a model without a case would still pass.
+        var ui = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("uk");
+            string[] translated = [Strings.ModelNoteTurbo, Strings.ModelNoteMedium, Strings.ModelNoteSmall, Strings.ModelNoteTiny];
 
-        Assert.All(Catalog.BuiltIn.Entries.Where(e => e.Kind == CatalogKind.Whisper), entry => Assert.Contains(ModelText.Note(entry), translated));
+            Assert.All(Catalog.BuiltIn.Entries.Where(e => e.Kind == CatalogKind.Whisper), entry => Assert.Contains(ModelText.Note(entry), translated));
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = ui;
+        }
     }
 
     [Fact]
