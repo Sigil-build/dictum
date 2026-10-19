@@ -212,4 +212,20 @@ public class ConfigValidatorTests
 
         Assert.Equal(path, Assert.Single(ConfigValidator.Validate(config)).Path);
     }
+
+    [Theory]
+    [InlineData(-1, "must be zero or positive")]
+    [InlineData(ConfigValidator.MaxHistorySize + 1, "must be between 0 and 5000")]
+    public void HistorySizeMustBeWithinWhatSettingsOffers(int size, string message)
+    {
+        var config = DefaultConfig.Create() with { General = new GeneralSettings { HistorySize = size } };
+
+        var issue = Assert.Single(ConfigValidator.Validate(config));
+
+        Assert.Equal((ConfigIssueSeverity.Error, "general.historySize", message), (issue.Severity, issue.Path, issue.Message));
+    }
+
+    [Fact]
+    public void TheLargestHistorySizeSettingsOffersIsValid() =>
+        Assert.Empty(ConfigValidator.Validate(DefaultConfig.Create() with { General = new GeneralSettings { HistorySize = ConfigValidator.MaxHistorySize } }));
 }
