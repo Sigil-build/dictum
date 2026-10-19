@@ -274,6 +274,21 @@ public sealed class HistoryPageTests : IDisposable
     }
 
     [Fact]
+    public async Task ACopyThatWorksClearsTheLastCopysError()
+    {
+        ThreeDictations();
+        var page = Open();
+        page.Chain = page.Chains[0];
+        _clipboard.Fails = new InvalidOperationException("The clipboard is in use by another application.");
+        await page.CopyCommand.ExecuteAsync(page.Items[0]);
+        _clipboard.Fails = null;
+
+        await page.CopyReRunCommand.ExecuteAsync(null);
+
+        Assert.Null(page.Error);
+    }
+
+    [Fact]
     public void AFailedReRunShowsWhy()
     {
         ThreeDictations();

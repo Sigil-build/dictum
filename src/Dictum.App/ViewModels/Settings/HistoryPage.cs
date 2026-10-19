@@ -125,6 +125,7 @@ public sealed partial class HistoryPage : SettingsPage, IDisposable
         try
         {
             await _clipboard.SetTextAsync(text);
+            Error = null;
         }
         catch (Exception ex)
         {
