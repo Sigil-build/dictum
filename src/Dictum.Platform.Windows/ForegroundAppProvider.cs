@@ -9,7 +9,9 @@ public sealed unsafe class ForegroundAppProvider : IActiveAppProvider
 {
     private const int ImageNameCapacity = 1024;
 
-    public string? GetActiveApp()
+    public ValueTask<string?> GetActiveAppAsync(CancellationToken ct) => ValueTask.FromResult(GetActiveApp());
+
+    private static string? GetActiveApp()
     {
         var window = Win32.GetForegroundWindow();
         if (window == 0 || Win32.GetWindowThreadProcessId(window, out var processId) == 0)

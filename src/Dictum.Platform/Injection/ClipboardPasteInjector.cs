@@ -50,7 +50,7 @@ public sealed class ClipboardPasteInjector(
             await modifiers.WaitForReleaseAsync(ModifierTimeout, ct).ConfigureAwait(false);
         }
 
-        var keys = ChooseKeys(options.Shortcut);
+        var keys = await ChooseKeysAsync(options.Shortcut, ct).ConfigureAwait(false);
         await keystrokes.SendPasteAsync(keys, ct).ConfigureAwait(false);
         log.Debug($"Pasted {log.Redact(text)} with {keys} via {keystrokes.Backend}");
 
@@ -70,14 +70,17 @@ public sealed class ClipboardPasteInjector(
         }
     }
 
-    private PasteKeys ChooseKeys(PasteShortcut shortcut) => shortcut switch
+    private async ValueTask<PasteKeys> ChooseKeysAsync(PasteShortcut shortcut, CancellationToken ct) => shortcut switch
     {
         PasteShortcut.CtrlV => PasteKeys.CtrlV,
         PasteShortcut.CtrlShiftV => PasteKeys.CtrlShiftV,
-        _ => activeApp?.GetActiveApp() is { } app && terminalApps().Contains(app, StringComparer.OrdinalIgnoreCase)
-            ? PasteKeys.CtrlShiftV
-            : PasteKeys.CtrlV,
+        _ => await IsTerminalFocusedAsync(ct).ConfigureAwait(false) ? PasteKeys.CtrlShiftV : PasteKeys.CtrlV,
     };
+
+    private async ValueTask<bool> IsTerminalFocusedAsync(CancellationToken ct) =>
+        activeApp is not null
+        && await activeApp.GetActiveAppAsync(ct).ConfigureAwait(false) is { } app
+        && terminalApps().Contains(app, StringComparer.OrdinalIgnoreCase);
 
     private async Task<string?> TryGetAsync(CancellationToken ct)
     {

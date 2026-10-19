@@ -43,7 +43,7 @@ public interface IKeystrokeSender
 /// <summary>Name of the focused app (process or window class), where the platform exposes it.</summary>
 public interface IActiveAppProvider
 {
-    string? GetActiveApp();
+    ValueTask<string?> GetActiveAppAsync(CancellationToken ct);
 }
 
 /// <summary>Lets the injector wait until the hotkey modifiers are released.</summary>

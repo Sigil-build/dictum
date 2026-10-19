@@ -10,19 +10,18 @@ public sealed class XpropActiveApp : IActiveAppProvider
 
     public static bool IsAvailable => Tools.Exists(Program);
 
-    public string? GetActiveApp()
+    public async ValueTask<string?> GetActiveAppAsync(CancellationToken ct)
     {
-        // IActiveAppProvider is synchronous; each xprop call is bounded by its timeout.
         try
         {
-            var root = Tools.RunAsync(Program, ["-root", "_NET_ACTIVE_WINDOW"], null, CancellationToken.None, QueryTimeout).GetAwaiter().GetResult();
+            var root = await Tools.RunAsync(Program, ["-root", "_NET_ACTIVE_WINDOW"], null, ct, QueryTimeout).ConfigureAwait(false);
             var id = ParseWindowId(root.Output);
             if (id is null)
             {
                 return null;
             }
 
-            var window = Tools.RunAsync(Program, ["-id", id, "WM_CLASS"], null, CancellationToken.None, QueryTimeout).GetAwaiter().GetResult();
+            var window = await Tools.RunAsync(Program, ["-id", id, "WM_CLASS"], null, ct, QueryTimeout).ConfigureAwait(false);
             return ParseWmClass(window.Output);
         }
         catch (Exception ex) when (ex is InvalidOperationException or TimeoutException or System.ComponentModel.Win32Exception)

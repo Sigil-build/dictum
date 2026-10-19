@@ -44,6 +44,16 @@ public class ClipboardPasteInjectorTests
     }
 
     [Fact]
+    public async Task TheActiveAppIsAskedWithThePastesToken()
+    {
+        var activeApp = new FakeActiveApp("kitty");
+
+        await new ClipboardPasteInjector(_clipboard, _keys, activeApp, null, () => Terminals, NullLog.Instance).InjectAsync("x", Options(), _ct);
+
+        Assert.Equal(_ct, activeApp.Token);
+    }
+
+    [Fact]
     public async Task DoesNotRestoreWhenSomethingElseChangedTheClipboard()
     {
         _keys.OnPaste = () => _clipboard.Text = "copied by the user";
@@ -124,7 +134,13 @@ public class ClipboardPasteInjectorTests
 
     private sealed class FakeActiveApp(string? app) : IActiveAppProvider
     {
-        public string? GetActiveApp() => app;
+        public CancellationToken? Token { get; private set; }
+
+        public ValueTask<string?> GetActiveAppAsync(CancellationToken ct)
+        {
+            Token = ct;
+            return ValueTask.FromResult(app);
+        }
     }
 
     private sealed class FakeModifiers(FakeKeystrokes keys) : IModifierState
