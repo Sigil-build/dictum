@@ -1,9 +1,11 @@
+using System.Net.Sockets;
 using Dictum.Core;
 using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Stt;
 using Dictum.Host.Diagnostics;
+using Dictum.Host.Ipc;
 using Dictum.Integration.Tests.Daemon;
 using Dictum.Platform;
 using Dictum.Setup;
@@ -56,6 +58,34 @@ public sealed class DoctorChecksTests : IDisposable
         var checks = await DoctorChecks.RunAsync(inputs, _ct);
 
         Assert.Contains("No answer within", checks.Single(c => c.Name == "stt:s").Status.Detail);
+    }
+
+    [Fact]
+    public async Task ADaemonThatTakesTheConnectionButNeverAnswersIsAnErrorRow()
+    {
+        var socket = Path.Combine(_dir, "d.sock");
+        await using var silent = new IpcServer(socket, NullLog.Instance);
+        silent.Start(async (_, ct) =>
+        {
+            await Task.Delay(Timeout.Infinite, ct);
+            return IpcResponse.Failure("never sent");
+        });
+
+        var row = await DoctorChecks.CheckDaemonAsync(socket, _ct, TimeSpan.FromMilliseconds(200));
+
+        Assert.Equal(HealthLevel.Error, row.Level);
+        Assert.Contains("not answering", row.Detail);
+    }
+
+    [Fact]
+    public async Task ADaemonRowThatFailsIsAnErrorRowAndTheOtherRowsStay()
+    {
+        var inputs = Inputs(Config("m.bin")) with { Daemon = _ => throw new SocketException((int)SocketError.ConnectionReset) };
+
+        var checks = await DoctorChecks.RunAsync(inputs, _ct);
+
+        Assert.Equal(HealthLevel.Error, checks.Single(c => c.Name == PlatformCheckNames.Daemon).Status.Level);
+        Assert.Contains(checks, c => c.Name == PlatformCheckNames.Stt("s"));
     }
 
     private DoctorInputs Inputs(DictumConfig config) => new(

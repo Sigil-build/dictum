@@ -233,5 +233,28 @@ public sealed class IpcTests : IDisposable
         Assert.Equal(0, hub.SubscriberCount);
     }
 
+    [Fact(Timeout = 10_000)]
+    public async Task AProbeTellsAnAnsweringDaemonFromASilentOneAndFromNone()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var client = new IpcClient(SocketPath);
+        Assert.Equal(DaemonPresence.NotRunning, (await client.ProbeAsync(ct)).Presence);
+
+        await using (var answering = new IpcServer(SocketPath, NullLog.Instance))
+        {
+            answering.Start((_, _) => Task.FromResult(IpcResponse.Success(Status(nameof(PipelineState.Idle)))));
+            var probe = await client.ProbeAsync(ct);
+            Assert.Equal((DaemonPresence.Answering, nameof(PipelineState.Idle)), (probe.Presence, probe.Status?.State));
+        }
+
+        await using var silent = new IpcServer(SocketPath, NullLog.Instance);
+        silent.Start(async (_, serving) =>
+        {
+            await Task.Delay(Timeout.Infinite, serving);
+            return IpcResponse.Failure("never sent");
+        });
+        Assert.Equal(DaemonPresence.NotAnswering, (await client.ProbeAsync(ct, TimeSpan.FromMilliseconds(200))).Presence);
+    }
+
     private static DaemonStatus Status(string state) => new(state, null, [], "test", "test", Environment.ProcessId);
 }

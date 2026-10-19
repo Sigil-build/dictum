@@ -78,19 +78,23 @@ public static class DoctorChecks
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(15);
 
     /// <summary>The CLI's <c>daemon</c> row: what the daemon on <paramref name="socketPath"/> says about itself.</summary>
-    public static async Task<HealthStatus> CheckDaemonAsync(string socketPath, CancellationToken ct)
+    /// <param name="timeout">How long the daemon has to answer; the client's default when null.</param>
+    public static async Task<HealthStatus> CheckDaemonAsync(string socketPath, CancellationToken ct, TimeSpan? timeout = null)
     {
-        try
+        var wait = timeout ?? IpcClient.DefaultTimeout;
+        var probe = await new IpcClient(socketPath).ProbeAsync(ct, wait).ConfigureAwait(false);
+        if (probe.Status is { } status)
         {
-            var status = (await new IpcClient(socketPath).SendAsync(new IpcRequest(IpcCommand.Status), ct).ConfigureAwait(false)).Status!;
             var registered = status.Profiles.Count(p => p.Registered);
             var detail = $"running (pid {status.ProcessId}), {status.State}; {registered} hotkey(s) registered via {status.HotkeyBackend}";
             return status.Warning is null ? HealthStatus.Ok(detail) : HealthStatus.Warning(detail, status.Warning);
         }
-        catch (DaemonNotRunningException)
-        {
-            return HealthStatus.Warning("not running", "Start it with 'dictum daemon', or at login with 'dictum daemon --install-autostart'.");
-        }
+
+        return probe.Presence == DaemonPresence.NotAnswering
+            ? HealthStatus.Error(
+                $"not answering: it took the connection but sent no status within {Duration(wait)}",
+                "Stop the dictum daemon process, then start it again with 'dictum daemon'.")
+            : HealthStatus.Warning("not running", "Start it with 'dictum daemon', or at login with 'dictum daemon --install-autostart'.");
     }
 
     public static async Task<IReadOnlyList<PlatformCheck>> RunAsync(DoctorInputs inputs, CancellationToken ct)
@@ -123,7 +127,7 @@ public static class DoctorChecks
             Add(check.Name, check.Status);
         }
 
-        Add(PlatformCheckNames.Daemon, await inputs.Daemon(ct).ConfigureAwait(false));
+        Add(PlatformCheckNames.Daemon, await CheckAsync(() => inputs.Daemon(ct), timeout, ct).ConfigureAwait(false));
 
         if (config is not null)
         {
@@ -195,11 +199,14 @@ public static class DoctorChecks
             var finished = await Task.WhenAny(task, Task.Delay(timeout, ct)).ConfigureAwait(false);
             return finished == task
                 ? await task.ConfigureAwait(false)
-                : HealthStatus.Error($"No answer within {(timeout.TotalSeconds >= 1 ? $"{timeout.TotalSeconds:F0} s" : $"{timeout.TotalMilliseconds:F0} ms")}");
+                : HealthStatus.Error($"No answer within {Duration(timeout)}");
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             return HealthStatus.Error(ex.Message);
         }
     }
+
+    private static string Duration(TimeSpan time) =>
+        time.TotalSeconds >= 1 ? $"{time.TotalSeconds:F0} s" : $"{time.TotalMilliseconds:F0} ms";
 }

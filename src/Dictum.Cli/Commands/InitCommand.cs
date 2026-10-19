@@ -343,24 +343,18 @@ internal static class InitCommand
         }
     }
 
+    /// <summary>The config is saved by now, so a daemon that does not answer is reported, not an error.</summary>
     private static async Task ReportReadinessAsync(CliContext context, bool? autostart, CancellationToken ct)
     {
-        bool running;
-        try
+        var probe = await new IpcClient(context.SocketPath).ProbeAsync(ct).ConfigureAwait(false);
+        context.Error.WriteLine(probe.Presence switch
         {
-            await new IpcClient(context.SocketPath).SendAsync(new IpcRequest(IpcCommand.Status), ct).ConfigureAwait(false);
-            running = true;
-        }
-        catch (DaemonNotRunningException)
-        {
-            running = false;
-        }
-
-        context.Error.WriteLine(running
-            ? "Done. The running daemon picks up the new config by itself; 'dictum doctor' shows the details."
-            : autostart == true || context.Platform.Autostart?.Installed is not null
+            DaemonPresence.Answering => "Done. The running daemon picks up the new config by itself; 'dictum doctor' shows the details.",
+            DaemonPresence.NotAnswering => "Done. The running daemon does not answer; restart it to use the new config. 'dictum doctor' shows the details.",
+            _ => autostart == true || context.Platform.Autostart?.Installed is not null
                 ? "Done. Dictum starts at your next login; to start it now, run 'dictum daemon'."
-                : "Done. Start dictation with 'dictum daemon'.");
+                : "Done. Start dictation with 'dictum daemon'.",
+        });
     }
 
     /// <summary>

@@ -8,7 +8,7 @@ namespace Dictum.Host.Ipc;
 /// <summary>Talks to the daemon over its socket, one connection per request.</summary>
 public sealed class IpcClient(string socketPath)
 {
-    private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(10);
+    internal static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(10);
 
     /// <param name="timeout">How long to wait for the answer; slow commands such as <c>test-stt</c> pass a longer one.</param>
     public async Task<IpcResponse> SendAsync(IpcRequest request, CancellationToken ct, TimeSpan? timeout = null)
@@ -19,6 +19,29 @@ public sealed class IpcClient(string socketPath)
         await using var stream = new NetworkStream(socket, ownsSocket: false);
         using var reader = new StreamReader(stream, Encoding.UTF8);
         return await ExchangeAsync(stream, reader, request, deadline.Token).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Asks for the status, and tells a daemon that is not running from one that took the connection but did not answer
+    /// within <paramref name="timeout"/>, instead of throwing for either.
+    /// </summary>
+    public async Task<DaemonProbe> ProbeAsync(CancellationToken ct, TimeSpan? timeout = null)
+    {
+        try
+        {
+            var response = await SendAsync(new IpcRequest(IpcCommand.Status), ct, timeout).ConfigureAwait(false);
+            return response.Status is { } status
+                ? new DaemonProbe(DaemonPresence.Answering, status)
+                : new DaemonProbe(DaemonPresence.NotAnswering);
+        }
+        catch (DaemonNotRunningException)
+        {
+            return new DaemonProbe(DaemonPresence.NotRunning);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return new DaemonProbe(DaemonPresence.NotAnswering);
+        }
     }
 
     /// <summary>Opens the event stream; disposing the subscription closes it.</summary>
