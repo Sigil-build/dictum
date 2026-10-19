@@ -14,11 +14,11 @@ internal sealed class SetupFixture : IDisposable
 {
     public const string Executable = @"C:\Dictum\dictum-gui.exe";
 
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-setup", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
 
     public SetupFixture() => Directory.CreateDirectory(Paths.ConfigDirectory);
 
-    public AppPaths Paths => new(Path.Combine(_dir, "config"), Path.Combine(_dir, "data"));
+    public AppPaths Paths => new(_dir.File("config"), _dir.File("data"));
 
     public ConfigStore Store => new(Paths.ConfigFile, NullLog.Instance);
 
@@ -79,16 +79,7 @@ internal sealed class SetupFixture : IDisposable
 
     public string ModelPath(string file) => Path.Combine(Paths.ModelsDirectory, file);
 
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-    }
+    public void Dispose() => _dir.Dispose();
 }
 
 /// <summary>"Test connection" answered by the test; <see cref="Held"/> answers later, in order.</summary>

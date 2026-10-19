@@ -26,7 +26,7 @@ public sealed class ModelsPageTests : IDisposable
     internal static readonly byte[] TinyData = Bytes(500_000, 11);
     internal static readonly HardwareInfo IrisXe = new("Intel(R) Iris(R) Xe Graphics", 48_000_000_000, 16_965_120_819, GpuIsIntegrated: true);
 
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-settings", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
     private readonly ManualTimers _timers = new();
     private readonly ManualClock _clock = new(DateTimeOffset.UnixEpoch);
     private readonly FakeDownloads _downloads = new();
@@ -37,18 +37,9 @@ public sealed class ModelsPageTests : IDisposable
     private TaskCompletionSource<HardwareInfo>? _probe;
     private bool _probeFails;
 
-    private AppPaths Paths => new(Path.Combine(_dir, "config"), Path.Combine(_dir, "data"));
+    private AppPaths Paths => new(_dir.File("config"), _dir.File("data"));
 
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-    }
+    public void Dispose() => _dir.Dispose();
 
     /// <summary>The built-in catalog's ids and files with small files, so a test can install and hash them.</summary>
     internal static Catalog TestCatalog() => Catalog.Parse($$"""

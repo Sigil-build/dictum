@@ -9,7 +9,7 @@ namespace Dictum.App.Tests.Settings;
 
 public sealed class ProcessorsPageTests : IDisposable
 {
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-settings", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
     private readonly ManualTimers _timers = new();
     private readonly FakeRunner _runner = new();
     private readonly FakeSecrets _secrets = new();
@@ -17,22 +17,12 @@ public sealed class ProcessorsPageTests : IDisposable
 
     public ProcessorsPageTests()
     {
-        Directory.CreateDirectory(_dir);
-        _prompts = new PromptLibrary(Path.Combine(_dir, "prompts"));
+        _prompts = new PromptLibrary(_dir.File("prompts"));
     }
 
-    private ConfigStore Store => new(Path.Combine(_dir, "config.json"), NullLog.Instance);
+    private ConfigStore Store => new(_dir.File("config.json"), NullLog.Instance);
 
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-    }
+    public void Dispose() => _dir.Dispose();
 
     /// <summary>The page as the user meets it: on screen. <paramref name="shown"/> false is a window opened on another page.</summary>
     private (ProcessorsPage Page, SettingsSession Session) Open(bool shown = true, string? cleanupKey = null)
@@ -448,7 +438,7 @@ public sealed class ProcessorsPageTests : IDisposable
     {
         var (page, _) = Open();
         _prompts.Write("cleanup", "Mine {{text}}");
-        using (File.Open(Path.Combine(_dir, "prompts", "cleanup.md"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+        using (File.Open(Path.Combine(_dir.Path, "prompts", "cleanup.md"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
         {
             page.Selected = page.Processors.Single(p => p.Id == "terms");
             page.Selected = page.Processors.Single(p => p.Id == "cleanup");
@@ -467,7 +457,7 @@ public sealed class ProcessorsPageTests : IDisposable
         page.Llm.Prompt.Text = "Fix {{text}}";
         _timers.Fire();
 
-        using (File.Open(Path.Combine(_dir, "prompts", "cleanup.md"), FileMode.Open, FileAccess.Read, FileShare.Read))
+        using (File.Open(Path.Combine(_dir.Path, "prompts", "cleanup.md"), FileMode.Open, FileAccess.Read, FileShare.Read))
         {
             page.Llm.Prompt.RestoreCommand.Execute(null);
         }

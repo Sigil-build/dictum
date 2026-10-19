@@ -15,27 +15,17 @@ namespace Dictum.App.Tests.Views;
 public sealed class ProcessorsViewTests(AvaloniaFixture fx) : IDisposable
 {
     private static readonly string[] TypedLetters = ["м", "е", "й", "н"];
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-settings", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
 
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-    }
+    public void Dispose() => _dir.Dispose();
 
     private (Window Window, ProcessorsPage Page, SettingsSession Session) Show()
     {
-        Directory.CreateDirectory(_dir);
-        var store = new ConfigStore(Path.Combine(_dir, "config.json"), NullLog.Instance);
+        var store = new ConfigStore(_dir.File("config.json"), NullLog.Instance);
         store.Save(ProfilesPageTests.Sample());
         var session = new SettingsSession(store, new ManualTimers(), NullLog.Instance);
         session.Load();
-        var page = new ProcessorsPage(session, new ProcessorsServices(new FakeRunner(), new FakeSecrets(), new PromptLibrary(Path.Combine(_dir, "prompts")),
+        var page = new ProcessorsPage(session, new ProcessorsServices(new FakeRunner(), new FakeSecrets(), new PromptLibrary(_dir.File("prompts")),
             new ManualTimers(), NullLog.Instance));
         var window = new Window { Content = new ViewLocator().Build(page), Width = 1100, Height = 1400 };
         window.Show();

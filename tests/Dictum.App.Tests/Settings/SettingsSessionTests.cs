@@ -7,23 +7,12 @@ namespace Dictum.App.Tests.Settings;
 
 public sealed class SettingsSessionTests : IDisposable
 {
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-settings", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
     private readonly ManualTimers _timers = new();
 
-    public SettingsSessionTests() => Directory.CreateDirectory(_dir);
+    private ConfigStore Store => new(_dir.File("config.json"), NullLog.Instance);
 
-    private ConfigStore Store => new(Path.Combine(_dir, "config.json"), NullLog.Instance);
-
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-    }
+    public void Dispose() => _dir.Dispose();
 
     private static DictumConfig HistoryOf(int size) => new() { General = new GeneralSettings { HistorySize = size } };
 

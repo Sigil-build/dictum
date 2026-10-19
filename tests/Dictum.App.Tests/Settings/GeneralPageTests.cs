@@ -12,27 +12,16 @@ namespace Dictum.App.Tests.Settings;
 
 public sealed class GeneralPageTests : IDisposable
 {
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-settings", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
     private readonly ManualTimers _timers = new();
     private readonly ManualClock _clock = new(DateTimeOffset.UnixEpoch);
     private readonly FakeChannel _channel = new();
     private readonly FallibleAutostart _autostart = new();
     private readonly FakeSounds _sounds = new();
 
-    public GeneralPageTests() => Directory.CreateDirectory(_dir);
+    private ConfigStore Store => new(_dir.File("config.json"), NullLog.Instance);
 
-    private ConfigStore Store => new(Path.Combine(_dir, "config.json"), NullLog.Instance);
-
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-    }
+    public void Dispose() => _dir.Dispose();
 
     private (GeneralPage Page, SettingsSession Session, FrameHub Frames) Open(GeneralSettings? general = null, bool saved = true)
     {

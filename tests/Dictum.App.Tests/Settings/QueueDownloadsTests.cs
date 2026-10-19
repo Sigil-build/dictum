@@ -9,7 +9,7 @@ namespace Dictum.App.Tests.Settings;
 public sealed class QueueDownloadsTests : IAsyncDisposable
 {
     private static readonly byte[] Data = [.. Enumerable.Range(0, 5000).Select(i => (byte)(i * 7))];
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-settings", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
     private readonly List<Action> _posted = [];
     private readonly HttpClient _http = new(new Serve());
     private readonly ModelDownloads _queue;
@@ -25,7 +25,7 @@ public sealed class QueueDownloadsTests : IAsyncDisposable
                 "licence": { "name": "MIT", "url": "https://example.com" } } ] }
             """);
         _entry = catalog.Get("a");
-        _queue = new ModelDownloads(new FileDownloader(_http, [TimeSpan.Zero]), new AppPaths(_dir, _dir), catalog, () => long.MaxValue);
+        _queue = new ModelDownloads(new FileDownloader(_http, [TimeSpan.Zero]), new AppPaths(_dir.Path, _dir.Path), catalog, () => long.MaxValue);
         _downloads = new QueueDownloads(_queue, action =>
         {
             lock (_posted)
@@ -39,13 +39,7 @@ public sealed class QueueDownloadsTests : IAsyncDisposable
     {
         await _queue.DisposeAsync();
         _http.Dispose();
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
+        _dir.Dispose();
     }
 
     [Fact]
@@ -81,7 +75,7 @@ public sealed class QueueDownloadsTests : IAsyncDisposable
 
         Assert.False(_downloads.IsPaused);
         Assert.Equal(DownloadState.Done, _downloads.Items.Single().State);
-        Assert.True(File.Exists(Path.Combine(_dir, "models", "a.bin")));
+        Assert.True(File.Exists(Path.Combine(_dir.Path, "models", "a.bin")));
     }
 
     [Fact]

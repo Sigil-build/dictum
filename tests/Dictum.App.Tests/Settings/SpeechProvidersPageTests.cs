@@ -10,7 +10,7 @@ namespace Dictum.App.Tests.Settings;
 
 public sealed class SpeechProvidersPageTests : IDisposable
 {
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-settings", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
     private readonly ManualTimers _timers = new();
     private readonly ManualClock _clock = new(DateTimeOffset.UnixEpoch);
     private readonly List<Option<string>> _choices = [new("ggml-large-v3-turbo-q8_0.bin", "Turbo"), new("ggml-small-q8_0.bin", "Small")];
@@ -20,20 +20,9 @@ public sealed class SpeechProvidersPageTests : IDisposable
     private readonly List<(TimeSpan Wait, string? UrlOnDisk)> _waits = [];
     private FrameHub _frames = null!;
 
-    public SpeechProvidersPageTests() => Directory.CreateDirectory(_dir);
+    private ConfigStore Store => new(_dir.File("config.json"), NullLog.Instance);
 
-    private ConfigStore Store => new(Path.Combine(_dir, "config.json"), NullLog.Instance);
-
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-    }
+    public void Dispose() => _dir.Dispose();
 
     private (SpeechProvidersPage Page, SettingsSession Session) Open(DictumConfig? config = null)
     {

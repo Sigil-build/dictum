@@ -20,25 +20,16 @@ public sealed class WhisperModelsTests : IDisposable
         }
         """;
 
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-models", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
     private readonly AppPaths _paths;
 
     public WhisperModelsTests()
     {
-        _paths = new AppPaths(Path.Combine(_dir, "config"), Path.Combine(_dir, "data"));
+        _paths = new AppPaths(_dir.File("config"), _dir.File("data"));
         Directory.CreateDirectory(_paths.ModelsDirectory);
     }
 
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-    }
+    public void Dispose() => _dir.Dispose();
 
     private void File(string name, int size) => System.IO.File.WriteAllBytes(Path.Combine(_paths.ModelsDirectory, name), new byte[size]);
 

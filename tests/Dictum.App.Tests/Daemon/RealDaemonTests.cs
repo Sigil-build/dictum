@@ -17,7 +17,7 @@ public sealed class RealDaemonTests : IAsyncDisposable
 {
     private static readonly string? Model = Environment.GetEnvironmentVariable("DICTUM_TEST_MODEL");
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-real", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
     private DaemonSupervisor? _supervisor;
 
     public async ValueTask DisposeAsync()
@@ -28,13 +28,7 @@ public sealed class RealDaemonTests : IAsyncDisposable
             await _supervisor.DisposeAsync();
         }
 
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
+        _dir.Dispose();
     }
 
     [Fact]
@@ -43,8 +37,8 @@ public sealed class RealDaemonTests : IAsyncDisposable
         Assert.SkipUnless(Environment.GetEnvironmentVariable("DICTUM_INTEGRATION") == "1", "Set DICTUM_INTEGRATION=1 to run");
         Assert.SkipWhen(string.IsNullOrEmpty(Model) || !File.Exists(Model), "Set DICTUM_TEST_MODEL to a ggml model");
 
-        var config = Path.Combine(_dir, "config");
-        var socket = Path.Combine(_dir, "d.sock");
+        var config = _dir.File("config");
+        var socket = _dir.File("d.sock");
         var store = new ConfigStore(Path.Combine(config, "config.json"), NullLog.Instance);
         store.Save(new DictumConfig
         {
@@ -55,7 +49,7 @@ public sealed class RealDaemonTests : IAsyncDisposable
         var launcher = new DaemonProcessLauncher(CliExecutable(), [DictumExecutables.DaemonVerb], log, new Dictionary<string, string>
         {
             [DictumEnvironment.ConfigDirectory] = config,
-            [DictumEnvironment.DataDirectory] = Path.Combine(_dir, "data"),
+            [DictumEnvironment.DataDirectory] = _dir.File("data"),
             [DictumEnvironment.Socket] = socket,
             [DictumEnvironment.AudioFile] = Path.Combine(AppContext.BaseDirectory, "fixtures", "en.wav"),
         });

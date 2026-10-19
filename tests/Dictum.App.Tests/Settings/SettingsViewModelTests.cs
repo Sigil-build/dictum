@@ -9,21 +9,10 @@ namespace Dictum.App.Tests.Settings;
 
 public sealed class SettingsViewModelTests : IDisposable
 {
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-settings", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
     private readonly ManualTimers _timers = new();
 
-    public SettingsViewModelTests() => Directory.CreateDirectory(_dir);
-
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-    }
+    public void Dispose() => _dir.Dispose();
 
     internal sealed class Page(string title) : SettingsPage
     {
@@ -44,7 +33,7 @@ public sealed class SettingsViewModelTests : IDisposable
 
     private (SettingsViewModel Model, Page General, Page System, SettingsSession Session, ConfigStore Store) Create()
     {
-        var store = new ConfigStore(Path.Combine(_dir, "config.json"), NullLog.Instance);
+        var store = new ConfigStore(_dir.File("config.json"), NullLog.Instance);
         store.Save(new DictumConfig());
         var session = new SettingsSession(store, _timers, NullLog.Instance);
         session.Load();
@@ -191,7 +180,7 @@ public sealed class SettingsViewModelTests : IDisposable
     [Fact]
     public void DisposingTheWindowsModelDisposesThePagesThatOwnSomething()
     {
-        var store = new ConfigStore(Path.Combine(_dir, "config.json"), NullLog.Instance);
+        var store = new ConfigStore(_dir.File("config.json"), NullLog.Instance);
         store.Save(new DictumConfig());
         var session = new SettingsSession(store, _timers, NullLog.Instance);
         session.Load();

@@ -10,7 +10,7 @@ namespace Dictum.App.Tests.Daemon;
 public sealed class DaemonSupervisorTests : IAsyncDisposable
 {
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-sup", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
     private readonly ManualClock _clock = new(new DateTimeOffset(2026, 10, 16, 12, 0, 0, TimeSpan.Zero));
     private readonly ListLog _log = new();
     private readonly ConcurrentQueue<DaemonLink> _links = new();
@@ -20,11 +20,10 @@ public sealed class DaemonSupervisorTests : IAsyncDisposable
 
     public DaemonSupervisorTests()
     {
-        Directory.CreateDirectory(_dir);
         _launcher = new FakeLauncher(SocketPath);
     }
 
-    private string SocketPath => Path.Combine(_dir, "d.sock");
+    private string SocketPath => _dir.File("d.sock");
 
     public async ValueTask DisposeAsync()
     {
@@ -34,13 +33,7 @@ public sealed class DaemonSupervisorTests : IAsyncDisposable
         }
 
         await _launcher.DisposeAsync();
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
+        _dir.Dispose();
     }
 
     [Fact]

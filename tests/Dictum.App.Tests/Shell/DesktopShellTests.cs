@@ -22,18 +22,9 @@ namespace Dictum.App.Tests.Shell;
 /// <summary>The shell with a fake daemon and a fake tray, on the headless UI thread.</summary>
 public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
 {
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-shell", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
 
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-    }
+    public void Dispose() => _dir.Dispose();
 
     [Fact]
     public Task TheTrayShowsTheDaemonAndQuitStopsBoth() => fx.UiAsync(async () =>
@@ -95,7 +86,7 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         shell.ShowSettings(SettingsPageKey.General);
         var model = (SettingsViewModel)SettingsWindow.Open[0].DataContext!;
 
-        new ConfigStore(Path.Combine(_dir, "config", "config.json"), NullLog.Instance)
+        new ConfigStore(Path.Combine(_dir.Path, "config", "config.json"), NullLog.Instance)
             .Save(new DictumConfig { General = new GeneralSettings { HistorySize = 77 } });
 
         await WaitAsync(() => model.Session.Config.General.HistorySize == 77);
@@ -122,15 +113,14 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
     public Task AConfigWatchThatCannotStartDoesNotStopTheApp() => fx.UiAsync(async () =>
     {
         // A config path whose folder is a file: watching it fails as it does when Linux runs out of inotify instances.
-        Directory.CreateDirectory(_dir);
-        var blocker = Path.Combine(_dir, "not-a-folder");
+        var blocker = _dir.File("not-a-folder");
         File.WriteAllText(blocker, "");
-        var paths = new AppPaths(blocker, Path.Combine(_dir, "data"));
+        var paths = new AppPaths(blocker, _dir.File("data"));
         var log = new DictumLog(LogLevel.Error, includeText: false, console: null, logsDirectory: null);
         var store = new ConfigStore(Path.Combine(blocker, "config.json"), log);
-        await using var launcher = new FakeLauncher(Path.Combine(_dir, "d.sock"));
+        await using var launcher = new FakeLauncher(_dir.File("d.sock"));
         var presenter = new TrayControllerTests.FakePresenter();
-        await using var shell = new DesktopShell(paths, log, store, Path.Combine(_dir, "d.sock"), launcher, (_, _) => Task.FromResult<ITrayPresenter?>(presenter));
+        await using var shell = new DesktopShell(paths, log, store, _dir.File("d.sock"), launcher, (_, _) => Task.FromResult<ITrayPresenter?>(presenter));
 
         shell.Start(Application.Current!, _ => { });
 
@@ -237,7 +227,7 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         CloseSetup();
         var config = DefaultConfig.Create();
         config.Profiles[0] = config.Profiles[0] with { Language = "pl" };
-        new ConfigStore(new AppPaths(Path.Combine(_dir, "config"), Path.Combine(_dir, "data")).ConfigFile, NullLog.Instance).Save(config);
+        new ConfigStore(new AppPaths(_dir.File("config"), _dir.File("data")).ConfigFile, NullLog.Instance).Save(config);
 
         shell.ShowSetup();
 
@@ -330,7 +320,7 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         await launcher.DisposeAsync();
     });
 
-    private AppPaths Paths() => new(Path.Combine(_dir, "config"), Path.Combine(_dir, "data"));
+    private AppPaths Paths() => new(_dir.File("config"), _dir.File("data"));
 
     private static SavedSetup KeptWalk() =>
         new("pl", "whisper-large-v3-turbo-q8", false, "http://localhost:8080/v1", "", null, false, [], false, ["whisper-large-v3-turbo-q8"]);
@@ -371,12 +361,11 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
     [Fact]
     public Task AnUnreadableAnswerToATrayRequestIsLogged() => fx.UiAsync(async () =>
     {
-        Directory.CreateDirectory(_dir);
-        var socket = Path.Combine(_dir, "garbled.sock");
+        var socket = _dir.File("garbled.sock");
         using var daemon = GarbledDaemon.Listen(socket);
         var output = new StringWriter();
         var log = new DictumLog(LogLevel.Warning, includeText: false, console: TextWriter.Synchronized(output), logsDirectory: null);
-        var paths = new AppPaths(Path.Combine(_dir, "config"), Path.Combine(_dir, "data"));
+        var paths = new AppPaths(_dir.File("config"), _dir.File("data"));
         await using var launcher = new FakeLauncher(socket);
         await using var shell = new DesktopShell(paths, log, new ConfigStore(paths.ConfigFile, log), socket, launcher,
             (_, _) => Task.FromResult<ITrayPresenter?>(null));
@@ -427,7 +416,7 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
 
     private (DesktopShell Shell, FakeLauncher Launcher, TrayControllerTests.FakePresenter Presenter) Create(bool tray = true, bool config = true)
     {
-        var paths = new AppPaths(Path.Combine(_dir, "config"), Path.Combine(_dir, "data"));
+        var paths = new AppPaths(_dir.File("config"), _dir.File("data"));
         var log = new DictumLog(LogLevel.Error, includeText: false, console: null, logsDirectory: null);
         var store = new ConfigStore(paths.ConfigFile, log);
         if (config)
@@ -435,7 +424,7 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
             store.Save(new DictumConfig());
         }
 
-        var socket = Path.Combine(_dir, "d.sock");
+        var socket = _dir.File("d.sock");
         var launcher = new FakeLauncher(socket);
         var presenter = new TrayControllerTests.FakePresenter();
         var shell = new DesktopShell(paths, log, store, socket, launcher, (_, _) => Task.FromResult<ITrayPresenter?>(tray ? presenter : null),

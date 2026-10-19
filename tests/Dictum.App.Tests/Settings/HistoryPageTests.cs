@@ -10,31 +10,20 @@ namespace Dictum.App.Tests.Settings;
 public sealed class HistoryPageTests : IDisposable
 {
     private static readonly DateTimeOffset Start = new(2026, 10, 17, 9, 0, 0, TimeSpan.Zero);
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-settings", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
     private readonly FakeClipboard _clipboard = new();
     private readonly FakeRunner _runner = new();
 
-    public HistoryPageTests() => Directory.CreateDirectory(_dir);
+    private string File => _dir.File("history.jsonl");
 
-    private string File => Path.Combine(_dir, "history.jsonl");
-
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-    }
+    public void Dispose() => _dir.Dispose();
 
     private void Dictated(int minute, string raw, string text, string profile = "uk", string? language = "uk", string? error = null) =>
         new HistoryStore(File, 200).Append(new HistoryEntry(Start.AddMinutes(minute), profile, "local", raw, text, language, 2.46, error));
 
     private HistoryPage Open(int historySize = 200)
     {
-        var store = new ConfigStore(Path.Combine(_dir, "config.json"), NullLog.Instance);
+        var store = new ConfigStore(_dir.File("config.json"), NullLog.Instance);
         var config = ProfilesPageTests.Sample();
         config.General = config.General with { HistorySize = historySize };
         store.Save(config);

@@ -70,17 +70,12 @@ public class TraySvgIconsTests
     [Fact]
     public void WriteAllPutsOneFilePerIcon()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "dictum-tests", Guid.NewGuid().ToString("N"));
-        try
-        {
-            TraySvgIcons.WriteAll(dir);
+        using var temp = new TempDirectory();
+        var dir = temp.File("icons");
 
-            Assert.Equal(11, Directory.GetFiles(dir, "*.svg").Length);
-            Assert.Equal(TraySvgIcons.Svg(TrayGlyph.Idle), File.ReadAllText(Path.Combine(dir, "dictum-idle.svg")));
-        }
-        finally
-        {
-            Directory.Delete(dir, recursive: true);
-        }
+        TraySvgIcons.WriteAll(dir);
+
+        Assert.Equal(11, Directory.GetFiles(dir, "*.svg").Length);
+        Assert.Equal(TraySvgIcons.Svg(TrayGlyph.Idle), File.ReadAllText(Path.Combine(dir, "dictum-idle.svg")));
     }
 }

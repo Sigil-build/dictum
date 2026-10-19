@@ -13,26 +13,16 @@ namespace Dictum.App.Tests.Views;
 
 public sealed class HistoryViewTests(AvaloniaFixture fx) : IDisposable
 {
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-settings", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
 
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-    }
+    public void Dispose() => _dir.Dispose();
 
     [Fact]
     public Task TheListAndBothTextsShow() => fx.Ui(() =>
     {
-        Directory.CreateDirectory(_dir);
-        var file = Path.Combine(_dir, "history.jsonl");
+        var file = _dir.File("history.jsonl");
         new HistoryStore(file, 200).Append(new HistoryEntry(DateTimeOffset.Now, "uk", "local", "привіт світ", "Привіт, світ.", "uk", 1.2));
-        var store = new ConfigStore(Path.Combine(_dir, "config.json"), NullLog.Instance);
+        var store = new ConfigStore(_dir.File("config.json"), NullLog.Instance);
         store.Save(new DictumConfig());
         var session = new SettingsSession(store, new ManualTimers(), NullLog.Instance);
         session.Load();

@@ -10,28 +10,17 @@ namespace Dictum.App.Tests.Shell;
 public sealed class SingleInstanceTests : IDisposable
 {
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-one", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
 
-    public SingleInstanceTests() => Directory.CreateDirectory(_dir);
+    private string SocketPath => _dir.File("dictum-gui.sock");
 
-    private string SocketPath => Path.Combine(_dir, "dictum-gui.sock");
-
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-    }
+    public void Dispose() => _dir.Dispose();
 
     [Theory]
     [InlineData("dictum.sock", "dictum-gui.sock")]
     [InlineData("dictum-1a2b3c4d5e6f.sock", "dictum-1a2b3c4d5e6f-gui.sock")]
     public void TheAppSocketSitsNextToTheDaemonSocket(string daemon, string app) =>
-        Assert.Equal(Path.Combine(_dir, app), SingleInstance.SocketPathFor(Path.Combine(_dir, daemon)));
+        Assert.Equal(_dir.File(app), SingleInstance.SocketPathFor(_dir.File(daemon)));
 
     [Fact]
     public async Task ASecondLaunchHandsItsCommandToTheFirst()
@@ -163,7 +152,7 @@ public sealed class SingleInstanceTests : IDisposable
             }
         }, NullLog.Instance);
 
-        var code = await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, _dir, processes, TextWriter.Null, _ct);
+        var code = await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, _dir.Path, processes, TextWriter.Null, _ct);
 
         Assert.Equal((0, false), (code, processes.IsRunning(4242)));
     }
@@ -177,7 +166,7 @@ public sealed class SingleInstanceTests : IDisposable
         await using var daemon = new FakeDaemon(processes, 4242, exitsOnShutdown: true);
         daemon.Start(DaemonSocket);
 
-        var code = await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, _dir, processes, TextWriter.Null, _ct);
+        var code = await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, _dir.Path, processes, TextWriter.Null, _ct);
 
         Assert.Equal((0, true, false), (code, daemon.ShutdownAsked, processes.IsRunning(4242)));
     }
@@ -190,7 +179,7 @@ public sealed class SingleInstanceTests : IDisposable
         await using var daemon = new FakeDaemon(processes, 999, exitsOnShutdown: true);
         daemon.Start(DaemonSocket);
 
-        var code = await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, _dir, processes, TextWriter.Null, _ct);
+        var code = await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, _dir.Path, processes, TextWriter.Null, _ct);
 
         Assert.Equal((0, false), (code, daemon.ShutdownAsked));
     }
@@ -204,13 +193,13 @@ public sealed class SingleInstanceTests : IDisposable
         daemon.Start(DaemonSocket);
         var error = new StringWriter();
 
-        var code = await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, _dir, processes, error, _ct, TimeSpan.FromMilliseconds(500));
+        var code = await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, _dir.Path, processes, error, _ct, TimeSpan.FromMilliseconds(500));
 
         Assert.Equal(1, code);
         Assert.Contains("still running", error.ToString());
     }
 
-    private string DaemonSocket => Path.Combine(_dir, "dictum.sock");
+    private string DaemonSocket => _dir.File("dictum.sock");
 
     /// <summary>A socket that takes connections and never answers: a hung instance.</summary>
     private static Socket Listen(string path)

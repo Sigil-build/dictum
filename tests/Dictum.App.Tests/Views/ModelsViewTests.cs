@@ -14,21 +14,12 @@ namespace Dictum.App.Tests.Views;
 
 public sealed class ModelsViewTests(AvaloniaFixture fx) : IDisposable
 {
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-settings", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
     private readonly FakeDownloads _downloads = new();
 
-    private AppPaths Paths => new(Path.Combine(_dir, "config"), Path.Combine(_dir, "data"));
+    private AppPaths Paths => new(_dir.File("config"), _dir.File("data"));
 
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-    }
+    public void Dispose() => _dir.Dispose();
 
     private void Install(string file, byte[] data)
     {

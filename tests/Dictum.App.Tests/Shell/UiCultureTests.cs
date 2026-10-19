@@ -17,24 +17,14 @@ public class UiCultureTests
     [Fact]
     public void TheSettingIsReadFromTheConfig()
     {
-        var dir = Path.Combine(Path.GetTempPath(), "dictum-tests", Guid.NewGuid().ToString("N"));
-        try
-        {
-            var store = new ConfigStore(Path.Combine(dir, "config.json"), NullLog.Instance);
-            Assert.Null(UiCulture.FromConfig(store));
+        using var dir = new TempDirectory();
+        var store = new ConfigStore(dir.File("config.json"), NullLog.Instance);
+        Assert.Null(UiCulture.FromConfig(store));
 
-            store.Save(new DictumConfig { General = new GeneralSettings { UiLanguage = "uk" } });
-            Assert.Equal("uk", UiCulture.FromConfig(store));
+        store.Save(new DictumConfig { General = new GeneralSettings { UiLanguage = "uk" } });
+        Assert.Equal("uk", UiCulture.FromConfig(store));
 
-            File.WriteAllText(store.Path, "{ broken");
-            Assert.Null(UiCulture.FromConfig(store));
-        }
-        finally
-        {
-            if (Directory.Exists(dir))
-            {
-                Directory.Delete(dir, recursive: true);
-            }
-        }
+        File.WriteAllText(store.Path, "{ broken");
+        Assert.Null(UiCulture.FromConfig(store));
     }
 }

@@ -12,25 +12,15 @@ namespace Dictum.App.Tests.Views;
 
 public sealed class PastingViewTests(AvaloniaFixture fx) : IDisposable
 {
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-settings", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
 
-    public void Dispose()
-    {
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
-    }
+    public void Dispose() => _dir.Dispose();
 
     // Final review C1: the real app box clears once the app is added.
     [Fact]
     public Task TypingACommaAddsTheAppAndClearsTheBox() => fx.Ui(() =>
     {
-        Directory.CreateDirectory(_dir);
-        var store = new ConfigStore(Path.Combine(_dir, "config.json"), NullLog.Instance);
+        var store = new ConfigStore(_dir.File("config.json"), NullLog.Instance);
         store.Save(new DictumConfig());
         var session = new SettingsSession(store, new ManualTimers(), NullLog.Instance);
         session.Load();

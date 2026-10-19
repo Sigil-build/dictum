@@ -8,23 +8,17 @@ namespace Dictum.App.Tests.Settings;
 
 public sealed class ProcessorRunnerTests : IDisposable
 {
-    private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-runner", Guid.NewGuid().ToString("N")[..8]);
+    private readonly TempDirectory _dir = new();
     private readonly ProcessorRunner _runner;
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
 
     public ProcessorRunnerTests() =>
-        _runner = new ProcessorRunner(new AppPaths(Path.Combine(_dir, "config"), Path.Combine(_dir, "data")), new FakeSecrets(), NullLog.Instance);
+        _runner = new ProcessorRunner(new AppPaths(_dir.File("config"), _dir.File("data")), new FakeSecrets(), NullLog.Instance);
 
     public void Dispose()
     {
         _runner.Dispose();
-        try
-        {
-            Directory.Delete(_dir, recursive: true);
-        }
-        catch (IOException)
-        {
-        }
+        _dir.Dispose();
     }
 
     private static readonly ProcessingContext Context = new("work", "uk", null);
