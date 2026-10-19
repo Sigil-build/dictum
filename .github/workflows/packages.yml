@@ -15,6 +15,7 @@ env:
 jobs:
   windows:
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
@@ -30,36 +31,11 @@ jobs:
         shell: bash
         run: DICTUM_PACKAGE_OUT="$RUNNER_TEMP/packages" bash packaging/tests/test-package.sh
 
-      - name: Build a rebuilt and an upgrade MSI from the same files
-        shell: bash
-        run: |
-          set -euo pipefail
-          version=$(dotnet msbuild src/Dictum.Cli/Dictum.Cli.csproj -getProperty:VersionPrefix)
-          stage=$(cygpath -w "$RUNNER_TEMP/packages/stage/dictum-$version-win-x64")
-          dotnet build packaging/windows/Dictum.Installer.wixproj -c Release --no-incremental -p:StageDir="$stage" -o "$(cygpath -w "$RUNNER_TEMP/rebuilt")"
-          dotnet build packaging/windows/Dictum.Installer.wixproj -c Release --no-incremental -p:StageDir="$stage" -p:VersionPrefix=99.0.0 -o "$(cygpath -w "$RUNNER_TEMP/upgrade")"
-          echo "DICTUM_VERSION=$version" >> "$GITHUB_ENV"
-
-      - name: The smoke's helpers (installed products, msiexec arguments, the MSI log)
+      # Installing, upgrading and uninstalling the MSI is tested on a person's machine, not here: on the runner the
+      # smoke hung for 45 minutes on 2026-10-19 and GitHub kept no log of it (the user's call).
+      - name: The MSI smoke's helpers (installed products, msiexec arguments, the MSI log)
         shell: pwsh
         run: ./packaging/windows/test-msi-smoke.ps1
-
-      - name: Install, upgrade over a running daemon, uninstall (this runner's user)
-        shell: pwsh
-        run: >
-          ./packaging/windows/test-msi-install.ps1
-          -Msi "$env:RUNNER_TEMP\packages\dictum-$env:DICTUM_VERSION-win-x64.msi"
-          -RebuiltMsi "$env:RUNNER_TEMP\rebuilt\dictum.msi"
-          -UpgradeMsi "$env:RUNNER_TEMP\upgrade\dictum.msi"
-          -Version $env:DICTUM_VERSION
-
-      # The MSI logs, the daemon's and dictum init's output, and Dictum's own logs (phase 4 PR 4d final review I2).
-      - uses: actions/upload-artifact@v7
-        if: failure()
-        with:
-          name: windows-smoke-logs
-          path: ${{ runner.temp }}/dictum-logs
-          if-no-files-found: ignore
 
       - uses: actions/upload-artifact@v7
         with:
@@ -70,6 +46,7 @@ jobs:
 
   linux:
     runs-on: ubuntu-22.04
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
