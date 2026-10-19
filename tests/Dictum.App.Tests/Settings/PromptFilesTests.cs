@@ -23,7 +23,7 @@ public sealed class PromptFilesTests : IDisposable
         var prompts = new PromptFiles(_dir);
 
         Assert.Equal(["cleanup", "code-comment", "email"], prompts.Names());
-        Assert.True(prompts.IsBuiltIn("cleanup"));
+        Assert.True(PromptFiles.IsBuiltIn("cleanup"));
         Assert.Contains("{{text}}", prompts.Read("cleanup"), StringComparison.Ordinal);
     }
 

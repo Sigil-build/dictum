@@ -28,7 +28,7 @@ public sealed record HistoryItem(HistoryEntry Entry, string When, string Profile
 /// Copy takes the final text; Delete removes the entry from the file. The file is read each time the page shows;
 /// dictated text never travels over IPC.
 /// </summary>
-public sealed partial class HistoryPage : SettingsPage
+public sealed partial class HistoryPage : SettingsPage, IDisposable
 {
     private readonly SettingsSession _session;
     private readonly string _file;
@@ -225,6 +225,13 @@ public sealed partial class HistoryPage : SettingsPage
         Reload();
     }
 
+    public void Dispose()
+    {
+        _reRun?.Cancel();
+        _reRun?.Dispose();
+        _reRun = null;
+    }
+
     private HistoryStore Store() => new(_file, Math.Max(_session.Config.General.HistorySize, 0));
 
     private void Reload()
@@ -253,7 +260,7 @@ public sealed partial class HistoryPage : SettingsPage
 
         var selected = Selected?.Entry.At;
         Items = search.Length == 0 ? _all : [.. _all.Where(i => Has(i.Entry.Text) || Has(i.Entry.RawText) || Has(i.Entry.ProfileId))];
-        Selected = Items.FirstOrDefault(i => i.Entry.At == selected) ?? Items.FirstOrDefault();
+        Selected = Items.FirstOrDefault(i => i.Entry.At == selected) ?? (Items.Count > 0 ? Items[0] : null);
         Empty = Items.Count > 0 ? null
             : _session.Config.General.HistorySize <= 0 ? Strings.SettingsHistoryOff
             : search.Length > 0 ? string.Format(CultureInfo.CurrentCulture, Strings.SettingsHistoryNoMatch, search)

@@ -31,7 +31,7 @@ public sealed class PromptFiles(string directory)
         return [.. names];
     }
 
-    public bool IsBuiltIn(string name) => PromptTemplates.BuiltIn.Contains(name);
+    public static bool IsBuiltIn(string name) => PromptTemplates.BuiltIn.Contains(name);
 
     public bool HasFile(string name) => IsValidName(name) && File.Exists(PathOf(name));
 

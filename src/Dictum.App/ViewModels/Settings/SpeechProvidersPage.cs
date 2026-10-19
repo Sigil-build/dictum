@@ -47,7 +47,7 @@ public sealed partial class SpeechProvidersPage : SettingsPage
     private void AddLocal()
     {
         var id = UniqueId(_session.Config, "local");
-        var model = _services.Models(null).FirstOrDefault()?.Value ?? DefaultConfig.DefaultModel;
+        var model = _services.Models(null) is [var first, ..] ? first.Value : DefaultConfig.DefaultModel;
         _session.Edit(c =>
         {
             c.Stt[id] = new WhisperLocalSttConfig { Model = model, Vad = true };

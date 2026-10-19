@@ -443,7 +443,7 @@ public sealed partial class ProfilesPage : SettingsPage
                 Profiles = items;
             }
 
-            Selected = Profiles.FirstOrDefault(p => p.Id == _id) ?? Profiles.FirstOrDefault();
+            Selected = Profiles.FirstOrDefault(p => p.Id == _id) ?? (Profiles.Count > 0 ? Profiles[0] : null);
             _id = Selected?.Id;
             CanDelete = CanEdit && Profiles.Count > 1;
             LoadEditor(config);

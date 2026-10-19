@@ -18,7 +18,7 @@ namespace Dictum.App.ViewModels.Settings;
 /// while the page is on screen. It writes a pending prompt first, and a newer run always wins.</item>
 /// </list>
 /// </summary>
-public sealed partial class LlmEditor : ObservableObject
+public sealed partial class LlmEditor : ObservableObject, IDisposable
 {
     public static readonly TimeSpan PromptSaveDelay = TimeSpan.FromMilliseconds(500);
     public static readonly TimeSpan PreviewDelay = TimeSpan.FromMilliseconds(600);
@@ -311,6 +311,15 @@ public sealed partial class LlmEditor : ObservableObject
         Previewing = false;
     }
 
+    public void Dispose()
+    {
+        _previewTimer?.Dispose();
+        _previewTimer = null;
+        _preview?.Cancel();
+        _preview?.Dispose();
+        _preview = null;
+    }
+
     partial void OnUrlChanged(string value) => EditLlm(l => l with { BaseUrl = value.Trim() });
 
     partial void OnModelChanged(string value) => EditLlm(l => l with { Model = value.Trim() });
@@ -577,9 +586,9 @@ public sealed partial class LlmEditor : ObservableObject
     private void ShowPromptState(string name)
     {
         var prompts = _services.Prompts;
-        CanRestorePrompt = prompts.IsBuiltIn(name) && prompts.HasFile(name);
+        CanRestorePrompt = PromptFiles.IsBuiltIn(name) && prompts.HasFile(name);
         PromptNote = string.Format(CultureInfo.CurrentCulture,
-            !prompts.IsBuiltIn(name) ? Strings.SettingsLlmPromptFile
+            !PromptFiles.IsBuiltIn(name) ? Strings.SettingsLlmPromptFile
             : prompts.HasFile(name) ? Strings.SettingsLlmPromptOverride
             : Strings.SettingsLlmPromptBuiltIn,
             name);

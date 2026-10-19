@@ -157,7 +157,7 @@ public sealed partial class ProcessorsPage : SettingsPage
                 Processors = items;
             }
 
-            Selected = Processors.FirstOrDefault(p => p.Id == _id) ?? Processors.FirstOrDefault();
+            Selected = Processors.FirstOrDefault(p => p.Id == _id) ?? (Processors.Count > 0 ? Processors[0] : null);
             _id = Selected?.Id;
             HasProcessor = _id is not null;
             var processor = _id is null ? null : config.Processors[_id];
