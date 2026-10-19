@@ -3,6 +3,7 @@ using Dictum.App.Daemon;
 using Dictum.App.Overlay;
 using Dictum.App.Shell;
 using Dictum.App.Tests.Daemon;
+using Dictum.App.Tests.Tray;
 using Dictum.App.Tray;
 using Dictum.App.ViewModels.Settings;
 using Dictum.App.ViewModels.Setup;

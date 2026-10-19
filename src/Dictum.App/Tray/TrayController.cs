@@ -1,9 +1,8 @@
 using Dictum.App.Daemon;
-using Dictum.App.Tray;
 using Dictum.Core.Configuration;
 using Dictum.Host.Ipc;
 
-namespace Dictum.App.Shell;
+namespace Dictum.App.Tray;
 
 /// <summary>What the tray asks the app to do. Calls may arrive on any thread (the Linux tray raises clicks off the UI thread).</summary>
 public interface ITrayCommands

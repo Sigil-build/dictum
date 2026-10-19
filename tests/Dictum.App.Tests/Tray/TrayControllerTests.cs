@@ -1,10 +1,9 @@
 using Dictum.App.Daemon;
-using Dictum.App.Shell;
 using Dictum.App.Tray;
 using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 
-namespace Dictum.App.Tests.Shell;
+namespace Dictum.App.Tests.Tray;
 
 public sealed class TrayControllerTests : IAsyncDisposable
 {
