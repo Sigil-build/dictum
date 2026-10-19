@@ -32,10 +32,11 @@ public static class LinuxPlatform
         UioHookProvider.Instance.SetLinuxMode(LinuxMode.XRecord);
         var hotkeys = new SharpHookHotkeyService(log, "X11 XRecord hook (SharpHook)");
         IClipboard clipboard = XClipboard.IsAvailable ? new XClipboard() : new MissingClipboard("xclip or xsel");
+        var activeApp = new XpropActiveApp();
         var injector = new ClipboardPasteInjector(
             clipboard,
             new SharpHookKeystrokeSender("XTest"),
-            new XpropActiveApp(),
+            activeApp,
             hotkeys,
             () => settings().TerminalApps,
             log);
@@ -57,7 +58,8 @@ public static class LinuxPlatform
                     XClipboard.IsAvailable ? new XClipboard().Backend : XClipboard.Xclip,
                     "Install xclip: 'sudo pacman -S xclip' or 'sudo apt install xclip'."),
                 Tool(PlatformCheckNames.ActiveWindow, XpropActiveApp.IsAvailable, XpropActiveApp.Program, "Install xprop (package xorg-xprop / x11-utils) so terminals get Ctrl+Shift+V."),
-            ]));
+            ]),
+            ActiveApp: activeApp);
     }
 
     private static PlatformServices CreateWayland(
