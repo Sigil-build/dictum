@@ -5,8 +5,6 @@ using Dictum.Core.Diagnostics;
 using Dictum.Core.History;
 using Dictum.Core.Processing;
 using Dictum.Core.Stt;
-using Dictum.Core.Text;
-using Dictum.Core.Vocabulary;
 
 namespace Dictum.Core.Pipeline;
 
@@ -227,17 +225,8 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
         }
 
         SetState(PipelineState.Processing);
-        var context = new ProcessingContext(profile.Id, language, ActiveApp: null, VocabularyList.Render(profile.Vocabulary));
-        var watch = new Stopwatch();
-        foreach (var processor in profile.Processors)
-        {
-            progress.Stage = StageTiming.Process(processor.Id);
-            watch.Restart();
-            text = TextChecks.StripInvisible(await processor.ProcessAsync(text, context, ct).ConfigureAwait(false)).Trim();
-            progress.Stages.Add(new StageTiming(progress.Stage, watch.Elapsed));
-        }
-
-        return text;
+        var context = ProcessingContext.ForProfile(profile.Id, language, profile.Vocabulary);
+        return await ProcessingChain.RunAsync(profile.Processors, text, context, progress, ct).ConfigureAwait(false);
     }
 
     private async Task WriteOutputAsync(ITextOutput output, string text, RunProgress progress, CancellationToken ct)
@@ -341,12 +330,16 @@ public sealed partial class DictationPipeline(IAudioSource audio, HistoryStore? 
     }
 
     /// <summary>How far one run got, so a failure names its stage and keeps the STT text.</summary>
-    private sealed class RunProgress
+    private sealed class RunProgress : IProcessingObserver
     {
         public string Stage { get; set; } = StageTiming.Transcribe;
 
         public string? RawText { get; set; }
 
         public List<StageTiming> Stages { get; } = [];
+
+        public void Starting(string stage) => Stage = stage;
+
+        public void Finished(StageTiming timing, string text) => Stages.Add(timing);
     }
 }

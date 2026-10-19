@@ -10,30 +10,30 @@ namespace Dictum.Core;
 /// </summary>
 public sealed class ProviderRegistry
 {
-    private readonly Dictionary<Type, Func<string, SttConfig, IServiceProvider, ISpeechToText>> _stt = [];
-    private readonly Dictionary<Type, Func<string, ProcessorConfig, IServiceProvider, ITextProcessor>> _processors = [];
+    private readonly Dictionary<Type, Func<string, SttConfig, ISpeechToText>> _stt = [];
+    private readonly Dictionary<Type, Func<string, ProcessorConfig, ITextProcessor>> _processors = [];
 
-    public ProviderRegistry AddStt<TConfig>(Func<string, TConfig, IServiceProvider, ISpeechToText> factory)
+    public ProviderRegistry AddStt<TConfig>(Func<string, TConfig, ISpeechToText> factory)
         where TConfig : SttConfig
     {
-        _stt[typeof(TConfig)] = (id, config, services) => factory(id, (TConfig)config, services);
+        _stt[typeof(TConfig)] = (id, config) => factory(id, (TConfig)config);
         return this;
     }
 
-    public ProviderRegistry AddProcessor<TConfig>(Func<string, TConfig, IServiceProvider, ITextProcessor> factory)
+    public ProviderRegistry AddProcessor<TConfig>(Func<string, TConfig, ITextProcessor> factory)
         where TConfig : ProcessorConfig
     {
-        _processors[typeof(TConfig)] = (id, config, services) => factory(id, (TConfig)config, services);
+        _processors[typeof(TConfig)] = (id, config) => factory(id, (TConfig)config);
         return this;
     }
 
-    public ISpeechToText CreateStt(string id, SttConfig config, IServiceProvider services) =>
+    public ISpeechToText CreateStt(string id, SttConfig config) =>
         _stt.TryGetValue(config.GetType(), out var factory)
-            ? factory(id, config, services)
+            ? factory(id, config)
             : throw new ConfigException($"STT provider '{id}' has type {config.GetType().Name}, which this build does not support.");
 
-    public ITextProcessor CreateProcessor(string id, ProcessorConfig config, IServiceProvider services) =>
+    public ITextProcessor CreateProcessor(string id, ProcessorConfig config) =>
         _processors.TryGetValue(config.GetType(), out var factory)
-            ? factory(id, config, services)
+            ? factory(id, config)
             : throw new ConfigException($"Processor '{id}' has type {config.GetType().Name}, which this build does not support.");
 }

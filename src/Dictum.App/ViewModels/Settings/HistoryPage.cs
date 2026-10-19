@@ -6,6 +6,7 @@ using Dictum.App.Settings;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.History;
+using Dictum.Core.Processing;
 
 namespace Dictum.App.ViewModels.Settings;
 
@@ -160,7 +161,7 @@ public sealed partial class HistoryPage : SettingsPage, IDisposable
         try
         {
             List<(string Id, ProcessorConfig Config)> steps = [.. profile.Pipeline.Where(config.Processors.ContainsKey).Select(id => (id, config.Processors[id]))];
-            var result = await _runner.RunAsync(steps, item.Entry.RawText, ProcessorRunner.ContextFor(profile), cancel.Token);
+            var result = await _runner.RunAsync(steps, item.Entry.RawText, ProcessingContext.ForProfile(profile), cancel.Token);
             if (run != _reRunCount)
             {
                 return;

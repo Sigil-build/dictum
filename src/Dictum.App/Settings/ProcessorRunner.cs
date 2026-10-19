@@ -2,11 +2,9 @@ using System.Diagnostics;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
-using Dictum.Core.Http;
+using Dictum.Core.Pipeline;
 using Dictum.Core.Processing;
-using Dictum.Core.Text;
-using Dictum.Core.Vocabulary;
-using Dictum.Processing;
+using Dictum.Host;
 
 namespace Dictum.App.Settings;
 
@@ -21,39 +19,24 @@ public interface IProcessorRunner
 }
 
 /// <summary>
-/// Builds the processors from config copies, as the daemon does, with three differences:
+/// Builds the processors from config copies and runs them as the daemon does, with two differences:
 /// <list type="bullet">
-/// <item>each run reads prompt files afresh, so a prompt just edited is the one used;</item>
 /// <item>LLM steps fail instead of passing the text through, so a server that does not answer shows its reason;</item>
 /// <item>a failing step ends the run with the text so far and the reason.</item>
 /// </list>
+/// A prompt file is read again when it changes, so a prompt just edited is the one used.
 /// </summary>
 public sealed class ProcessorRunner(AppPaths paths, ISecretStore secrets, ILog log) : IProcessorRunner, IDisposable
 {
-    private readonly HttpClient _http = ProviderHttp.CreateClient();
-
-    public static ProcessingContext ContextFor(ProfileConfig profile) =>
-        new(profile.Id, profile.Language, ActiveApp: null, VocabularyList.Render(VocabularyList.Normalize(profile.Vocabulary)));
+    private readonly ProviderFactory _providers = new(paths, secrets, log);
 
     public async Task<RunResult> RunAsync(IReadOnlyList<(string Id, ProcessorConfig Config)> steps, string text, ProcessingContext context, CancellationToken ct)
     {
-        var templates = new PromptTemplates(paths.PromptsDirectory);
-        var values = new ConfigValueResolver(secrets);
         var watch = Stopwatch.StartNew();
-        var result = text;
+        var progress = new Progress(text);
         try
         {
-            foreach (var (id, config) in steps)
-            {
-                ITextProcessor processor = config switch
-                {
-                    ReplaceProcessorConfig replace => new ReplaceProcessor(id, replace, log),
-                    LlmProcessorConfig llm => new LlmProcessor(id, llm with { OnError = LlmErrorMode.Fail }, _http, values, templates, log),
-                    _ => throw new ConfigException($"Processor '{id}' has a type the GUI cannot run."),
-                };
-                result = TextChecks.StripInvisible(await processor.ProcessAsync(result, context, ct)).Trim();
-            }
-
+            var result = await ProcessingChain.RunAsync(steps.Select(Create), text, context, progress, ct);
             return new RunResult(result, watch.ElapsedMilliseconds, null);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -63,9 +46,24 @@ public sealed class ProcessorRunner(AppPaths paths, ISecretStore secrets, ILog l
         catch (Exception ex)
         {
             log.Warn($"Processing run stopped: {ex.Message}");
-            return new RunResult(result, watch.ElapsedMilliseconds, ex.Message);
+            return new RunResult(progress.Text, watch.ElapsedMilliseconds, ex.Message);
         }
     }
 
-    public void Dispose() => _http.Dispose();
+    public void Dispose() => _providers.Dispose();
+
+    private ITextProcessor Create((string Id, ProcessorConfig Config) step) =>
+        _providers.CreateProcessor(step.Id, step.Config is LlmProcessorConfig llm ? llm with { OnError = LlmErrorMode.Fail } : step.Config);
+
+    /// <summary>The text after the last step that finished.</summary>
+    private sealed class Progress(string input) : IProcessingObserver
+    {
+        public string Text { get; private set; } = input;
+
+        public void Starting(string stage)
+        {
+        }
+
+        public void Finished(StageTiming timing, string text) => Text = text;
+    }
 }

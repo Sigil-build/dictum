@@ -6,14 +6,10 @@ using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.History;
-using Dictum.Core.Http;
 using Dictum.Core.Pipeline;
 using Dictum.Core.Processing;
 using Dictum.Core.Stt;
 using Dictum.Host.Daemon;
-using Dictum.Processing;
-using Dictum.Stt.OpenAi;
-using Dictum.Stt.Whisper;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Dictum.Host;
@@ -25,7 +21,7 @@ namespace Dictum.Host;
 public sealed class DictumHost : IDictationEngine
 {
     private readonly ServiceProvider _services;
-    private readonly ProviderRegistry _registry;
+    private readonly ProviderFactory _providers;
     private readonly ConcurrentDictionary<string, ISpeechToText> _stt = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, ITextProcessor> _processors = new(StringComparer.Ordinal);
     private DictationPipeline? _pipeline;
@@ -37,28 +33,12 @@ public sealed class DictumHost : IDictationEngine
         Config = config;
 
         var services = new ServiceCollection();
-        services.AddSingleton(paths);
-        services.AddSingleton(log);
-        services.AddSingleton(config);
-        services.AddSingleton(secrets);
-        services.AddSingleton(sp => new ConfigValueResolver(sp.GetRequiredService<ISecretStore>()));
-        services.AddSingleton(_ => ProviderHttp.CreateClient());
-        services.AddSingleton(_ => new PromptTemplates(paths.PromptsDirectory));
         services.AddSingleton(_ => new HistoryStore(paths.HistoryFile, config.General.HistorySize));
         services.AddSingleton<IAudioSource>(_ => Environment.GetEnvironmentVariable(DictumEnvironment.AudioFile) is { Length: > 0 } file
             ? new FileAudioSource(file)
             : new PortAudioSource(log));
         _services = services.BuildServiceProvider();
-
-        _registry = new ProviderRegistry()
-            .AddStt<WhisperLocalSttConfig>((id, c, sp) =>
-                new WhisperLocalStt(id, c, sp.GetRequiredService<AppPaths>(), sp.GetRequiredService<ILog>()))
-            .AddStt<OpenAiCompatibleSttConfig>((id, c, sp) =>
-                new OpenAiCompatibleStt(id, c, sp.GetRequiredService<HttpClient>(), sp.GetRequiredService<ConfigValueResolver>(), sp.GetRequiredService<ILog>()))
-            .AddProcessor<ReplaceProcessorConfig>((id, c, sp) =>
-                new ReplaceProcessor(id, c, sp.GetRequiredService<ILog>()))
-            .AddProcessor<LlmProcessorConfig>((id, c, sp) =>
-                new LlmProcessor(id, c, sp.GetRequiredService<HttpClient>(), sp.GetRequiredService<ConfigValueResolver>(), sp.GetRequiredService<PromptTemplates>(), sp.GetRequiredService<ILog>()));
+        _providers = new ProviderFactory(paths, secrets, log);
     }
 
     public AppPaths Paths { get; }
@@ -81,17 +61,17 @@ public sealed class DictumHost : IDictationEngine
 
     public ISpeechToText GetStt(string id) =>
         _stt.GetOrAdd(id, key => Config.Stt.TryGetValue(key, out var config)
-            ? _registry.CreateStt(key, config, _services)
+            ? _providers.CreateStt(key, config)
             : throw new ConfigException($"Unknown STT provider '{key}'. Configured: {ConfiguredIds.Format(Config.Stt.Keys)}."));
 
     public ITextProcessor GetProcessor(string id) =>
         _processors.GetOrAdd(id, key => Config.Processors.TryGetValue(key, out var config)
-            ? _registry.CreateProcessor(key, config, _services)
+            ? _providers.CreateProcessor(key, config)
             : throw new ConfigException($"Unknown processor '{key}'. Configured: {ConfiguredIds.Format(Config.Processors.Keys)}."));
 
     /// <summary>Creates a provider that is not in the config, e.g. from <c>--model</c>.</summary>
     public ISpeechToText CreateAdHocStt(string id, SttConfig config) =>
-        _stt.GetOrAdd(id, key => _registry.CreateStt(key, config, _services));
+        _stt.GetOrAdd(id, key => _providers.CreateStt(key, config));
 
     public DictationProfile ResolveProfile(ProfileOverrides overrides) =>
         ProfileResolver.Resolve(Config, overrides, GetStt, GetProcessor, CreateAdHocStt);
@@ -120,6 +100,7 @@ public sealed class DictumHost : IDictationEngine
             stt.Dispose();
         }
 
+        _providers.Dispose();
         await _services.DisposeAsync().ConfigureAwait(false);
     }
 }

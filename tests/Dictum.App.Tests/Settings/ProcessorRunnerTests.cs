@@ -65,7 +65,7 @@ public sealed class ProcessorRunnerTests : IDisposable
     [Fact]
     public void AProfileGivesItsLanguageAndWords()
     {
-        var context = ProcessorRunner.ContextFor(new ProfileConfig { Id = "work", Stt = "local", Language = "uk, en", Vocabulary = ["Nexus5", "KDE"] });
+        var context = ProcessingContext.ForProfile(new ProfileConfig { Id = "work", Stt = "local", Language = "uk, en", Vocabulary = ["Nexus5", "KDE"] });
 
         Assert.Equal(("work", "uk, en", (string?)null, "Nexus5, KDE"), (context.ProfileId, context.Language, context.ActiveApp, context.Vocabulary));
     }

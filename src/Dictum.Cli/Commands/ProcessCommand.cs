@@ -1,17 +1,17 @@
 using System.CommandLine;
-using System.Diagnostics;
 using System.Text.Json;
 using Dictum.Cli.Output;
 using Dictum.Core.Configuration;
 using Dictum.Core.Pipeline;
 using Dictum.Core.Processing;
-using Dictum.Core.Text;
-using Dictum.Core.Vocabulary;
 
 namespace Dictum.Cli.Commands;
 
 internal static class ProcessCommand
 {
+    /// <summary>The profile id a prompt sees when no profile is configured.</summary>
+    private const string NoProfileId = "cli";
+
     public static Command Create()
     {
         var text = new Argument<string?>("text")
@@ -51,27 +51,29 @@ internal static class ProcessCommand
                 throw new ConfigException("No processors to run: pass --pipeline <ids> or use a profile with a pipeline.");
             }
 
-            var ctx = new ProcessingContext(
-                chosen?.Id ?? "cli",
-                parse.GetValue(language) ?? chosen?.Language,
-                ActiveApp: null,
-                VocabularyList.Render(VocabularyList.Normalize(chosen?.Vocabulary ?? [])));
-            var stages = new List<StageJson>();
-            var result = input;
-            foreach (var step in steps)
-            {
-                var processor = host.GetProcessor(step);
-                var watch = Stopwatch.StartNew();
-                result = TextChecks.StripInvisible(await processor.ProcessAsync(result, ctx, token).ConfigureAwait(false)).Trim();
-                stages.Add(new StageJson(StageTiming.Process(step), watch.ElapsedMilliseconds));
-            }
+            var ctx = chosen is null
+                ? new ProcessingContext(NoProfileId, parse.GetValue(language), ActiveApp: null)
+                : ProcessingContext.ForProfile(chosen, parse.GetValue(language));
+            var stages = new StageList();
+            var result = await ProcessingChain.RunAsync(steps.Select(host.GetProcessor), input, ctx, stages, token).ConfigureAwait(false);
 
             context.Out.WriteLine(parse.GetValue(json)
-                ? JsonSerializer.Serialize(new ProcessJson(result, input, stages), CliJsonContext.Readable.ProcessJson)
+                ? JsonSerializer.Serialize(new ProcessJson(result, input, stages.Stages), CliJsonContext.Readable.ProcessJson)
                 : result);
             return ExitCodes.Success;
         }, ct));
 
         return command;
+    }
+
+    private sealed class StageList : IProcessingObserver
+    {
+        public List<StageJson> Stages { get; } = [];
+
+        public void Starting(string stage)
+        {
+        }
+
+        public void Finished(StageTiming timing, string text) => Stages.Add(StageJson.From(timing));
     }
 }

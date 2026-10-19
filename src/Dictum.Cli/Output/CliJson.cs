@@ -30,11 +30,14 @@ internal sealed record TranscriptionJson(
         result.Backend,
         (long)result.AudioDuration.TotalMilliseconds,
         (long)result.Stages.Where(s => s.Stage != StageTiming.Record).Sum(s => s.Elapsed.TotalMilliseconds),
-        [.. result.Stages.Select(s => new StageJson(s.Stage, (long)s.Elapsed.TotalMilliseconds))],
+        [.. result.Stages.Select(StageJson.From)],
         result.Skipped);
 }
 
-internal sealed record StageJson(string Stage, long Ms);
+internal sealed record StageJson(string Stage, long Ms)
+{
+    public static StageJson From(StageTiming timing) => new(timing.Stage, (long)timing.Elapsed.TotalMilliseconds);
+}
 
 internal sealed record ProcessJson(string Text, string Input, IReadOnlyList<StageJson> Stages);
 
