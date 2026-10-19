@@ -26,8 +26,6 @@ public sealed record DictumConfig
 
 public sealed record GeneralSettings
 {
-    public bool StartWithSystem { get; init; }
-
     public int HistorySize { get; set; } = 200;
 
     public bool Sounds { get; set; } = true;

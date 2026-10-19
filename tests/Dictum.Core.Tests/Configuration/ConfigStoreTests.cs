@@ -146,6 +146,21 @@ public class ConfigStoreTests
     }
 
     [Fact]
+    public void AStartWithSystemKeyFromOlderFilesLoadsWithoutAnIssue()
+    {
+        using var dir = new TempDirectory();
+        var root = JsonNode.Parse(ConfigStore.Serialize(DefaultConfig.Create()))!;
+        root["general"]!["startWithSystem"] = true;
+        File.WriteAllText(dir.File("config.json"), root.ToJsonString());
+        var store = new ConfigStore(dir.File("config.json"), NullLog.Instance);
+
+        var (config, warnings) = store.LoadWithIssues();
+
+        Assert.Empty(warnings);
+        Assert.Equal("dictate", Assert.Single(config.Profiles).Id);
+    }
+
+    [Fact]
     public void OlderSchemaIsMigratedAndBackedUp()
     {
         using var dir = new TempDirectory();
