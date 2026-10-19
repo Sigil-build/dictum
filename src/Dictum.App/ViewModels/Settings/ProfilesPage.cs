@@ -113,7 +113,7 @@ public sealed partial class ProfilesPage : SettingsPage
     [ObservableProperty]
     public partial string? ProviderError { get; private set; }
 
-    private ProfileConfig? Current => _session.Config.Profiles.FirstOrDefault(p => p.Id == _id);
+    private ProfileConfig? Current => _session.Config.FindProfile(_id);
 
     public override void OnHidden() => IsRecording = false;
 

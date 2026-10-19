@@ -149,7 +149,7 @@ public sealed partial class HistoryPage : SettingsPage, IDisposable
     private async Task ReRunAsync(string profileId)
     {
         var config = _session.Config;
-        if (Selected is not { } item || config.Profiles.FirstOrDefault(p => p.Id == profileId) is not { } profile)
+        if (Selected is not { } item || config.FindProfile(profileId) is not { } profile)
         {
             return;
         }

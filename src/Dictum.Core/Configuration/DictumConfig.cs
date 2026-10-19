@@ -22,6 +22,9 @@ public sealed record DictumConfig
     public Dictionary<string, ProcessorConfig> Processors { get; set; } = [];
 
     public List<ProfileConfig> Profiles { get; set; } = [];
+
+    /// <summary>The profile with id <paramref name="id"/>, compared as written; null when there is none.</summary>
+    public ProfileConfig? FindProfile(string? id) => Profiles.Find(p => p.Id == id);
 }
 
 public sealed record GeneralSettings
