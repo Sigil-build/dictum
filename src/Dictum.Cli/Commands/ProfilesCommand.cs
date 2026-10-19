@@ -15,7 +15,7 @@ internal static class ProfilesCommand
         {
             foreach (var profile in context.LoadConfig().Profiles)
             {
-                context.Out.WriteLine($"{profile.Id,-20} {profile.Hotkey ?? "-",-18} {profile.Mode,-11} stt={profile.Stt} lang={profile.Language ?? "auto"} pipeline=[{string.Join(", ", profile.Pipeline)}]");
+                context.Out.WriteLine($"{profile.Id,-20} {profile.Hotkey ?? "-",-18} {profile.Mode,-11} stt={profile.Stt} lang={profile.Language ?? LanguageList.Auto} pipeline=[{string.Join(", ", profile.Pipeline)}]");
             }
 
             return Task.FromResult(ExitCodes.Success);
@@ -35,7 +35,7 @@ internal static class ProfilesCommand
             o.WriteLine($"name:       {profile.Name ?? "-"}");
             o.WriteLine($"hotkey:     {profile.Hotkey ?? "-"} ({profile.Mode})");
             o.WriteLine($"stt:        {profile.Stt}  {(config.Stt.TryGetValue(profile.Stt, out var stt) ? SttCommand.Describe(stt) : "(missing)")}");
-            o.WriteLine($"language:   {profile.Language ?? "auto"}");
+            o.WriteLine($"language:   {profile.Language ?? LanguageList.Auto}");
             o.WriteLine($"sttPrompt:  {profile.SttPrompt ?? "-"}");
             o.WriteLine($"vocabulary: {(profile.Vocabulary.Count == 0 ? "-" : string.Join(", ", profile.Vocabulary))}");
             o.WriteLine($"pipeline:   {(profile.Pipeline.Count == 0 ? "-" : string.Join(" → ", profile.Pipeline))}");

@@ -29,7 +29,7 @@ internal sealed record TranscriptionJson(
         result.Provider,
         result.Backend,
         (long)result.AudioDuration.TotalMilliseconds,
-        (long)result.Stages.Where(s => s.Stage != "record").Sum(s => s.Elapsed.TotalMilliseconds),
+        (long)result.Stages.Where(s => s.Stage != StageTiming.Record).Sum(s => s.Elapsed.TotalMilliseconds),
         [.. result.Stages.Select(s => new StageJson(s.Stage, (long)s.Elapsed.TotalMilliseconds))],
         result.Skipped);
 }

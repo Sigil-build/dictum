@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
+using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.History;
 using Dictum.Setup;
@@ -41,7 +42,7 @@ public sealed partial class SetupModelStep : SetupStep
     private HardwareInfo? _hardware;
     private Task? _probe;
     private string? _chosen;
-    private string _language = "auto";
+    private string _language = LanguageList.Auto;
     private bool _building;
 
     /// <param name="keptFile">A model file outside the catalog that the config uses now (<see cref="SetupDefaults.KeptModelFile"/>).</param>

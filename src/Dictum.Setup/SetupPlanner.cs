@@ -81,7 +81,7 @@ public static class SetupPlanner
     public static SetupDefaults Defaults(DictumConfig? current, HardwareInfo hardware, Catalog catalog, Func<string, bool> modelFileExists)
     {
         var first = current?.Profiles.FirstOrDefault();
-        var language = first is null ? DefaultLanguage : first.Language ?? "auto";
+        var language = first is null ? DefaultLanguage : first.Language ?? LanguageList.Auto;
         var recommended = RecommendSpeechModel(hardware);
         if (current is null)
         {

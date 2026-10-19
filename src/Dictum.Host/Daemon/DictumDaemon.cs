@@ -717,7 +717,7 @@ public sealed class DictumDaemon : IAsyncDisposable
             message,
             result?.Language,
             (long)(result?.AudioDuration.TotalMilliseconds ?? 0),
-            (long?)result?.Stages.FirstOrDefault(s => s.Stage == "transcribe")?.Elapsed.TotalMilliseconds));
+            (long?)result?.Stages.FirstOrDefault(s => s.Stage == StageTiming.Transcribe)?.Elapsed.TotalMilliseconds));
 
     private static string MessageOf(Exception ex) =>
         ex is DictationException { InnerException: { } inner } ? inner.Message : ex.Message;

@@ -59,7 +59,7 @@ public sealed class TrayState(TimeProvider time)
         _languages = [];
         foreach (var profile in config?.Profiles ?? [])
         {
-            _languages[profile.Id] = LanguageList.Parse(profile.Language) is { } codes ? LanguageList.Format(codes) : profile.Language ?? "auto";
+            _languages[profile.Id] = LanguageList.Parse(profile.Language) is { } codes ? LanguageList.Format(codes) : profile.Language ?? LanguageList.Auto;
         }
     }
 
