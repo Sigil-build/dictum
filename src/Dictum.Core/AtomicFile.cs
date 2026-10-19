@@ -12,9 +12,6 @@ internal static class AtomicFile
     public static void WriteAllText(string path, string content) =>
         Replace(path, temp => File.WriteAllText(temp, content, Utf8NoBom));
 
-    public static void WriteAllLines(string path, IEnumerable<string> lines) =>
-        Replace(path, temp => File.WriteAllLines(temp, lines, Utf8NoBom));
-
     private static void Replace(string path, Action<string> write)
     {
         var temp = path + TempSuffix;

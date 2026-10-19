@@ -22,6 +22,9 @@ public sealed record HistoryEntry(
 /// <summary>Keeps the last N transcriptions as JSON lines. Audio is never stored.</summary>
 public sealed class HistoryStore(string path, int maxEntries)
 {
+    /// <summary>The same on every OS, for appends and rewrites alike; reading also accepts <c>\r\n</c>.</summary>
+    private const string LineEnd = "\n";
+
     private static readonly UTF8Encoding Utf8 = new(false);
 
     private readonly Lock _gate = new();
@@ -38,12 +41,12 @@ public sealed class HistoryStore(string path, int maxEntries)
         lock (_gate)
         {
             Directory.CreateDirectory(System.IO.Path.GetDirectoryName(Path)!);
-            File.AppendAllText(Path, JsonSerializer.Serialize(entry, HistoryJsonContext.Default.HistoryEntry) + "\n", Utf8);
+            File.AppendAllText(Path, JsonSerializer.Serialize(entry, HistoryJsonContext.Default.HistoryEntry) + LineEnd, Utf8);
 
             var lines = File.ReadAllLines(Path, Utf8);
             if (lines.Length > maxEntries)
             {
-                AtomicFile.WriteAllLines(Path, lines[^maxEntries..]);
+                Rewrite(lines[^maxEntries..]);
             }
         }
     }
@@ -66,7 +69,7 @@ public sealed class HistoryStore(string path, int maxEntries)
                 return false;
             }
 
-            AtomicFile.WriteAllLines(Path, kept);
+            Rewrite(kept);
             return true;
         }
     }
@@ -100,6 +103,9 @@ public sealed class HistoryStore(string path, int maxEntries)
             return entries.Count > count ? entries[^count..] : entries;
         }
     }
+
+    private void Rewrite(IEnumerable<string> lines) =>
+        AtomicFile.WriteAllText(Path, string.Concat(lines.Select(line => line + LineEnd)));
 
     private static bool RecordedAt(string line, DateTimeOffset at)
     {

@@ -72,6 +72,47 @@ public class HistoryStoreTests
         Assert.Equal(["a"], store.ReadLast(10).Select(e => e.Text));
     }
 
+    [Fact]
+    public void TrimmingWritesTheLineEndingThatAppendingWrites()
+    {
+        using var dir = new TempDirectory();
+        var store = new HistoryStore(dir.File("history.jsonl"), maxEntries: 2);
+
+        for (var i = 0; i < 3; i++)
+        {
+            store.Append(Entry($"text {i}"));
+        }
+
+        Assert.DoesNotContain("\r", File.ReadAllText(store.Path), StringComparison.Ordinal);
+        Assert.Equal(["text 1", "text 2"], store.ReadLast(10).Select(e => e.Text));
+    }
+
+    [Fact]
+    public void DeletingWritesTheLineEndingThatAppendingWrites()
+    {
+        using var dir = new TempDirectory();
+        var store = new HistoryStore(dir.File("history.jsonl"), maxEntries: 10);
+        var first = Entry("a");
+        store.Append(first);
+        store.Append(Entry("b") with { At = first.At.AddSeconds(5) });
+
+        Assert.True(store.Delete(first.At));
+
+        Assert.DoesNotContain("\r", File.ReadAllText(store.Path), StringComparison.Ordinal);
+        Assert.Equal(["b"], store.ReadLast(10).Select(e => e.Text));
+    }
+
+    [Fact]
+    public void CrlfLinesStillLoad()
+    {
+        using var dir = new TempDirectory();
+        var path = dir.File("history.jsonl");
+        var line = """{"at":"2026-10-01T10:00:00+03:00","profileId":"p","provider":"stt","rawText":"a","text":"a","language":"uk","audioSeconds":1.5}""";
+        File.WriteAllText(path, line + "\r\n" + line.Replace("\"a\"", "\"b\"", StringComparison.Ordinal) + "\r\n");
+
+        Assert.Equal(["a", "b"], new HistoryStore(path, maxEntries: 10).ReadLast(10).Select(e => e.Text));
+    }
+
     private static HistoryEntry Entry(string text) =>
         new(DateTimeOffset.Now, "p", "stt", text, text, "uk", 1.5);
 }
