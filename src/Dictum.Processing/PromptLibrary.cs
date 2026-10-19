@@ -1,3 +1,4 @@
+using Dictum.Core;
 using Dictum.Core.Configuration;
 
 namespace Dictum.Processing;
@@ -8,8 +9,6 @@ namespace Dictum.Processing;
 /// </summary>
 public sealed class PromptLibrary(string directory)
 {
-    private const string TempSuffix = ".tmp";
-
     public IReadOnlyList<string> Names()
     {
         var names = new SortedSet<string>(PromptTemplates.BuiltIn, StringComparer.Ordinal);
@@ -49,10 +48,7 @@ public sealed class PromptLibrary(string directory)
     public void Write(string name, string text)
     {
         Directory.CreateDirectory(directory);
-        var path = PathOf(name);
-        var temp = path + TempSuffix;
-        File.WriteAllText(temp, text);
-        File.Move(temp, path, overwrite: true);
+        AtomicFile.WriteAllText(PathOf(name), text);
     }
 
     public void Delete(string name)

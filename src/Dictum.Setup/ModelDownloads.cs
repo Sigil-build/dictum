@@ -350,9 +350,7 @@ public sealed class ModelDownloads(FileDownloader downloader, AppPaths paths, Ca
             }
 
             Directory.CreateDirectory(paths.DataDirectory);
-            var temp = paths.DownloadsFile + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(saved, ModelDownloadsJsonContext.Default.SavedDownloads));
-            File.Move(temp, paths.DownloadsFile, overwrite: true);
+            AtomicFile.WriteAllText(paths.DownloadsFile, JsonSerializer.Serialize(saved, ModelDownloadsJsonContext.Default.SavedDownloads));
         }
     }
 

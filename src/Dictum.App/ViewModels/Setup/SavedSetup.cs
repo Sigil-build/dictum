@@ -79,9 +79,7 @@ public static class SavedSetupFile
         try
         {
             Directory.CreateDirectory(paths.DataDirectory);
-            var temp = paths.SetupFile + ".tmp";
-            File.WriteAllText(temp, JsonSerializer.Serialize(saved, SetupJsonContext.Default.SavedSetup));
-            File.Move(temp, paths.SetupFile, overwrite: true);
+            AtomicFile.WriteAllText(paths.SetupFile, JsonSerializer.Serialize(saved, SetupJsonContext.Default.SavedSetup));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
