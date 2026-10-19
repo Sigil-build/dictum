@@ -79,7 +79,9 @@ public static unsafe partial class VulkanProbe
                 }
 
                 var handles = stackalloc nint[(int)count];
-                vkEnumeratePhysicalDevices(instance, &count, handles);
+
+                // The first call sized the buffer; VK_INCOMPLETE would still fill it and lower count to match.
+                _ = vkEnumeratePhysicalDevices(instance, &count, handles);
                 var devices = new List<VulkanDevice>((int)count);
 
                 var properties = stackalloc byte[DevicePropertiesBufferSize];

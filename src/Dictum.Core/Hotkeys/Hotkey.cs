@@ -166,6 +166,6 @@ public sealed record Hotkey(HotkeyModifiers Modifiers, HotkeyKey Key)
     }
 
     /// <summary>"+" separates parts, so it cannot itself be a key.</summary>
-    private static IEnumerable<string> SplitParts(string text) =>
+    private static string[] SplitParts(string text) =>
         text.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 }

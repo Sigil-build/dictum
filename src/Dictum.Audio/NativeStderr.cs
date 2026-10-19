@@ -35,16 +35,17 @@ public static partial class NativeStderr
             return action();
         }
 
+        // Best effort: when a redirect or close fails, the native output stays visible and nothing else changes.
         try
         {
-            LibCNative.dup2(devNull, StderrFd);
+            _ = LibCNative.dup2(devNull, StderrFd);
             return action();
         }
         finally
         {
-            LibCNative.dup2(saved, StderrFd);
-            LibCNative.close(saved);
-            LibCNative.close(devNull);
+            _ = LibCNative.dup2(saved, StderrFd);
+            _ = LibCNative.close(saved);
+            _ = LibCNative.close(devNull);
         }
     }
 

@@ -18,9 +18,10 @@ public interface ISoundPlayer
 }
 
 /// <summary>
-/// Short synthesised cues on the default output device. Best effort: failures are logged and ignored.
+/// Short synthesised cues on the default output device. Best effort: a missing library or device, or a stream that
+/// does not open, is logged and ignored; a stream that fails after opening just stays silent.
 /// </summary>
-public sealed class SoundPlayer(ILog log) : ISoundPlayer
+public sealed class SoundPlayer(ILog log) : ISoundPlayer, IDisposable
 {
     private const int SampleRate = 48_000;
 
@@ -48,6 +49,8 @@ public sealed class SoundPlayer(ILog log) : ISoundPlayer
             _gate.Release();
         }
     }
+
+    public void Dispose() => _gate.Dispose();
 
     /// <summary>Rising two-tone chirp for start, falling for stop, low double beep for errors.</summary>
     public static float[] Synthesize(SoundCue cue)
@@ -99,20 +102,21 @@ public sealed class SoundPlayer(ILog log) : ISoundPlayer
             throw new AudioDeviceException(ErrorText(error));
         }
 
+        // A cue is not worth an error once its stream is open, so the results below are not checked.
         try
         {
-            Pa_StartStream(stream);
+            _ = Pa_StartStream(stream);
             fixed (float* data = samples)
             {
-                Pa_WriteStream(stream, data, new CULong((nuint)samples.Length));
+                _ = Pa_WriteStream(stream, data, new CULong((nuint)samples.Length));
             }
 
             // Pa_StopStream waits for queued audio to finish playing.
-            Pa_StopStream(stream);
+            _ = Pa_StopStream(stream);
         }
         finally
         {
-            Pa_CloseStream(stream);
+            _ = Pa_CloseStream(stream);
         }
     }
 }
