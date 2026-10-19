@@ -16,14 +16,15 @@ public sealed partial class PromptTemplates(string userDirectory)
     /// <summary>The <c>LogicalName</c> prefix the project file gives the embedded templates.</summary>
     private const string ResourcePrefix = "Dictum.Processing.Prompts.";
 
-    private const string TemplateExtension = ".md";
+    /// <summary>The extension of a template file, built in or in the user's prompts folder.</summary>
+    public const string Extension = ".md";
 
     private readonly ConcurrentDictionary<string, (Stamp? Stamp, string Text)> _cache = new(StringComparer.Ordinal);
 
     public static IReadOnlyList<string> BuiltIn { get; } =
         [.. typeof(PromptTemplates).Assembly.GetManifestResourceNames()
             .Where(n => n.StartsWith(ResourcePrefix, StringComparison.Ordinal))
-            .Select(n => n[ResourcePrefix.Length..^TemplateExtension.Length])
+            .Select(n => n[ResourcePrefix.Length..^Extension.Length])
             .Order(StringComparer.Ordinal)];
 
     /// <summary>
@@ -96,7 +97,7 @@ public sealed partial class PromptTemplates(string userDirectory)
             throw new ConfigException($"Invalid prompt name '{name}'.");
         }
 
-        return Path.Combine(userDirectory, name + TemplateExtension);
+        return Path.Combine(userDirectory, name + Extension);
     }
 
     private static Stamp? StampOf(string path)
@@ -107,7 +108,7 @@ public sealed partial class PromptTemplates(string userDirectory)
 
     private static string LoadBuiltIn(string name, string userFile)
     {
-        using var stream = typeof(PromptTemplates).Assembly.GetManifestResourceStream(ResourcePrefix + name + TemplateExtension);
+        using var stream = typeof(PromptTemplates).Assembly.GetManifestResourceStream(ResourcePrefix + name + Extension);
         if (stream is null)
         {
             throw new ConfigException(

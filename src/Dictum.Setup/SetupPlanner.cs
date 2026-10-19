@@ -59,9 +59,6 @@ public static class SetupPlanner
     /// <summary>Offered when there is no profile to take the language from.</summary>
     private const string DefaultLanguage = "uk";
 
-    /// <summary>The built-in prompt a new cleanup processor uses.</summary>
-    private const string CleanupPrompt = "cleanup";
-
     public static string RecommendSpeechModel(HardwareInfo hardware) => HasUsableGpu(hardware) ? GpuModel : CpuModel;
 
     /// <summary>A GPU with too little memory counts as none; one of unknown memory counts.</summary>
@@ -219,7 +216,7 @@ public static class SetupPlanner
             {
                 BaseUrl = server.BaseUrl,
                 Model = server.Model,
-                Prompt = CleanupPrompt,
+                Prompt = LlmProcessorConfig.CleanupPrompt,
                 ApiKey = server.ApiKey,
                 TimeoutMs = ExistingServerTimeoutMs,
             };

@@ -50,7 +50,7 @@ public sealed partial class LlmProcessor(
 
     public string Id => id;
 
-    private bool PreservesText => config.PreserveText ?? config.Prompt == "cleanup";
+    private bool PreservesText => config.PreserveText ?? config.Prompt == LlmProcessorConfig.CleanupPrompt;
 
     public async Task<string> ProcessAsync(string text, ProcessingContext context, CancellationToken ct)
     {

@@ -10,7 +10,6 @@ namespace Dictum.App.Settings;
 /// </summary>
 public sealed class PromptFiles(string directory)
 {
-    private const string Extension = ".md";
     private const string TempSuffix = ".tmp";
 
     public IReadOnlyList<string> Names()
@@ -20,7 +19,7 @@ public sealed class PromptFiles(string directory)
         {
             if (Directory.Exists(directory))
             {
-                names.UnionWith(Directory.EnumerateFiles(directory, "*" + Extension).Select(Path.GetFileNameWithoutExtension).OfType<string>().Where(IsValidName));
+                names.UnionWith(Directory.EnumerateFiles(directory, "*" + PromptTemplates.Extension).Select(Path.GetFileNameWithoutExtension).OfType<string>().Where(IsValidName));
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -70,5 +69,5 @@ public sealed class PromptFiles(string directory)
         name.Length > 0 && name == name.Trim() && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0
         && name.IndexOfAny(['/', '\\']) < 0 && !name.Contains("..", StringComparison.Ordinal);
 
-    private string PathOf(string name) => Path.Combine(directory, name + Extension);
+    private string PathOf(string name) => Path.Combine(directory, name + PromptTemplates.Extension);
 }

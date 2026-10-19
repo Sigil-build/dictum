@@ -111,6 +111,9 @@ public sealed record LlmProcessorConfig : ProcessorConfig
 {
     public const string TypeName = "llm";
     public const int DefaultTimeoutMs = 4_000;
+
+    /// <summary>The built-in prompt that cleans up a dictation, shipped with Dictum.Processing.</summary>
+    public const string CleanupPrompt = "cleanup";
     public const double DefaultTemperature = 0.2;
 
     public required string BaseUrl { get; init; }

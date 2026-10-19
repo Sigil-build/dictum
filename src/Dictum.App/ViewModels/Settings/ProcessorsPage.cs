@@ -29,8 +29,6 @@ public sealed partial class ProcessorsPage : SettingsPage
     /// <summary>llama-server answers to any model name.</summary>
     private const string DefaultModel = "local";
 
-    private const string CleanupPrompt = "cleanup";
-
     private readonly SettingsSession _session;
     private readonly ProcessorsServices _services;
     private string? _id;
@@ -208,13 +206,13 @@ public sealed partial class ProcessorsPage : SettingsPage
 
         try
         {
-            _services.Prompts.Write(name, _services.Prompts.Read(CleanupPrompt));
+            _services.Prompts.Write(name, _services.Prompts.Read(LlmProcessorConfig.CleanupPrompt));
             return name;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            _services.Log.Warn($"could not write prompts/{name}.md for the new processor; it shares {CleanupPrompt}", ex);
-            return CleanupPrompt;
+            _services.Log.Warn($"could not write prompts/{name}.md for the new processor; it shares {LlmProcessorConfig.CleanupPrompt}", ex);
+            return LlmProcessorConfig.CleanupPrompt;
         }
     }
 
