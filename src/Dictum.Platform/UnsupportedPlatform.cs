@@ -14,7 +14,7 @@ public static class UnsupportedPlatform
         new UnavailableSecretStore(),
         Autostart: null,
         NullNotifier.Instance,
-        _ => Task.FromResult<IReadOnlyList<PlatformCheck>>([new("platform", HealthStatus.Warning(reason))]),
+        _ => Task.FromResult<IReadOnlyList<PlatformCheck>>([new(PlatformCheckNames.Platform, HealthStatus.Warning(reason))]),
         reason);
 
     private sealed class NoInjector(string reason) : ITextInjector

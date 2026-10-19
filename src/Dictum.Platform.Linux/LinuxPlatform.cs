@@ -49,10 +49,10 @@ public static class LinuxPlatform
             notifier,
             ct => Task.FromResult<IReadOnlyList<PlatformCheck>>(
             [
-                new("session", HealthStatus.Ok(session.ToString())),
-                new("hotkeys", HealthStatus.Ok(hotkeys.Capabilities.Backend)),
-                Tool("clipboard", XClipboard.IsAvailable, XClipboard.Xclip, "Install xclip: 'sudo pacman -S xclip' or 'sudo apt install xclip'."),
-                Tool("active window", XpropActiveApp.IsAvailable, XpropActiveApp.Program, "Install xprop (package xorg-xprop / x11-utils) so terminals get Ctrl+Shift+V."),
+                new(PlatformCheckNames.Session, HealthStatus.Ok(session.ToString())),
+                new(PlatformCheckNames.Hotkeys, HealthStatus.Ok(hotkeys.Capabilities.Backend)),
+                Tool(PlatformCheckNames.Clipboard, XClipboard.IsAvailable, XClipboard.Xclip, "Install xclip: 'sudo pacman -S xclip' or 'sudo apt install xclip'."),
+                Tool(PlatformCheckNames.ActiveWindow, XpropActiveApp.IsAvailable, XpropActiveApp.Program, "Install xprop (package xorg-xprop / x11-utils) so terminals get Ctrl+Shift+V."),
             ]));
     }
 
@@ -83,14 +83,14 @@ public static class LinuxPlatform
             autostart,
             notifier,
             async ct => [
-                new("session", HealthStatus.Ok(session.ToString())),
-                await PortalCheckAsync(portal, "hotkeys", PortalGlobalShortcuts.Interface, PortalGlobalShortcuts.CompositorHint, ct).ConfigureAwait(false),
-                Tool("clipboard", WlClipboard.IsAvailable, WlClipboard.Package, "Install wl-clipboard: 'sudo pacman -S wl-clipboard' or 'sudo apt install wl-clipboard'."),
-                await PortalCheckAsync(portal, "paste (portal)", PortalKeystrokes.Interface, "Use ydotool instead: \"injector\": \"ydotool\".", ct).ConfigureAwait(false),
-                new("paste (ydotool)", YdotoolKeystrokes.IsAvailable
+                new(PlatformCheckNames.Session, HealthStatus.Ok(session.ToString())),
+                await PortalCheckAsync(portal, PlatformCheckNames.Hotkeys, PortalGlobalShortcuts.Interface, PortalGlobalShortcuts.CompositorHint, ct).ConfigureAwait(false),
+                Tool(PlatformCheckNames.Clipboard, WlClipboard.IsAvailable, WlClipboard.Package, "Install wl-clipboard: 'sudo pacman -S wl-clipboard' or 'sudo apt install wl-clipboard'."),
+                await PortalCheckAsync(portal, PlatformCheckNames.PastePortal, PortalKeystrokes.Interface, "Use ydotool instead: \"injector\": \"ydotool\".", ct).ConfigureAwait(false),
+                new(PlatformCheckNames.PasteYdotool, YdotoolKeystrokes.IsAvailable
                     ? HealthStatus.Ok($"ydotoold at {YdotoolKeystrokes.SocketPath}")
                     : HealthStatus.Warning("ydotoold not running (optional fallback)", "'sudo pacman -S ydotool', then 'systemctl --user enable --now ydotool'.")),
-                new("paste order", HealthStatus.Ok(keystrokes.Backend)),
+                new(PlatformCheckNames.PasteOrder, HealthStatus.Ok(keystrokes.Backend)),
             ],
             PrepareAsync: async ct =>
             {

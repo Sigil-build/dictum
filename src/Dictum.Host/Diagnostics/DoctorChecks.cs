@@ -38,20 +38,20 @@ public static class DoctorChecks
         var timeout = inputs.CheckTimeout ?? DefaultTimeout;
         var config = inputs.Config;
 
-        Add("config", inputs.ConfigError is { } error
+        Add(PlatformCheckNames.Config, inputs.ConfigError is { } error
             ? HealthStatus.Error($"{error.Message} {string.Join("; ", error.Issues)}", "Fix the file, then run 'dictum config validate'.")
             : config is null
                 ? HealthStatus.Warning($"No config at {inputs.ConfigPath}", "Run 'dictum init'.")
                 : HealthStatus.Ok($"{inputs.ConfigPath} ({config.Stt.Count} STT, {config.Processors.Count} processors, {config.Profiles.Count} profiles)"));
         if (inputs.ConfigWarnings.Count > 0)
         {
-            Add("config warnings", HealthStatus.Warning(
+            Add(PlatformCheckNames.ConfigWarnings, HealthStatus.Warning(
                 $"{inputs.ConfigWarnings.Count} warning(s)",
                 string.Join("; ", inputs.ConfigWarnings)));
         }
 
-        Add("models", CheckModels(config, inputs.Paths));
-        Add("gpu", HardwareText.Gpu(inputs.Hardware) is { } gpu
+        Add(PlatformCheckNames.Models, CheckModels(config, inputs.Paths));
+        Add(PlatformCheckNames.Gpu, HardwareText.Gpu(inputs.Hardware) is { } gpu
             ? HealthStatus.Ok(gpu)
             : HealthStatus.Ok("none that Whisper can use; speech recognition runs on the CPU"));
         CheckAudio(inputs.Audio, Add);
@@ -61,20 +61,20 @@ public static class DoctorChecks
             Add(check.Name, check.Status);
         }
 
-        Add("daemon", await inputs.Daemon(ct).ConfigureAwait(false));
+        Add(PlatformCheckNames.Daemon, await inputs.Daemon(ct).ConfigureAwait(false));
 
         if (config is not null)
         {
             foreach (var id in config.Stt.Keys)
             {
-                Add($"stt:{id}", await CheckAsync(() => inputs.GetStt(id).CheckAsync(ct), timeout, ct).ConfigureAwait(false));
+                Add(PlatformCheckNames.Stt(id), await CheckAsync(() => inputs.GetStt(id).CheckAsync(ct), timeout, ct).ConfigureAwait(false));
             }
 
             foreach (var id in config.Processors.Keys)
             {
                 if (inputs.GetProcessor(id) is IHealthCheck check)
                 {
-                    Add($"processor:{id}", await CheckAsync(() => check.CheckAsync(ct), timeout, ct).ConfigureAwait(false));
+                    Add(PlatformCheckNames.Processor(id), await CheckAsync(() => check.CheckAsync(ct), timeout, ct).ConfigureAwait(false));
                 }
             }
         }
@@ -104,7 +104,7 @@ public static class DoctorChecks
     {
         if (Environment.GetEnvironmentVariable(EnvironmentVariables.AudioFile) is { Length: > 0 } file)
         {
-            add("microphone", HealthStatus.Warning(
+            add(PlatformCheckNames.Microphone, HealthStatus.Warning(
                 $"Replaced by {EnvironmentVariables.AudioFile}={file}",
                 $"Unset {EnvironmentVariables.AudioFile} to record from the microphone."));
             return;
@@ -113,15 +113,15 @@ public static class DoctorChecks
         try
         {
             var devices = audio().ListDevices();
-            add("audio library", HealthStatus.Ok($"{PortAudioLibrary.Version} ({PortAudioLibrary.LoadedFrom})"));
+            add(PlatformCheckNames.AudioLibrary, HealthStatus.Ok($"{PortAudioLibrary.Version} ({PortAudioLibrary.LoadedFrom})"));
             var chosen = devices.FirstOrDefault(d => d.IsDefault) ?? (devices.Count > 0 ? devices[0] : null);
-            add("microphone", chosen is null
+            add(PlatformCheckNames.Microphone, chosen is null
                 ? HealthStatus.Warning("No microphone found", "Connect one, or check that the OS allows microphone access.")
                 : HealthStatus.Ok($"{chosen.Name} ({chosen.HostApi}, {chosen.DefaultSampleRate:F0} Hz); {devices.Count} input device(s)"));
         }
         catch (AudioDeviceException ex)
         {
-            add("audio library", HealthStatus.Error(ex.Message, ex.Hint));
+            add(PlatformCheckNames.AudioLibrary, HealthStatus.Error(ex.Message, ex.Hint));
         }
     }
 

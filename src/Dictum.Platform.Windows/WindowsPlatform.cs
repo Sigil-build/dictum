@@ -36,15 +36,15 @@ public static class WindowsPlatform
     {
         var checks = new List<PlatformCheck>
         {
-            new("hotkeys", HealthStatus.Ok(hotkeys.Capabilities.Backend)),
-            new("paste", HealthStatus.Ok(injector.Capabilities.Backend)),
-            new("secrets", HealthStatus.Ok("Windows Credential Manager")),
+            new(PlatformCheckNames.Hotkeys, HealthStatus.Ok(hotkeys.Capabilities.Backend)),
+            new(PlatformCheckNames.Paste, HealthStatus.Ok(injector.Capabilities.Backend)),
+            new(PlatformCheckNames.Secrets, HealthStatus.Ok("Windows Credential Manager")),
         };
 
         using var identity = WindowsIdentity.GetCurrent();
         if (new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))
         {
-            checks.Add(new("elevation", HealthStatus.Warning(
+            checks.Add(new(PlatformCheckNames.Elevation, HealthStatus.Warning(
                 "Running as administrator",
                 "Start Dictum as a normal user: pasting only works into apps at the same or lower privilege level.")));
         }

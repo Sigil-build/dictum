@@ -37,9 +37,6 @@ public sealed partial class SystemPage : SettingsPage
     /// <summary>The header's "checked N s ago" counts seconds.</summary>
     private static readonly TimeSpan ClockTick = TimeSpan.FromSeconds(1);
 
-    private const string SttCheckPrefix = "stt:";
-    private const string ProcessorCheckPrefix = "processor:";
-
     private readonly SystemServices _services;
     private IDisposable? _clock;
     private DateTimeOffset? _checkedAt;
@@ -77,28 +74,28 @@ public sealed partial class SystemPage : SettingsPage
     /// <summary>The daemon's check names (DoctorChecks and each platform), in the UI language; new ones keep their name.</summary>
     public static string CheckName(string name) => name switch
     {
-        "config" => Strings.SettingsCheckConfig,
-        "config warnings" => Strings.SettingsCheckConfigWarnings,
-        "models" => Strings.SettingsCheckModels,
-        "gpu" => Strings.SettingsCheckGpu,
-        "audio library" => Strings.SettingsCheckAudioLibrary,
-        "microphone" => Strings.SettingsMicrophone,
-        "platform" => Strings.SettingsCheckPlatform,
-        "session" => Strings.SettingsCheckSession,
-        "hotkeys" => Strings.SettingsCheckHotkeys,
-        "paste" => Strings.SettingsCheckPaste,
-        "paste (portal)" => Strings.SettingsCheckPastePortal,
-        "paste (ydotool)" => Strings.SettingsCheckPasteYdotool,
-        "paste order" => Strings.SettingsCheckPasteOrder,
-        "clipboard" => Strings.SettingsCheckClipboard,
-        "active window" => Strings.SettingsCheckActiveWindow,
-        "secrets" => Strings.SettingsCheckSecrets,
-        "elevation" => Strings.SettingsCheckElevation,
-        "daemon" => Strings.SettingsCheckDaemon,
-        _ when name.StartsWith(SttCheckPrefix, StringComparison.Ordinal) =>
-            string.Format(CultureInfo.CurrentCulture, Strings.SettingsCheckStt, name[SttCheckPrefix.Length..]),
-        _ when name.StartsWith(ProcessorCheckPrefix, StringComparison.Ordinal) =>
-            string.Format(CultureInfo.CurrentCulture, Strings.SettingsCheckProcessor, name[ProcessorCheckPrefix.Length..]),
+        PlatformCheckNames.Config => Strings.SettingsCheckConfig,
+        PlatformCheckNames.ConfigWarnings => Strings.SettingsCheckConfigWarnings,
+        PlatformCheckNames.Models => Strings.SettingsCheckModels,
+        PlatformCheckNames.Gpu => Strings.SettingsCheckGpu,
+        PlatformCheckNames.AudioLibrary => Strings.SettingsCheckAudioLibrary,
+        PlatformCheckNames.Microphone => Strings.SettingsMicrophone,
+        PlatformCheckNames.Platform => Strings.SettingsCheckPlatform,
+        PlatformCheckNames.Session => Strings.SettingsCheckSession,
+        PlatformCheckNames.Hotkeys => Strings.SettingsCheckHotkeys,
+        PlatformCheckNames.Paste => Strings.SettingsCheckPaste,
+        PlatformCheckNames.PastePortal => Strings.SettingsCheckPastePortal,
+        PlatformCheckNames.PasteYdotool => Strings.SettingsCheckPasteYdotool,
+        PlatformCheckNames.PasteOrder => Strings.SettingsCheckPasteOrder,
+        PlatformCheckNames.Clipboard => Strings.SettingsCheckClipboard,
+        PlatformCheckNames.ActiveWindow => Strings.SettingsCheckActiveWindow,
+        PlatformCheckNames.Secrets => Strings.SettingsCheckSecrets,
+        PlatformCheckNames.Elevation => Strings.SettingsCheckElevation,
+        PlatformCheckNames.Daemon => Strings.SettingsCheckDaemon,
+        _ when name.StartsWith(PlatformCheckNames.SttPrefix, StringComparison.Ordinal) =>
+            string.Format(CultureInfo.CurrentCulture, Strings.SettingsCheckStt, name[PlatformCheckNames.SttPrefix.Length..]),
+        _ when name.StartsWith(PlatformCheckNames.ProcessorPrefix, StringComparison.Ordinal) =>
+            string.Format(CultureInfo.CurrentCulture, Strings.SettingsCheckProcessor, name[PlatformCheckNames.ProcessorPrefix.Length..]),
         _ => name,
     };
 
