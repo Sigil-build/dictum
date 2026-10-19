@@ -32,6 +32,8 @@ public static partial class NativeStderr
         var devNull = LibCNative.open("/dev/null", OpenWriteOnly);
         if (saved < 0 || devNull < 0)
         {
+            CloseIfOpen(saved);
+            CloseIfOpen(devNull);
             return action();
         }
 
@@ -46,6 +48,14 @@ public static partial class NativeStderr
             _ = LibCNative.dup2(saved, StderrFd);
             _ = LibCNative.close(saved);
             _ = LibCNative.close(devNull);
+        }
+    }
+
+    private static void CloseIfOpen(int fd)
+    {
+        if (fd >= 0)
+        {
+            _ = LibCNative.close(fd);
         }
     }
 
