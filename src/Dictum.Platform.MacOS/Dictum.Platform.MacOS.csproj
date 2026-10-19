@@ -1,7 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <ItemGroup>
-    <ProjectReference Include="../Dictum.Platform/Dictum.Platform.csproj" />
-  </ItemGroup>
-
-</Project>

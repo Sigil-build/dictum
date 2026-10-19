@@ -1,6 +1,6 @@
 namespace Dictum.Core.Configuration;
 
-/// <summary>OS-backed storage for API keys (Credential Manager, Keychain, Secret Service).</summary>
+/// <summary>OS-backed storage for API keys (Credential Manager, Secret Service).</summary>
 public interface ISecretStore
 {
     Task<string?> GetAsync(string key, CancellationToken ct);

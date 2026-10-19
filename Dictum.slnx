@@ -6,7 +6,6 @@
     <Project Path="src/Dictum.Core/Dictum.Core.csproj" />
     <Project Path="src/Dictum.Host/Dictum.Host.csproj" />
     <Project Path="src/Dictum.Platform.Linux/Dictum.Platform.Linux.csproj" />
-    <Project Path="src/Dictum.Platform.MacOS/Dictum.Platform.MacOS.csproj" />
     <Project Path="src/Dictum.Platform.Windows/Dictum.Platform.Windows.csproj" />
     <Project Path="src/Dictum.Platform/Dictum.Platform.csproj" />
     <Project Path="src/Dictum.Processing/Dictum.Processing.csproj" />

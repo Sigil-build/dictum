@@ -8,7 +8,6 @@
     <ProjectReference Include="../Dictum.Setup/Dictum.Setup.csproj" />
     <ProjectReference Include="../Dictum.Platform.Windows/Dictum.Platform.Windows.csproj" />
     <ProjectReference Include="../Dictum.Platform.Linux/Dictum.Platform.Linux.csproj" />
-    <ProjectReference Include="../Dictum.Platform.MacOS/Dictum.Platform.MacOS.csproj" />
   </ItemGroup>
 
   <ItemGroup>
