@@ -284,13 +284,75 @@ public sealed class LlmProcessorTests : IDisposable
         Assert.Contains(log.Messages, m => m.Contains("reasoning", StringComparison.Ordinal) && m.Contains("maxTokens", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task FailuresNameTheProcessorAndTheServer()
+    {
+        Assert.Equal("LLM 'cleanup-uk' answered 500: {\"error\":\"down\"}",
+            await FailureAsync(new FakeHttpHandler().Respond(HttpStatusCode.InternalServerError, """{"error":"down"}""")));
+        Assert.Equal($"LLM 'cleanup-uk' answered 502: {new string('x', 300)}…",
+            await FailureAsync(new FakeHttpHandler().Respond(HttpStatusCode.BadGateway, new string('x', 301))));
+        Assert.Equal("LLM 'cleanup-uk' returned no choices: {\"choices\":[]}",
+            await FailureAsync(new FakeHttpHandler().Respond(HttpStatusCode.OK, """{"choices":[]}""")));
+        Assert.Equal("LLM 'cleanup-uk' returned invalid JSON.",
+            await FailureAsync(new FakeHttpHandler().Respond(HttpStatusCode.OK, "not json")));
+        Assert.Equal("LLM 'cleanup-uk' is unreachable at http://llm/v1: refused",
+            await FailureAsync(new FakeHttpHandler().Throw(new HttpRequestException("refused"))));
+        Assert.Equal("LLM 'cleanup-uk' did not answer within 50 ms.",
+            await FailureAsync(new FakeHttpHandler().Hang(), timeoutMs: 50));
+    }
+
+    [Fact]
+    public async Task RequestsCarryTheKey()
+    {
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer("Привіт, світ."));
+
+        await Create(http, apiKey: "sk-test").ProcessAsync("привіт світ", _context, _ct);
+
+        Assert.Equal("Bearer sk-test", http.Requests[0].Request.Headers.Authorization!.ToString());
+    }
+
+    [Fact]
+    public async Task TheCheckAsksForTheModelsWithTheKey()
+    {
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, """{ "data": [] }""");
+
+        var status = await Create(http, apiKey: "sk-test").CheckAsync(_ct);
+
+        Assert.Equal(HealthStatus.Ok("http://llm/v1 reachable, model qwen3-4b, prompt 'cleanup'"), status);
+        var (request, _) = Assert.Single(http.Requests);
+        Assert.Equal(
+            (HttpMethod.Get, "http://llm/v1/models", "Bearer sk-test"),
+            (request.Method, request.RequestUri!.ToString(), request.Headers.Authorization!.ToString()));
+    }
+
+    [Fact]
+    public async Task TheCheckSaysWhatTheServerAnswered()
+    {
+        var rejected = HealthStatus.Error("http://llm/v1 rejected the API key", "Check the apiKey reference in the config.");
+
+        Assert.Equal(rejected, await CheckAsync(new FakeHttpHandler().Respond(HttpStatusCode.Unauthorized, "{}")));
+        Assert.Equal(rejected, await CheckAsync(new FakeHttpHandler().Respond(HttpStatusCode.Forbidden, "{}")));
+        Assert.Equal(HealthStatus.Warning("http://llm/v1/models answered 404"), await CheckAsync(new FakeHttpHandler().Respond(HttpStatusCode.NotFound, "{}")));
+        Assert.Equal(
+            HealthStatus.Error("http://llm/v1: refused", "Is the LLM server running, and is baseUrl correct (including /v1)?"),
+            await CheckAsync(new FakeHttpHandler().Throw(new HttpRequestException("refused"))));
+    }
+
+    private async Task<string> FailureAsync(FakeHttpHandler http, int timeoutMs = LlmProcessorConfig.DefaultTimeoutMs) =>
+        (await Assert.ThrowsAsync<ProviderUnavailableException>(() =>
+            Create(http, onError: LlmErrorMode.Fail, timeoutMs: timeoutMs).ProcessAsync("text", _context, _ct))).Message;
+
+    private Task<HealthStatus> CheckAsync(FakeHttpHandler http) => Create(http).CheckAsync(_ct);
+
     private LlmProcessor Create(
         FakeHttpHandler http,
         LlmErrorMode onError = LlmErrorMode.Passthrough,
         string prompt = "cleanup",
         bool? preserveText = null,
         int? maxTokens = null,
-        ILog? log = null) =>
+        ILog? log = null,
+        string? apiKey = null,
+        int timeoutMs = LlmProcessorConfig.DefaultTimeoutMs) =>
         new(
             "cleanup-uk",
             new LlmProcessorConfig
@@ -301,6 +363,8 @@ public sealed class LlmProcessorTests : IDisposable
                 OnError = onError,
                 PreserveText = preserveText,
                 MaxTokens = maxTokens,
+                ApiKey = apiKey,
+                TimeoutMs = timeoutMs,
             },
             http.Client(),
             new ConfigValueResolver(new UnavailableSecretStore()),

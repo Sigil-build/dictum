@@ -112,10 +112,67 @@ public class OpenAiCompatibleSttTests
         Assert.NotNull(status.Hint);
     }
 
-    private static OpenAiCompatibleStt Create(FakeHttpHandler http, string? apiKey = null) =>
+    [Fact]
+    public async Task FailuresNameTheProviderAndTheServer()
+    {
+        Assert.Equal("STT provider 'llama-swap' answered 502 Bad Gateway: { \"error\": \"model not loaded\" }",
+            await FailureAsync(new FakeHttpHandler().Respond(HttpStatusCode.BadGateway, """{ "error": "model not loaded" }""")));
+        Assert.Equal($"STT provider 'llama-swap' answered 500 Internal Server Error: {new string('x', 300)}…",
+            await FailureAsync(new FakeHttpHandler().Respond(HttpStatusCode.InternalServerError, new string('x', 301))));
+        Assert.Equal("STT provider 'llama-swap' returned invalid JSON: not json",
+            await FailureAsync(new FakeHttpHandler().Respond(HttpStatusCode.OK, "not json")));
+        Assert.Equal("STT provider 'llama-swap' is unreachable at http://localhost:8080/v1/: Connection refused",
+            await FailureAsync(new FakeHttpHandler().Throw(new HttpRequestException("Connection refused"))));
+        Assert.Equal("STT provider 'llama-swap' did not answer within 50 ms.",
+            await FailureAsync(new FakeHttpHandler().Hang(), timeoutMs: 50));
+    }
+
+    [Fact]
+    public async Task TheCheckAsksForTheModelsWithTheKey()
+    {
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, """{ "data": [] }""");
+
+        var status = await Create(http, apiKey: "sk-test").CheckAsync(_ct);
+
+        Assert.Equal(HealthStatus.Ok("http://localhost:8080/v1/ reachable, model whisper-large-v3-turbo"), status);
+        var (request, _) = Assert.Single(http.Requests);
+        Assert.Equal(
+            (HttpMethod.Get, "http://localhost:8080/v1/models", "Bearer sk-test"),
+            (request.Method, request.RequestUri!.ToString(), request.Headers.Authorization!.ToString()));
+    }
+
+    [Fact]
+    public async Task TheCheckSaysWhatTheServerAnswered()
+    {
+        const string hint = "Is the server running, and is baseUrl correct (including /v1)?";
+
+        Assert.Equal(
+            HealthStatus.Error("http://localhost:8080/v1/ rejected the API key (401)", "Check the apiKey reference in the config."),
+            await CheckAsync(new FakeHttpHandler().Respond(HttpStatusCode.Unauthorized, "{}")));
+        Assert.Equal(
+            HealthStatus.Error("http://localhost:8080/v1/ rejected the API key (403)", "Check the apiKey reference in the config."),
+            await CheckAsync(new FakeHttpHandler().Respond(HttpStatusCode.Forbidden, "{}")));
+        Assert.Equal(
+            HealthStatus.Ok("http://localhost:8080/v1/ transcribes with model whisper-large-v3-turbo"),
+            await CheckAsync(new FakeHttpHandler().Respond(HttpStatusCode.NotFound, "{}").Respond(HttpStatusCode.OK, """{ "text": "" }""")));
+        Assert.Equal(
+            HealthStatus.Error("http://localhost:8080/v1/: STT provider 'llama-swap' answered 500 Internal Server Error: {}", hint),
+            await CheckAsync(new FakeHttpHandler().Respond(HttpStatusCode.NotFound, "{}").Respond(HttpStatusCode.InternalServerError, "{}")));
+        Assert.Equal(
+            HealthStatus.Error("http://localhost:8080/v1/: Connection refused", hint),
+            await CheckAsync(new FakeHttpHandler().Throw(new HttpRequestException("Connection refused"))));
+    }
+
+    private async Task<string> FailureAsync(FakeHttpHandler http, int timeoutMs = OpenAiCompatibleSttConfig.DefaultTimeoutMs) =>
+        (await Assert.ThrowsAsync<ProviderUnavailableException>(() =>
+            Create(http, timeoutMs: timeoutMs).TranscribeAsync(Clips.Seconds(1), new SttRequest(null, null), _ct))).Message;
+
+    private Task<HealthStatus> CheckAsync(FakeHttpHandler http) => Create(http).CheckAsync(_ct);
+
+    private static OpenAiCompatibleStt Create(FakeHttpHandler http, string? apiKey = null, int timeoutMs = OpenAiCompatibleSttConfig.DefaultTimeoutMs) =>
         new(
             "llama-swap",
-            new OpenAiCompatibleSttConfig { BaseUrl = "http://localhost:8080/v1/", Model = "whisper-large-v3-turbo", ApiKey = apiKey },
+            new OpenAiCompatibleSttConfig { BaseUrl = "http://localhost:8080/v1/", Model = "whisper-large-v3-turbo", ApiKey = apiKey, TimeoutMs = timeoutMs },
             http.Client(),
             new ConfigValueResolver(new UnavailableSecretStore()),
             NullLog.Instance);
