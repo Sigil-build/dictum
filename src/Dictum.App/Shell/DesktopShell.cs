@@ -43,6 +43,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     private readonly Lazy<ProcessorRunner> _runner;
     private readonly ShellServices _services;
     private readonly SetupCoordinator _setup;
+    private readonly StartGate _start = new();
     private SettingsViewModel? _settings;
     private SettingsWindow? _settingsWindow;
     private ConfigWatcher? _watcher;
@@ -53,9 +54,6 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     private DispatcherTimer? _tick;
     private Action<int>? _shutdown;
     private volatile bool _highContrast;
-    private volatile bool _started;
-    private volatile bool _showWhenStarted;
-    private volatile bool _quitWhenStarted;
 
     /// <param name="createTray">The OS tray; <see cref="DesktopIntegration.CreateTrayAsync"/> in the app, a fake in tests.</param>
     /// <param name="overlayDesktop">The overlay's OS side; <see cref="OverlayDesktop.None"/> when left out (tests).</param>
@@ -106,36 +104,30 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     /// <summary>The daemon's newest frame, for the Settings meter; the overlay keeps its own.</summary>
     public FrameHub Frames { get; }
 
-    /// <summary>A later launch asked for Settings (from the single-instance socket, on a server thread).</summary>
+    /// <summary>
+    /// A later launch asked for Settings, or <c>--quit</c> asked the app to quit (from the single-instance socket, on a
+    /// server thread). Before Start there is no shutdown callback and no window yet: Start carries the command out.
+    /// </summary>
     public void OnCommand(string command)
     {
-        if (command == SingleInstance.Quit)
+        var pending = command switch
         {
-            // Before Start there is no shutdown callback yet: quit as soon as it exists.
-            if (_started)
-            {
-                Quit();
-            }
-            else
-            {
-                _quitWhenStarted = true;
-            }
-
-            return;
-        }
-
-        if (command != SingleInstance.ShowSettings)
+            SingleInstance.Quit => PendingCommand.Quit,
+            SingleInstance.ShowSettings => PendingCommand.ShowSettings,
+            _ => PendingCommand.None,
+        };
+        if (pending == PendingCommand.None || !_start.Request(pending))
         {
             return;
         }
 
-        if (_started)
+        if (pending == PendingCommand.Quit)
         {
-            Dispatcher.UIThread.Post(() => ShowSettings(SettingsPageKey.General));
+            Quit();
         }
         else
         {
-            _showWhenStarted = true;
+            Dispatcher.UIThread.Post(() => ShowSettings(SettingsPageKey.General));
         }
     }
 
@@ -156,16 +148,16 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         StartDownloads();
         _ = StartTrayAsync(app);
         Supervisor.Start();
-        _started = true;
+        var pending = _start.Open();
         _setup.ResumeKept();
 
         // No config yet: the wizard opens on its own; ShowSettings sends every Settings entry there too.
-        if (_showWhenStarted || !_store.Exists)
+        if (pending.HasFlag(PendingCommand.ShowSettings) || !_store.Exists)
         {
             ShowSettings(SettingsPageKey.General);
         }
 
-        if (_quitWhenStarted)
+        if (pending.HasFlag(PendingCommand.Quit))
         {
             Quit();
         }
