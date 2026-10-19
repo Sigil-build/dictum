@@ -9,6 +9,14 @@ namespace Dictum.App.Tests.Daemon;
 
 public sealed class DaemonSupervisorTests : IAsyncDisposable
 {
+    /// <summary>The supervisor's retry delay and config poll in these tests.</summary>
+    private static readonly TimeSpan FastPoll = TimeSpan.FromMilliseconds(20);
+
+    /// <summary>How long a test watches for a start that must not happen: many <see cref="FastPoll"/>s.</summary>
+    private static readonly TimeSpan QuietPeriod = TimeSpan.FromMilliseconds(300);
+
+    private static readonly TimeSpan ShortQuitTimeout = TimeSpan.FromMilliseconds(300);
+
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
     private readonly TempDirectory _dir = new();
     private readonly ManualClock _clock = new(new DateTimeOffset(2026, 10, 16, 12, 0, 0, TimeSpan.Zero));
@@ -200,7 +208,7 @@ public sealed class DaemonSupervisorTests : IAsyncDisposable
         Start();
 
         await WaitForAsync(DaemonLinkState.NotConfigured);
-        await Task.Delay(100, _ct);
+        await Task.Delay(QuietPeriod, _ct);
         Assert.Equal(0, _launcher.Launches);
 
         Volatile.Write(ref _configExists, true);
@@ -220,8 +228,8 @@ public sealed class DaemonSupervisorTests : IAsyncDisposable
 
         Assert.Equal(DaemonLinkState.Stopped, supervisor.Link.State);
         Assert.Contains(IpcCommand.Shutdown, daemon.Commands);
-        Assert.Equal(0, await daemon.Exited.WaitAsync(TimeSpan.FromSeconds(5), _ct));
-        await Task.Delay(200, _ct);
+        Assert.Equal(0, await daemon.Exited.WaitAsync(Patience.Default, _ct));
+        await Task.Delay(QuietPeriod, _ct);
         Assert.Equal(1, _launcher.Launches);
     }
 
@@ -230,7 +238,7 @@ public sealed class DaemonSupervisorTests : IAsyncDisposable
     {
         var stubborn = FakeDaemon.Start(SocketPath, new FakeDaemonOptions(StopsOnShutdown: false));
         _launcher.Adopt(stubborn);
-        var supervisor = Start(Options() with { QuitTimeout = TimeSpan.FromMilliseconds(300) });
+        var supervisor = Start(Options() with { QuitTimeout = ShortQuitTimeout });
         await WaitForAsync(DaemonLinkState.Connected);
         var watch = Stopwatch.StartNew();
 
@@ -279,7 +287,7 @@ public sealed class DaemonSupervisorTests : IAsyncDisposable
         await supervisor.SendAsync(new IpcRequest(IpcCommand.Shutdown), _ct);
 
         await WaitForAsync(DaemonLinkState.Failed);
-        await Task.Delay(300, _ct);
+        await Task.Delay(QuietPeriod, _ct);
         Assert.Equal(1, _launcher.Launches);
         Assert.Equal("The daemon was stopped.", supervisor.Link.Problem);
 
@@ -314,7 +322,7 @@ public sealed class DaemonSupervisorTests : IAsyncDisposable
     public async Task QuitWhileTheDaemonIsStartingEndsIt()
     {
         _launcher.Outcome = _ => LaunchOutcome.NeverListens;
-        var supervisor = Start(Options() with { QuitTimeout = TimeSpan.FromMilliseconds(300) });
+        var supervisor = Start(Options() with { QuitTimeout = ShortQuitTimeout });
         await Eventually.WaitForAsync(() => _launcher.Launches == 1, "the launch");
 
         await supervisor.QuitAsync();
@@ -346,7 +354,7 @@ public sealed class DaemonSupervisorTests : IAsyncDisposable
         await WaitForAsync(DaemonLinkState.NotConfigured);
 
         supervisor.ConfigSaved();
-        await Task.Delay(100, _ct);
+        await Task.Delay(QuietPeriod, _ct);
         Assert.Equal((DaemonLinkState.NotConfigured, 0), (supervisor.Link.State, _launcher.Launches));
 
         Volatile.Write(ref _configExists, true);
@@ -356,8 +364,8 @@ public sealed class DaemonSupervisorTests : IAsyncDisposable
 
     private static SupervisorOptions Options() => new()
     {
-        RetryDelay = TimeSpan.FromMilliseconds(20),
-        ConfigPollInterval = TimeSpan.FromMilliseconds(20),
+        RetryDelay = FastPoll,
+        ConfigPollInterval = FastPoll,
         StartTimeout = TimeSpan.FromSeconds(5),
         QuitTimeout = TimeSpan.FromSeconds(1),
     };

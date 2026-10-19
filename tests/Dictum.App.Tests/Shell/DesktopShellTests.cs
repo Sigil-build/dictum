@@ -1,4 +1,5 @@
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using Avalonia;
 using Dictum.App.Daemon;
 using Dictum.App.Overlay;
@@ -445,15 +446,8 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
     }
 
     // Awaiting on the headless UI thread lets posted work run between checks.
-    private static async Task WaitAsync(Func<bool> condition)
-    {
-        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(10);
-        while (!condition())
-        {
-            Assert.True(DateTime.UtcNow < deadline, "timed out");
-            await Task.Delay(20);
-        }
-    }
+    private static Task WaitAsync(Func<bool> condition, [CallerArgumentExpression(nameof(condition))] string what = "") =>
+        Eventually.WaitForAsync(condition, what);
 
     [Fact]
     public Task TheRailListsThePagesInTheDesignsOrder() => fx.UiAsync(async () =>

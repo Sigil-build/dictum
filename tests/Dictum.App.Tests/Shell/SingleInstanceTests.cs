@@ -9,6 +9,12 @@ namespace Dictum.App.Tests.Shell;
 
 public sealed class SingleInstanceTests : IDisposable
 {
+    /// <summary>The patience these tests give a notify or a quit, instead of the seconds the app gives them.</summary>
+    private static readonly TimeSpan ShortPatience = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>How long the other side takes to act: a few of SingleInstance's 100 ms polls.</summary>
+    private static readonly TimeSpan Lag = TimeSpan.FromMilliseconds(300);
+
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
     private readonly TempDirectory _dir = new();
 
@@ -54,10 +60,10 @@ public sealed class SingleInstanceTests : IDisposable
     {
         var commands = new ConcurrentQueue<string>();
         var notify = SingleInstance.NotifyAsync(SocketPath, SingleInstance.ShowSettings, _ct);
-        await Task.Delay(300, _ct);
+        await Task.Delay(Lag, _ct);
 
         await using var late = await SingleInstance.AcquireAsync(SocketPath, commands.Enqueue, NullLog.Instance);
-        await notify.WaitAsync(TimeSpan.FromSeconds(5), _ct);
+        await notify.WaitAsync(Patience.Default, _ct);
 
         Assert.Equal([SingleInstance.ShowSettings], commands);
     }
@@ -66,7 +72,7 @@ public sealed class SingleInstanceTests : IDisposable
     public async Task NobodyAnsweringIsReportedAfterTheRetries()
     {
         await Assert.ThrowsAsync<DaemonNotRunningException>(() =>
-            SingleInstance.NotifyAsync(SocketPath, SingleInstance.ShowSettings, _ct, TimeSpan.FromMilliseconds(300)));
+            SingleInstance.NotifyAsync(SocketPath, SingleInstance.ShowSettings, _ct, ShortPatience));
     }
 
     // install.sh calls --quit whether or not Dictum runs.
@@ -90,7 +96,7 @@ public sealed class SingleInstanceTests : IDisposable
             {
                 _ = Task.Run(async () =>
                 {
-                    await Task.Delay(300);
+                    await Task.Delay(Lag);
                     await running!.DisposeAsync();
                 });
             }
@@ -106,7 +112,7 @@ public sealed class SingleInstanceTests : IDisposable
     {
         await using var running = await SingleInstance.AcquireAsync(SocketPath, _ => { }, NullLog.Instance);
 
-        await Assert.ThrowsAsync<TimeoutException>(() => SingleInstance.QuitAsync(SocketPath, _ct, TimeSpan.FromMilliseconds(500)));
+        await Assert.ThrowsAsync<TimeoutException>(() => SingleInstance.QuitAsync(SocketPath, _ct, ShortPatience));
     }
 
     // An instance that holds the socket but never answers (hung) must not crash --quit; it gives up.
@@ -115,7 +121,7 @@ public sealed class SingleInstanceTests : IDisposable
     {
         using var silent = Listen(SocketPath);
 
-        await Assert.ThrowsAsync<TimeoutException>(() => SingleInstance.QuitAsync(SocketPath, _ct, TimeSpan.FromMilliseconds(500)));
+        await Assert.ThrowsAsync<TimeoutException>(() => SingleInstance.QuitAsync(SocketPath, _ct, ShortPatience));
     }
 
     [Fact]
@@ -125,7 +131,7 @@ public sealed class SingleInstanceTests : IDisposable
         Assert.Equal(0, await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, error, _ct));
 
         using var silent = Listen(SocketPath);
-        Assert.Equal(1, await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, error, _ct, TimeSpan.FromMilliseconds(500)));
+        Assert.Equal(1, await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, error, _ct, ShortPatience));
         Assert.Contains("still running", error.ToString());
     }
 
@@ -145,7 +151,7 @@ public sealed class SingleInstanceTests : IDisposable
                 _ = Task.Run(async () =>
                 {
                     await running!.DisposeAsync();
-                    await Task.Delay(600);
+                    await Task.Delay(Lag * 2);
                     processes.Exit(4242);
                 });
             }
@@ -192,7 +198,7 @@ public sealed class SingleInstanceTests : IDisposable
         daemon.Start(DaemonSocket);
         var error = new StringWriter();
 
-        var code = await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, _dir.Path, processes, error, _ct, TimeSpan.FromMilliseconds(500));
+        var code = await SingleInstance.QuitCommandAsync(SocketPath, DaemonSocket, _dir.Path, processes, error, _ct, ShortPatience);
 
         Assert.Equal(1, code);
         Assert.Contains("still running", error.ToString());

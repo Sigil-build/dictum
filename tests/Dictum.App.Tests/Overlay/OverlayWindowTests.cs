@@ -58,14 +58,15 @@ public class OverlayWindowTests(AvaloniaFixture fx)
         });
         var afterShow = drawn;
 
-        for (var i = 0; i < 10; i++)
+        const int ticks = 10;
+        for (var i = 0; i < ticks; i++)
         {
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             Dispatcher.UIThread.RunJobs();
         }
 
         // At least one scene per forced tick; the headless render timer may add its own ticks under load.
-        Assert.True(drawn - afterShow >= 10, $"{drawn - afterShow} frames for 10 ticks");
+        Assert.True(drawn - afterShow >= ticks, $"{drawn - afterShow} frames for {ticks} ticks");
         window.Dismiss();
     });
 

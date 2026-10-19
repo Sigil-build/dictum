@@ -16,7 +16,7 @@ public class DaemonLauncherTests
 
         using var process = launcher.Launch();
 
-        Assert.Equal(3, await process.Exited.WaitAsync(TimeSpan.FromSeconds(10), _ct));
+        Assert.Equal(3, await process.Exited.WaitAsync(Patience.Default, _ct));
         await Eventually.WaitForAsync(() => log.Has("daemon: out") && log.Has("daemon: err"), "both output lines");
         Assert.True(process.Id > 0);
     }
@@ -31,7 +31,7 @@ public class DaemonLauncherTests
             : new DaemonProcessLauncher("/bin/sh", ["-c", "echo $DICTUM_TEST_LAUNCH"], log, environment);
 
         using var process = launcher.Launch();
-        await process.Exited.WaitAsync(TimeSpan.FromSeconds(10), _ct);
+        await process.Exited.WaitAsync(Patience.Default, _ct);
 
         await Eventually.WaitForAsync(() => log.Has("daemon: from-the-app"), "the variable in the output");
     }
@@ -53,7 +53,7 @@ public class DaemonLauncherTests
             ? new DaemonProcessLauncher("cmd.exe", ["/c", "exit 0"], new ListLog())
             : new DaemonProcessLauncher("/bin/sh", ["-c", "exit 0"], new ListLog());
         using var process = launcher.Launch();
-        await process.Exited.WaitAsync(TimeSpan.FromSeconds(10), _ct);
+        await process.Exited.WaitAsync(Patience.Default, _ct);
 
         await launcher.EndAsync(process.Id, TimeSpan.FromMilliseconds(100), _ct);
     }
