@@ -259,45 +259,50 @@ public sealed class DownloadQueue(FileDownloader downloader, AppPaths paths, Cat
             }
 
             Changed?.Invoke(next);
-            var entry = next.Entry;
-            try
-            {
-                var needed = SetupRunner.NeededFor(entry.Size) - PartialBytes(entry);
-                var free = freeDiskBytes();
-                if (free < needed)
-                {
-                    throw new DownloadException($"Not enough disk space in {paths.ModelsDirectory}: {SetupRunner.Format(needed)} needed, {SetupRunner.Format(free)} free.");
-                }
+            await DownloadAsync(next.Entry, cts).ConfigureAwait(false);
+        }
+    }
 
-                var progress = new SyncProgress<DownloadProgress>(p => Update(entry.Id, i => i with { Bytes = p.Bytes }));
-                await downloader.DownloadAsync(entry, paths.ResolveModel(entry.File), progress, cts.Token).ConfigureAwait(false);
-                Update(entry.Id, i => i with { State = DownloadState.Done, Bytes = entry.Size });
-            }
-            catch (OperationCanceledException) when (cts.IsCancellationRequested)
+    /// <summary>Downloads one entry and records how it ended; takes over <paramref name="cts"/> and disposes it.</summary>
+    private async Task DownloadAsync(CatalogEntry entry, CancellationTokenSource cts)
+    {
+        try
+        {
+            var needed = SetupRunner.NeededFor(entry.Size) - PartialBytes(entry);
+            var free = freeDiskBytes();
+            if (free < needed)
             {
-                Update(entry.Id, i => i with { State = _paused ? DownloadState.Paused : DownloadState.Queued, Bytes = PartialBytes(entry) });
+                throw new DownloadException($"Not enough disk space in {paths.ModelsDirectory}: {SetupRunner.Format(needed)} needed, {SetupRunner.Format(free)} free.");
             }
-            catch (Exception ex) when (ex is DownloadException or IOException or HttpRequestException)
-            {
-                Update(entry.Id, i => i with { State = DownloadState.Failed, Error = ex.Message });
-            }
-            finally
-            {
-                bool cancelled;
-                lock (_gate)
-                {
-                    _current = null;
-                    cancelled = _cancelled.Remove(entry.Id);
-                }
 
-                cts.Dispose();
-                if (cancelled)
-                {
-                    DeletePartial(entry);
-                }
-
-                Save();
+            var progress = new SyncProgress<DownloadProgress>(p => Update(entry.Id, i => i with { Bytes = p.Bytes }));
+            await downloader.DownloadAsync(entry, paths.ResolveModel(entry.File), progress, cts.Token).ConfigureAwait(false);
+            Update(entry.Id, i => i with { State = DownloadState.Done, Bytes = entry.Size });
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+        {
+            Update(entry.Id, i => i with { State = _paused ? DownloadState.Paused : DownloadState.Queued, Bytes = PartialBytes(entry) });
+        }
+        catch (Exception ex) when (ex is DownloadException or IOException or HttpRequestException)
+        {
+            Update(entry.Id, i => i with { State = DownloadState.Failed, Error = ex.Message });
+        }
+        finally
+        {
+            bool cancelled;
+            lock (_gate)
+            {
+                _current = null;
+                cancelled = _cancelled.Remove(entry.Id);
             }
+
+            cts.Dispose();
+            if (cancelled)
+            {
+                DeletePartial(entry);
+            }
+
+            Save();
         }
     }
 

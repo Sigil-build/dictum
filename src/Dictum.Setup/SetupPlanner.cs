@@ -1,13 +1,7 @@
-using System.Globalization;
-using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Vocabulary;
 
 namespace Dictum.Setup;
-
-/// <param name="GpuName">The hardware GPU Whisper can use, or null when only the CPU (or a software renderer) is there.</param>
-/// <param name="GpuMemoryBytes">The GPU's largest device-local heap; shared system memory for an integrated GPU; null when unknown.</param>
-public sealed record HardwareInfo(string? GpuName, long FreeDiskBytes, long? GpuMemoryBytes = null, bool GpuIsIntegrated = false);
 
 public enum CleanupChoice
 {
@@ -43,16 +37,6 @@ public sealed record SetupPlan(DictumConfig Config, IReadOnlyList<CatalogEntry> 
     public long DownloadBytes => Downloads.Sum(d => d.Size);
 }
 
-public static class ModelFiles
-{
-    /// <summary>The file is in the models directory with the catalog's size; its hash was checked when it was downloaded.</summary>
-    public static bool IsInstalled(AppPaths paths, CatalogEntry entry)
-    {
-        var path = paths.ResolveModel(entry.File);
-        return File.Exists(path) && new FileInfo(path).Length == entry.Size;
-    }
-}
-
 /// <summary>Turns the answers to <c>dictum init</c> and the current config into the config to write and the files to fetch.</summary>
 public static class SetupPlanner
 {
@@ -78,8 +62,11 @@ public static class SetupPlanner
     /// <summary>The built-in prompt a new cleanup processor uses.</summary>
     private const string CleanupPrompt = "cleanup";
 
-    public static string RecommendSpeechModel(HardwareInfo hardware) =>
-        hardware.GpuName is null || hardware.GpuMemoryBytes < MinGpuMemoryBytes ? CpuModel : GpuModel;
+    public static string RecommendSpeechModel(HardwareInfo hardware) => HasUsableGpu(hardware) ? GpuModel : CpuModel;
+
+    /// <summary>A GPU with too little memory counts as none; one of unknown memory counts.</summary>
+    internal static bool HasUsableGpu(HardwareInfo hardware) =>
+        hardware.GpuName is not null && !(hardware.GpuMemoryBytes < MinGpuMemoryBytes);
 
     /// <summary>
     /// The provider init manages: the local Whisper provider the first profile uses, otherwise <see cref="SttId"/>
@@ -145,25 +132,7 @@ public static class SetupPlanner
         var config = current is null ? DefaultConfig.Create() : ConfigStore.Parse(ConfigStore.Serialize(current));
         var sttId = SpeechProviderId(config);
         var whisper = config.Stt.TryGetValue(sttId, out var existing) ? existing as WhisperLocalSttConfig : null;
-
-        CatalogEntry? speech = null;
-        if (answers.SpeechModel is { } id)
-        {
-            speech = catalog.Get(id);
-            if (speech.Kind != CatalogKind.Whisper)
-            {
-                throw new ConfigException($"'{speech.Id}' is not a speech model.");
-            }
-
-            if (!speech.Understands(answers.Language))
-            {
-                throw new ConfigException($"'{speech.Id}' only understands {string.Join(", ", speech.Languages)}; choose another model or language.");
-            }
-        }
-        else if (current is null || whisper is null)
-        {
-            throw new ConfigException("There is no current speech model to keep; choose one with --stt.");
-        }
+        var speech = ChooseSpeechModel(answers, catalog, canKeep: current is not null && whisper is not null);
 
         var model = speech?.File ?? whisper!.Model;
         config.Stt[sttId] = (whisper ?? new WhisperLocalSttConfig { Model = model }) with
@@ -180,30 +149,7 @@ public static class SetupPlanner
         }
 
         var first = config.Profiles[0];
-        var pipeline = first.Pipeline.ToList();
-        var cleanupId = CleanupProcessorId(config);
-        if (answers is { Cleanup: CleanupChoice.ExistingServer, Server: { } server })
-        {
-            config.Processors[cleanupId] = config.Processors.TryGetValue(cleanupId, out var old) && old is LlmProcessorConfig llm
-                ? llm with { BaseUrl = server.BaseUrl, Model = server.Model, ApiKey = server.ApiKey }
-                : new LlmProcessorConfig
-                {
-                    BaseUrl = server.BaseUrl,
-                    Model = server.Model,
-                    Prompt = CleanupPrompt,
-                    ApiKey = server.ApiKey,
-                    TimeoutMs = ExistingServerTimeoutMs,
-                };
-            if (!pipeline.Contains(cleanupId))
-            {
-                pipeline.Add(cleanupId);
-            }
-        }
-        else
-        {
-            pipeline.Remove(cleanupId);
-        }
-
+        var pipeline = ApplyCleanup(config, answers, first.Pipeline);
         config.Profiles[0] = first with
         {
             Stt = sttId,
@@ -215,27 +161,73 @@ public static class SetupPlanner
         };
 
         // Checked here, before the summary, consent and any download, so a bad answer fails with the field that is wrong.
+        ThrowIfInvalid(config);
+
+        CatalogEntry[] wanted = speech is null ? [vad] : [speech, vad];
+        return new SetupPlan(config, [.. wanted.Where(e => !isInstalled(e))]);
+    }
+
+    /// <summary>Throws with every error the validator finds; warnings pass.</summary>
+    internal static void ThrowIfInvalid(DictumConfig config)
+    {
         var errors = ConfigValidator.Validate(config).Where(i => i.Severity == ConfigIssueSeverity.Error).ToList();
         if (errors.Count > 0)
         {
             throw new ConfigException("The new config would be invalid.", errors);
         }
-
-        CatalogEntry[] wanted = speech is null ? [vad] : [speech, vad];
-        return new SetupPlan(config, [.. wanted.Where(e => !isInstalled(e))]);
     }
-}
 
-public static class HardwareText
-{
-    private const double BytesPerGibibyte = 1L << 30;
+    /// <summary>The catalog entry the answers name, or null to keep the current model when <paramref name="canKeep"/>.</summary>
+    private static CatalogEntry? ChooseSpeechModel(SetupAnswers answers, Catalog catalog, bool canKeep)
+    {
+        if (answers.SpeechModel is not { } id)
+        {
+            return canKeep ? null : throw new ConfigException("There is no current speech model to keep; choose one with --stt.");
+        }
 
-    /// <summary>"Intel(R) Iris(R) Xe Graphics, 15.8 GB shared memory", "RTX 3060, 12.0 GB VRAM", or null without a GPU.</summary>
-    public static string? Gpu(HardwareInfo hardware) =>
-        hardware.GpuName is not { } name ? null
-        : hardware.GpuMemoryBytes is { } bytes and > 0 ? $"{name}, {Memory(bytes)} {(hardware.GpuIsIntegrated ? "shared memory" : "VRAM")}"
-        : name;
+        var speech = catalog.Get(id);
+        if (speech.Kind != CatalogKind.Whisper)
+        {
+            throw new ConfigException($"'{speech.Id}' is not a speech model.");
+        }
 
-    /// <summary>Binary gigabytes with one decimal, as Windows Task Manager labels them ("15.8 GB").</summary>
-    public static string Memory(long bytes) => string.Create(CultureInfo.InvariantCulture, $"{bytes / BytesPerGibibyte:F1} GB");
+        if (!speech.Understands(answers.Language))
+        {
+            throw new ConfigException($"'{speech.Id}' only understands {string.Join(", ", speech.Languages)}; choose another model or language.");
+        }
+
+        return speech;
+    }
+
+    /// <summary>
+    /// Points the cleanup processor at the chosen server and returns the pipeline with it, or the pipeline without it
+    /// when no server was chosen.
+    /// </summary>
+    private static List<string> ApplyCleanup(DictumConfig config, SetupAnswers answers, List<string> current)
+    {
+        var pipeline = current.ToList();
+        var cleanupId = CleanupProcessorId(config);
+        if (answers is not { Cleanup: CleanupChoice.ExistingServer, Server: { } server })
+        {
+            pipeline.Remove(cleanupId);
+            return pipeline;
+        }
+
+        config.Processors[cleanupId] = config.Processors.TryGetValue(cleanupId, out var old) && old is LlmProcessorConfig llm
+            ? llm with { BaseUrl = server.BaseUrl, Model = server.Model, ApiKey = server.ApiKey }
+            : new LlmProcessorConfig
+            {
+                BaseUrl = server.BaseUrl,
+                Model = server.Model,
+                Prompt = CleanupPrompt,
+                ApiKey = server.ApiKey,
+                TimeoutMs = ExistingServerTimeoutMs,
+            };
+        if (!pipeline.Contains(cleanupId))
+        {
+            pipeline.Add(cleanupId);
+        }
+
+        return pipeline;
+    }
 }

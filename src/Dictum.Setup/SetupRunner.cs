@@ -69,12 +69,7 @@ public sealed class SetupRunner(FileDownloader downloader, AppPaths paths)
         Func<CancellationToken, Task>? beforeSave = null)
     {
         await DownloadAsync(plan.Downloads, freeDiskBytes, progress, ct).ConfigureAwait(false);
-        var errors = ConfigValidator.Validate(plan.Config).Where(i => i.Severity == ConfigIssueSeverity.Error).ToList();
-        if (errors.Count > 0)
-        {
-            throw new ConfigException("The new config would be invalid.", errors);
-        }
-
+        SetupPlanner.ThrowIfInvalid(plan.Config);
         if (beforeSave is not null)
         {
             await beforeSave(ct).ConfigureAwait(false);

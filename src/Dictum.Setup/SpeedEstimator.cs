@@ -138,9 +138,9 @@ public static class SpeedEstimator
         return estimates;
     }
 
-    /// <summary>A GPU with too little memory counts as none, as in <see cref="SetupPlanner.RecommendSpeechModel"/>.</summary>
+    /// <summary>The ratio for the class of hardware, with the relative cost of the model it holds for.</summary>
     private static (double Ratio, double Cost) Anchor(HardwareInfo hardware, int cpuCores) =>
-        hardware.GpuName is not null && !(hardware.GpuMemoryBytes < SetupPlanner.MinGpuMemoryBytes)
+        SetupPlanner.HasUsableGpu(hardware)
             ? (hardware.GpuIsIntegrated ? IntegratedGpuTurbo : DiscreteGpuTurbo, TurboCost)
             : (cpuCores >= ManyCores ? CpuSmallManyCores : cpuCores >= SomeCores ? CpuSmallSomeCores : CpuSmallFewCores, SmallCost);
 

@@ -71,6 +71,10 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
         File.Move(partial, target, overwrite: true);
     }
 
+    /// <summary>Whether the file at <paramref name="path"/> has the catalog's SHA-256; the file is never changed.</summary>
+    public static async Task<bool> MatchesAsync(CatalogEntry entry, string path, CancellationToken ct) =>
+        string.Equals(await HashAsync(path, ct).ConfigureAwait(false), entry.Sha256, StringComparison.OrdinalIgnoreCase);
+
     /// <summary>Where the download of <paramref name="target"/> collects its bytes until the hash is checked.</summary>
     internal static string PartialPath(string target) => target + PartialSuffix;
 
@@ -99,17 +103,28 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
         // The stall timer also covers the wait for headers: a server can accept the connection and never answer.
         using var stall = CancellationTokenSource.CreateLinkedTokenSource(ct);
         stall.CancelAfter(_stallTimeout);
-        HttpResponseMessage sent;
+        using var response = await SendAsync(request, stall.Token, ct).ConfigureAwait(false);
+        ThrowIfFailed(entry, partial, response);
+
+        var resumeFrom = existing > 0 && response.StatusCode == HttpStatusCode.PartialContent ? existing : 0;
+        await CopyAsync(entry, response, partial, resumeFrom, stall, progress, ct).ConfigureAwait(false);
+    }
+
+    private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken stalled, CancellationToken ct)
+    {
         try
         {
-            sent = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, stall.Token).ConfigureAwait(false);
+            return await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, stalled).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
             throw Stalled();
         }
+    }
 
-        using var response = sent;
+    /// <summary>A refused resume and a server error are transient, so they are retried; any other error status is final.</summary>
+    private static void ThrowIfFailed(CatalogEntry entry, string partial, HttpResponseMessage response)
+    {
         if (response.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable)
         {
             File.Delete(partial);
@@ -125,11 +140,21 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
         {
             throw new DownloadException($"{entry.Url} answered {(int)response.StatusCode} {response.ReasonPhrase}.");
         }
+    }
 
-        var resume = existing > 0 && response.StatusCode == HttpStatusCode.PartialContent;
-        var written = resume ? existing : 0;
+    /// <summary>Appends the body to the partial file when <paramref name="resumeFrom"/> is past 0, otherwise replaces it.</summary>
+    private async Task CopyAsync(
+        CatalogEntry entry,
+        HttpResponseMessage response,
+        string partial,
+        long resumeFrom,
+        CancellationTokenSource stall,
+        IProgress<DownloadProgress>? progress,
+        CancellationToken ct)
+    {
+        var written = resumeFrom;
         await using var source = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
-        await using var file = new FileStream(partial, resume ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.None, BufferSize, useAsync: true);
+        await using var file = new FileStream(partial, resumeFrom > 0 ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.None, BufferSize, useAsync: true);
         var buffer = new byte[BufferSize];
         var sinceReport = Stopwatch.StartNew();
         progress?.Report(new DownloadProgress(entry.File, written, entry.Size));
@@ -174,10 +199,6 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
 
     /// <summary>Transient, so the download is retried and resumes.</summary>
     private IOException Stalled() => new($"no data for {_stallTimeout.TotalSeconds:F0} s");
-
-    /// <summary>Whether the file at <paramref name="path"/> has the catalog's SHA-256; the file is never changed.</summary>
-    public static async Task<bool> MatchesAsync(CatalogEntry entry, string path, CancellationToken ct) =>
-        string.Equals(await HashAsync(path, ct).ConfigureAwait(false), entry.Sha256, StringComparison.OrdinalIgnoreCase);
 
     private static async Task<string> HashAsync(string path, CancellationToken ct)
     {
