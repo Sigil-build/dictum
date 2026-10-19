@@ -615,6 +615,36 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task DisposingTheDaemonDisposesTheTokenSourcesItHandedOut()
+    {
+        var daemon = await StartAsync(Config());
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "uk"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Stop), _ct);
+        await WaitForAsync(() => _injector.Injected.Count == 1 && daemon.State == PipelineState.Idle);
+        var (stopping, dictation) = (_engines[^1].WarmUpToken, _stt.LastToken);
+
+        await daemon.DisposeAsync();
+
+        Assert.Throws<ObjectDisposedException>(() => stopping.WaitHandle);
+        Assert.Throws<ObjectDisposedException>(() => dictation.WaitHandle);
+    }
+
+    [Fact]
+    public async Task DisposingTheDaemonWaitsForTheStopItCancels()
+    {
+        _stt.Gate = new TaskCompletionSource();
+        var daemon = await StartAsync(Config());
+        using var subscriber = _events.Subscribe();
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "uk"), _ct);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.Stop), _ct);
+        await WaitForAsync(() => daemon.State == PipelineState.Transcribing);
+
+        await daemon.DisposeAsync();
+
+        Assert.Contains(await DrainAsync(subscriber), e => e is { Event: IpcEventKind.Finished, Outcome: DictationOutcome.Cancelled });
+    }
+
+    [Fact]
     public async Task AMicrophoneFailureDuringAProviderTestDoesNotBlockDictation()
     {
         await using var daemon = await StartAsync(Config());

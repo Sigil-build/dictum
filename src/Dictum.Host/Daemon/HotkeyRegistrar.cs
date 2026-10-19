@@ -18,7 +18,7 @@ namespace Dictum.Host.Daemon;
 /// </remarks>
 /// <param name="config">The config the next registration binds.</param>
 /// <param name="changed">Publishes the status after each registration.</param>
-internal sealed class HotkeyRegistrar(PlatformServices platform, ILog log, Func<DictumConfig> config, Action changed) : IAsyncDisposable
+internal sealed class HotkeyRegistrar(PlatformServices platform, ILog log, Func<DictumConfig> config, Action changed) : IDisposable
 {
     private const string NoBackend = "none (use 'dictum toggle')";
 
@@ -73,16 +73,18 @@ internal sealed class HotkeyRegistrar(PlatformServices platform, ILog log, Func<
         }
     }
 
-    public async ValueTask DisposeAsync()
+    /// <summary>Stops listening and releases the backend, so a press during the shutdown starts nothing.</summary>
+    public async Task CloseAsync()
     {
         if (_hotkeys is not null)
         {
             _hotkeys.Triggered -= _onHotkey;
             await _hotkeys.DisposeAsync().ConfigureAwait(false);
         }
-
-        _registering.Dispose();
     }
+
+    /// <summary>Call after <see cref="CloseAsync"/>, once no registration runs or waits.</summary>
+    public void Dispose() => _registering.Dispose();
 
     private async Task RegisterCoreAsync(CancellationToken ct)
     {

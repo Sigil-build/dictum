@@ -32,6 +32,7 @@ public sealed class DictumDaemon : IAsyncDisposable
     private readonly LevelMonitor _monitor;
     private readonly SttTester _tester;
     private readonly DaemonCommandRouter _router;
+    private readonly BackgroundWork _work = new();
     private IDictationEngine _engine;
     private IReadOnlyList<ConfigIssue> _configWarnings;
     private (DictumConfig Config, IReadOnlyList<ConfigIssue>? Warnings)? _pendingConfig;
@@ -43,6 +44,7 @@ public sealed class DictumDaemon : IAsyncDisposable
     private volatile bool _warmedUp;
     private volatile bool _stopInProgress;
     private bool _stoppingAnnounced;
+    private bool _disposed;
 
     public DictumDaemon(
         DictumConfig config,
@@ -63,7 +65,7 @@ public sealed class DictumDaemon : IAsyncDisposable
         _configWarnings = configWarnings ?? [];
         _engine = createEngine(config);
         _hotkeys = new HotkeyRegistrar(platform, log, () => Config, PublishStatus);
-        _monitor = new LevelMonitor(_gate, () => _engine, time ?? TimeProvider.System, task => _ = Observe(task), _stopping.Token);
+        _monitor = new LevelMonitor(_gate, () => _engine, time ?? TimeProvider.System, task => _work.Add(Observe(task)), _stopping.Token);
         _tester = new SttTester(_gate, () => _engine, _monitor, ApplyPendingConfigAsync);
         _router = new DaemonCommandRouter(this, _hotkeys, _tester, _monitor, host, log);
     }
@@ -98,51 +100,24 @@ public sealed class DictumDaemon : IAsyncDisposable
         _hotkeys.Start(OnHotkey);
         Subscribe(_engine);
         await _hotkeys.RegisterAsync(ct).ConfigureAwait(false);
-        _ = WarmUpAsync(_engine);
-        _ = PrepareAsync();
+        _work.Add(WarmUpAsync(_engine));
+        _work.Add(PrepareAsync());
     }
 
     /// <summary>Applies a reloaded config: new providers, re-registered hotkeys.</summary>
-    public async Task ApplyConfigAsync(DictumConfig config, CancellationToken ct, IReadOnlyList<ConfigIssue>? warnings = null)
+    public Task ApplyConfigAsync(DictumConfig config, CancellationToken ct, IReadOnlyList<ConfigIssue>? warnings = null)
     {
-        await _gate.WaitAsync(ct).ConfigureAwait(false);
-        IDictationEngine previous;
-        try
-        {
-            if (State != PipelineState.Idle || _stopInProgress || _tester.IsTesting)
-            {
-                // Swapping the engine now would drop the dictation; the newest config is applied once it has finished.
-                _pendingConfig = (config, warnings);
-                _log.Info("Config reload waits for the dictation to finish");
-                return;
-            }
-
-            _pendingConfig = null;
-            await _monitor.StopCoreAsync().ConfigureAwait(false);
-            previous = _engine;
-            Unsubscribe(previous);
-            _engine = _createEngine(config);
-            _warmedUp = false;
-            Subscribe(_engine);
-        }
-        finally
-        {
-            _gate.Release();
-        }
-
-        _configWarnings = warnings ?? [];
-        if (_selectedProfile is { } selected && config.Profiles.All(p => p.Id != selected))
-        {
-            _selectedProfile = null;
-        }
-
-        await previous.DisposeAsync().ConfigureAwait(false);
-        await _hotkeys.RegisterAsync(ct).ConfigureAwait(false);
-        _ = WarmUpAsync(_engine);
-        _log.Info("Config reloaded");
+        var applying = ApplyConfigCoreAsync(config, warnings, ct);
+        _work.Add(applying);
+        return applying;
     }
 
-    public Task<IpcResponse> HandleAsync(IpcRequest request, CancellationToken ct) => _router.HandleAsync(request, ct);
+    public Task<IpcResponse> HandleAsync(IpcRequest request, CancellationToken ct)
+    {
+        var handling = _router.HandleAsync(request, ct);
+        _work.Add(handling);
+        return handling;
+    }
 
     public DaemonStatus Status() => new(
         State.ToString(),
@@ -159,12 +134,25 @@ public sealed class DictumDaemon : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
         TryAnnounceStopping();
         await _stopping.CancelAsync().ConfigureAwait(false);
-        await _hotkeys.DisposeAsync().ConfigureAwait(false);
+        await _hotkeys.CloseAsync().ConfigureAwait(false);
         await CancelAsync().ConfigureAwait(false);
+
+        // What is freed below is in use until the stops, reloads and requests still running have ended.
+        await _work.IdleAsync().ConfigureAwait(false);
         await _monitor.StopCoreAsync().ConfigureAwait(false);
         await _engine.DisposeAsync().ConfigureAwait(false);
+        _hotkeys.Dispose();
+        _dictation?.Dispose();
+        _stopping.Dispose();
+        _gate.Dispose();
     }
 
     /// <summary>The message a client sees: a dictation failure names its cause.</summary>
@@ -248,7 +236,7 @@ public sealed class DictumDaemon : IAsyncDisposable
     }
 
     /// <summary>Stops the dictation that records, in the background; the client follows it through the events.</summary>
-    internal void StopActiveDictation() => _ = StopDictationAsync(_activeProfile);
+    internal void StopActiveDictation() => _work.Add(StopDictationAsync(_activeProfile));
 
     internal async Task CancelAsync()
     {
@@ -337,7 +325,7 @@ public sealed class DictumDaemon : IAsyncDisposable
             _ => Task.CompletedTask,
         };
 
-        _ = Observe(action);
+        _work.Add(Observe(action));
     }
 
     private async Task StopDictationAsync(string? profileId)
@@ -402,6 +390,45 @@ public sealed class DictumDaemon : IAsyncDisposable
         }
 
         await ApplyPendingConfigAsync().ConfigureAwait(false);
+    }
+
+    private async Task ApplyConfigCoreAsync(DictumConfig config, IReadOnlyList<ConfigIssue>? warnings, CancellationToken ct)
+    {
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        IDictationEngine previous;
+        try
+        {
+            if (State != PipelineState.Idle || _stopInProgress || _tester.IsTesting)
+            {
+                // Swapping the engine now would drop the dictation; the newest config is applied once it has finished.
+                _pendingConfig = (config, warnings);
+                _log.Info("Config reload waits for the dictation to finish");
+                return;
+            }
+
+            _pendingConfig = null;
+            await _monitor.StopCoreAsync().ConfigureAwait(false);
+            previous = _engine;
+            Unsubscribe(previous);
+            _engine = _createEngine(config);
+            _warmedUp = false;
+            Subscribe(_engine);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+
+        _configWarnings = warnings ?? [];
+        if (_selectedProfile is { } selected && config.Profiles.All(p => p.Id != selected))
+        {
+            _selectedProfile = null;
+        }
+
+        await previous.DisposeAsync().ConfigureAwait(false);
+        await _hotkeys.RegisterAsync(ct).ConfigureAwait(false);
+        _work.Add(WarmUpAsync(_engine));
+        _log.Info("Config reloaded");
     }
 
     /// <summary>Applies a config that arrived during a dictation or a provider test, now that it has ended.</summary>

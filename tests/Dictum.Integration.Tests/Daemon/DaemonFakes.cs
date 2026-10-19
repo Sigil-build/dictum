@@ -69,8 +69,12 @@ internal sealed class EchoStt(string text) : ISpeechToText
 
     public Exception? FailWith { get; set; }
 
+    /// <summary>The token of the last transcription: the dictation's own.</summary>
+    public CancellationToken LastToken { get; private set; }
+
     public async Task<Transcript> TranscribeAsync(AudioClip clip, SttRequest request, CancellationToken ct)
     {
+        LastToken = ct;
         if (Gate is not null)
         {
             await Gate.Task.WaitAsync(ct);
@@ -114,7 +118,14 @@ internal sealed class FakeEngine : IDictationEngine
     /// <summary>What the warm-up waits for: done at once unless a test holds it, or fails it.</summary>
     public Task WarmingUp { get; init; } = Task.CompletedTask;
 
-    public Task WarmUpAsync(CancellationToken ct) => WarmingUp.WaitAsync(ct);
+    /// <summary>The token the warm-up got: the daemon's stopping token.</summary>
+    public CancellationToken WarmUpToken { get; private set; }
+
+    public Task WarmUpAsync(CancellationToken ct)
+    {
+        WarmUpToken = ct;
+        return WarmingUp.WaitAsync(ct);
+    }
 
     public ITextProcessor GetProcessor(string id) => throw new ConfigException($"Unknown processor '{id}'.");
 
