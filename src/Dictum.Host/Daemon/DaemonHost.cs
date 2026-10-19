@@ -13,7 +13,7 @@ namespace Dictum.Host.Daemon;
 /// <param name="Store">The config file that the watcher and the <c>reload</c> command read again.</param>
 /// <param name="UseConfig">Gets every config the daemon is about to apply, so settings read at use time follow it.</param>
 /// <param name="Started">Gets the status once the daemon serves and its hotkeys are registered.</param>
-/// <param name="Sounds">The cue player; the default plays through the sound device.</param>
+/// <param name="Sounds">The cue player, which stays the caller's; the default plays through the sound device.</param>
 public sealed record DaemonHostOptions(
     DictumConfig Config,
     IReadOnlyList<ConfigIssue> Warnings,
@@ -48,8 +48,12 @@ public static class DaemonHost
                 return loaded;
             },
             (d, c) => DoctorChecks.RunAsync(DoctorInputs.ForEngine(store.Path, () => d.Engine, d.ConfigWarnings, options.Paths, platform), c));
+
+        // Only a player made here is disposed here, after the daemon, which plays cues until its own disposal.
+        var sounds = options.Sounds ?? DictumHost.CreateSoundPlayer(log);
+        using var ownedSounds = options.Sounds is null ? sounds as IDisposable : null;
         await using var daemon = new DictumDaemon(
-            options.Config, options.CreateEngine, platform, options.Sounds ?? DictumHost.CreateSoundPlayer(log), log, events, options.Warnings, commands);
+            options.Config, options.CreateEngine, platform, sounds, log, events, options.Warnings, commands);
 
         // The server listens before the hotkeys are registered, which can take seconds on a portal.
         await using var server = new IpcServer(options.SocketPath, log, events);

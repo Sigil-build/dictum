@@ -1,3 +1,4 @@
+using Dictum.Audio;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
@@ -56,11 +57,21 @@ public sealed class DaemonHostTests : IDisposable
         });
     }
 
+    [Fact]
+    public async Task ASoundPlayerTheCallerGivesIsNotDisposedWithTheDaemon()
+    {
+        var sounds = new DisposableSounds();
+
+        await RunAsync(() => Task.CompletedTask, sounds);
+
+        Assert.False(sounds.Disposed);
+    }
+
     /// <summary>
     /// Runs the daemon on a temp config and socket while <paramref name="body"/> talks to it, waits until it has started,
     /// then stops it.
     /// </summary>
-    private async Task RunAsync(Func<Task> body)
+    private async Task RunAsync(Func<Task> body, ISoundPlayer? sounds = null)
     {
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var store = new ConfigStore(_dir.File("config.json"), NullLog.Instance);
@@ -85,7 +96,7 @@ public sealed class DaemonHostTests : IDisposable
             CreateEngine,
             _ => { },
             _ => started.TrySetResult(),
-            new FakeSounds());
+            sounds ?? new FakeSounds());
 
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(_ct);
         var run = DaemonHost.RunAsync(options, stop.Token);
@@ -128,4 +139,13 @@ public sealed class DaemonHostTests : IDisposable
         Stt = new() { ["s"] = new WhisperLocalSttConfig { Model = "m.bin" } },
         Profiles = [new ProfileConfig { Id = "uk", Stt = "s", Language = "uk", Hotkey = "Ctrl+Alt+Space" }],
     };
+
+    private sealed class DisposableSounds : ISoundPlayer, IDisposable
+    {
+        public bool Disposed { get; private set; }
+
+        public Task PlayAsync(SoundCue cue, CancellationToken ct) => Task.CompletedTask;
+
+        public void Dispose() => Disposed = true;
+    }
 }
