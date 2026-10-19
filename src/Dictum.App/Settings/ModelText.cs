@@ -6,9 +6,6 @@ namespace Dictum.App.Settings;
 /// <summary>The lines of a model card and of the Models header, in the UI language.</summary>
 public static class ModelText
 {
-    private const string MediumModel = "whisper-medium-q8";
-    private const string TinyEnglishModel = "whisper-tiny-en";
-
     /// <summary>The source shows the URL's host, then its owner and repository.</summary>
     private const int RepositorySegments = 2;
 
@@ -22,9 +19,9 @@ public static class ModelText
     public static string Note(CatalogEntry entry) => entry.Id switch
     {
         SetupPlanner.GpuModel => Strings.ModelNoteTurbo,
-        MediumModel => Strings.ModelNoteMedium,
+        Catalog.MediumModel => Strings.ModelNoteMedium,
         SetupPlanner.CpuModel => Strings.ModelNoteSmall,
-        TinyEnglishModel => Strings.ModelNoteTiny,
+        Catalog.TinyEnglishModel => Strings.ModelNoteTiny,
         _ => entry.Title.Split(':', 2) is [_, var note] ? note.Trim() : "",
     };
 

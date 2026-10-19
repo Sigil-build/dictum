@@ -1,3 +1,4 @@
+using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.Setup;
 
@@ -16,7 +17,15 @@ public sealed class ModelTextTests
         Assert.Equal("best quality, needs a GPU", ModelText.Note(Turbo));
         Assert.Equal("huggingface.co/ggerganov/whisper.cpp", ModelText.Source(Turbo));
         Assert.Equal("874 MB · MIT licence · huggingface.co/ggerganov/whisper.cpp · 99 languages", ModelText.Meta(Turbo));
-        Assert.Equal("English", ModelText.Languages(Catalog.BuiltIn.Get("whisper-tiny-en")));
+        Assert.Equal("English", ModelText.Languages(Catalog.BuiltIn.Get(Catalog.TinyEnglishModel)));
+    }
+
+    [Fact]
+    public void EverySpeechModelOfTheCatalogHasATranslatedNote()
+    {
+        string[] translated = [Strings.ModelNoteTurbo, Strings.ModelNoteMedium, Strings.ModelNoteSmall, Strings.ModelNoteTiny];
+
+        Assert.All(Catalog.BuiltIn.Entries.Where(e => e.Kind == CatalogKind.Whisper), entry => Assert.Contains(ModelText.Note(entry), translated));
     }
 
     [Fact]

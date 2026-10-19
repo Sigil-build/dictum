@@ -56,6 +56,14 @@ public partial class CatalogTests
     }
 
     [Fact]
+    public void TheEntriesCodeNamesAreInTheCatalog()
+    {
+        Assert.All([SetupPlanner.GpuModel, Catalog.MediumModel, SetupPlanner.CpuModel, Catalog.TinyEnglishModel], id =>
+            Assert.Equal(CatalogKind.Whisper, BuiltIn.Find(id)?.Kind));
+        Assert.Equal(CatalogKind.Vad, BuiltIn.Find(SetupPlanner.VadId)?.Kind);
+    }
+
+    [Fact]
     public void FindsEntriesByIdAndByFileName()
     {
         Assert.Equal("ggml-small-q8_0.bin", BuiltIn.Get("WHISPER-SMALL-Q8").File);

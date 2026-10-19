@@ -58,6 +58,12 @@ public sealed record CatalogEntry(
 /// <summary>Models Dictum can download, with pinned URLs, sizes and SHA-256 hashes. Built in, so it works offline.</summary>
 public sealed class Catalog
 {
+    /// <summary>Entries the app names besides <see cref="SetupPlanner"/>'s; a test keeps them in catalog.json.</summary>
+    public const string MediumModel = "whisper-medium-q8";
+
+    /// <inheritdoc cref="MediumModel"/>
+    public const string TinyEnglishModel = "whisper-tiny-en";
+
     /// <summary>The LogicalName that Dictum.Setup.csproj gives catalog.json.</summary>
     private const string ResourceName = "Dictum.Setup.catalog.json";
 
