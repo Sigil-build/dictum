@@ -4,9 +4,7 @@ using System.Text.Json;
 using Dictum.Cli.Output;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
-using Dictum.Host;
 using Dictum.Host.Diagnostics;
-using Dictum.Host.Ipc;
 
 namespace Dictum.Cli.Commands;
 
@@ -34,18 +32,9 @@ internal static class DoctorCommand
                 error = ex;
             }
 
-            var results = await DoctorChecks.RunAsync(new DoctorInputs(
-                context.ConfigPath,
-                config,
-                error,
-                warnings,
-                context.Paths,
-                context.Platform,
-                HardwareProbe.Detect(context.Paths),
-                () => context.Host().Audio,
-                id => context.Host().GetStt(id),
-                id => context.Host().GetProcessor(id),
-                c => CheckDaemonAsync(context, c)), token).ConfigureAwait(false);
+            var results = await DoctorChecks.RunAsync(
+                DoctorInputs.ForCli(context.ConfigPath, config, error, warnings, context.Paths, context.Platform, context.Host, context.SocketPath),
+                token).ConfigureAwait(false);
             var checks = results.Select(c => new CheckJson(c.Name, c.Status.Level, c.Status.Detail, c.Status.Hint)).ToList();
 
             if (parse.GetValue(json))
@@ -70,21 +59,6 @@ internal static class DoctorCommand
         }, ct));
 
         return command;
-    }
-
-    private static async Task<HealthStatus> CheckDaemonAsync(CliContext context, CancellationToken ct)
-    {
-        try
-        {
-            var status = (await new IpcClient(context.SocketPath).SendAsync(new IpcRequest(IpcCommand.Status), ct).ConfigureAwait(false)).Status!;
-            var registered = status.Profiles.Count(p => p.Registered);
-            var detail = $"running (pid {status.ProcessId}), {status.State}; {registered} hotkey(s) registered via {status.HotkeyBackend}";
-            return status.Warning is null ? HealthStatus.Ok(detail) : HealthStatus.Warning(detail, status.Warning);
-        }
-        catch (DaemonNotRunningException)
-        {
-            return HealthStatus.Warning("not running", "Start it with 'dictum daemon', or at login with 'dictum daemon --install-autostart'.");
-        }
     }
 
     private static string Label(HealthLevel level) => level switch

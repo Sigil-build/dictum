@@ -63,7 +63,8 @@ public static class DaemonHost
             options.UseConfig(fresh);
             await daemon.ApplyConfigAsync(fresh, c, freshWarnings).ConfigureAwait(false);
         };
-        daemon.DoctorHandler = c => RunOwnChecksAsync(options, daemon, c);
+        daemon.DoctorHandler = c => DoctorChecks.RunAsync(
+            DoctorInputs.ForEngine(store.Path, () => daemon.Engine, daemon.ConfigWarnings, options.Paths, platform), c);
 
         options.Started(daemon.Status());
 
@@ -80,19 +81,4 @@ public static class DaemonHost
         // Before the server's disposal: a client that sees the socket close unannounced restarts the daemon.
         await daemon.AnnounceStoppingAsync(StoppingAnnounceTimeout).ConfigureAwait(false);
     }
-
-    /// <summary>The checks run on the daemon's live engine: the Whisper model is already loaded, so the stt rows are cheap.</summary>
-    private static Task<IReadOnlyList<PlatformCheck>> RunOwnChecksAsync(DaemonHostOptions options, DictumDaemon daemon, CancellationToken ct) =>
-        DoctorChecks.RunAsync(new DoctorInputs(
-            options.Store.Path,
-            daemon.Config,
-            null,
-            daemon.ConfigWarnings,
-            options.Paths,
-            options.Platform,
-            HardwareProbe.Detect(options.Paths),
-            () => daemon.Engine.Audio,
-            id => daemon.Engine.GetStt(id),
-            id => daemon.Engine.GetProcessor(id),
-            _ => Task.FromResult(HealthStatus.Ok($"running (pid {Environment.ProcessId}), answering this check"))), ct);
 }

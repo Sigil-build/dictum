@@ -5,6 +5,8 @@ using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Processing;
 using Dictum.Core.Stt;
+using Dictum.Host.Daemon;
+using Dictum.Host.Ipc;
 using Dictum.Platform;
 using Dictum.Setup;
 
@@ -24,12 +26,72 @@ public sealed record DoctorInputs(
     Func<string, ISpeechToText> GetStt,
     Func<string, ITextProcessor> GetProcessor,
     Func<CancellationToken, Task<HealthStatus>> Daemon,
-    TimeSpan? CheckTimeout = null);
+    TimeSpan? CheckTimeout = null)
+{
+    /// <summary>The CLI's checks: providers from an engine built on first use, and a daemon row that asks the socket.</summary>
+    public static DoctorInputs ForCli(
+        string configPath,
+        DictumConfig? config,
+        ConfigException? configError,
+        IReadOnlyList<ConfigIssue> configWarnings,
+        AppPaths paths,
+        PlatformServices platform,
+        Func<IDictationEngine> engine,
+        string socketPath) =>
+        new(
+            configPath,
+            config,
+            configError,
+            configWarnings,
+            paths,
+            platform,
+            HardwareProbe.Detect(paths),
+            () => engine().Audio,
+            id => engine().GetStt(id),
+            id => engine().GetProcessor(id),
+            c => DoctorChecks.CheckDaemonAsync(socketPath, c));
+
+    /// <summary>The daemon's own checks, on its live engine: the Whisper model is already loaded, so the stt rows are cheap.</summary>
+    public static DoctorInputs ForEngine(
+        string configPath,
+        Func<IDictationEngine> engine,
+        IReadOnlyList<ConfigIssue> configWarnings,
+        AppPaths paths,
+        PlatformServices platform) =>
+        new(
+            configPath,
+            engine().Config,
+            null,
+            configWarnings,
+            paths,
+            platform,
+            HardwareProbe.Detect(paths),
+            () => engine().Audio,
+            id => engine().GetStt(id),
+            id => engine().GetProcessor(id),
+            _ => Task.FromResult(HealthStatus.Ok($"running (pid {Environment.ProcessId}), answering this check")));
+}
 
 /// <summary>The checks behind <c>dictum doctor</c> and the desktop app's System page.</summary>
 public static class DoctorChecks
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(15);
+
+    /// <summary>The CLI's <c>daemon</c> row: what the daemon on <paramref name="socketPath"/> says about itself.</summary>
+    public static async Task<HealthStatus> CheckDaemonAsync(string socketPath, CancellationToken ct)
+    {
+        try
+        {
+            var status = (await new IpcClient(socketPath).SendAsync(new IpcRequest(IpcCommand.Status), ct).ConfigureAwait(false)).Status!;
+            var registered = status.Profiles.Count(p => p.Registered);
+            var detail = $"running (pid {status.ProcessId}), {status.State}; {registered} hotkey(s) registered via {status.HotkeyBackend}";
+            return status.Warning is null ? HealthStatus.Ok(detail) : HealthStatus.Warning(detail, status.Warning);
+        }
+        catch (DaemonNotRunningException)
+        {
+            return HealthStatus.Warning("not running", "Start it with 'dictum daemon', or at login with 'dictum daemon --install-autostart'.");
+        }
+    }
 
     public static async Task<IReadOnlyList<PlatformCheck>> RunAsync(DoctorInputs inputs, CancellationToken ct)
     {
