@@ -1,4 +1,4 @@
-using Dictum.App.Overlay;
+using Dictum.Core.Audio;
 
 namespace Dictum.App.Tests.Overlay;
 

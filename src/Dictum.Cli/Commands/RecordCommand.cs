@@ -1,8 +1,6 @@
 using System.CommandLine;
 using System.Diagnostics;
-using System.Text.Json;
 using Dictum.Audio;
-using Dictum.Cli.Output;
 using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Host.Daemon;
@@ -15,12 +13,6 @@ internal static class RecordCommand
     private const string ToClipboard = "clipboard";
     private const string ToPaste = "paste";
 
-    /// <summary>The microphone delivers 50 frames per second, 20 ms each.</summary>
-    private const int FramesPerSecond = 50;
-
-    /// <summary>Frame times in the dump are rounded to the millisecond.</summary>
-    private const int FrameTimeDecimals = 3;
-
     private const int MeterWidth = 24;
 
     /// <summary>The bar with its time and brackets, plus a margin.</summary>
@@ -32,7 +24,6 @@ internal static class RecordCommand
     /// <summary>About ten redraws per second.</summary>
     private const int MeterRedrawMs = 100;
 
-    private static readonly TimeSpan FrameLength = TimeSpan.FromSeconds(1) / FramesPerSecond;
     private static readonly TimeSpan KeyPollInterval = TimeSpan.FromMilliseconds(50);
 
     public static Command Create()
@@ -72,15 +63,15 @@ internal static class RecordCommand
             }
 
             var stop = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            var frames = parse.GetValue(dumpFrames) is null ? null : new List<FrameJson>();
+            var frames = parse.GetValue(dumpFrames) is null ? null : new List<RecordedFrame>();
             var meter = new LevelMeter(context.Error, enabled: !Console.IsErrorRedirected);
             var silence = parse.GetValue(untilSilence) is { } quiet ? new SilenceDetector(quiet) : null;
 
             host.Audio.FrameCaptured += frame =>
             {
-                frames?.Add(new FrameJson(Math.Round(frame.At.TotalSeconds, FrameTimeDecimals), frame.Rms, frame.Bands.ToArray()));
+                frames?.Add(RecordedFrame.From(frame));
                 meter.Update(frame);
-                if (silence?.Push(frame.Rms, FrameLength) == true)
+                if (silence?.Push(frame.Rms, AudioFrame.Interval) == true)
                 {
                     stop.TrySetResult(true);
                 }
@@ -156,10 +147,9 @@ internal static class RecordCommand
             context.TryLoadConfig()?.Profiles.FirstOrDefault(p => p.Id == profileId)?.PasteShortcut ?? PasteShortcut.Auto,
             context.TryLoadConfig()?.General ?? new GeneralSettings());
 
-    private static async Task WriteFrameDumpAsync(CliContext context, string path, List<FrameJson> frames, CancellationToken ct)
+    private static async Task WriteFrameDumpAsync(CliContext context, string path, List<RecordedFrame> frames, CancellationToken ct)
     {
-        var dump = new FrameDumpJson(FramesPerSecond, frames.FirstOrDefault()?.Bands.Length ?? 0, frames);
-        await File.WriteAllTextAsync(path, JsonSerializer.Serialize(dump, CliJsonContext.Readable.FrameDumpJson), ct).ConfigureAwait(false);
+        await File.WriteAllTextAsync(path, FrameRecording.Of(frames).ToJson(), ct).ConfigureAwait(false);
         context.Error.WriteLine($"Wrote {frames.Count} frames to {path}");
     }
 

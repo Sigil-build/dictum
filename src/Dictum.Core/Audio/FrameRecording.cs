@@ -1,15 +1,27 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Dictum.App.Overlay;
+namespace Dictum.Core.Audio;
 
-/// <summary>One 20 ms frame of a <c>dictum record --dump-frames</c> file.</summary>
-public sealed record RecordedFrame(double T, float Rms, float[] Bands);
+/// <summary>One frame of a frame dump.</summary>
+/// <param name="T">Seconds since the recording started, as <see cref="AudioFrame.AtSeconds"/>.</param>
+public sealed record RecordedFrame(double T, float Rms, float[] Bands)
+{
+    public static RecordedFrame From(AudioFrame frame) => new(frame.AtSeconds, frame.Rms, frame.Bands.ToArray());
+}
 
-/// <summary>A <c>--dump-frames</c> recording. The overlay tests and <c>--overlay-demo</c> play it by frame index.</summary>
+/// <summary>
+/// The frames of one recording, as <c>dictum record --dump-frames</c> writes them. The overlay tests and
+/// <c>dictum-gui --overlay-demo</c> play them by frame index.
+/// </summary>
 public sealed record FrameRecording(int FramesPerSecond, int Bands, IReadOnlyList<RecordedFrame> Frames)
 {
+    [JsonIgnore]
     public TimeSpan Duration => TimeSpan.FromSeconds((double)Frames.Count / FramesPerSecond);
+
+    /// <summary>The frames as the capture delivered them, at <see cref="AudioFrame.PerSecond"/>.</summary>
+    public static FrameRecording Of(IReadOnlyList<RecordedFrame> frames) =>
+        new(AudioFrame.PerSecond, frames.Count > 0 ? frames[0].Bands.Length : 0, frames);
 
     /// <summary>The frame that plays <paramref name="elapsed"/> after the start; null before it and past the end.</summary>
     public RecordedFrame? At(TimeSpan elapsed)
@@ -18,13 +30,15 @@ public sealed record FrameRecording(int FramesPerSecond, int Bands, IReadOnlyLis
         return index >= 0 && index < Frames.Count ? Frames[index] : null;
     }
 
+    public string ToJson() => JsonSerializer.Serialize(this, FrameRecordingJsonContext.Default.FrameRecording);
+
     /// <exception cref="FormatException">The text is not a frames file.</exception>
     public static FrameRecording Parse(string json)
     {
         FrameRecording? recording;
         try
         {
-            recording = JsonSerializer.Deserialize(json, OverlayJsonContext.Default.FrameRecording);
+            recording = JsonSerializer.Deserialize(json, FrameRecordingJsonContext.Default.FrameRecording);
         }
         catch (JsonException ex)
         {
@@ -43,6 +57,6 @@ public sealed record FrameRecording(int FramesPerSecond, int Bands, IReadOnlyLis
     public static FrameRecording Load(string path) => Parse(File.ReadAllText(path));
 }
 
-[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase)]
+[JsonSourceGenerationOptions(PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(FrameRecording))]
-internal sealed partial class OverlayJsonContext : JsonSerializerContext;
+internal sealed partial class FrameRecordingJsonContext : JsonSerializerContext;

@@ -1,4 +1,5 @@
 using Avalonia.Threading;
+using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
@@ -46,7 +47,8 @@ public sealed class OverlayDemo
     /// <summary>Seconds after the last event before the demo gives up on the overlay going away.</summary>
     private const double GiveUpAfter = 10;
 
-    private static readonly TimeSpan Tick = TimeSpan.FromMilliseconds(20);
+    /// <summary>The timer fires as often as the daemon sends frames.</summary>
+    private static readonly TimeSpan Tick = AudioFrame.Interval;
 
     private readonly OverlayController _controller;
     private readonly FrameRecording _recording;

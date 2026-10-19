@@ -5,6 +5,7 @@ using Dictum.App.Daemon;
 using Dictum.App.Overlay;
 using Dictum.App.Shell;
 using Dictum.Core;
+using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Host;

@@ -48,10 +48,6 @@ internal sealed record CheckJson(string Name, HealthLevel Level, string Detail, 
 
 internal sealed record DoctorJson(string Version, string Os, string Rid, IReadOnlyList<CheckJson> Checks);
 
-internal sealed record FrameJson(double T, float Rms, float[] Bands);
-
-internal sealed record FrameDumpJson(int FramesPerSecond, int Bands, IReadOnlyList<FrameJson> Frames);
-
 [JsonSourceGenerationOptions(
     PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
@@ -62,7 +58,6 @@ internal sealed record FrameDumpJson(int FramesPerSecond, int Bands, IReadOnlyLi
 [JsonSerializable(typeof(DoctorJson))]
 [JsonSerializable(typeof(List<ModelJson>))]
 [JsonSerializable(typeof(InitJson))]
-[JsonSerializable(typeof(FrameDumpJson))]
 [JsonSerializable(typeof(List<HistoryEntry>))]
 [JsonSerializable(typeof(DaemonStatus))]
 [JsonSerializable(typeof(IpcEvent))]

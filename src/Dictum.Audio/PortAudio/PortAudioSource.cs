@@ -12,8 +12,6 @@ namespace Dictum.Audio.PortAudio;
 /// </summary>
 public sealed class PortAudioSource(ILog log) : IAudioSource
 {
-    private const int FramesPerSecond = 50;
-
     /// <summary>Samples reserved per channel up front, so a dictation this long never regrows its buffer.</summary>
     private const int ReservedSeconds = 30;
 
@@ -82,7 +80,7 @@ public sealed class PortAudioSource(ILog log) : IAudioSource
             var channels = ChooseChannelCount(index, info->MaxInputChannels, latency);
             var parameters = InputParameters(index, channels, latency);
 
-            var framesPerBuffer = _sampleRate / FramesPerSecond;
+            var framesPerBuffer = _sampleRate / AudioFrame.PerSecond;
             nint stream;
             Check(Pa_OpenStream(&stream, &parameters, null, _sampleRate, new CULong((nuint)framesPerBuffer), new CULong(0), 0, 0), "open the input stream");
             _stream = stream;

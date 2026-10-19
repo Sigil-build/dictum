@@ -1,4 +1,5 @@
 using Dictum.App.Overlay;
+using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 

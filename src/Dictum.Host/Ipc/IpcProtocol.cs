@@ -132,14 +132,11 @@ public sealed record IpcEvent(
     DaemonStatus? Status = null,
     string? Reason = null)
 {
-    /// <summary>Frame times are rounded to the millisecond.</summary>
-    private const int FrameTimeDecimals = 3;
-
     public static IpcEvent ForState(PipelineState state, string? profile, string? mode) =>
         new(IpcEventKind.State, State: state.ToString(), Profile: profile, Mode: mode);
 
     public static IpcEvent ForFrame(AudioFrame frame) =>
-        new(IpcEventKind.Frame, T: Math.Round(frame.At.TotalSeconds, FrameTimeDecimals), Rms: frame.Rms, Bands: frame.Bands.ToArray());
+        new(IpcEventKind.Frame, T: frame.AtSeconds, Rms: frame.Rms, Bands: frame.Bands.ToArray());
 
     public static IpcEvent Finished(string outcome, string? message, string? language, long durationMs, long? transcribeMs) =>
         new(IpcEventKind.Finished, Outcome: outcome, Message: message, Language: language, DurationMs: durationMs, TranscribeMs: transcribeMs);

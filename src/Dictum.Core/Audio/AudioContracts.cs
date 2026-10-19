@@ -10,8 +10,20 @@ public sealed record AudioClip(ReadOnlyMemory<float> Samples, int SampleRate = A
     public static AudioClip Empty { get; } = new(ReadOnlyMemory<float>.Empty);
 }
 
-/// <summary>Level and spectrum of roughly 20 ms of captured audio, for level meters and the overlay.</summary>
-public readonly record struct AudioFrame(float Rms, ReadOnlyMemory<float> Bands, TimeSpan At);
+/// <summary>Level and spectrum of one <see cref="Interval"/> of captured audio, for level meters and the overlay.</summary>
+public readonly record struct AudioFrame(float Rms, ReadOnlyMemory<float> Bands, TimeSpan At)
+{
+    /// <summary>How many frames the capture delivers per second.</summary>
+    public const int PerSecond = 50;
+
+    /// <summary>Frame times in IPC events and frame dumps are rounded to the millisecond.</summary>
+    private const int TimeDecimals = 3;
+
+    public static TimeSpan Interval { get; } = TimeSpan.FromSeconds(1) / PerSecond;
+
+    /// <summary><see cref="At"/> in seconds, as frames travel in JSON.</summary>
+    public double AtSeconds => Math.Round(At.TotalSeconds, TimeDecimals);
+}
 
 public sealed record AudioDevice(string Id, string Name, string HostApi, int MaxInputChannels, double DefaultSampleRate, bool IsDefault);
 
@@ -29,6 +41,6 @@ public interface IAudioSource : IAsyncDisposable
     /// <summary>Stops capturing and returns everything recorded, resampled to 16 kHz mono.</summary>
     Task<AudioClip> StopAsync(CancellationToken ct);
 
-    /// <summary>Raised on the capture thread about 50 times per second.</summary>
+    /// <summary>Raised on the capture thread about <see cref="AudioFrame.PerSecond"/> times per second.</summary>
     event Action<AudioFrame>? FrameCaptured;
 }

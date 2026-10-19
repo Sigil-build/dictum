@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Text.Json;
 using Dictum.Cli.Output;
+using Dictum.Core.Audio;
 using Dictum.Host.Ipc;
 
 namespace Dictum.Cli.Commands;
@@ -43,7 +44,7 @@ internal static class ControlCommands
     {
         var json = new Option<bool>("--json") { Description = "Print JSON" };
         var watch = new Option<bool>("--watch") { Description = "Keep printing state changes, results and status as JSON lines until Ctrl+C" };
-        var frames = new Option<bool>("--frames") { Description = "With --watch, also print audio frames (50 per second)" };
+        var frames = new Option<bool>("--frames") { Description = $"With --watch, also print audio frames ({AudioFrame.PerSecond} per second)" };
         var command = new Command(IpcCommand.Status, "Show whether the daemon runs, its state, hotkeys and backends") { json, watch, frames };
         command.SetAction((parse, ct) => CliApp.RunAsync(parse, async (context, token) =>
         {
