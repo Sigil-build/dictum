@@ -123,7 +123,7 @@ internal sealed class HotkeyRegistrar(PlatformServices platform, ILog log, Func<
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            var hint = (ex as HotkeyUnavailableException)?.Hint;
+            var hint = (ex as IHasHint)?.Hint;
             var warning = hint is null ? ex.Message : $"{ex.Message} {hint}";
             _warning = warning;
             if (ex is not HotkeyUnavailableException)
