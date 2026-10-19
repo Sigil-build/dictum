@@ -156,7 +156,7 @@ public sealed class TrayState(TimeProvider time)
     }
 
     private static ProfileStatus? SelectedProfile(DaemonStatus? status) =>
-        status?.Profiles.FirstOrDefault(p => p.Id == status.SelectedProfile) ?? status?.Profiles.FirstOrDefault();
+        status?.Profiles.FirstOrDefault(p => p.Id == status.SelectedProfile) ?? (status is { Profiles.Count: > 0 } ? status.Profiles[0] : null);
 
     private static string Format(string format, params object[] args) => string.Format(CultureInfo.CurrentCulture, format, args);
 

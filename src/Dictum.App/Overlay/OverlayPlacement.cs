@@ -9,7 +9,7 @@ public sealed record ScreenArea(string? Name, PixelRect Bounds, PixelRect Workin
 /// <summary>Where the pointer is, as far as the desktop can tell: a point, an output name (KWin), or nothing.</summary>
 public readonly record struct ScreenHint(PixelPoint? Point, string? Name)
 {
-    public static readonly ScreenHint None = default;
+    public static readonly ScreenHint None;
 }
 
 /// <summary>Where the overlay goes: the screen under the pointer, centred, just above the bottom panel or below the top one.</summary>
@@ -33,7 +33,7 @@ public static class OverlayPlacement
             return under;
         }
 
-        return screens.FirstOrDefault(s => s.IsPrimary) ?? screens.FirstOrDefault();
+        return screens.FirstOrDefault(s => s.IsPrimary) ?? (screens.Count > 0 ? screens[0] : null);
     }
 
     /// <summary>The window's rectangle in physical pixels.</summary>

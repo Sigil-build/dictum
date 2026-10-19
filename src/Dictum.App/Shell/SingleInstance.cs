@@ -88,7 +88,7 @@ public sealed class SingleInstance : IAsyncDisposable
     {
         var wait = patience ?? DefaultQuitPatience;
         var deadline = DateTime.UtcNow + wait;
-        if (await TryAsync(socketPath, Quit, ct, RequestTimeout).ConfigureAwait(false) == Reply.Gone)
+        if (await TryAsync(socketPath, Quit, RequestTimeout, ct).ConfigureAwait(false) == Reply.Gone)
         {
             return false;
         }
@@ -98,7 +98,7 @@ public sealed class SingleInstance : IAsyncDisposable
             await Task.Delay(PollInterval, ct).ConfigureAwait(false);
 
             // Any command will do: the shell ignores what it does not know, and an instance that is gone answers nothing.
-            if (await TryAsync(socketPath, PingCommand, ct, ProbeTimeout).ConfigureAwait(false) == Reply.Gone)
+            if (await TryAsync(socketPath, PingCommand, ProbeTimeout, ct).ConfigureAwait(false) == Reply.Gone)
             {
                 return true;
             }
@@ -130,7 +130,7 @@ public sealed class SingleInstance : IAsyncDisposable
                 && await DaemonProcessAsync(daemonSocket, ct).ConfigureAwait(false) is { } daemon
                 && running.Contains(daemon))
             {
-                await TryAsync(daemonSocket, "shutdown", ct, RequestTimeout).ConfigureAwait(false);
+                await TryAsync(daemonSocket, "shutdown", RequestTimeout, ct).ConfigureAwait(false);
             }
 
             while (processes.RunningFrom(folder).Count > 0)
@@ -188,7 +188,7 @@ public sealed class SingleInstance : IAsyncDisposable
     }
 
     /// <summary>One command: answered, gone (nobody listens), or silent (no answer in time, or the connection broke).</summary>
-    private static async Task<Reply> TryAsync(string socketPath, string command, CancellationToken ct, TimeSpan timeout)
+    private static async Task<Reply> TryAsync(string socketPath, string command, TimeSpan timeout, CancellationToken ct)
     {
         try
         {

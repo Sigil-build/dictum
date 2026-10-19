@@ -11,6 +11,7 @@
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <!-- Keep other languages' package satellites out of the binary; ours are en (neutral) and uk. -->
     <SatelliteResourceLanguages>en;uk</SatelliteResourceLanguages>
+    <NeutralLanguage>en</NeutralLanguage>
   </PropertyGroup>
 
   <ItemGroup>
