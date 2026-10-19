@@ -59,9 +59,8 @@ public static class SpeedEstimator
     /// <summary>Turbo on an integrated GPU: about 5–6 s for 5 s, measured on the Iris Xe.</summary>
     public const double IntegratedGpuTurbo = 1.1;
 
-    // Whisper small on the CPU, from the CPU rows of the whisper.cpp benchmark thread (ggml-org/whisper.cpp issue 89):
-    // a 30 s window encodes in 1.4–4.8 s on 8 threads (Ryzen 5950X, 3900X, i7-11800H), in 3–6 s on 4 and in 8.7 s on 2
-    // (i7-11800H).
+    // Whisper small on the CPU, from the CPU rows of the whisper.cpp benchmark thread (issue 89): a 30 s window
+    // encodes in 1.4–4.8 s on 8 threads (Ryzen 5950X, 3900X, i7-11800H), in 3–6 s on 4 and in 8.7 s on 2 (i7-11800H).
     public const double CpuSmallManyCores = 0.6;
     public const double CpuSmallSomeCores = 1.2;
     public const double CpuSmallFewCores = 2.4;
