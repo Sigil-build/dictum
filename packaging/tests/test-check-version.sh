@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# check-version.sh accepts only the tag that names the version in Directory.Build.props (phase 4 PR 4d review focus 1).
+# check-version.sh accepts only the tag that names the version in Directory.Build.props.
 set -euo pipefail
 
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -16,7 +16,7 @@ done
 echo "PASS: other tags are refused"
 
 # The release workflow's own step, run the way Actions runs it (bash -eo pipefail): a refused tag must fail the step,
-# not just print a message (phase 4 PR 4d final review C2: a command substitution inside echo hid the exit status).
+# not just print a message: a command substitution inside echo hides the exit status.
 step=$(awk '
   state == 0 && /^ *id: version *$/ { state = 1; next }
   state == 1 && /^ *run:/ {

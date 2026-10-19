@@ -1,4 +1,4 @@
-# A tag v<version> builds the packages and opens a DRAFT release with them (phase 4 spec 7); publishing it is a person's call.
+# A tag v<version> builds the packages and opens a DRAFT release with them; publishing it is a person's call.
 name: Release
 
 on:
@@ -24,7 +24,7 @@ jobs:
 
       - name: The tag names the version the packages are built with
         id: version
-        # Its own assignment, so a refused tag fails the step (inside echo, the exit status was echo's).
+        # Its own assignment, so a refused tag fails the step: inside echo, the exit status would be echo's.
         run: |
           version=$(bash packaging/check-version.sh "$GITHUB_REF_NAME")
           echo "version=$version" >> "$GITHUB_OUTPUT"

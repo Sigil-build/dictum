@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds Dictum's packages for one runtime, on that runtime's OS (Native AOT cannot cross-compile; phase 4 spec 6).
+# Builds Dictum's packages for one runtime, on that runtime's OS (Native AOT cannot cross-compile).
 # Usage: packaging/package.sh <rid> <out-dir>      e.g. packaging/package.sh win-x64 artifacts/packages
 # Writes <out>/stage/dictum-<version>-<rid>/ (the files), then dictum-<version>-<rid>.zip (Windows) or .tar.gz (Linux).
 set -euo pipefail
@@ -15,7 +15,7 @@ stage="$out/stage/$name"
 
 rm -rf "${stage:?}"
 mkdir -p "$stage"
-# Both apps in one folder: dictum-gui starts dictum from its own folder (spec 3).
+# Both apps in one folder: dictum-gui starts dictum from its own folder.
 dotnet publish "$root/src/Dictum.Cli" -c Release -r "$rid" -o "$stage"
 dotnet publish "$root/src/Dictum.App" -c Release -r "$rid" -o "$stage"
 find "$stage" \( -name '*.pdb' -o -name '*.dbg' -o -name '*.dSYM' \) -prune -exec rm -rf {} +
@@ -25,8 +25,7 @@ case "$rid" in
     rm -f "${out:?}/${name:?}.zip"
     powershell -NoProfile -Command "Add-Type -AssemblyName System.IO.Compression.FileSystem; [IO.Compression.ZipFile]::CreateFromDirectory('$(cygpath -w "$stage")', '$(cygpath -w "$out/$name.zip")', 'Optimal', \$true)"
     rm -rf "${out:?}/msi" "${out:?}/${name:?}.msi"
-    # --no-incremental: WiX's incremental build ignores the staged files, so a re-run would keep the old binaries
-    # (phase 4 PR 4b final review C1).
+    # --no-incremental: WiX's incremental build ignores the staged files, so a re-run would keep the old binaries.
     dotnet build "$root/packaging/windows/Dictum.Installer.wixproj" -c Release --no-incremental \
       -p:StageDir="$(cygpath -w "$stage")" -o "$(cygpath -w "$out/msi")"
     cp "$out/msi/dictum.msi" "$out/$name.msi"

@@ -1,8 +1,9 @@
 <#
-  CI only (a throwaway GitHub Actions Windows runner): installs the Dictum MSI for the runner's user, checks the result,
-  reinstalls a rebuilt MSI of the same version, upgrades over a running daemon, and uninstalls, checking that nothing
-  of the program is left and that user data stays (phase 4 PR 4b review recommendation 4). It refuses to run anywhere
-  else: its uninstall removes the real HKCU Run value "Dictum".
+  Installs the Dictum MSI for the current user, checks the result, reinstalls a rebuilt MSI of the same version,
+  upgrades over a running daemon, and uninstalls, checking that nothing of the program is left and that user data stays.
+  It runs only with GITHUB_ACTIONS=true and RUNNER_TEMP set: dictum init overwrites the user's config.json and the
+  uninstall removes the HKCU Run value "Dictum". On a machine with a working Dictum, stop it and back up
+  %APPDATA%\Dictum and that Run value first.
 #>
 param(
     [Parameter(Mandatory)] [string] $Msi,
@@ -12,7 +13,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true') {
-    Write-Output 'test-msi-install.ps1 runs only on a CI runner: it installs and uninstalls Dictum for the current user.'
+    Write-Output 'test-msi-install.ps1 needs GITHUB_ACTIONS=true and RUNNER_TEMP: it installs and uninstalls Dictum for the current user.'
     exit 2
 }
 . (Join-Path $PSScriptRoot 'msi-smoke.ps1')
@@ -25,9 +26,12 @@ $folder = Join-Path $env:LOCALAPPDATA 'Programs\Dictum'
 $dictum = Join-Path $folder 'dictum.exe'
 $shortcut = Join-Path ([Environment]::GetFolderPath('Programs')) 'Dictum.lnk'
 $runKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
-# Every log the run writes; the job uploads this folder when a step fails (phase 4 PR 4d final review I2).
+# Every log the run writes, in one folder.
 $logs = Join-Path $env:RUNNER_TEMP 'dictum-logs'
 New-Item -ItemType Directory -Force $logs | Out-Null
+$daemonStartSeconds = 30
+$statusPollMilliseconds = 500
+$daemonExitMilliseconds = 5000
 function Msiexec([string] $verb, [string] $path, [string] $name, [switch] $NoRestartManager) {
     $arguments = Get-MsiexecArguments $verb $path (Join-Path $logs "msiexec-$name.log") -NoRestartManager:$NoRestartManager
     return (Start-Process msiexec.exe -ArgumentList $arguments -Wait -PassThru).ExitCode
@@ -52,25 +56,25 @@ $self = Start-Process (Join-Path $folder 'dictum-gui.exe') -ArgumentList '--self
 Remove-Item Env:\DICTUM_CONFIG_DIR, Env:\DICTUM_DATA_DIR, Env:\DICTUM_SOCKET
 Check ($self.ExitCode -eq 0) 'the installed dictum-gui passes its self-test'
 
-# A rebuilt MSI of the same version replaces the installed one (4b review I1).
+# A rebuilt MSI of the same version replaces the installed one.
 Check ((Msiexec 'i' $RebuiltMsi 'rebuilt') -eq 0) 'a rebuilt MSI of the same version installs'
 Check ((Products).Count -eq 1) 'Windows Installer still lists Dictum once'
 
-# Upgrade over a running daemon (4b review I2): QuitDictum stops it, nothing is in use, no reboot.
+# Upgrade over a running daemon: QuitDictum stops it, nothing is in use, no reboot.
 # The daemon uses the runner's default folders and socket, as the MSI's custom action does.
 & $dictum init --yes --language en --stt whisper-tiny-en --llm none *> (Join-Path $logs 'init.log')
 Check ($LASTEXITCODE -eq 0) "dictum init sets up the runner's default folders (exit $LASTEXITCODE)"
 $daemon = Start-Process $dictum -ArgumentList 'daemon' -PassThru -WindowStyle Hidden `
     -RedirectStandardOutput (Join-Path $logs 'daemon.log') -RedirectStandardError (Join-Path $logs 'daemon.err.log')
-$deadline = (Get-Date).AddSeconds(30)
-while ((Get-Date) -lt $deadline -and -not ((& $dictum status 2>$null) -and $LASTEXITCODE -eq 0)) { Start-Sleep -Milliseconds 500 }
+$deadline = (Get-Date).AddSeconds($daemonStartSeconds)
+while ((Get-Date) -lt $deadline -and -not ((& $dictum status 2>$null) -and $LASTEXITCODE -eq 0)) { Start-Sleep -Milliseconds $statusPollMilliseconds }
 Check (-not $daemon.HasExited) 'the daemon runs from the install folder before the upgrade'
-# Restart Manager off: under /qn it would close the daemon itself and hide a QuitDictum that failed (final review I1).
+# Restart Manager off: under /qn it would close the daemon itself and hide a QuitDictum that failed.
 $upgrade = Msiexec 'i' $UpgradeMsi 'upgrade' -NoRestartManager
 Check ($upgrade -eq 0) "the upgrade over a running daemon exits 0 (got $upgrade; 3010 means a file was still in use)"
 $quit = Get-QuitDictumResult (Get-Content (Join-Path $logs 'msiexec-upgrade.log'))
 Check ($quit -eq 'ok') "QuitDictum ran and returned 0 during the upgrade (the log reads: $quit)"
-Check ($daemon.HasExited -or $daemon.WaitForExit(5000)) 'the upgrade stopped the daemon'
+Check ($daemon.HasExited -or $daemon.WaitForExit($daemonExitMilliseconds)) 'the upgrade stopped the daemon'
 $upgraded = Products
 Check ($upgraded.Count -eq 1 -and $upgraded[0].Version -like '99.0.0*') 'Windows Installer lists the upgraded Dictum once'
 

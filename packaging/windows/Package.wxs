@@ -1,5 +1,5 @@
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
-  <!-- Per user, no admin rights, into %LOCALAPPDATA%\Programs\Dictum (phase 4 spec 3.1). The UpgradeCode never changes. -->
+  <!-- Per user, no admin rights, into %LOCALAPPDATA%\Programs\Dictum. The UpgradeCode never changes. -->
   <Package Name="Dictum" Manufacturer="Dictum" Version="$(Version)" UpgradeCode="7F2C9E44-3B1A-4C6D-9E0F-5A8B2D1C4E37"
            Scope="perUser" Compressed="yes">
     <!-- AllowSameVersionUpgrades: a rebuilt MSI of the same version replaces the installed one instead of installing

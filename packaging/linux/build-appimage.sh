@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the Dictum AppImage from the staged files (phase 4 spec 3.4). appimagetool and the type-2 runtime are
+# Builds the Dictum AppImage from the staged files. appimagetool and the type-2 runtime are
 # downloaded once into a cache and used only when their SHA-256 matches the pinned one.
 # Usage: build-appimage.sh <stage-dir> <out-file>
 set -euo pipefail
@@ -13,7 +13,7 @@ tools=${DICTUM_APPIMAGE_TOOLS:-${XDG_CACHE_HOME:-$HOME/.cache}/dictum-appimage}
 appimagetool="$tools/appimagetool-1.9.1-x86_64.AppImage"
 runtime="$tools/runtime-20251108-x86_64"
 
-# Review focus 5: a cached or downloaded file is used only when its SHA-256 matches.
+# A cached or downloaded file is used only when its SHA-256 matches.
 fetch() {
   local url=$1 file=$2 sum=$3
   if [ -f "$file" ] && echo "$sum  $file" | sha256sum -c --quiet - 2> /dev/null; then

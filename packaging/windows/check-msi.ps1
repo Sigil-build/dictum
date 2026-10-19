@@ -52,7 +52,7 @@ Check ($launch -eq '"[INSTALLFOLDER]dictum-gui.exe"') 'LaunchDictum starts dictu
 $quit = (Rows "SELECT Target FROM CustomAction WHERE Action = 'QuitDictum'") | ForEach-Object { $_[0] }
 Check ($quit -eq '"[INSTALLFOLDER]dictum-gui.exe" --quit') 'QuitDictum runs dictum-gui.exe --quit'
 
-# What the custom actions are, not only their names (phase 4 PR 4b final review I3): Windows Installer type bits.
+# What the custom actions are, not only their names: Windows Installer type bits.
 $types = @{}
 foreach ($row in (Rows 'SELECT Action, Type, Target FROM CustomAction')) { $types[$row[0]] = $row }
 function TypeOf([string] $action) { if ($types.ContainsKey($action)) { [int]$types[$action][1] } else { -1 } }
@@ -61,7 +61,7 @@ Check ((TypeOf 'LaunchDictum') -eq (34 + 192)) 'LaunchDictum is an exe in INSTAL
 Check ((TypeOf 'RemoveLoginItem') -eq (1 + 64 + 1024)) 'RemoveLoginItem is a deferred, impersonated DLL call whose failure is ignored (type 1089)'
 Check ($types.ContainsKey('SetRemoveLoginItem') -and $types['SetRemoveLoginItem'][2] -eq '"[INSTALLFOLDER]dictum.exe" daemon --uninstall-autostart') 'RemoveLoginItem runs dictum.exe daemon --uninstall-autostart'
 
-# A rebuilt MSI of the same version replaces the installed one instead of installing beside it (final review I1).
+# A rebuilt MSI of the same version replaces the installed one instead of installing beside it.
 $upgrade = @(foreach ($row in (Rows 'SELECT VersionMax, Attributes, ActionProperty FROM Upgrade')) { if ($row[2] -eq 'WIX_UPGRADE_DETECTED') { , $row } })
 Check ($upgrade.Count -eq 1 -and $upgrade[0][0] -eq $Version -and ([int]$upgrade[0][1] -band 512) -ne 0 -and ([int]$upgrade[0][1] -band 2) -eq 0) "the upgrade covers versions up to and including $Version"
 
@@ -79,8 +79,7 @@ try {
     }
     Check (-not (Get-ChildItem -Recurse $folder -Include '*.pdb', '*.dbg')) 'no debug symbols in the MSI'
 
-    # The MSI holds exactly the staged files, byte for byte: a stale incremental build or a missing file fails here
-    # (phase 4 PR 4b final review C1, I3).
+    # The MSI holds exactly the staged files, byte for byte: a stale incremental build or a missing file fails here.
     function Hashes([string] $root) {
         $map = @{}
         Get-ChildItem -Recurse -File $root | ForEach-Object { $map[$_.FullName.Substring($root.Length).TrimStart([char]92)] = (Get-FileHash $_.FullName -Algorithm SHA256).Hash }

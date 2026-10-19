@@ -1,4 +1,4 @@
-# Builds and checks Dictum's packages on their own OS (Native AOT cannot cross-compile; phase 4 spec 7).
+# Builds and checks Dictum's packages, each on its own OS: Native AOT cannot cross-compile.
 # Called by ci.yml on every push and by release.yml on a tag.
 name: Packages
 
@@ -31,8 +31,8 @@ jobs:
         shell: bash
         run: DICTUM_PACKAGE_OUT="$RUNNER_TEMP/packages" bash packaging/tests/test-package.sh
 
-      # Installing, upgrading and uninstalling the MSI is tested on a person's machine, not here: on the runner the
-      # smoke hung for 45 minutes on 2026-10-19 and GitHub kept no log of it (the user's call).
+      # Installing, upgrading and uninstalling the MSI (test-msi-install.ps1) runs on a person's machine: on a hosted
+      # runner it hangs and GitHub keeps no log of the hung step.
       - name: The MSI smoke's helpers (installed products, msiexec arguments, the MSI log)
         shell: pwsh
         run: ./packaging/windows/test-msi-smoke.ps1

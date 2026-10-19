@@ -12,7 +12,7 @@ unset XDG_CONFIG_HOME XDG_DATA_HOME
 mkdir -p "$HOME"
 lib="$HOME/.local/lib/dictum"
 # A recording stand-in for systemctl, first on PATH: uninstall.sh must never reach the real user session, where a
-# "dictum.service" may be the user's own Dictum (phase 4 PR 4c final review I2).
+# "dictum.service" may be the user's own Dictum.
 mkdir -p "$work/bin"
 printf '#!/bin/sh\necho "$*" >> "%s/systemctl.log"\n' "$work" > "$work/bin/systemctl"
 chmod +x "$work/bin/systemctl"
@@ -34,7 +34,7 @@ package() {
   chmod +x "$dir/install.sh" "$dir/uninstall.sh"
 }
 
-# Review focus 3: only from the unpacked package.
+# Only from the unpacked package.
 mkdir -p "$work/empty"
 cp "$root/packaging/linux/install.sh" "$work/empty/"
 if bash "$work/empty/install.sh" > "$work/refused.log" 2>&1; then fail "install.sh ran without the programs next to it"; fi
@@ -53,7 +53,7 @@ grep -qx "Icon=dictum" "$HOME/.local/share/applications/dictum.desktop" || fail 
 [ ! -e "$work/quit.log" ] || fail "a first install asked something to quit"
 pass "install"
 
-# Review focus 1: the installed copy quits first, the folder is swapped, nothing of the old version stays.
+# The installed copy quits first, the folder is swapped, nothing of the old version stays.
 echo old > "$lib/only-in-the-old-version.so"
 package "$work/v2" 0.3.1
 "$work/v2/install.sh" > "$work/install2.log"
@@ -64,7 +64,7 @@ leftovers=$(find "$HOME/.local/lib" -maxdepth 1 -name 'dictum.*' | head -1)
 [ -z "$leftovers" ] || fail "the upgrade left $leftovers"
 pass "upgrade"
 
-# Review focus 2: everything that starts this install goes; settings and models stay.
+# Everything that starts this install goes; settings and models stay.
 mkdir -p "$HOME/.config/autostart" "$HOME/.config/systemd/user" "$HOME/.config/dictum" "$HOME/.local/share/dictum/models"
 printf '[Desktop Entry]\nExec="%s/dictum-gui"\n' "$lib" > "$HOME/.config/autostart/dictum.desktop"
 printf '[Service]\nExecStart="%s/dictum" daemon\n' "$lib" > "$HOME/.config/systemd/user/dictum.service"
@@ -82,7 +82,7 @@ done
 grep -qx -- "--user disable --now dictum.service" "$work/systemctl.log" || fail "uninstall disabled the unit through systemctl (the stand-in)"
 pass "uninstall"
 
-# Review focus 2: a login item of another copy (a portable folder) is not ours to remove.
+# A login item of another copy (a portable folder) is not ours to remove.
 "$work/v2/install.sh" > "$work/install3.log"
 printf '[Desktop Entry]\nExec="/opt/elsewhere/dictum-gui"\n' > "$HOME/.config/autostart/dictum.desktop"
 "$lib/uninstall.sh" > "$work/uninstall2.log"

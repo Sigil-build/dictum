@@ -1,5 +1,4 @@
-# Helpers for test-msi-install.ps1, apart so test-msi-smoke.ps1 can check them on any machine
-# (phase 4 PR 4d final review C1, I1).
+# Helpers for test-msi-install.ps1, apart so test-msi-smoke.ps1 can check them on any machine.
 
 # The comma keeps PowerShell from unrolling a returned COM collection into an array.
 function Get-ComProperty($object, [string] $name, [object[]] $arguments = $null) {

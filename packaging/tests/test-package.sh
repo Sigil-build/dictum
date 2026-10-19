@@ -45,7 +45,7 @@ echo "$entries" | grep -qiE '\.(pdb|dbg)$' && fail "the archive has debug symbol
 pass "portable archive ($archive)"
 
 if [ "$rid" = win-x64 ]; then
-  # The zip as a user unpacks it, run from there (phase 4 spec 7; PR 4d final review I3).
+  # The zip as a user unpacks it, run from there.
   unzipped=$(mktemp -d)
   powershell -NoProfile -Command "Expand-Archive -LiteralPath '$(cygpath -w "$archive")' -DestinationPath '$(cygpath -w "$unzipped")'" \
     || fail "the zip does not unpack"
@@ -83,7 +83,7 @@ fi
 
 if [ "$rid" = linux-x64 ]; then
   # The tarball as a user installs it: its own install.sh in a throwaway HOME, the programs from ~/.local/bin, then
-  # its uninstall.sh (phase 4 spec 7; PR 4d final review I3). test-install.sh covers upgrades with stand-ins.
+  # its uninstall.sh. test-install.sh covers upgrades with stand-ins.
   user=$(mktemp -d)
   tar -xzf "$archive" -C "$user"
   mkdir -p "$user/home"

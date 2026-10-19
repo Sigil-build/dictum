@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The README's install and removal steps name what the packages really are (phase 4 PR 4d review focus 5).
+# The README's install and removal steps name what the packages really are.
 set -euo pipefail
 
 readme=$(cd "$(dirname "$0")/../.." && pwd)/README.md

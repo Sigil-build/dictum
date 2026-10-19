@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Removes the per-user Dictum that install.sh put in ~/.local/lib/dictum (phase 4 spec 3.3): the program, its links,
+# Removes the per-user Dictum that install.sh put in ~/.local/lib/dictum: the program, its links,
 # its menu entry and icons, and the login items and portal entry that start it. Settings and models stay.
 set -euo pipefail
 

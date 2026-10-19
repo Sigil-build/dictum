@@ -21,7 +21,7 @@ tar -C "$(dirname "$tarball")" -cf - "$(basename "$tarball")" -C "$here" PKGBUIL
   grep -qx 'Exec=\"/opt/dictum/dictum-gui\"' /usr/share/applications/dictum.desktop || { echo 'FAIL: the menu entry'; exit 1; }
   [ ! -e /opt/dictum/install.sh ] || { echo 'FAIL: install.sh in /opt/dictum'; exit 1; }
   pacman -S --noconfirm --needed portaudio > /dev/null
-  # An assignment from \$(…) stops the script under set -e when dictum fails; echo \$(…) would not (4c final review I3).
+  # An assignment from \$(…) stops the script under set -e when dictum fails; echo \$(…) would not.
   installed=\$(/usr/bin/dictum --version)
   [ \"\${installed%%+*}\" = '$version' ] || { echo \"FAIL: dictum --version printed \$installed\"; exit 1; }
   echo \"PASS: dictum-bin installs \$installed\"

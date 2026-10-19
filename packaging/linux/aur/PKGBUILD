@@ -1,4 +1,4 @@
-# dictum-bin: Dictum's release tarball for Arch and CachyOS (phase 4 spec 3.5).
+# dictum-bin: Dictum's release tarball for Arch and CachyOS.
 # While the repository is private, put dictum-<version>-linux-x64.tar.gz next to this file and run makepkg -si.
 pkgname=dictum-bin
 pkgver=0.3.0
@@ -8,7 +8,7 @@ arch=('x86_64')
 url='https://github.com/shikigami12/dictum'
 license=('LicenseRef-Dictum')
 depends=('glibc>=2.38' 'portaudio' 'libx11' 'libxtst' 'libxkbcommon' 'fontconfig' 'libice' 'libsm')
-# Pasting needs a clipboard tool: wl-clipboard on Wayland, xclip or xsel on X11 (phase 4 PR 4c final review I5).
+# Pasting needs a clipboard tool: wl-clipboard on Wayland, xclip or xsel on X11.
 optdepends=(
   'wl-clipboard: the clipboard on Wayland, needed to paste the text'
   'xclip: the clipboard on X11, needed to paste the text (or xsel)'
@@ -25,7 +25,7 @@ provides=('dictum')
 conflicts=('dictum')
 options=('!strip' '!debug')
 source=("https://github.com/shikigami12/dictum/releases/download/v${pkgver}/dictum-${pkgver}-linux-x64.tar.gz")
-# The release job prints this sum (phase 4 PR 4d); a local makepkg against a tarball you built yourself skips it.
+# The release workflow writes the tarball's sum into its copy of this file; a local makepkg against a tarball you built yourself skips it.
 sha256sums=('SKIP')
 
 package() {
