@@ -1,5 +1,4 @@
 using Dictum.App.Daemon;
-using Dictum.App.Settings;
 using Dictum.App.Tests.Settings;
 using Dictum.App.ViewModels.Setup;
 using Dictum.Core.Configuration;

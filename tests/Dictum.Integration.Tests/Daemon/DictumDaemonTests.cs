@@ -11,7 +11,7 @@ using Dictum.Platform.Hotkeys;
 
 namespace Dictum.Integration.Tests.Daemon;
 
-public class DictumDaemonTests
+public sealed class DictumDaemonTests : IAsyncDisposable
 {
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
     private readonly FakeHotkeys _hotkeys = new();
@@ -22,6 +22,8 @@ public class DictumDaemonTests
     private readonly List<FakeEngine> _engines = [];
     private readonly IpcEventHub _events = new();
     private Task _warmUp = Task.CompletedTask;
+
+    public ValueTask DisposeAsync() => _hotkeys.DisposeAsync();
 
     [Fact]
     public async Task PushToTalkRecordsWhileHeldAndPastesOnRelease()

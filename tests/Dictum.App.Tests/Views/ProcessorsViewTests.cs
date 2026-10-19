@@ -13,6 +13,7 @@ namespace Dictum.App.Tests.Views;
 
 public sealed class ProcessorsViewTests(AvaloniaFixture fx) : IDisposable
 {
+    private static readonly string[] TypedLetters = ["м", "е", "й", "н"];
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-settings", Guid.NewGuid().ToString("N")[..8]);
 
     public void Dispose()
@@ -86,7 +87,7 @@ public sealed class ProcessorsViewTests(AvaloniaFixture fx) : IDisposable
         var blank = FindBoxes(window)[^1];
         blank.Focus();
 
-        foreach (var key in new[] { "м", "е", "й", "н" })
+        foreach (var key in TypedLetters)
         {
             window.KeyTextInput(key);
             Dispatcher.UIThread.RunJobs();

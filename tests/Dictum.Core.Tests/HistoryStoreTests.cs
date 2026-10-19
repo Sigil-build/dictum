@@ -1,3 +1,4 @@
+using System.Globalization;
 using Dictum.Core.History;
 
 namespace Dictum.Core.Tests;
@@ -61,7 +62,7 @@ public class HistoryStoreTests
     {
         using var dir = new TempDirectory();
         var store = new HistoryStore(dir.File("history.jsonl"), maxEntries: 10);
-        var first = Entry("a") with { At = DateTimeOffset.Parse("2026-10-01T10:00:00.1234567+03:00") };
+        var first = Entry("a") with { At = DateTimeOffset.Parse("2026-10-01T10:00:00.1234567+03:00", CultureInfo.InvariantCulture) };
         var second = Entry("b") with { At = first.At.AddSeconds(5) };
         store.Append(first);
         store.Append(second);

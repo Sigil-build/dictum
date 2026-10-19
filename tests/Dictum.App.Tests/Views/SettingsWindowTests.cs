@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using Dictum.App.Settings;
 using Dictum.App.Tests.Settings;

@@ -1,4 +1,3 @@
-using Avalonia;
 using Dictum.App.Daemon;
 using Dictum.App.Overlay;
 using Dictum.Core.Configuration;

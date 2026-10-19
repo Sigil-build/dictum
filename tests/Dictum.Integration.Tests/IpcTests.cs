@@ -4,7 +4,7 @@ using Dictum.Host.Ipc;
 
 namespace Dictum.Integration.Tests;
 
-public class IpcTests : IDisposable
+public sealed class IpcTests : IDisposable
 {
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-ipc", Guid.NewGuid().ToString("N")[..8]);
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;

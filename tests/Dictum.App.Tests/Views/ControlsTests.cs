@@ -12,6 +12,9 @@ namespace Dictum.App.Tests.Views;
 
 public class ControlsTests(AvaloniaFixture fx)
 {
+    private static readonly string[] Sizes = ["Small", "Medium", "Large"];
+    private static readonly string[] RowIcons = ["icon.login", "icon.microphone", "icon.sounds", "icon.history", "icon.language", "icon.overlay"];
+
     [Fact]
     public Task ASettingsRowShowsItsTextsControlAndError() => fx.Ui(() =>
     {
@@ -80,7 +83,7 @@ public class ControlsTests(AvaloniaFixture fx)
     [Fact]
     public Task TheSegmentedListLaysItsItemsOutInARow() => fx.Ui(() =>
     {
-        var list = new ListBox { Classes = { "segmented" }, ItemsSource = new[] { "Small", "Medium", "Large" }, SelectedIndex = 1 };
+        var list = new ListBox { Classes = { "segmented" }, ItemsSource = Sizes, SelectedIndex = 1 };
         var window = new Window { Content = list, Width = 600, Height = 200 };
         window.Show();
 
@@ -94,7 +97,7 @@ public class ControlsTests(AvaloniaFixture fx)
     [Fact]
     public Task TheRowIconsAreResources() => fx.Ui(() =>
     {
-        foreach (var key in new[] { "icon.login", "icon.microphone", "icon.sounds", "icon.history", "icon.language", "icon.overlay" })
+        foreach (var key in RowIcons)
         {
             Assert.True(Application.Current!.TryFindResource(key, out var icon), key);
             Assert.IsAssignableFrom<Geometry>(icon);

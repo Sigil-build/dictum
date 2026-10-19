@@ -4,12 +4,14 @@ using Dictum.App.Settings;
 
 namespace Dictum.App.Tests.Settings;
 
-public sealed class ServerProbeTests
+public sealed class ServerProbeTests : IDisposable
 {
     private const string Url = "http://localhost:11434/v1";
     private readonly Stub _server = new();
     private readonly FakeSecrets _secrets = new();
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
+
+    public void Dispose() => _server.Dispose();
 
     private ServerProbe Probe(TimeSpan? timeout = null) => new(new HttpClient(_server), _secrets, TimeProvider.System, timeout);
 

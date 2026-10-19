@@ -6,7 +6,7 @@ using Dictum.Core.Stt;
 
 namespace Dictum.Core.Tests.Pipeline;
 
-public class DictationPipelineTests : IDisposable
+public sealed class DictationPipelineTests : IDisposable
 {
     private readonly TempDirectory _dir = new();
     private readonly HistoryStore _history;

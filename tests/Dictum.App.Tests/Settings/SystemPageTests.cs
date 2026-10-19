@@ -15,7 +15,7 @@ public sealed class SystemPageTests
     private readonly ManualTimers _timers = new();
     private readonly ManualClock _clock = new(DateTimeOffset.UnixEpoch);
     private readonly StatusViewModel _service = new("config.json", "dictum-gui.log", () => { });
-    private SystemRow _overlay = new("Listening overlay", HealthLevel.Ok, "Shows while you dictate");
+    private readonly SystemRow _overlay = new("Listening overlay", HealthLevel.Ok, "Shows while you dictate");
     private SystemRow _tray = new("Tray icon", HealthLevel.Ok, "Always visible");
 
     private SystemPage Page() => new(new SystemServices(_channel, _service, () => _overlay, () => _tray, _timers, _clock, "Windows 11"));

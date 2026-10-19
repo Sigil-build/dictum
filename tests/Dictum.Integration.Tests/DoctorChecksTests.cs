@@ -2,7 +2,6 @@ using Dictum.Core;
 using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
-using Dictum.Core.Processing;
 using Dictum.Core.Stt;
 using Dictum.Host.Diagnostics;
 using Dictum.Integration.Tests.Daemon;
@@ -11,7 +10,7 @@ using Dictum.Setup;
 
 namespace Dictum.Integration.Tests;
 
-public class DoctorChecksTests : IDisposable
+public sealed class DoctorChecksTests : IDisposable
 {
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "dictum-doctor", Guid.NewGuid().ToString("N")[..8]);
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;

@@ -6,7 +6,7 @@ using Dictum.Setup;
 
 namespace Dictum.Core.Tests.Setup;
 
-public class SetupRunnerTests : IDisposable
+public sealed class SetupRunnerTests : IDisposable
 {
     private static readonly byte[] Data = [.. Enumerable.Range(0, 3000).Select(i => (byte)(i * 3))];
     private readonly TempDirectory _dir = new();

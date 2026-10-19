@@ -1,8 +1,6 @@
 using Avalonia;
-using Avalonia.Threading;
 using Dictum.App.Daemon;
 using Dictum.App.Overlay;
-using Dictum.App.Settings;
 using Dictum.App.Shell;
 using Dictum.App.Tests.Daemon;
 using Dictum.App.Tray;

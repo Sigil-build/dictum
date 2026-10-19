@@ -5,11 +5,13 @@ using Dictum.Host.Ipc;
 
 namespace Dictum.App.Tests.Shell;
 
-public class TrayControllerTests
+public sealed class TrayControllerTests : IAsyncDisposable
 {
     private readonly ManualClock _clock = new(new DateTimeOffset(2026, 10, 16, 12, 0, 0, TimeSpan.Zero));
     private readonly FakePresenter _presenter = new();
     private readonly FakeCommands _commands = new();
+
+    public ValueTask DisposeAsync() => _presenter.DisposeAsync();
 
     [Fact]
     public void AttachingShowsWhatHappenedBefore()

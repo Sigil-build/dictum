@@ -3,7 +3,6 @@ using Avalonia.VisualTree;
 using Dictum.App.Daemon;
 using Dictum.App.ViewModels;
 using Dictum.App.Views;
-using Dictum.Host.Ipc;
 
 namespace Dictum.App.Tests.Views;
 

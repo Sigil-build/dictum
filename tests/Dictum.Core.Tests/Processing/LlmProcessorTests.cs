@@ -6,7 +6,7 @@ using Dictum.Processing;
 
 namespace Dictum.Core.Tests.Processing;
 
-public class LlmProcessorTests : IDisposable
+public sealed class LlmProcessorTests : IDisposable
 {
     private readonly TempDirectory _prompts = new();
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;

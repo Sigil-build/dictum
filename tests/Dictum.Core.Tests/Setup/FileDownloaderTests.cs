@@ -4,7 +4,7 @@ using Dictum.Setup;
 
 namespace Dictum.Core.Tests.Setup;
 
-public class FileDownloaderTests : IDisposable
+public sealed class FileDownloaderTests : IDisposable
 {
     private static readonly byte[] Data = [.. Enumerable.Range(0, 5000).Select(i => (byte)(i * 7))];
     private readonly TempDirectory _dir = new();

@@ -16,6 +16,7 @@ namespace Dictum.Integration.Tests;
 public class WhisperLocalTests
 {
     private static readonly string? Model = Environment.GetEnvironmentVariable("DICTUM_TEST_MODEL");
+    private static readonly string[] ListedLanguages = ["uk", "de"];
 
     [Fact]
     public async Task TranscribesEnglish()
@@ -60,7 +61,7 @@ public class WhisperLocalTests
 
         var result = await TranscribeAsync("en.wav", "uk, de");
 
-        Assert.Contains(result.Language, new[] { "uk", "de" });
+        Assert.Contains(result.Language, ListedLanguages);
     }
 
     private static void SkipUnlessEnabled()

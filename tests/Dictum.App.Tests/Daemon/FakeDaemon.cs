@@ -80,7 +80,7 @@ internal sealed class FakeDaemon : IAsyncDisposable
                 {
                     await Events.WhenDeliveredAsync(TimeSpan.FromSeconds(1));
                     await ExitAsync(0);
-                });
+                }, CancellationToken.None);
                 break;
         }
 

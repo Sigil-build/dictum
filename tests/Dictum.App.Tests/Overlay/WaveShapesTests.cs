@@ -86,7 +86,7 @@ public class WaveShapesTests
 
         points.Clear();
         WaveShapes.Trace(0, 8, x => x, (x, _, first) => points.Add((x, first)));
-        Assert.Equal(new[] { 0.0, 4.0, 8.0 }, points.Select(p => p.X));
+        Assert.Equal([0.0, 4.0, 8.0], points.Select(p => p.X));
     }
 
     [Fact]
