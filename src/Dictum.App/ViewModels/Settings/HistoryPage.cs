@@ -24,9 +24,9 @@ public sealed record HistoryItem(HistoryEntry Entry, string When, string Profile
 }
 
 /// <summary>
-/// Settings → History (spec 7): the history file, newest first and at most General → History size, filtered by the
-/// search. Copy takes the final text; Delete removes the entry from the file. The file is read each time the page
-/// shows; dictated text never travels over IPC (spec 4.1).
+/// Settings → History: the history file, newest first and at most General → History size, filtered by the search.
+/// Copy takes the final text; Delete removes the entry from the file. The file is read each time the page shows;
+/// dictated text never travels over IPC.
 /// </summary>
 public sealed partial class HistoryPage : SettingsPage
 {
@@ -141,7 +141,7 @@ public sealed partial class HistoryPage : SettingsPage
     }
 
     /// <summary>
-    /// The entry's raw text through a profile's chain, in the GUI (spec 7). Only the newest run shows, and nothing is
+    /// The entry's raw text through a profile's chain, in the GUI. Only the newest run shows, and nothing is
     /// written to the history file or the clipboard.
     /// </summary>
     private async Task ReRunAsync(string profileId)
@@ -199,7 +199,7 @@ public sealed partial class HistoryPage : SettingsPage
         }
         catch (Exception ex)
         {
-            // A busy clipboard throws; a command that throws would take dictum-gui down (final review I3).
+            // A busy clipboard throws; a command that throws would take dictum-gui down.
             Error = string.Format(CultureInfo.CurrentCulture, Strings.SettingsHistoryCopyFailed, ex.Message);
             _log.Warn($"History text not copied: {ex.Message}");
         }

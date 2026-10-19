@@ -1,7 +1,7 @@
 namespace Dictum.App.Settings;
 
 /// <summary>
-/// "Your words" and terminal apps as chips (spec 7). Typed or pasted text splits on newline, comma and semicolon. The
+/// "Your words" and terminal apps as chips. Typed or pasted text splits on newline, comma and semicolon. The
 /// part after the last separator is still being typed and stays in the box. Repeats are dropped, ignoring case, as the
 /// validator would warn about them.
 /// </summary>

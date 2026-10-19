@@ -4,7 +4,7 @@ using Dictum.Setup;
 
 namespace Dictum.App.Settings;
 
-/// <summary>The lines of a model card and of the Models header (design SettingsModels), in the UI language.</summary>
+/// <summary>The lines of a model card and of the Models header, in the UI language.</summary>
 public static class ModelText
 {
     /// <summary>The model's name: the catalog title up to its colon ("Whisper small, 8-bit").</summary>
@@ -34,7 +34,7 @@ public static class ModelText
     public static string Meta(CatalogEntry entry) =>
         Format(Strings.SettingsModelsMeta, Units.Size(entry.Size), entry.Licence.Name, Source(entry), Languages(entry));
 
-    /// <summary>"~6 s for 5 s of speech", saying where the number comes from (spec 10.2).</summary>
+    /// <summary>"~6 s for 5 s of speech", saying where the number comes from.</summary>
     public static string Speed(SpeedEstimate estimate) => Format(estimate.Source switch
     {
         SpeedSource.Dictations => Strings.SettingsModelsSpeedDictations,
@@ -42,7 +42,7 @@ public static class ModelText
         _ => Strings.SettingsModelsSpeedEstimate,
     }, Units.Seconds(estimate.SecondsFor(5)));
 
-    /// <summary>The GPU and memory line (spec 7, 10.1): "15.8 GB shared" for an integrated GPU, "8.0 GB VRAM" for a discrete one.</summary>
+    /// <summary>The GPU and memory line: "15.8 GB shared" for an integrated GPU, "8.0 GB VRAM" for a discrete one.</summary>
     public static string Hardware(HardwareInfo hardware, long memoryBytes)
     {
         var ram = Units.Memory(memoryBytes);

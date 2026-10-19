@@ -7,7 +7,7 @@ namespace Dictum.App.Settings;
 public sealed record KeyResult(string? Value, string? Error);
 
 /// <summary>
-/// API keys typed into Settings (spec 7, Saving):
+/// API keys typed into Settings:
 /// <list type="bullet">
 /// <item>a plain key goes to the OS secret store, and the config gets <c>secret:&lt;name&gt;</c>, as <c>dictum init</c> does;</item>
 /// <item>a value that is already a reference (<c>env:VAR</c>, <c>secret:name</c>) is kept as typed.</item>
@@ -68,7 +68,7 @@ public static class ApiKeys
         }
     }
 
-    // A new processor copies the first one's key reference (final review I3), and a hand-edited config may share one.
+    // A new processor copies the first one's key reference, and a hand-edited config may share one.
     private static bool IsReferenced(DictumConfig config, string reference) =>
         config.Stt.Values.OfType<OpenAiCompatibleSttConfig>().Any(s => s.ApiKey == reference)
         || config.Processors.Values.OfType<LlmProcessorConfig>().Any(l => l.ApiKey == reference);

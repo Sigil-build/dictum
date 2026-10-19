@@ -30,7 +30,7 @@
     </Style>
   </Window.Styles>
   <Grid RowDefinitions="Auto,*" ColumnDefinitions="200,*">
-    <!-- The custom title bar: only where the window really extends into its decorations (Windows; research §3). -->
+    <!-- The custom title bar: only where the window really extends into its decorations, which is Windows. -->
     <Border Grid.ColumnSpan="2" Height="40" Background="Transparent"
             IsVisible="{Binding $parent[Window].IsExtendedIntoWindowDecorations}"
             WindowDecorationProperties.ElementRole="TitleBar">
@@ -62,7 +62,6 @@
       </ListBox>
     </DockPanel>
     <DockPanel Grid.Row="1" Grid.Column="1">
-      <!-- Read-only pages or a failed save; the Banner style comes with Task 3. -->
       <Border DockPanel.Dock="Top" Classes="banner" Margin="16,4,32,8"
               IsVisible="{Binding Banner, Converter={x:Static ObjectConverters.IsNotNull}}">
         <TextBlock Text="{Binding Banner}" TextWrapping="Wrap" />

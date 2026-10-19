@@ -6,7 +6,7 @@ using Dictum.Core.Configuration;
 namespace Dictum.App.Settings;
 
 /// <summary>
-/// Replace rules from a CSV file (spec 7, plan ruling).
+/// Replace rules from a CSV file.
 /// <list type="bullet">
 /// <item>Columns: Find, Replace, then optional Match case and Whole word.</item>
 /// <item>A header row (its first cell is "Find" or "Знайти") is skipped, and so are blank lines.</item>
@@ -14,7 +14,7 @@ namespace Dictum.App.Settings;
 /// Ukrainian locales. Quotes work as in RFC 4180, within one line.</item>
 /// <item>Bad lines are named and skipped.</item>
 /// <item>The file is UTF-8 or UTF-16 with a byte order mark, UTF-8 without one, or else the ANSI code page that Excel's
-/// plain "CSV (comma delimited)" uses (final review I4).</item>
+/// plain "CSV (comma delimited)" uses.</item>
 /// </list>
 /// </summary>
 public static class ReplaceRulesCsv

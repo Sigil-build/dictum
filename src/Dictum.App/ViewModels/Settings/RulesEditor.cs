@@ -53,7 +53,7 @@ public sealed partial class RuleRow(RulesEditor editor) : ObservableObject
         IsDraft = false;
 
         // A rule with nothing to find keeps the Regex box as ticked: a reset here, inside the box's own binding write,
-        // never reaches the box, and the pattern typed next would be saved as plain text (final review M2).
+        // never reaches the box, and the pattern typed next would be saved as plain text.
         IsRegex = !string.IsNullOrEmpty(rule.Pattern) || (string.IsNullOrEmpty(rule.From) && IsRegex);
         Find = (IsRegex ? rule.Pattern : rule.From) ?? "";
         Replace = rule.To;
@@ -81,7 +81,6 @@ public sealed partial class RuleRow(RulesEditor editor) : ObservableObject
         _loading = false;
     }
 
-    /// <summary>The rule this row stands for.</summary>
     internal ReplaceRule ToRule() => new()
     {
         From = IsRegex ? null : Find,
@@ -136,9 +135,9 @@ public sealed partial class RuleRow(RulesEditor editor) : ObservableObject
 }
 
 /// <summary>
-/// The replace-rules table of the Processors page (spec 7). Edits go through the session by position within the
-/// processor. Rows are kept and reloaded in place, and the collection itself changes slot by slot, so the cell being
-/// typed in keeps its control and its focus when the blank row becomes a rule (final review C1).
+/// The replace-rules table of the Processors page. Edits go through the session by position within the processor. Rows
+/// are kept and reloaded in place, and the collection itself changes slot by slot, so the cell being typed in keeps its
+/// control and its focus when the blank row becomes a rule.
 /// </summary>
 public sealed partial class RulesEditor(SettingsSession session) : ObservableObject
 {

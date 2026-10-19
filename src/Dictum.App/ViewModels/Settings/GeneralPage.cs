@@ -26,7 +26,7 @@ public sealed record GeneralServices(
     ILog Log);
 
 /// <summary>
-/// Settings → General (spec 7):
+/// Settings → General:
 /// <list type="bullet">
 /// <item>Start at login writes the OS login item for dictum-gui; it is not a config setting.</item>
 /// <item>The microphone list comes from the daemon's <c>devices</c>.</item>
@@ -81,10 +81,8 @@ public sealed partial class GeneralPage : SettingsPage
 
     public IReadOnlyList<Option<string?>> UiLanguages { get; }
 
-    /// <summary>The Listening overlay sub-page.</summary>
     public OverlayPage Overlay { get; }
 
-    /// <summary>The Pasting sub-page.</summary>
     public PastingPage Pasting { get; }
 
     [ObservableProperty]
@@ -206,8 +204,8 @@ public sealed partial class GeneralPage : SettingsPage
 
         if (value is not { } size)
         {
-            // Backspacing "100" passed through 10 and 1 (final review C1): the copy goes back to the file's value,
-            // so nothing the user only passed through is saved, and other rows still save.
+            // Backspacing "100" passes through 10 and 1: the copy goes back to the file's value, so no number typed
+            // on the way is saved, and other rows still save.
             _historyEmpty = true;
             var saved = _session.OnDisk.General.HistorySize;
             _session.Edit(c => c with { General = c.General with { HistorySize = saved } });
@@ -244,7 +242,7 @@ public sealed partial class GeneralPage : SettingsPage
         }
         catch (Exception ex)
         {
-            // A command that throws would take dictum-gui down (final review I3); a silent preview is the whole cost.
+            // A command that throws would take dictum-gui down; a silent preview is the whole cost.
             _services.Log.Warn($"Sound preview failed: {ex.Message}");
         }
     }
@@ -331,7 +329,7 @@ public sealed partial class GeneralPage : SettingsPage
 
     /// <summary>
     /// Monitor requests go one after another. Each one opens its own connection, so a stop sent before a start could
-    /// reach the daemon after it, and a switch during a start in flight would send no stop at all (final review M5).
+    /// reach the daemon after it, and a switch during a start in flight would send no stop at all.
     /// </summary>
     private void Queue(Func<Task> step) => _monitor = After(_monitor, step);
 
@@ -377,7 +375,7 @@ public sealed partial class GeneralPage : SettingsPage
         MeterText = InputMeter.Readout(_meter.Db);
     }
 
-    /// <summary>General → "Run setup again" (spec 7): the shell opens the wizard with the current values.</summary>
+    /// <summary>General → "Run setup again": the shell opens the wizard with the current values.</summary>
     public event Action? SetupRequested;
 
     [RelayCommand]

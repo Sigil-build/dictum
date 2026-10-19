@@ -12,7 +12,7 @@ using Dictum.App.ViewModels.Settings;
 namespace Dictum.App.Views.Settings;
 
 /// <summary>
-/// The chain reorder (design §3.2). Dragging a row by its handle, or Alt+↑ / Alt+↓ on a focused row, moves the step
+/// The chain reorder. Dragging a row by its handle, or Alt+↑ / Alt+↓ on a focused row, moves the step
 /// through <see cref="ProfilesPage.MoveStep"/>, and focus follows the moved row. Rows are 36 px plus a 4 px gap.
 /// </summary>
 public partial class ProfilesView : UserControl
@@ -31,8 +31,8 @@ public partial class ProfilesView : UserControl
         ChainList.AddHandler(PointerReleasedEvent, OnReleased, RoutingStrategies.Tunnel);
         ChainList.AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
 
-        // The view owns the words box and the pickers (final review C1): the page takes the text and gives back the
-        // part still being typed; a picker clears itself once its pick has been taken.
+        // The view owns the words box and the pickers: the page takes the text and gives back the part still being
+        // typed; a picker clears itself once its pick has been taken.
         WordBox.TextChanged += (_, _) => Typed(WordBox, text => Page?.AddWords(text));
         Pickers.ClearAfterPick(this);
         DataContextChanged += (_, _) =>

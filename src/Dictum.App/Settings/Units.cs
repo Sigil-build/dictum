@@ -4,9 +4,8 @@ using Dictum.App.Resources;
 namespace Dictum.App.Settings;
 
 /// <summary>
-/// Sizes, rates and times for the UI, in the UI culture's digits and units (spec 7: "sizes and dates go through
-/// CultureInfo"). File sizes are decimal, as model sites show them ("874 MB", "1.53 GB"); memory is binary, as Task
-/// Manager labels it ("15.8 GB").
+/// Sizes, rates and times for the UI, in the UI culture's digits and units. File sizes are decimal, as model sites show
+/// them ("874 MB", "1.53 GB"); memory is binary, as Task Manager labels it ("15.8 GB").
 /// </summary>
 public static class Units
 {

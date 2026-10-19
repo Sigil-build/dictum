@@ -13,8 +13,8 @@ public enum OverlayHost
 }
 
 /// <summary>
-/// The overlay row of Settings → System (spec 5.4, 7). The overlay is a layered window on Windows and an X11 window
-/// elsewhere, so a Wayland session needs XWayland; macOS has no overlay path yet.
+/// The overlay row of Settings → System. The overlay is a layered window on Windows and an X11 window elsewhere, so a
+/// Wayland session needs XWayland; macOS has no overlay path.
 /// </summary>
 public static class OverlayAvailability
 {

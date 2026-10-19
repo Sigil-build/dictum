@@ -14,7 +14,7 @@ public enum TrayDesktop
     Other,
 }
 
-/// <summary>The hidden-tray-icon row of Settings → System (spec 6). Windows gets a button to its taskbar settings; KDE gets the path.</summary>
+/// <summary>The hidden-tray-icon row of Settings → System. Windows gets a button to its taskbar settings; KDE gets the path.</summary>
 public static class TrayVisibility
 {
     public static TrayDesktop ThisDesktop() =>

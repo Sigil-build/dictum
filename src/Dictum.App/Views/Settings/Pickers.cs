@@ -7,7 +7,7 @@ namespace Dictum.App.Views.Settings;
 
 /// <summary>
 /// Dropdowns that act like commands (class <c>picker</c>): once the pick is taken, the dropdown clears itself. The
-/// view does it, posted, because a model's reset inside the dropdown's own binding write never reaches it (4b C1).
+/// view does it, posted, because a model's reset inside the dropdown's own binding write never reaches it.
 /// </summary>
 internal static class Pickers
 {

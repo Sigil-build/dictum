@@ -7,7 +7,7 @@ using Dictum.Core.Configuration;
 
 namespace Dictum.App.Settings;
 
-/// <summary>The answer to "Test connection" (wizard step 3): whether Next may go on, and what to show.</summary>
+/// <summary>The answer to the setup wizard's "Test connection": whether Next may go on, and what to show.</summary>
 public sealed record ServerCheck(bool Ok, string Message);
 
 public interface IServerProbe
@@ -17,10 +17,10 @@ public interface IServerProbe
 }
 
 /// <summary>
-/// Tests an OpenAI-compatible server as clean-up will use it (spec 8, step 3): <c>GET {url}/models</c> with the key,
-/// within 5 s, timed. When the server lists several models, the chosen one must be there, so a typo does not make
-/// clean-up fail later in silence. A server that lists none (some proxies) or one (llama-server serves its model under any
-/// name) passes, and an Ollama name without its tag matches the <c>:latest</c> one (final review M3).
+/// Tests an OpenAI-compatible server as clean-up will use it: <c>GET {url}/models</c> with the key, within 5 s, timed.
+/// When the server lists several models, the chosen one must be there, so a typo does not make clean-up fail later in
+/// silence. A server that lists none (some proxies) or one (llama-server serves its model under any name) passes, and
+/// an Ollama name without its tag matches the <c>:latest</c> one.
 /// </summary>
 public sealed class ServerProbe(HttpClient http, ISecretStore secrets, TimeProvider time, TimeSpan? timeout = null) : IServerProbe
 {
@@ -47,7 +47,7 @@ public sealed class ServerProbe(HttpClient http, ISecretStore secrets, TimeProvi
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            // A missing secret is a ConfigException; Credential Manager and the portal throw their own (final review M2).
+            // A missing secret is a ConfigException; Credential Manager and the portal throw their own.
             return new ServerCheck(false, Format(Strings.SetupServerKeyUnreadable, ex.Message));
         }
 

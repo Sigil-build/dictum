@@ -17,7 +17,7 @@ public sealed record LocalProfile(string Id, string Name, string Provider, strin
 /// <param name="Progress">"949 MB of 1.53 GB · 18 MB/s · 32 s left" while the file is in the queue; otherwise null.</param>
 /// <param name="ForGpu">The recommendation is the GPU one.</param>
 /// <param name="UsedBy">The profiles whose provider uses this file in the edited copy.</param>
-/// <param name="UsedOnDisk">The same in the saved config, which the daemon runs until the next save (final review I1).</param>
+/// <param name="UsedOnDisk">The same in the saved config, which the daemon runs until the next save.</param>
 /// <param name="Profiles">Every profile with a local Whisper provider, for "Use in profile…".</param>
 /// <param name="CanEdit">The config was read, so "Used by" can be trusted.</param>
 public sealed record ModelCardState(
@@ -33,7 +33,7 @@ public sealed record ModelCardState(
     bool CanEdit);
 
 /// <summary>
-/// One model on Settings → Models (design SettingsModels): its badges, the size · licence · source · languages line,
+/// One model on Settings → Models: its badges, the size · licence · source · languages line,
 /// the speed estimate and "Used by", and the actions for its state:
 /// <list type="bullet">
 /// <item>installed: Use in profile…, Verify, Measure speed, and Delete, which is off while a profile uses the file;</item>
@@ -120,7 +120,7 @@ public sealed partial class ModelCard : ObservableObject
     [ObservableProperty]
     public partial bool CanVerify { get; private set; }
 
-    /// <summary>A profile uses the file and no dictation has timed it yet (spec 10.2: dictations rank first).</summary>
+    /// <summary>A profile uses the file and no dictation has timed it yet; a dictation's timing outranks a measurement.</summary>
     [ObservableProperty]
     public partial bool ShowMeasure { get; private set; }
 
@@ -143,7 +143,7 @@ public sealed partial class ModelCard : ObservableObject
     [ObservableProperty]
     public partial bool HasUseIn { get; private set; }
 
-    /// <summary>The "Use in profile…" pick; the view clears the dropdown after it (4b C1).</summary>
+    /// <summary>The "Use in profile…" pick; the view clears the dropdown after it.</summary>
     [ObservableProperty]
     public partial Option<string>? UseIn { get; set; }
 

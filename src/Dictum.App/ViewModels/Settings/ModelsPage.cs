@@ -13,12 +13,12 @@ using Dictum.Setup;
 namespace Dictum.App.ViewModels.Settings;
 
 /// <summary>What the Models page uses besides the config; fakes in tests.</summary>
-/// <param name="Hardware">The GPU probe; the shell runs it once, off the UI thread (spec 10.1).</param>
+/// <param name="Hardware">The GPU probe; the shell runs it once, off the UI thread.</param>
 /// <param name="FreeDiskBytes">Free space where the models are; <see cref="long.MaxValue"/> when unknown.</param>
 /// <param name="MemoryBytes">The computer's memory, for the GPU and memory line.</param>
-/// <param name="CpuCores">For the CPU speed anchors (spec 10.2).</param>
-/// <param name="Timers">A one-second tick while a file downloads, so a stall shows (final review I3).</param>
-/// <param name="Delay">Waits for the daemon's reload before a measurement, as the provider test does (4b I1).</param>
+/// <param name="CpuCores">For the CPU speed anchors.</param>
+/// <param name="Timers">A one-second tick while a file downloads, so a stall shows.</param>
+/// <param name="Delay">Waits for the daemon's reload before a measurement, as the provider test does.</param>
 public sealed record ModelsServices(
     AppPaths Paths,
     Catalog Catalog,
@@ -35,9 +35,9 @@ public sealed record ModelsServices(
     ILog Log);
 
 /// <summary>
-/// Settings → Models (spec 7, design SettingsModels): the disk line, the GPU and memory line, and a card per speech
-/// model of the catalog. The cards act on the shared download queue (spec 9). The card list is fixed, so a card keeps
-/// its controls while it changes (4c C1). Queue changes arrive only while the page is shown.
+/// Settings → Models: the disk line, the GPU and memory line, and a card per speech model of the catalog. The cards act
+/// on the shared download queue. The card list is fixed, so a card keeps its controls while it changes. Queue changes
+/// arrive only while the page is shown.
 /// </summary>
 public sealed partial class ModelsPage : SettingsPage
 {
@@ -126,7 +126,7 @@ public sealed partial class ModelsPage : SettingsPage
 
     internal void Cancel(ModelCard card) => Queue(card, () => _services.Downloads.Cancel(card.Entry.Id));
 
-    /// <summary>Deletes the file; refused while a profile uses it, even when the command comes without the button (spec 7).</summary>
+    /// <summary>Deletes the file; refused while a profile uses it, even when the command comes without the button.</summary>
     internal void Delete(ModelCard card)
     {
         if (!card.CanDelete)
@@ -148,7 +148,7 @@ public sealed partial class ModelsPage : SettingsPage
         Refresh();
     }
 
-    /// <summary>Hashes the file off the UI thread and compares it with the catalog (spec 14: SHA-256 on Verify).</summary>
+    /// <summary>Hashes the file off the UI thread and compares it with the catalog's SHA-256.</summary>
     internal async Task VerifyAsync(ModelCard card)
     {
         card.Error = null;
@@ -192,7 +192,7 @@ public sealed partial class ModelsPage : SettingsPage
 
     /// <summary>
     /// Times the built-in sample on the provider a profile uses with this file, twice: the first run may include
-    /// loading the model, so the faster one counts (spec 10.2, source 2).
+    /// loading the model, so the faster one counts.
     /// </summary>
     internal async Task MeasureAsync(ModelCard card)
     {
@@ -207,7 +207,7 @@ public sealed partial class ModelsPage : SettingsPage
         card.Busy = true;
         try
         {
-            // The daemon reloads after a save; a test sent before that would run the previous model (4b I1).
+            // The daemon reloads after a save; a test sent before that would run the previous model.
             _session.Flush();
             if (_lastSave is { } saved && ProviderCard.ReloadWait - (_services.Time.GetUtcNow() - saved) is var wait && wait > TimeSpan.Zero)
             {
@@ -227,7 +227,7 @@ public sealed partial class ModelsPage : SettingsPage
                     return;
                 }
 
-                // The daemon may still run the previous model, e.g. right after a reload; its speed is not this one's (final review I2).
+                // The daemon may still run the previous model, e.g. right after a reload; its speed is not this one's.
                 if (!string.Equals(Path.GetFileName(test.Model), card.Entry.File, StringComparison.OrdinalIgnoreCase))
                 {
                     card.CheckText = null;
@@ -263,7 +263,7 @@ public sealed partial class ModelsPage : SettingsPage
         return profiles;
     }
 
-    /// <summary>Queue commands write downloads.json; a full or read-only disk shows on the card, never as a crash (4a I3).</summary>
+    /// <summary>Queue commands write downloads.json; a full or read-only disk shows on the card, never as a crash.</summary>
     private static void Queue(ModelCard card, Action command)
     {
         card.Error = null;
@@ -288,7 +288,7 @@ public sealed partial class ModelsPage : SettingsPage
         }
         catch (Exception ex)
         {
-            // A broken Vulkan driver must not take Settings down (review focus 5).
+            // A broken Vulkan driver must not take Settings down.
             _services.Log.Warn($"GPU probe failed: {ex.Message}", ex);
             _hardware = new HardwareInfo(null, _services.FreeDiskBytes());
         }
@@ -329,7 +329,7 @@ public sealed partial class ModelsPage : SettingsPage
         HardwareText = _hardware is { } probed ? ModelText.Hardware(probed, _services.MemoryBytes) : Strings.SettingsModelsProbing;
     }
 
-    /// <summary>"949 MB of 1.53 GB", with the rate and time left once the download has a second of progress (review focus 2).</summary>
+    /// <summary>"949 MB of 1.53 GB", with the rate and time left once the download has a second of progress.</summary>
     private string? ProgressFor(QueuedDownload? item, bool sample)
     {
         if (item is not { State: DownloadState.Queued or DownloadState.Downloading or DownloadState.Paused })
@@ -357,7 +357,7 @@ public sealed partial class ModelsPage : SettingsPage
 
     /// <summary>
     /// A one-second tick while a file downloads and the page is shown: the queue reports nothing during a stall, so the
-    /// tick adds a sample with the same bytes and the rate falls to nothing (final review I3).
+    /// tick adds a sample with the same bytes and the rate falls to nothing.
     /// </summary>
     private void Tick(IReadOnlyList<QueuedDownload> items)
     {

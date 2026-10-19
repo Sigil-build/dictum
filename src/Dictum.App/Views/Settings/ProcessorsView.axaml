@@ -34,7 +34,6 @@
           <Button Grid.Column="1" Classes="destructive" Content="{x:Static res:Strings.SettingsProcessorsRemove}" Command="{Binding RemoveCommand}" />
         </Grid>
 
-        <!-- LLM prompt -->
         <StackPanel Spacing="10" IsVisible="{Binding IsLlm}">
           <Border Classes="editorRow">
             <Grid ColumnDefinitions="*,12,*" RowDefinitions="Auto,12,Auto,12,Auto,12,Auto">
@@ -134,7 +133,6 @@
           </Border>
         </StackPanel>
 
-        <!-- Replace rules -->
         <Border Classes="editorRow" IsVisible="{Binding IsRules}">
           <StackPanel Spacing="6">
             <TextBlock Text="{x:Static res:Strings.SettingsRulesHint}" Classes="hint" />

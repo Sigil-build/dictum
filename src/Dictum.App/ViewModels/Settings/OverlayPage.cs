@@ -9,7 +9,7 @@ using Dictum.Core.Configuration;
 namespace Dictum.App.ViewModels.Settings;
 
 /// <summary>
-/// General → Listening overlay (spec 5.5): on/off, position, size, opacity and palette, with a live preview.
+/// General → Listening overlay: on/off, position, size, opacity and palette, with a live preview.
 /// The GUI's overlay re-reads the config when it is saved; reduced motion is the OS setting.
 /// </summary>
 public sealed partial class OverlayPage : SettingsPage

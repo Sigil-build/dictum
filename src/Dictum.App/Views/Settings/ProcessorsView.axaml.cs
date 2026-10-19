@@ -14,7 +14,7 @@ public partial class ProcessorsView : UserControl
         InitializeComponent();
         ImportButton.Click += async (_, _) => await ImportAsync();
 
-        // Leaving a key field commits it, as Enter does (4b).
+        // Leaving a key field commits it, as Enter does.
         AddHandler(LostFocusEvent, (_, e) =>
         {
             if (e.Source is TextBox box && box.Classes.Contains("apiKey") && DataContext is ProcessorsPage page)

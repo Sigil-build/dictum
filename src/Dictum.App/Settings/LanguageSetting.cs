@@ -10,9 +10,9 @@ public enum LanguageMode
 }
 
 /// <summary>
-/// A profile's <c>language</c> as the Profiles page shows it (spec 7, 11): one code, several codes picked per dictation,
-/// or auto. The config cannot tell "several" with one code from "one". So <see cref="Parse"/> takes the mode on screen,
-/// and the segmented control does not flip while the user removes chips.
+/// A profile's <c>language</c> as the Profiles page shows it: one code, several codes picked per dictation, or auto. The
+/// config cannot tell "several" with one code from "one". So <see cref="Parse"/> takes the mode on screen, and the
+/// segmented control does not flip while chips are removed.
 /// </summary>
 public sealed record LanguageSetting(LanguageMode Mode, IReadOnlyList<string> Codes)
 {

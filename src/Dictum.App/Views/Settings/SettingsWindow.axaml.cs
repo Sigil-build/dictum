@@ -18,11 +18,11 @@ public partial class SettingsWindow : Window
             Background = Brushes.Transparent;
         }
 
-        // The content cross-fades 200 ms decelerate; the rail does not animate (design).
+        // The content cross-fades 200 ms decelerate; the rail does not animate.
         var decelerate = new SplineEasing(0, 0, 0, 1);
         PageHost.PageTransition = new CrossFade(TimeSpan.FromMilliseconds(200)) { FadeInEasing = decelerate, FadeOutEasing = decelerate };
 
-        // The tray's idle glyph, so the title bar and the task switcher show Dictum's mark (PR 2 deferred minor).
+        // The tray's idle glyph, so the title bar and the task switcher show Dictum's mark.
         Icon = new WindowIcon(TrayIconRenderer.Render(TrayGlyph.Idle, 0, 32, Color.Parse(TrayGeometry.MonoOnDark), colourLayer: true));
 
         Opened += (_, _) => Open.Add(this);

@@ -4,7 +4,7 @@ using Dictum.Core.Hotkeys;
 namespace Dictum.App.Settings;
 
 /// <summary>
-/// Avalonia's physical keys as Dictum hotkeys (G3). Physical keys keep a chord the same whatever the keyboard layout,
+/// Avalonia's physical keys as Dictum hotkeys. Physical keys keep a chord the same whatever the keyboard layout,
 /// as the daemon's hook does. Number-pad keys and keys Dictum cannot bind map to nothing.
 /// </summary>
 public static class HotkeyKeys
@@ -59,7 +59,7 @@ public static class HotkeyKeys
     /// <summary>
     /// The hotkey a key press makes; null for a modifier alone, a key Dictum cannot bind, or a key that types something
     /// without Ctrl, Alt or Win. The daemon swallows its hotkey in every app, so a bare Enter or Shift+A would stop
-    /// working everywhere (final review I3). F13–F24, Pause and Scroll Lock type nothing and may stand alone.
+    /// working everywhere. F13–F24, Pause and Scroll Lock type nothing and may stand alone.
     /// </summary>
     public static Hotkey? Chord(PhysicalKey key, KeyModifiers modifiers)
     {

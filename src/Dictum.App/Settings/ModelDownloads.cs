@@ -3,7 +3,7 @@ using Dictum.Setup;
 namespace Dictum.App.Settings;
 
 /// <summary>
-/// The app's one download queue (spec 9), as Settings → Models and the wizard use it: commands, a snapshot, and a change
+/// The app's one download queue, as Settings → Models and the wizard use it: commands, a snapshot, and a change
 /// event on the UI thread.
 /// </summary>
 public interface IModelDownloads

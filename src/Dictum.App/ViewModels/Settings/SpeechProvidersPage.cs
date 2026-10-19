@@ -7,7 +7,7 @@ using Dictum.Core.Configuration;
 namespace Dictum.App.ViewModels.Settings;
 
 /// <summary>
-/// Settings → Speech providers (spec 7): a card per provider; Add local Whisper or a remote server; Remove when no profile
+/// Settings → Speech providers: a card per provider; Add local Whisper or a remote server; Remove when no profile
 /// uses it, together with its stored key. Cards survive reloads, so a field being typed in keeps its focus.
 /// </summary>
 public sealed partial class SpeechProvidersPage : SettingsPage

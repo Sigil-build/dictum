@@ -32,7 +32,7 @@ public enum ProviderKind
 }
 
 /// <summary>
-/// One provider on the Speech providers page (spec 7).
+/// One provider on the Speech providers page.
 /// <list type="bullet">
 /// <item>Local Whisper: model, runtime, threads, VAD.</item>
 /// <item>Remote server: URL, model, key, timeout.</item>
@@ -266,7 +266,7 @@ public sealed partial class ProviderCard : ObservableObject
 
         if (value is not { } seconds)
         {
-            // As General's History field (4a review C1): nothing typed on the way to empty is saved.
+            // As General's History field: nothing typed on the way to empty is saved.
             _timeoutEmpty = true;
             var saved = (_session.OnDisk.Stt.GetValueOrDefault(Id) as OpenAiCompatibleSttConfig)?.TimeoutMs ?? 60_000;
             EditRemote(r => r with { TimeoutMs = saved });
@@ -330,7 +330,7 @@ public sealed partial class ProviderCard : ObservableObject
             return;
         }
 
-        // A typed key, or one still being stored behind a keyring prompt, is part of what the test must use (final review I1).
+        // A typed key, or one still being stored behind a keyring prompt, is part of what the test must use.
         await CommitKeyAsync();
         if (_session.HasErrors)
         {
@@ -344,7 +344,7 @@ public sealed partial class ProviderCard : ObservableObject
         IDisposable? tick = null;
         try
         {
-            // The daemon reloads after any write: the pending one flushed now, or a debounced one just before the click (final review I1).
+            // The daemon reloads after any write: the pending one flushed now, or a debounced one just before the click.
             _session.Flush();
             if (_lastSave() is { } saved && ReloadWait - (_services.Time.GetUtcNow() - saved) is var wait && wait > TimeSpan.Zero)
             {
@@ -394,7 +394,7 @@ public sealed partial class ProviderCard : ObservableObject
             new(WhisperRuntime.Vulkan, "Vulkan"),
         ];
 
-        // No CUDA runtime ships; a config that already names it keeps it (plan ruling).
+        // No CUDA runtime ships; a config that already names it keeps it.
         if (current == WhisperRuntime.Cuda)
         {
             runtimes.Add(new(WhisperRuntime.Cuda, "CUDA"));

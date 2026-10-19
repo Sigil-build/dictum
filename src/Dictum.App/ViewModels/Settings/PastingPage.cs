@@ -8,7 +8,7 @@ using Dictum.Core.Configuration;
 namespace Dictum.App.ViewModels.Settings;
 
 /// <summary>
-/// General → Pasting (spec 1 gate 3), with fields the design leaves out:
+/// General → Pasting:
 /// <list type="bullet">
 /// <item>the clipboard restore delay;</item>
 /// <item>the apps that paste with Ctrl+Shift+V;</item>
@@ -60,7 +60,7 @@ public sealed partial class PastingPage : SettingsPage
     [ObservableProperty]
     public partial Option<InjectorBackend>? Injector { get; set; }
 
-    /// <summary>Text from the apps box: complete names are added; the part still being typed comes back (see ProfilesPage.AddWords).</summary>
+    /// <summary>Text from the apps box: complete names are added; the part still being typed comes back, as in <see cref="ProfilesPage.AddWords"/>.</summary>
     public string AddApps(string text)
     {
         var (apps, typing) = WordList.Split(text);

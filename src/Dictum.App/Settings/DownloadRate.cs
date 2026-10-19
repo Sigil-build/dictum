@@ -1,8 +1,8 @@
 namespace Dictum.App.Settings;
 
 /// <summary>
-/// The speed of one download over its last few seconds, for "18 MB/s · 32 s left" (design SettingsModels; the wizard's
-/// step 7 too). Another file, or bytes that go back (a restart from zero), start over.
+/// The speed of one download over its last few seconds, for "18 MB/s · 32 s left" on Settings → Models and in the
+/// setup wizard. Another file, or bytes that go back (a restart from zero), start over.
 /// </summary>
 public sealed class DownloadRate(TimeProvider time)
 {

@@ -1,6 +1,6 @@
 namespace Dictum.App.Settings;
 
-/// <summary>Speeds from "Measure" on Settings → Models (spec 10.2, source 2), by model file, kept while the app runs.</summary>
+/// <summary>Speeds from "Measure" on Settings → Models, by model file, kept while the app runs.</summary>
 public sealed class SpeedMeasurements
 {
     private readonly Dictionary<string, double> _ratios = new(StringComparer.OrdinalIgnoreCase);

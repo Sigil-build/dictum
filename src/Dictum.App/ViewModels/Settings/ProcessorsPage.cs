@@ -17,7 +17,7 @@ public sealed record ProcessorItem(string Id, string Caption)
 }
 
 /// <summary>
-/// Settings → Processors (spec 7): the processors, and the editor of the selected one. An LLM prompt opens
+/// Settings → Processors: the processors, and the editor of the selected one. An LLM prompt opens
 /// <see cref="LlmEditor"/>; replace rules open <see cref="RulesEditor"/>. A processor can be removed once no profile's
 /// chain uses it, together with its stored key.
 /// </summary>
@@ -188,7 +188,7 @@ public sealed partial class ProcessorsPage : SettingsPage
 
     /// <summary>
     /// The new processor's own prompt, started from cleanup's text, so typing in it never rewrites the prompt other
-    /// processors use (final review I2). The name is free in any letter case, since Windows file names ignore it. If
+    /// processors use. The name is free in any letter case, since Windows file names ignore it. If
     /// the file cannot be written, the processor shares cleanup's prompt and the editor says so.
     /// </summary>
     private string NewPrompt(string id)

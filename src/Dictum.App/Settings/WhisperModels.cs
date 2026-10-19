@@ -13,7 +13,7 @@ namespace Dictum.App.Settings;
 /// <item>other <c>.bin</c> files in the models folder, by name;</item>
 /// <item>the configured file even when it is missing, marked so.</item>
 /// </list>
-/// Downloading is the Models page (PR 4c).
+/// Downloads happen on the Models page.
 /// </summary>
 public static class WhisperModels
 {

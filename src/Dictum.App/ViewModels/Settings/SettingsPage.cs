@@ -14,7 +14,6 @@ public abstract class SettingsPage : ViewModelBase
 
     public event Action? BackRequested;
 
-    /// <summary>The page is on screen.</summary>
     public virtual void OnShown()
     {
     }

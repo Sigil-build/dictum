@@ -4,7 +4,7 @@ using Dictum.Processing;
 namespace Dictum.App.Settings;
 
 /// <summary>
-/// LLM prompt templates as the Processors page edits them (G6). Built-ins ship with Dictum; <c>prompts/&lt;name&gt;.md</c>
+/// LLM prompt templates as the Processors page edits them. Built-ins ship with Dictum; <c>prompts/&lt;name&gt;.md</c>
 /// in the config folder adds a prompt or replaces a built-in of the same name, which is how <see cref="PromptTemplates"/>
 /// loads them.
 /// </summary>
@@ -22,7 +22,7 @@ public sealed class PromptFiles(string directory)
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // An unlistable folder still lists the built-ins (final review M4); opening a prompt there shows the error.
+            // An unlistable folder still lists the built-ins; opening a prompt there shows the error.
         }
 
         return [.. names];

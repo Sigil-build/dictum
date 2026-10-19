@@ -5,9 +5,9 @@ using Dictum.App.Resources;
 namespace Dictum.App.Settings;
 
 /// <summary>
-/// The microphone meter's maths (design "Level meter"): rms to a 0–1 level between −60 and −10 dBFS, smoothed like the
-/// overlay (attack 30 ms, release 160 ms, steps capped at 50 ms). The design's sample, −31 dBFS, lights 17 of 30
-/// segments. The overlay's own range ends at −26 dBFS, which would light red on ordinary speech.
+/// The microphone meter's maths: rms to a 0–1 level between −60 and −10 dBFS, smoothed like the overlay (attack 30 ms,
+/// release 160 ms, steps capped at 50 ms). Ordinary speech at −31 dBFS lights 17 of 30 segments; the overlay's own
+/// range ends at −26 dBFS, which would light red on ordinary speech.
 /// </summary>
 public sealed class InputMeter
 {
@@ -30,7 +30,7 @@ public sealed class InputMeter
 
     public static int LitFor(double level) => (int)Math.Round(Math.Clamp(level, 0, 1) * Segments, MidpointRounding.AwayFromZero);
 
-    /// <summary>"−31 dBFS", with the typographic minus of the design.</summary>
+    /// <summary>"−31 dBFS", with a typographic minus.</summary>
     public static string Readout(int db)
     {
         var number = Math.Abs(db).ToString(CultureInfo.CurrentCulture);

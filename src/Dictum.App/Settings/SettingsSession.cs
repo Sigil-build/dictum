@@ -6,10 +6,10 @@ using Dictum.Core.Diagnostics;
 namespace Dictum.App.Settings;
 
 /// <summary>
-/// The config the Settings pages edit (spec 7, "Saving").
+/// The config the Settings pages edit.
 /// <list type="bullet">
 /// <item>Each edit makes a new record from a deep copy and is checked with <see cref="ConfigValidator"/>.</item>
-/// <item>The copy is saved 500 ms after the last edit; a copy with errors is shown, never saved, and a copy equal to
+/// <item>The copy is saved <see cref="SaveDelay"/> after the last edit; a copy with errors is shown, never saved, and a copy equal to
 /// the file on disk has nothing to save.</item>
 /// <item>The session knows what is on disk: what it loaded, what it saved, and what the config watcher last reported.
 /// The watcher reports every save, our own included. A report equal to the known file is ignored; anything else
@@ -47,7 +47,6 @@ public sealed class SettingsSession(ConfigStore store, ITimers timers, ILog log)
     /// <summary>The copy, its issues, the problem or the save error changed.</summary>
     public event Action? Changed;
 
-    /// <summary>The file was written.</summary>
     public event Action? Saved;
 
     public void Load()

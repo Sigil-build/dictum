@@ -11,7 +11,7 @@ using Dictum.Platform;
 namespace Dictum.App.ViewModels.Settings;
 
 /// <summary>What the System page uses; fakes in tests.</summary>
-/// <param name="Service">The daemon card: the status window's model, now part of this page.</param>
+/// <param name="Service">The daemon card: the status window's view model.</param>
 /// <param name="Overlay">The overlay row, read on every check.</param>
 /// <param name="Tray">The tray icon row, read on every check.</param>
 /// <param name="Desktop">"Windows 11", "Wayland, KDE": the header's first part.</param>
@@ -25,13 +25,13 @@ public sealed record SystemServices(
     string Desktop);
 
 /// <summary>
-/// Settings → System (spec 7). It shows the daemon's <c>doctor</c> checks, then the app's own overlay and tray rows,
+/// Settings → System. It shows the daemon's <c>doctor</c> checks, then the app's own overlay and tray rows,
 /// with a summary and the daemon card. The checks run each time the page shows, on "Check again", and when the
 /// daemon comes back after a check that could not reach it.
 /// </summary>
 public sealed partial class SystemPage : SettingsPage
 {
-    /// <summary>Each provider check may take 15 s (code map §3).</summary>
+    /// <summary>Each provider check may take 15 s.</summary>
     public static readonly TimeSpan DoctorTimeout = TimeSpan.FromMinutes(2);
 
     private readonly SystemServices _services;

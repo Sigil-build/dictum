@@ -12,7 +12,7 @@ namespace Dictum.App.Settings;
 /// <summary>The text after a run, how long the run took, and why it stopped early (null when every step ran).</summary>
 public sealed record RunResult(string Text, long Milliseconds, string? Error);
 
-/// <summary>Runs processors in the GUI: the Processors preview and History's re-run (spec 7). A fake in tests.</summary>
+/// <summary>Runs processors in the GUI: the Processors preview and History's re-run. A fake in tests.</summary>
 public interface IProcessorRunner
 {
     /// <summary>Runs <paramref name="steps"/> in order. Never throws, except when <paramref name="ct"/> is cancelled.</summary>
@@ -20,7 +20,7 @@ public interface IProcessorRunner
 }
 
 /// <summary>
-/// Builds the processors from config copies, as the daemon does (code map §4.2), with three differences:
+/// Builds the processors from config copies, as the daemon does, with three differences:
 /// <list type="bullet">
 /// <item>each run reads prompt files afresh, so a prompt just edited is the one used;</item>
 /// <item>LLM steps fail instead of passing the text through, so a server that does not answer shows its reason;</item>

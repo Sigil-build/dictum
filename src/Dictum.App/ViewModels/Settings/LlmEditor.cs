@@ -9,10 +9,10 @@ using Dictum.Core.Processing;
 namespace Dictum.App.ViewModels.Settings;
 
 /// <summary>
-/// The LLM prompt editor of the Processors page (spec 7).
+/// The LLM prompt editor of the Processors page.
 /// <list type="bullet">
 /// <item>Connection: URL, model, key.</item>
-/// <item>The settings the design leaves out (gate 3): temperature, timeout, on error, wording, max tokens.</item>
+/// <item>The rest of the processor: temperature, timeout, on error, wording, max tokens.</item>
 /// <item>The prompt: written to <c>prompts/&lt;name&gt;.md</c> 500 ms after the last keystroke.</item>
 /// <item>The live preview: runs the session's copy of this processor on the sample 600 ms after the last change, only
 /// while the page is on screen. It writes a pending prompt first, and a newer run always wins.</item>
@@ -276,7 +276,7 @@ public sealed partial class LlmEditor : ObservableObject
         SchedulePreview();
     }
 
-    /// <summary>The page was left: nothing more is sent to the LLM until it shows again (final review I1).</summary>
+    /// <summary>The page was left: nothing more is sent to the LLM until it shows again.</summary>
     public void OnHidden()
     {
         _shown = false;
@@ -318,7 +318,7 @@ public sealed partial class LlmEditor : ObservableObject
 
         if (value is not { } temperature)
         {
-            // As General's History field (4a review C1): nothing typed on the way to empty is saved.
+            // As General's History field: nothing typed on the way to empty is saved.
             _temperatureEmpty = true;
             var saved = (_session.OnDisk.Processors.GetValueOrDefault(_id ?? "") as LlmProcessorConfig)?.Temperature ?? 0.2;
             EditLlm(l => l with { Temperature = saved });
@@ -419,7 +419,7 @@ public sealed partial class LlmEditor : ObservableObject
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // Another program holds the file (final review M4); the edit in progress is kept.
+            // Another program holds the file; the edit in progress is kept.
             PromptError = string.Format(CultureInfo.CurrentCulture, Strings.SettingsLlmPromptRestoreFailed, ex.Message);
             return;
         }
@@ -444,7 +444,7 @@ public sealed partial class LlmEditor : ObservableObject
             return;
         }
 
-        // Windows file names ignore case: "Cleanup" would replace the built-in cleanup (final review M1).
+        // Windows file names ignore case: "Cleanup" would replace the built-in cleanup.
         if (_services.Prompts.Names().Contains(name, StringComparer.OrdinalIgnoreCase))
         {
             NewPromptError = Strings.SettingsLlmPromptNameTaken;
@@ -503,7 +503,7 @@ public sealed partial class LlmEditor : ObservableObject
 
     /// <summary>
     /// The store may answer after another processor is selected (a keyring prompt on Linux), so the answer goes to
-    /// <paramref name="id"/>, the processor the key was typed for (final review I5).
+    /// <paramref name="id"/>, the processor the key was typed for.
     /// </summary>
     private async Task StoreKeyAsync(string id, string typed)
     {
@@ -527,7 +527,7 @@ public sealed partial class LlmEditor : ObservableObject
         EditLlm(id, l => l with { ApiKey = result.Value });
     }
 
-    /// <summary>The prompt's text; a file another program holds is shown as an error, not thrown (final review M4).</summary>
+    /// <summary>The prompt's text; a file another program holds is shown as an error, not thrown.</summary>
     private string ReadPrompt(string name)
     {
         try

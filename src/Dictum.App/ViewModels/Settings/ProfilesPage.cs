@@ -23,9 +23,9 @@ public sealed record WordChip(string Text, ICommand Remove);
 public sealed record ChainStep(string Id, string Kind, int Position, ICommand Remove);
 
 /// <summary>
-/// Settings → Profiles (spec 7): the profile list and the editor of the selected one. Every edit finds the profile by
-/// id inside the change, as an outside edit may reorder the list. While the recorder listens, the daemon's hotkeys are
-/// paused through a request queue, unless the user had paused them already.
+/// Settings → Profiles: the profile list and the editor of the selected one. Every edit finds the profile by id inside
+/// the change, as an outside edit may reorder the list. While the recorder listens, the daemon's hotkeys are paused
+/// through a request queue, unless they were paused already.
 /// </summary>
 public sealed partial class ProfilesPage : SettingsPage
 {
@@ -193,7 +193,7 @@ public sealed partial class ProfilesPage : SettingsPage
 
     /// <summary>
     /// Text from the words box: complete words are added, and the part still being typed comes back for the box. The
-    /// view owns the box, since a reset made inside the box's own binding write never reaches it (final review C1).
+    /// view owns the box, since a reset made inside the box's own binding write never reaches it.
     /// </summary>
     public string AddWords(string text)
     {
@@ -209,8 +209,8 @@ public sealed partial class ProfilesPage : SettingsPage
 
     public override void OnLink(DaemonLink link)
     {
-        // The daemon can outlive a dropped event stream, still paused by us: lift the pause once it answers again
-        // (final review M3). A daemon that was restarted instead starts unpaused, and the resume does nothing.
+        // The daemon can outlive a dropped event stream, still paused by us: lift the pause once it answers again.
+        // A daemon that was restarted instead starts unpaused, and the resume does nothing.
         if (link.State == DaemonLinkState.Connected && _pausedByUs && !IsRecording)
         {
             _pausedByUs = false;
@@ -415,7 +415,7 @@ public sealed partial class ProfilesPage : SettingsPage
         });
     }
 
-    /// <summary>Pause and resume go one after another: each request opens its own connection (4a review M5).</summary>
+    /// <summary>Pause and resume go one after another: each request opens its own connection.</summary>
     private void Send(string command) => _requests = After(_requests, () => _channel.TrySendAsync(new IpcRequest(command), CancellationToken.None));
 
     private static async Task After(Task previous, Func<Task> step)
@@ -540,7 +540,7 @@ public sealed partial class ProfilesPage : SettingsPage
 
     /// <summary>
     /// The validator puts a duplicate hotkey's error on the later profile only; the profile being edited shows it too,
-    /// since that is where the user just picked the hotkey.
+    /// since that is where the hotkey was just picked.
     /// </summary>
     private string? DuplicateHotkey(DictumConfig config, int index)
     {
