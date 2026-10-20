@@ -24,6 +24,7 @@
             <StackPanel Spacing="2" Margin="0,4">
               <TextBlock Text="{Binding Id}" FontWeight="SemiBold" Foreground="{DynamicResource color.text.primary}" />
               <TextBlock Text="{Binding Caption}" Classes="hint" />
+              <TextBlock Text="{x:Static res:Strings.SettingsProcessorsInNoProfile}" Classes="warning" IsVisible="{Binding InNoProfile}" />
             </StackPanel>
           </DataTemplate>
         </ListBox.ItemTemplate>

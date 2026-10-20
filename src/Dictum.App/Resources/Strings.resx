@@ -881,6 +881,9 @@
   <data name="SettingsProcessorsAddTo" xml:space="preserve">
     <value>Add to profile…</value>
   </data>
+  <data name="SettingsProcessorsInNoProfile" xml:space="preserve">
+    <value>In no profile</value>
+  </data>
   <data name="SettingsLlmTemperature" xml:space="preserve">
     <value>Temperature</value>
   </data>

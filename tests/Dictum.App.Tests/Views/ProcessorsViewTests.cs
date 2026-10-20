@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Automation;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -148,6 +149,22 @@ public sealed class ProcessorsViewTests(AvaloniaFixture fx) : IDisposable
             ? window.GetVisualDescendants().OfType<TextBox>().Single(t => AutomationProperties.GetName(t) == Strings.SettingsProvidersUrl)
             : FindBoxes(window)[0];
         Assert.Same(first, TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement());
+        window.Close();
+    });
+
+    // The list marks the processor that no profile runs, in words, and a screen reader hears it with the item's name.
+    [Fact]
+    public Task TheListMarksAProcessorNoProfileRuns() => fx.Ui(() =>
+    {
+        var (window, _, _) = Show();
+        var list = window.GetVisualDescendants().OfType<ListBox>().Single(l => AutomationProperties.GetName(l) == Strings.SettingsProcessors);
+        var items = list.GetVisualDescendants().OfType<ListBoxItem>().ToList();
+
+        bool Marked(ListBoxItem item) =>
+            item.GetVisualDescendants().OfType<TextBlock>().Any(t => t.Text == Strings.SettingsProcessorsInNoProfile && t.IsEffectivelyVisible);
+
+        Assert.Equal([false, false, true], items.Select(Marked));
+        Assert.Equal(["cleanup", "terms", "filler, In no profile"], items.Select(i => ControlAutomationPeer.CreatePeerForElement(i).GetName()));
         window.Close();
     });
 

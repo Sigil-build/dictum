@@ -56,6 +56,23 @@ public sealed class ProcessorsPageTests : IDisposable
         Assert.False(page.CanRemove);
     }
 
+    // With several processors, the one that no profile runs is marked in the list, not only once it is opened.
+    [Fact]
+    public void TheListMarksAProcessorNoProfileRuns()
+    {
+        var (page, session) = Open();
+
+        Assert.Equal([false, false, true], page.Processors.Select(p => p.InNoProfile));
+        Assert.Equal(["cleanup", "terms", "filler, In no profile"], page.Processors.Select(p => p.ToString()));
+
+        session.Edit(c =>
+        {
+            c.Profiles[1].Pipeline.Add("filler");
+            return c;
+        });
+        Assert.Equal([false, false, false], page.Processors.Select(p => p.InNoProfile));
+    }
+
     [Fact]
     public void TheLlmEditorShowsTheProcessorAndItsPrompt()
     {

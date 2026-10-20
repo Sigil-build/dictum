@@ -881,6 +881,9 @@
   <data name="SettingsProcessorsAddTo" xml:space="preserve">
     <value>Додати до профілю…</value>
   </data>
+  <data name="SettingsProcessorsInNoProfile" xml:space="preserve">
+    <value>Не в жодному профілі</value>
+  </data>
   <data name="SettingsLlmTemperature" xml:space="preserve">
     <value>Температура</value>
   </data>

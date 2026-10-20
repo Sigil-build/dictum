@@ -11,16 +11,18 @@ namespace Dictum.App.ViewModels.Settings;
 /// <summary>What the Processors page uses besides the config; fakes in tests.</summary>
 public sealed record ProcessorsServices(IProcessorRunner Runner, ISecretStore Secrets, PromptLibrary Prompts, ITimers Timers, ILog Log);
 
-public sealed record ProcessorItem(string Id, string Caption)
+/// <summary>A processor in the list; <paramref name="InNoProfile"/> when no profile's chain runs it, which the list marks.</summary>
+public sealed record ProcessorItem(string Id, string Caption, bool InNoProfile)
 {
-    public override string ToString() => Id;
+    /// <summary>The item's name for screen readers: the id, and the mark when it shows.</summary>
+    public override string ToString() => InNoProfile ? $"{Id}, {Strings.SettingsProcessorsInNoProfile}" : Id;
 }
 
 /// <summary>
 /// Settings → Processors: the processors, and the editor of the selected one. An LLM prompt opens
 /// <see cref="LlmEditor"/>; replace rules open <see cref="RulesEditor"/>. A new processor joins every profile whose chain
-/// is empty; one that no chain runs gets a warning and an "Add to profile…" pick. A processor can be removed once no
-/// profile's chain uses it, together with its stored key.
+/// is empty; one that no chain runs is marked in the list and gets a warning and an "Add to profile…" pick. A processor
+/// can be removed once no profile's chain uses it, together with its stored key.
 /// </summary>
 public sealed partial class ProcessorsPage : SettingsPage, IDisposable
 {
@@ -198,7 +200,7 @@ public sealed partial class ProcessorsPage : SettingsPage, IDisposable
         {
             var config = _session.Config;
             CanEdit = _session.CanEdit;
-            List<ProcessorItem> items = [.. config.Processors.Select(kv => new ProcessorItem(kv.Key, Caption(kv.Value)))];
+            List<ProcessorItem> items = [.. config.Processors.Select(kv => new ProcessorItem(kv.Key, Caption(kv.Value), !config.Profiles.Any(p => p.Pipeline.Contains(kv.Key))))];
             if (!items.SequenceEqual(Processors))
             {
                 Processors = items;
