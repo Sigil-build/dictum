@@ -128,7 +128,7 @@ public sealed partial class SetupDownloadingStep(SetupServices services) : Setup
     [RelayCommand]
     private void PauseOrResume()
     {
-        Queue(null, services.Downloads.IsPaused ? (Action)services.Downloads.Resume : services.Downloads.Pause);
+        Queue(null, services.Downloads.IsPaused ? (Action)services.Downloads.Unpause : services.Downloads.Pause);
         Refresh();
     }
 

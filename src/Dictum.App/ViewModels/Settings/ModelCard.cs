@@ -137,14 +137,14 @@ public sealed partial class ModelCard : ObservableObject
     public partial string? DownloadError { get; private set; }
 
     [ObservableProperty]
-    public partial IReadOnlyList<Option<string>> UseInChoices { get; private set; } = [];
+    public partial IReadOnlyList<Choice<string>> UseInChoices { get; private set; } = [];
 
     [ObservableProperty]
     public partial bool HasUseIn { get; private set; }
 
     /// <summary>The "Use in profile…" pick; the view clears the dropdown after it.</summary>
     [ObservableProperty]
-    public partial Option<string>? UseIn { get; set; }
+    public partial Choice<string>? UseIn { get; set; }
 
     /// <summary>Verifying or measuring.</summary>
     [ObservableProperty]
@@ -166,7 +166,7 @@ public sealed partial class ModelCard : ObservableObject
 
     partial void OnBusyChanged(bool value) => Apply();
 
-    partial void OnUseInChanged(Option<string>? value)
+    partial void OnUseInChanged(Choice<string>? value)
     {
         if (value is not null)
         {
@@ -257,7 +257,7 @@ public sealed partial class ModelCard : ObservableObject
         Progress = download is null ? 0 : 100.0 * Math.Min(download.Bytes, Entry.Size) / Math.Max(1, Entry.Size);
         ProgressText = IsFailed ? null : state.Progress;
         DownloadError = IsFailed ? download?.Error : null;
-        List<Option<string>> choices = IsInstalled && state.CanEdit ? Choices(state) : [];
+        List<Choice<string>> choices = IsInstalled && state.CanEdit ? Choices(state) : [];
         if (!choices.SequenceEqual(UseInChoices))
         {
             UseInChoices = choices;
@@ -267,12 +267,12 @@ public sealed partial class ModelCard : ObservableObject
     }
 
     /// <summary>The local-Whisper profiles not on this file yet; a provider two profiles share says so ("Work (also Home)").</summary>
-    private static List<Option<string>> Choices(ModelCardState state) =>
+    private static List<Choice<string>> Choices(ModelCardState state) =>
     [
         .. state.Profiles.Where(p => !state.UsedBy.Contains(p)).Select(p =>
         {
             var others = state.Profiles.Where(o => o.Provider == p.Provider && o.Id != p.Id).Select(o => o.Name).ToList();
-            return new Option<string>(p.Id, others.Count == 0
+            return new Choice<string>(p.Id, others.Count == 0
                 ? p.Name
                 : UiText.Format(Strings.SettingsModelsUseInShared, p.Name, string.Join(", ", others)));
         }),

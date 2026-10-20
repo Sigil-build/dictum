@@ -13,7 +13,7 @@ public sealed class SpeechProvidersPageTests : IDisposable
     private readonly TempDirectory _dir = new();
     private readonly ManualTimers _timers = new();
     private readonly ManualClock _clock = new(DateTimeOffset.UnixEpoch);
-    private readonly List<Option<string>> _choices = [new("ggml-large-v3-turbo-q8_0.bin", "Turbo"), new("ggml-small-q8_0.bin", "Small")];
+    private readonly List<Choice<string>> _choices = [new("ggml-large-v3-turbo-q8_0.bin", "Turbo"), new("ggml-small-q8_0.bin", "Small")];
     private readonly FakeChannel _channel = new();
     private readonly FakeSecrets _secrets = new();
     private readonly ListLog _log = new();

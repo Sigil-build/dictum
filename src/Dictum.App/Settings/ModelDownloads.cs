@@ -20,7 +20,7 @@ public interface IModelDownloads
 
     void Pause();
 
-    void Resume();
+    void Unpause();
 
     void Cancel(string id);
 
@@ -63,7 +63,7 @@ public sealed class QueueDownloads : IModelDownloads
         Changed?.Invoke();
     }
 
-    public void Resume()
+    public void Unpause()
     {
         _queue.Resume();
         Changed?.Invoke();
@@ -96,7 +96,7 @@ internal sealed class NoModelDownloads : IModelDownloads
     {
     }
 
-    public void Resume()
+    public void Unpause()
     {
     }
 

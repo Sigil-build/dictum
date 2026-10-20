@@ -18,7 +18,7 @@ public sealed record SpeechServices(
     FrameHub Frames,
     ITimers Timers,
     ISecretStore Secrets,
-    Func<string?, IReadOnlyList<Option<string>>> Models,
+    Func<string?, IReadOnlyList<Choice<string>>> Models,
     Func<string, bool> ModelPresent,
     Func<TimeSpan, Task> Delay,
     TimeProvider Time,
@@ -101,19 +101,19 @@ public sealed partial class ProviderCard : ObservableObject
     public partial bool CanEdit { get; private set; }
 
     [ObservableProperty]
-    public partial IReadOnlyList<Option<string>> Models { get; private set; } = [];
+    public partial IReadOnlyList<Choice<string>> Models { get; private set; } = [];
 
     [ObservableProperty]
-    public partial Option<string>? Model { get; set; }
+    public partial Choice<string>? Model { get; set; }
 
     [ObservableProperty]
     public partial string? ModelError { get; private set; }
 
     [ObservableProperty]
-    public partial IReadOnlyList<Option<WhisperRuntime>> Runtimes { get; private set; } = [];
+    public partial IReadOnlyList<Choice<WhisperRuntime>> Runtimes { get; private set; } = [];
 
     [ObservableProperty]
-    public partial Option<WhisperRuntime>? Runtime { get; set; }
+    public partial Choice<WhisperRuntime>? Runtime { get; set; }
 
     [ObservableProperty]
     public partial decimal? Threads { get; set; }
@@ -199,7 +199,7 @@ public sealed partial class ProviderCard : ObservableObject
             ? delay(wait)
             : Task.CompletedTask;
 
-    partial void OnModelChanged(Option<string>? value)
+    partial void OnModelChanged(Choice<string>? value)
     {
         if (value is not null)
         {
@@ -207,7 +207,7 @@ public sealed partial class ProviderCard : ObservableObject
         }
     }
 
-    partial void OnRuntimeChanged(Option<WhisperRuntime>? value)
+    partial void OnRuntimeChanged(Choice<WhisperRuntime>? value)
     {
         if (value is not null)
         {
@@ -347,9 +347,9 @@ public sealed partial class ProviderCard : ObservableObject
         }
     }
 
-    private IReadOnlyList<Option<WhisperRuntime>> RuntimesFor(WhisperRuntime current)
+    private IReadOnlyList<Choice<WhisperRuntime>> RuntimesFor(WhisperRuntime current)
     {
-        List<Option<WhisperRuntime>> runtimes =
+        List<Choice<WhisperRuntime>> runtimes =
         [
             new(WhisperRuntime.Auto, Strings.SettingsProvidersRuntimeAuto),
             new(WhisperRuntime.Cpu, Strings.SettingsProvidersRuntimeCpu),

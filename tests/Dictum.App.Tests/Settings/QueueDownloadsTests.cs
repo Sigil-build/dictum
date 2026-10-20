@@ -86,7 +86,7 @@ public sealed class QueueDownloadsTests : IAsyncDisposable
 
         _downloads.Pause();
         _downloads.Cancel("a");
-        _downloads.Resume();
+        _downloads.Unpause();
 
         Assert.Equal(3, changed);
     }

@@ -32,7 +32,7 @@ internal sealed class FakeDownloads : IModelDownloads
         Changed?.Invoke();
     }
 
-    public void Resume()
+    public void Unpause()
     {
         Call("resume");
         IsPaused = false;

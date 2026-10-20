@@ -73,9 +73,9 @@ public sealed partial class GeneralPage : SettingsPage
         _epoch = services.Time.GetUtcNow();
         UiLanguages =
         [
-            new Option<string?>(null, Strings.SettingsUiLanguageSystem),
-            new Option<string?>(Dictum.Core.Configuration.UiLanguages.English, Strings.SettingsUiLanguageEnglish),
-            new Option<string?>(Dictum.Core.Configuration.UiLanguages.Ukrainian, Strings.SettingsUiLanguageUkrainian),
+            new Choice<string?>(null, Strings.SettingsUiLanguageSystem),
+            new Choice<string?>(Dictum.Core.Configuration.UiLanguages.English, Strings.SettingsUiLanguageEnglish),
+            new Choice<string?>(Dictum.Core.Configuration.UiLanguages.Ukrainian, Strings.SettingsUiLanguageUkrainian),
         ];
         CanChangeStartAtLogin = services.Autostart is not null && services.Executable is not null;
         MeterText = InputMeter.Readout((int)InputMeter.FloorDb);
@@ -88,7 +88,7 @@ public sealed partial class GeneralPage : SettingsPage
 
     public override string Title => Strings.SettingsGeneral;
 
-    public IReadOnlyList<Option<string?>> UiLanguages { get; }
+    public IReadOnlyList<Choice<string?>> UiLanguages { get; }
 
     public OverlayPage Overlay { get; }
 
@@ -106,10 +106,10 @@ public sealed partial class GeneralPage : SettingsPage
     public partial string? StartAtLoginError { get; private set; }
 
     [ObservableProperty]
-    public partial IReadOnlyList<Option<string?>> Microphones { get; private set; } = [];
+    public partial IReadOnlyList<Choice<string?>> Microphones { get; private set; } = [];
 
     [ObservableProperty]
-    public partial Option<string?>? Microphone { get; set; }
+    public partial Choice<string?>? Microphone { get; set; }
 
     [ObservableProperty]
     public partial double MeterLevel { get; private set; }
@@ -130,7 +130,7 @@ public sealed partial class GeneralPage : SettingsPage
     public partial string? HistoryError { get; private set; }
 
     [ObservableProperty]
-    public partial Option<string?>? UiLanguage { get; set; }
+    public partial Choice<string?>? UiLanguage { get; set; }
 
     /// <summary>General → "Run setup again": the shell opens the wizard with the current values.</summary>
     public event Action? SetupRequested;
@@ -184,7 +184,7 @@ public sealed partial class GeneralPage : SettingsPage
         }
     }
 
-    partial void OnMicrophoneChanged(Option<string?>? value)
+    partial void OnMicrophoneChanged(Choice<string?>? value)
     {
         if (_loading || value is null || value.Value == _session.Config.General.AudioDevice)
         {
@@ -230,7 +230,7 @@ public sealed partial class GeneralPage : SettingsPage
         HistoryError = _session.IssueAt(HistorySizePath);
     }
 
-    partial void OnUiLanguageChanged(Option<string?>? value)
+    partial void OnUiLanguageChanged(Choice<string?>? value)
     {
         if (!_loading && value is not null)
         {
@@ -292,16 +292,16 @@ public sealed partial class GeneralPage : SettingsPage
 
     /// <summary>The system default first (named after the default device when the daemon reported one), then each device.</summary>
     /// <param name="known">The daemon reported its devices; only then can a configured one be called missing.</param>
-    private static List<Option<string?>> MicrophoneList(IReadOnlyList<AudioDevice> devices, bool known, string? configured)
+    private static List<Choice<string?>> MicrophoneList(IReadOnlyList<AudioDevice> devices, bool known, string? configured)
     {
         var standard = devices.FirstOrDefault(d => d.IsDefault) is { } device
             ? UiText.Format(Strings.SettingsMicrophoneDefault, device.Name)
             : Strings.SettingsMicrophoneSystemDefault;
-        var list = new List<Option<string?>> { new(null, standard) };
-        list.AddRange(devices.Select(d => d.Name).Distinct().Select(name => new Option<string?>(name, name)));
+        var list = new List<Choice<string?>> { new(null, standard) };
+        list.AddRange(devices.Select(d => d.Name).Distinct().Select(name => new Choice<string?>(name, name)));
         if (configured is not null && !devices.Any(d => d.Name == configured))
         {
-            list.Add(new Option<string?>(configured,
+            list.Add(new Choice<string?>(configured,
                 known ? UiText.Format(Strings.SettingsMicrophoneMissing, configured) : configured));
         }
 

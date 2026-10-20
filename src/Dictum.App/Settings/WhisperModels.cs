@@ -16,13 +16,13 @@ namespace Dictum.App.Settings;
 /// </summary>
 public static class WhisperModels
 {
-    public static IReadOnlyList<Option<string>> Choices(AppPaths paths, Catalog catalog, string? current)
+    public static IReadOnlyList<Choice<string>> Choices(AppPaths paths, Catalog catalog, string? current)
     {
-        var choices = new List<Option<string>>();
+        var choices = new List<Choice<string>>();
         var listed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var entry in catalog.Entries.Where(e => e.Kind == CatalogKind.Whisper && ModelFiles.IsInstalled(paths, e)))
         {
-            choices.Add(new Option<string>(entry.File, entry.Title));
+            choices.Add(new Choice<string>(entry.File, entry.Title));
             listed.Add(entry.File);
         }
 
@@ -35,7 +35,7 @@ public static class WhisperModels
             {
                 if (listed.Add(file))
                 {
-                    choices.Add(new Option<string>(file, file));
+                    choices.Add(new Choice<string>(file, file));
                 }
             }
         }
@@ -43,7 +43,7 @@ public static class WhisperModels
         if (current is not null && !choices.Any(c => string.Equals(c.Value, current, StringComparison.OrdinalIgnoreCase)))
         {
             var name = Path.GetFileName(current);
-            choices.Add(new Option<string>(current, IsPresent(paths, current)
+            choices.Add(new Choice<string>(current, IsPresent(paths, current)
                 ? name
                 : UiText.Format(Strings.SettingsProvidersModelMissing, name)));
         }

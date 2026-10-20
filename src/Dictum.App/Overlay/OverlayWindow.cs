@@ -9,8 +9,8 @@ public interface IOverlaySurface
 {
     IReadOnlyList<ScreenArea> ScreenAreas { get; }
 
-    /// <summary>Shows or moves the window, and draws the scene <paramref name="next"/> returns on every frame until it is Hidden.</summary>
-    void Present(PixelRect bounds, double zoom, double opacity, Func<OverlayScene> next);
+    /// <summary>Shows or moves the window, and draws the scene <paramref name="nextScene"/> returns on every frame until it is Hidden.</summary>
+    void Present(PixelRect bounds, double zoom, double opacity, Func<OverlayScene> nextScene);
 
     /// <summary>Hides the window now.</summary>
     void Dismiss();
@@ -58,15 +58,15 @@ public sealed class OverlayWindow : Window, IOverlaySurface
     public IReadOnlyList<ScreenArea> ScreenAreas =>
         [.. Screens.All.Select(s => new ScreenArea(s.DisplayName, s.Bounds, s.WorkingArea, s.Scaling, s.IsPrimary))];
 
-    public void Present(PixelRect bounds, double zoom, double opacity, Func<OverlayScene> next)
+    public void Present(PixelRect bounds, double zoom, double opacity, Func<OverlayScene> nextScene)
     {
-        _next = next;
+        _next = nextScene;
         _opacity = opacity;
         Canvas.Zoom = zoom;
         Position = bounds.Position;
         if (!IsVisible)
         {
-            Canvas.Scene = next();
+            Canvas.Scene = nextScene();
             Canvas.LayerOpacity = _opacity * Canvas.Scene.Appear;
             Show();
         }

@@ -25,12 +25,12 @@ internal sealed class FakeSurface : IOverlaySurface
 
     public event Action? ScreensChanged;
 
-    public void Present(PixelRect bounds, double zoom, double opacity, Func<OverlayScene> next)
+    public void Present(PixelRect bounds, double zoom, double opacity, Func<OverlayScene> nextScene)
     {
         Presented.Add(bounds);
         Zoom = zoom;
         Opacity = opacity;
-        Next = next;
+        Next = nextScene;
     }
 
     public void Dismiss()

@@ -27,10 +27,10 @@ public sealed partial class ProfileChain : ObservableObject
 
     /// <summary>The processors not in the chain yet.</summary>
     [ObservableProperty]
-    public partial IReadOnlyList<Option<string>> Choices { get; private set; } = [];
+    public partial IReadOnlyList<Choice<string>> Choices { get; private set; } = [];
 
     [ObservableProperty]
-    public partial Option<string>? ToAdd { get; set; }
+    public partial Choice<string>? ToAdd { get; set; }
 
     [ObservableProperty]
     public partial bool CanAdd { get; private set; }
@@ -59,13 +59,13 @@ public sealed partial class ProfileChain : ObservableObject
             new RelayCommand(() => _edit(p => p with { Pipeline = [.. p.Pipeline.Where(s => s != id)] }))))];
         Empty = Steps.Count == 0;
         Choices = [.. config.Processors.Keys.Where(id => !profile.Pipeline.Contains(id)).Order(StringComparer.Ordinal)
-            .Select(id => new Option<string>(id, UiText.Format(Strings.SettingsProfilesStep, id, Kind(config, id))))];
+            .Select(id => new Choice<string>(id, UiText.Format(Strings.SettingsProfilesStep, id, Kind(config, id))))];
         ToAdd = null;
         CanAdd = Choices.Count > 0;
         Note = _session.IssueAt(ConfigPaths.Field(path, nameof(ProfileConfig.Pipeline)));
     }
 
-    partial void OnToAddChanged(Option<string>? value)
+    partial void OnToAddChanged(Choice<string>? value)
     {
         if (value is not null)
         {

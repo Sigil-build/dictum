@@ -35,9 +35,9 @@ public sealed partial class LlmEditor : ObservableObject, IDisposable
         Preview = new LlmPreview(session, services.Runner, services.Timers, () => _id, Prompt.Flush);
     }
 
-    public IReadOnlyList<Option<LlmErrorMode>> ErrorModes { get; }
+    public IReadOnlyList<Choice<LlmErrorMode>> ErrorModes { get; }
 
-    public IReadOnlyList<Option<bool?>> Wordings { get; }
+    public IReadOnlyList<Choice<bool?>> Wordings { get; }
 
     public ApiKeyField Key { get; }
 
@@ -70,10 +70,10 @@ public sealed partial class LlmEditor : ObservableObject, IDisposable
     public partial string? TimeoutError { get; private set; }
 
     [ObservableProperty]
-    public partial Option<LlmErrorMode>? OnError { get; set; }
+    public partial Choice<LlmErrorMode>? OnError { get; set; }
 
     [ObservableProperty]
-    public partial Option<bool?>? Wording { get; set; }
+    public partial Choice<bool?>? Wording { get; set; }
 
     [ObservableProperty]
     public partial decimal? MaxTokens { get; set; }
@@ -189,7 +189,7 @@ public sealed partial class LlmEditor : ObservableObject, IDisposable
         EditLlm(l => l with { TimeoutMs = TimeoutFields.Milliseconds(seconds) });
     }
 
-    partial void OnOnErrorChanged(Option<LlmErrorMode>? value)
+    partial void OnOnErrorChanged(Choice<LlmErrorMode>? value)
     {
         if (value is not null)
         {
@@ -197,7 +197,7 @@ public sealed partial class LlmEditor : ObservableObject, IDisposable
         }
     }
 
-    partial void OnWordingChanged(Option<bool?>? value)
+    partial void OnWordingChanged(Choice<bool?>? value)
     {
         if (value is not null)
         {

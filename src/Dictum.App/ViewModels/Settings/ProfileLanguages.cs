@@ -32,16 +32,16 @@ public sealed partial class ProfileLanguages : ObservableObject
             new(LanguageMode.Several, Strings.SettingsProfilesLanguageSeveral),
             new(LanguageMode.Auto, Strings.SettingsProfilesLanguageAuto),
         ];
-        All = [.. WhisperLanguages.Codes.Select(code => new Option<string>(code, WhisperLanguages.Name(code)))
+        All = [.. WhisperLanguages.Codes.Select(code => new Choice<string>(code, WhisperLanguages.Name(code)))
             .OrderBy(o => o.Label, StringComparer.Create(CultureInfo.CurrentCulture, ignoreCase: true))];
     }
 
-    public IReadOnlyList<Option<LanguageMode>> Modes { get; }
+    public IReadOnlyList<Choice<LanguageMode>> Modes { get; }
 
-    public IReadOnlyList<Option<string>> All { get; }
+    public IReadOnlyList<Choice<string>> All { get; }
 
     [ObservableProperty]
-    public partial Option<LanguageMode>? Mode { get; set; }
+    public partial Choice<LanguageMode>? Mode { get; set; }
 
     [ObservableProperty]
     public partial bool ShowsOne { get; private set; }
@@ -54,13 +54,13 @@ public sealed partial class ProfileLanguages : ObservableObject
 
     /// <summary>The language when the mode is One.</summary>
     [ObservableProperty]
-    public partial Option<string>? One { get; set; }
+    public partial Choice<string>? One { get; set; }
 
     [ObservableProperty]
     public partial IReadOnlyList<LanguageChip> Chips { get; private set; } = [];
 
     [ObservableProperty]
-    public partial Option<string>? ToAdd { get; set; }
+    public partial Choice<string>? ToAdd { get; set; }
 
     [ObservableProperty]
     public partial string? SimilarWarning { get; private set; }
@@ -101,7 +101,7 @@ public sealed partial class ProfileLanguages : ObservableObject
         }
     }
 
-    partial void OnModeChanged(Option<LanguageMode>? value)
+    partial void OnModeChanged(Choice<LanguageMode>? value)
     {
         if (value is not null)
         {
@@ -109,7 +109,7 @@ public sealed partial class ProfileLanguages : ObservableObject
         }
     }
 
-    partial void OnOneChanged(Option<string>? value)
+    partial void OnOneChanged(Choice<string>? value)
     {
         if (value is not null)
         {
@@ -117,7 +117,7 @@ public sealed partial class ProfileLanguages : ObservableObject
         }
     }
 
-    partial void OnToAddChanged(Option<string>? value)
+    partial void OnToAddChanged(Choice<string>? value)
     {
         if (value is not null)
         {

@@ -43,7 +43,7 @@ public sealed partial class ProfilesPage : SettingsPage
 
     public override string Title => Strings.SettingsProfiles;
 
-    public IReadOnlyList<Option<HotkeyMode>> Modes { get; }
+    public IReadOnlyList<Choice<HotkeyMode>> Modes { get; }
 
     public ProfileLanguages Languages { get; }
 
@@ -51,7 +51,7 @@ public sealed partial class ProfilesPage : SettingsPage
 
     public ProfileChain Chain { get; }
 
-    public IReadOnlyList<Option<PasteShortcut>> PasteShortcuts { get; }
+    public IReadOnlyList<Choice<PasteShortcut>> PasteShortcuts { get; }
 
     [ObservableProperty]
     public partial bool CanEdit { get; private set; }
@@ -87,7 +87,7 @@ public sealed partial class ProfilesPage : SettingsPage
     public partial string? HotkeyWarning { get; private set; }
 
     [ObservableProperty]
-    public partial Option<HotkeyMode>? Mode { get; set; }
+    public partial Choice<HotkeyMode>? Mode { get; set; }
 
     [ObservableProperty]
     public partial string SpeechHint { get; set; } = "";
@@ -102,13 +102,13 @@ public sealed partial class ProfilesPage : SettingsPage
     public partial bool OutputClipboard { get; set; }
 
     [ObservableProperty]
-    public partial Option<PasteShortcut>? Shortcut { get; set; }
+    public partial Choice<PasteShortcut>? Shortcut { get; set; }
 
     [ObservableProperty]
-    public partial IReadOnlyList<Option<string>> Providers { get; private set; } = [];
+    public partial IReadOnlyList<Choice<string>> Providers { get; private set; } = [];
 
     [ObservableProperty]
-    public partial Option<string>? Provider { get; set; }
+    public partial Choice<string>? Provider { get; set; }
 
     [ObservableProperty]
     public partial string? ProviderError { get; private set; }
@@ -162,7 +162,7 @@ public sealed partial class ProfilesPage : SettingsPage
         }
     }
 
-    partial void OnModeChanged(Option<HotkeyMode>? value)
+    partial void OnModeChanged(Choice<HotkeyMode>? value)
     {
         if (value is not null)
         {
@@ -178,7 +178,7 @@ public sealed partial class ProfilesPage : SettingsPage
 
     partial void OnOutputClipboardChanged(bool value) => SetOutput(value, OutputMode.Clipboard);
 
-    partial void OnShortcutChanged(Option<PasteShortcut>? value)
+    partial void OnShortcutChanged(Choice<PasteShortcut>? value)
     {
         if (value is not null)
         {
@@ -186,7 +186,7 @@ public sealed partial class ProfilesPage : SettingsPage
         }
     }
 
-    partial void OnProviderChanged(Option<string>? value)
+    partial void OnProviderChanged(Choice<string>? value)
     {
         if (value is not null)
         {
@@ -352,10 +352,10 @@ public sealed partial class ProfilesPage : SettingsPage
 
     private void LoadProvider(DictumConfig config, ProfileConfig profile, string path)
     {
-        List<Option<string>> providers = [.. config.Stt.Select(kv => new Option<string>(kv.Key, ProviderLabels.For(kv.Value)))];
+        List<Choice<string>> providers = [.. config.Stt.Select(kv => new Choice<string>(kv.Key, ProviderLabels.For(kv.Value)))];
         if (!config.Stt.ContainsKey(profile.Stt))
         {
-            providers.Add(new Option<string>(profile.Stt, UiText.Format(Strings.SettingsProfilesProviderMissing, profile.Stt)));
+            providers.Add(new Choice<string>(profile.Stt, UiText.Format(Strings.SettingsProfilesProviderMissing, profile.Stt)));
         }
 
         if (!providers.SequenceEqual(Providers))

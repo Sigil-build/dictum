@@ -125,7 +125,7 @@ public sealed partial class ModelsPage : SettingsPage
 
     internal void Pause(ModelCard card) => Queue(card, _services.Downloads.Pause);
 
-    internal void Resume(ModelCard card) => Queue(card, _services.Downloads.Resume);
+    internal void Resume(ModelCard card) => Queue(card, _services.Downloads.Unpause);
 
     internal void Cancel(ModelCard card) => Queue(card, () => _services.Downloads.Cancel(card.Entry.Id));
 

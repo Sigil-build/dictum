@@ -44,7 +44,7 @@ public sealed partial class PastingPage : SettingsPage
 
     public bool ShowsInjector { get; }
 
-    public IReadOnlyList<Option<InjectorBackend>> Injectors { get; }
+    public IReadOnlyList<Choice<InjectorBackend>> Injectors { get; }
 
     [ObservableProperty]
     public partial bool CanEdit { get; private set; }
@@ -59,7 +59,7 @@ public sealed partial class PastingPage : SettingsPage
     public partial IReadOnlyList<WordChip> TerminalApps { get; private set; } = [];
 
     [ObservableProperty]
-    public partial Option<InjectorBackend>? Injector { get; set; }
+    public partial Choice<InjectorBackend>? Injector { get; set; }
 
     /// <summary>Text from the apps box: complete names are added; the part still being typed comes back, as in <see cref="ProfileWords.Add"/>.</summary>
     public string AddApps(string text)
@@ -94,7 +94,7 @@ public sealed partial class PastingPage : SettingsPage
         Edit(g => g with { PasteDelayMs = (int)decimal.Truncate(delay) });
     }
 
-    partial void OnInjectorChanged(Option<InjectorBackend>? value)
+    partial void OnInjectorChanged(Choice<InjectorBackend>? value)
     {
         if (value is not null)
         {

@@ -42,15 +42,15 @@ public sealed partial class LlmPreview : ObservableObject, IDisposable
         _timers = timers;
         _selected = selected;
         _flush = flush;
-        Languages = [.. SampleLanguages.Select(code => new Option<string>(code, WhisperLanguages.Name(code)))];
+        Languages = [.. SampleLanguages.Select(code => new Choice<string>(code, WhisperLanguages.Name(code)))];
         SampleLanguage = Languages[0];
         SampleText = Samples[SampleLanguages[0]];
     }
 
-    public IReadOnlyList<Option<string>> Languages { get; }
+    public IReadOnlyList<Choice<string>> Languages { get; }
 
     [ObservableProperty]
-    public partial Option<string>? SampleLanguage { get; set; }
+    public partial Choice<string>? SampleLanguage { get; set; }
 
     [ObservableProperty]
     public partial string SampleText { get; set; } = "";
@@ -120,7 +120,7 @@ public sealed partial class LlmPreview : ObservableObject, IDisposable
         _run = null;
     }
 
-    partial void OnSampleLanguageChanged(Option<string>? value)
+    partial void OnSampleLanguageChanged(Choice<string>? value)
     {
         if (value is not null && Samples.TryGetValue(value.Value, out var sample))
         {

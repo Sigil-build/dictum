@@ -68,10 +68,10 @@ public sealed partial class HistoryPage : SettingsPage, IDisposable
     public partial string? Error { get; private set; }
 
     [ObservableProperty]
-    public partial IReadOnlyList<Option<string>> Chains { get; private set; } = [];
+    public partial IReadOnlyList<Choice<string>> Chains { get; private set; } = [];
 
     [ObservableProperty]
-    public partial Option<string>? Chain { get; set; }
+    public partial Choice<string>? Chain { get; set; }
 
     [ObservableProperty]
     public partial bool HasChains { get; private set; }
@@ -96,7 +96,7 @@ public sealed partial class HistoryPage : SettingsPage, IDisposable
 
     public override void OnHidden() => _reRun?.Cancel();
 
-    partial void OnChainChanged(Option<string>? value)
+    partial void OnChainChanged(Choice<string>? value)
     {
         if (value is not null)
         {
@@ -138,7 +138,7 @@ public sealed partial class HistoryPage : SettingsPage, IDisposable
     private void LoadChains()
     {
         var config = _session.Config;
-        Chains = [.. config.Profiles.Where(p => p.Pipeline.Count > 0).Select(p => new Option<string>(p.Id,
+        Chains = [.. config.Profiles.Where(p => p.Pipeline.Count > 0).Select(p => new Choice<string>(p.Id,
             UiText.Format(Strings.SettingsHistoryChain, p.Name ?? p.Id, string.Join(" → ", p.Pipeline))))];
         HasChains = Chains.Count > 0;
     }

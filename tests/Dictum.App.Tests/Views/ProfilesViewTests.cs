@@ -137,7 +137,7 @@ public sealed class ProfilesViewTests(AvaloniaFixture fx) : IDisposable
         var (window, session) = Show();
         var picker = window.GetVisualDescendants().OfType<ComboBox>().Single(c => c.Name == "LanguagePicker");
 
-        picker.SelectedItem = picker.Items.OfType<Option<string>>().Single(o => o.Value == "pl");
+        picker.SelectedItem = picker.Items.OfType<Choice<string>>().Single(o => o.Value == "pl");
         Dispatcher.UIThread.RunJobs();
 
         Assert.Equal("uk, en, pl", session.Config.Profiles[0].Language);

@@ -46,11 +46,11 @@ public sealed partial class OverlayPage : SettingsPage
 
     public string BackLabel { get; }
 
-    public IReadOnlyList<Option<OverlayPosition>> Positions { get; }
+    public IReadOnlyList<Choice<OverlayPosition>> Positions { get; }
 
-    public IReadOnlyList<Option<OverlaySize>> Sizes { get; }
+    public IReadOnlyList<Choice<OverlaySize>> Sizes { get; }
 
-    public IReadOnlyList<Option<OverlayPalette>> Palettes { get; }
+    public IReadOnlyList<Choice<OverlayPalette>> Palettes { get; }
 
     [ObservableProperty]
     public partial bool CanEdit { get; private set; }
@@ -59,10 +59,10 @@ public sealed partial class OverlayPage : SettingsPage
     public partial bool Enabled { get; set; }
 
     [ObservableProperty]
-    public partial Option<OverlayPosition>? Position { get; set; }
+    public partial Choice<OverlayPosition>? Position { get; set; }
 
     [ObservableProperty]
-    public partial Option<OverlaySize>? Size { get; set; }
+    public partial Choice<OverlaySize>? Size { get; set; }
 
     /// <summary>Percent, 30–100, in steps of 5 on the slider.</summary>
     [ObservableProperty]
@@ -72,7 +72,7 @@ public sealed partial class OverlayPage : SettingsPage
     public partial string OpacityText { get; private set; } = "";
 
     [ObservableProperty]
-    public partial Option<OverlayPalette>? Palette { get; set; }
+    public partial Choice<OverlayPalette>? Palette { get; set; }
 
     [ObservableProperty]
     public partial OverlayPalette PreviewPalette { get; private set; }
@@ -85,7 +85,7 @@ public sealed partial class OverlayPage : SettingsPage
 
     partial void OnEnabledChanged(bool value) => Edit(o => o with { Enabled = value });
 
-    partial void OnPositionChanged(Option<OverlayPosition>? value)
+    partial void OnPositionChanged(Choice<OverlayPosition>? value)
     {
         if (value is not null)
         {
@@ -93,7 +93,7 @@ public sealed partial class OverlayPage : SettingsPage
         }
     }
 
-    partial void OnSizeChanged(Option<OverlaySize>? value)
+    partial void OnSizeChanged(Choice<OverlaySize>? value)
     {
         if (value is not null)
         {
@@ -103,7 +103,7 @@ public sealed partial class OverlayPage : SettingsPage
 
     partial void OnOpacityChanged(double value) => Edit(o => o with { Opacity = Math.Round(value) / 100 });
 
-    partial void OnPaletteChanged(Option<OverlayPalette>? value)
+    partial void OnPaletteChanged(Choice<OverlayPalette>? value)
     {
         if (value is not null)
         {
