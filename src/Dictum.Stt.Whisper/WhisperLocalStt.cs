@@ -196,10 +196,7 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
         var watch = Stopwatch.StartNew();
         var (detected, probability) = await Task.Run(() => processor.DetectLanguageWithProbability(samples, [.. candidates]), ct).ConfigureAwait(false);
         var picked = PickLanguage(candidates, detected, probability);
-        var overridden = detected is not null && detected != picked && candidates.Contains(detected)
-            ? $"; the first language has priority over the detected '{detected}', which needs p >= {MinOtherLanguageProbability:F2}"
-            : string.Empty;
-        log.Debug($"Whisper '{id}' picked '{picked}' from {string.Join(", ", candidates)} (p={probability:F2}) in {watch.ElapsedMilliseconds} ms{overridden}");
+        log.Debug($"Whisper '{id}' picked {DescribePick(candidates, detected, probability)} in {watch.ElapsedMilliseconds} ms");
         return picked;
     }
 
@@ -212,6 +209,20 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
         detected is not null && candidates.Contains(detected) && (detected == candidates[0] || probability >= MinOtherLanguageProbability)
             ? detected
             : candidates[0];
+
+    /// <summary>
+    /// <see cref="PickLanguage"/>'s choice for the debug log: the language picked, the candidates, the language Whisper
+    /// detected with that language's probability, and the priority rule when it overrode the detection.
+    /// </summary>
+    public static string DescribePick(IReadOnlyList<string> candidates, string? detected, float probability)
+    {
+        var picked = PickLanguage(candidates, detected, probability);
+        var detection = detected is null ? "no language detected" : $"detected '{detected}', p={probability:F2}";
+        var overridden = detected is not null && detected != picked && candidates.Contains(detected)
+            ? $"; the first language has priority, and another one needs p >= {MinOtherLanguageProbability:F2}"
+            : string.Empty;
+        return $"'{picked}' from {string.Join(", ", candidates)} ({detection}{overridden})";
+    }
 
     /// <summary>Whether the runtime that actually loaded is what the provider asked for.</summary>
     private static bool Satisfies(WhisperRuntime wanted, string? loaded) => wanted switch

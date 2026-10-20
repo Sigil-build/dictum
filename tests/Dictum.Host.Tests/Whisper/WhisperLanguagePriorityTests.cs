@@ -1,3 +1,4 @@
+using System.Globalization;
 using Dictum.Stt.Whisper;
 
 namespace Dictum.Host.Tests.Whisper;
@@ -46,5 +47,29 @@ public class WhisperLanguagePriorityTests
         Assert.Equal(0.5f, WhisperLocalStt.MinOtherLanguageProbability);
         Assert.Equal("en", WhisperLocalStt.PickLanguage(UkEn, "en", WhisperLocalStt.MinOtherLanguageProbability));
         Assert.Equal("uk", WhisperLocalStt.PickLanguage(UkEn, "en", WhisperLocalStt.MinOtherLanguageProbability - 0.01f));
+    }
+
+    // The probability is the detected language's, so the debug line puts it next to that language, and it names the
+    // priority rule only when the first language won over a detected candidate.
+    [Theory]
+    [InlineData("en", 0.06f, "'uk' from uk, en (detected 'en', p=0.06; the first language has priority, and another one needs p >= 0.50)")]
+    [InlineData("en", 0.90f, "'en' from uk, en (detected 'en', p=0.90)")]
+    [InlineData("uk", 0.07f, "'uk' from uk, en (detected 'uk', p=0.07)")]
+    [InlineData("ru", 0.80f, "'uk' from uk, en (detected 'ru', p=0.80)")]
+    [InlineData(null, 0.00f, "'uk' from uk, en (no language detected)")]
+    public void TheDebugLineGivesTheDetectedLanguagesProbabilityAndSaysWhenThePriorityOverrodeIt(
+        string? detected, float probability, string expected)
+    {
+        var culture = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+
+            Assert.Equal(expected, WhisperLocalStt.DescribePick(UkEn, detected, probability));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = culture;
+        }
     }
 }
