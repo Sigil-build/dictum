@@ -22,10 +22,10 @@ public sealed class ProcessorsViewTests(AvaloniaFixture fx) : IDisposable
 
     public void Dispose() => _dir.Dispose();
 
-    private (Window Window, ProcessorsPage Page, SettingsSession Session) Show()
+    private (Window Window, ProcessorsPage Page, SettingsSession Session) Show(DictumConfig? config = null)
     {
         var store = new ConfigStore(_dir.File("config.json"), NullLog.Instance);
-        store.Save(ProfilesPageTests.Sample());
+        store.Save(config ?? ProfilesPageTests.Sample());
         var session = new SettingsSession(store, new ManualTimers(), NullLog.Instance);
         session.Load();
         var page = new ProcessorsPage(session, new ProcessorsServices(new FakeRunner(), new FakeSecrets(), new PromptLibrary(_dir.File("prompts")),
@@ -83,6 +83,26 @@ public sealed class ProcessorsViewTests(AvaloniaFixture fx) : IDisposable
         Assert.Same(picker, focus.GetFocusedElement());
         Tab(window);
         Assert.Same(firstRule, focus.GetFocusedElement());
+        window.Close();
+    });
+
+    // The validator warns at processors.<id> as well, for doctor; the page says it once, in its banner, and shows the
+    // validator's line nowhere, whichever editor is open.
+    [Theory]
+    [InlineData("filler")]
+    [InlineData("cleanup")]
+    public Task AProcessorInNoChainIsWarnedAboutOnce(string id) => fx.Ui(() =>
+    {
+        var config = ProfilesPageTests.Sample();
+        config.Profiles[0].Pipeline = ["terms"];
+        var (window, page, session) = Show(config);
+
+        page.Selected = page.Processors.Single(p => p.Id == id);
+        Dispatcher.UIThread.RunJobs();
+
+        var issue = Assert.Single(session.Issues, i => i.Path == ConfigPaths.Processor(id));
+        Assert.Contains(Strings.SettingsProcessorsNoChain, VisibleTexts(window));
+        Assert.DoesNotContain(VisibleTexts(window), t => t?.Contains(issue.Message, StringComparison.Ordinal) == true);
         window.Close();
     });
 

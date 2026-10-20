@@ -4,6 +4,13 @@ namespace Dictum.Core.Tests.Configuration;
 
 public class ConfigValidatorTests
 {
+    /// <summary>Every processor runs in the first profile, so a test sees only the issues it is about.</summary>
+    private static DictumConfig RunningAll(DictumConfig config)
+    {
+        config.Profiles[0].Pipeline = [.. config.Processors.Keys];
+        return config;
+    }
+
     [Fact]
     public void DefaultConfigIsValid() => Assert.Empty(ConfigValidator.Validate(DefaultConfig.Create()));
 
@@ -24,10 +31,34 @@ public class ConfigValidatorTests
         Assert.Equal(["profiles[0].pipeline", "profiles[1].id", "profiles[1].stt"], paths);
     }
 
+    // A processor that no pipeline runs never touches a dictation, and doctor and 'config validate' say so.
+    [Fact]
+    public void AProcessorNoPipelineRunsIsWarnedAbout()
+    {
+        var config = DefaultConfig.Create() with
+        {
+            Processors = new()
+            {
+                ["terms"] = new ReplaceProcessorConfig(),
+                ["llm"] = new LlmProcessorConfig { BaseUrl = "http://localhost:8080/v1", Model = "local", Prompt = "cleanup" },
+                ["email"] = new ReplaceProcessorConfig(),
+            },
+            Profiles =
+            [
+                new ProfileConfig { Id = "a", Stt = "local", Pipeline = ["terms"] },
+                new ProfileConfig { Id = "b", Stt = "local", Pipeline = ["email"] },
+            ],
+        };
+
+        var issue = Assert.Single(ConfigValidator.Validate(config));
+
+        Assert.Equal(new ConfigIssue(ConfigIssueSeverity.Warning, "processors.llm", "no profile's pipeline runs it, so dictation never uses it"), issue);
+    }
+
     [Fact]
     public void RulesNeedExactlyOneOfFromOrPatternAndAValidRegex()
     {
-        var config = DefaultConfig.Create() with
+        var config = RunningAll(DefaultConfig.Create() with
         {
             Processors = new()
             {
@@ -42,7 +73,7 @@ public class ConfigValidatorTests
                     ],
                 },
             },
-        };
+        });
 
         var paths = ConfigValidator.Validate(config).Select(i => i.Path).ToList();
 
@@ -52,7 +83,10 @@ public class ConfigValidatorTests
     [Fact]
     public void JsonBackspaceInPatternIsFlagged()
     {
-        var config = ConfigStore.Parse("""{ "processors": { "r": { "type": "replace", "rules": [ { "pattern": "\bword\b", "to": "x" } ] } } }""");
+        var config = RunningAll(DefaultConfig.Create() with
+        {
+            Processors = ConfigStore.Parse("""{ "processors": { "r": { "type": "replace", "rules": [ { "pattern": "\bword\b", "to": "x" } ] } } }""").Processors,
+        });
 
         var issue = Assert.Single(ConfigValidator.Validate(config));
 
@@ -107,13 +141,13 @@ public class ConfigValidatorTests
     [InlineData(-5)]
     public void LlmMaxTokensMustBePositive(int maxTokens)
     {
-        var config = DefaultConfig.Create() with
+        var config = RunningAll(DefaultConfig.Create() with
         {
             Processors = new()
             {
                 ["cleanup"] = new LlmProcessorConfig { BaseUrl = "http://localhost:8080/v1", Model = "m", Prompt = "cleanup", MaxTokens = maxTokens },
             },
-        };
+        });
 
         var issue = Assert.Single(ConfigValidator.Validate(config));
 

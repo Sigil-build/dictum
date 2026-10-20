@@ -31,6 +31,10 @@ public static class ConfigValidator
         foreach (var (id, processor) in config.Processors)
         {
             ValidateProcessor(issues, ConfigPaths.Processor(id), processor);
+            if (!config.Profiles.Any(p => p.Pipeline.Contains(id)))
+            {
+                Warning(issues, ConfigPaths.Processor(id), "no profile's pipeline runs it, so dictation never uses it");
+            }
         }
 
         var seenIds = new HashSet<string>(StringComparer.Ordinal);

@@ -8,6 +8,7 @@ using Dictum.Host.Diagnostics;
 using Dictum.Host.Ipc;
 using Dictum.Host.Tests.Daemon;
 using Dictum.Platform;
+using Dictum.Processing;
 using Dictum.Setup;
 using Dictum.Testing;
 
@@ -46,6 +47,24 @@ public sealed class DoctorChecksTests : IDisposable
 
         Assert.Equal(HealthLevel.Warning, checks.Single(c => c.Name == "config warnings").Status.Level);
         Assert.Contains("15.8 GB shared memory", checks.Single(c => c.Name == "gpu").Status.Detail);
+    }
+
+    // "The LLM does nothing" is what doctor is for: a processor that no profile runs shows in the config warnings row.
+    [Fact]
+    public async Task AProcessorNoProfileRunsIsAConfigWarning()
+    {
+        var store = new ConfigStore(_dir.File("config.json"), NullLog.Instance);
+        var config = Config("m.bin");
+        config.Processors["llm"] = new ReplaceProcessorConfig();
+        store.Save(config);
+        var (loaded, warnings) = store.LoadWithIssues();
+        var inputs = Inputs(loaded) with { ConfigWarnings = warnings, GetProcessor = id => new ReplaceProcessor(id, new ReplaceProcessorConfig(), NullLog.Instance) };
+
+        var checks = await DoctorChecks.RunAsync(inputs, _ct);
+
+        var row = checks.Single(c => c.Name == PlatformCheckNames.ConfigWarnings).Status;
+        Assert.Equal(HealthLevel.Warning, row.Level);
+        Assert.Equal("processors.llm: no profile's pipeline runs it, so dictation never uses it", row.Hint);
     }
 
     [Fact]
