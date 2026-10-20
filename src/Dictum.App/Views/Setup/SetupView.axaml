@@ -29,7 +29,7 @@
           <Grid RowDefinitions="Auto,*,Auto">
             <StackPanel Spacing="8" Margin="0,0,0,8">
               <TextBlock Classes="h1" Text="{x:Static res:Strings.SetupLanguagesTitle}" />
-              <TextBlock Classes="lead" Text="{x:Static res:Strings.SetupLanguagesLead}" />
+              <TextBlock Classes="lead" Text="{x:Static res:Strings.SetupLanguagesMainLead}" />
               <TextBox Text="{Binding Search}" PlaceholderText="{x:Static res:Strings.SetupLanguagesSearch}"
                        AutomationProperties.Name="{x:Static res:Strings.SetupLanguagesSearchLabel}" />
             </StackPanel>
@@ -38,9 +38,14 @@
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="setup:LanguageRow">
                     <Border Classes="pickRow" Classes.on="{Binding IsChecked}" IsVisible="{Binding IsShown}" Margin="0,0,0,6">
-                      <Grid ColumnDefinitions="*,Auto">
+                      <Grid ColumnDefinitions="*,Auto,12,Auto">
                         <CheckBox IsChecked="{Binding IsChecked}" Content="{Binding Name}" VerticalAlignment="Center" />
-                        <TextBlock Grid.Column="1" Text="{Binding Code}" Classes="hint" VerticalAlignment="Center" />
+                        <Border Grid.Column="1" Classes="badge info" Margin="0" IsVisible="{Binding IsMain}">
+                          <TextBlock Text="{x:Static res:Strings.SetupLanguagesMain}" />
+                        </Border>
+                        <Button Grid.Column="1" Classes="link makeMain" Content="{x:Static res:Strings.SettingsProfilesLanguageMakeMain}"
+                                Command="{Binding MakeMainCommand}" IsVisible="{Binding OffersMain}" VerticalAlignment="Center" />
+                        <TextBlock Grid.Column="3" Text="{Binding Code}" Classes="hint" VerticalAlignment="Center" />
                       </Grid>
                     </Border>
                   </DataTemplate>

@@ -1331,8 +1331,11 @@
   <data name="SetupLanguagesTitle" xml:space="preserve">
     <value>Which languages do you dictate in?</value>
   </data>
-  <data name="SetupLanguagesLead" xml:space="preserve">
-    <value>Pick all that apply. Dictum picks the language for each dictation, so you can switch between them.</value>
+  <data name="SetupLanguagesMainLead" xml:space="preserve">
+    <value>Pick all that apply. The main language has priority: Dictum uses another one only when Whisper is sure of it.</value>
+  </data>
+  <data name="SetupLanguagesMain" xml:space="preserve">
+    <value>Main</value>
   </data>
   <data name="SetupLanguagesSearch" xml:space="preserve">
     <value>Find a language…</value>

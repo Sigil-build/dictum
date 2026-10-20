@@ -1331,8 +1331,11 @@
   <data name="SetupLanguagesTitle" xml:space="preserve">
     <value>Якими мовами ви диктуєте?</value>
   </data>
-  <data name="SetupLanguagesLead" xml:space="preserve">
-    <value>Позначте всі потрібні. Dictum вибирає мову для кожного диктування, тож між ними можна перемикатися.</value>
+  <data name="SetupLanguagesMainLead" xml:space="preserve">
+    <value>Позначте всі потрібні. Основна мова має перевагу: іншу Dictum бере, лише коли Whisper упевнений у ній.</value>
+  </data>
+  <data name="SetupLanguagesMain" xml:space="preserve">
+    <value>Основна</value>
   </data>
   <data name="SetupLanguagesSearch" xml:space="preserve">
     <value>Знайти мову…</value>

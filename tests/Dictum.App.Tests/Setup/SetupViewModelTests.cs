@@ -131,6 +131,34 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.StartsWith("Hold these keys and speak.", wizard.Ready.HowTo);
     }
 
+    // English is ticked on an English system; the user ticks Ukrainian and makes it main, so the profile lists it first.
+    [Fact]
+    public async Task TheSavedLanguagesStartWithTheMainOne()
+    {
+        _fx.InstallAll();
+        var wizard = Open();
+        var ukrainian = wizard.Languages.Rows.Single(r => r.Code == "uk");
+        ukrainian.IsChecked = true;
+        ukrainian.MakeMainCommand.Execute(null);
+        await WalkTo(wizard, 5);
+
+        await wizard.NextCommand.ExecuteAsync(null);
+
+        Assert.Equal("uk, en", _fx.Store.Load().Profiles[0].Language);
+    }
+
+    // The config's "uk, en" keeps Ukrainian main on an English system: only a first setup follows the UI language.
+    [Fact]
+    public void ARerunKeepsTheConfigsMainLanguage()
+    {
+        _fx.Store.Save(ProfilesPageTests.Sample());
+
+        var wizard = Open();
+
+        Assert.Equal("uk, en", wizard.Languages.Setting);
+        Assert.Equal(["uk"], wizard.Languages.Rows.Where(r => r.IsMain).Select(r => r.Code));
+    }
+
     [Fact]
     public async Task NothingToDownloadSkipsStepSeven()
     {
