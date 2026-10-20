@@ -821,9 +821,6 @@
   <data name="SettingsProcessorsLlmCaption" xml:space="preserve">
     <value>LLM prompt · {0}</value>
   </data>
-  <data name="SettingsProcessorsUnused" xml:space="preserve">
-    <value>Not in any profile's chain</value>
-  </data>
   <data name="SettingsLlmOnErrorKeep" xml:space="preserve">
     <value>Keep the text as recognised</value>
   </data>

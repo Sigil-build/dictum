@@ -32,6 +32,23 @@ public partial class StringsTests
         }
     }
 
+    // A string nothing shows is dead text that translators still keep up.
+    [Fact]
+    public void EveryStringIsUsed()
+    {
+        var src = Path.Combine(Repository.Root, "src");
+        var source = string.Concat(Directory.EnumerateFiles(src, "*", SearchOption.AllDirectories)
+            .Where(f => Path.GetExtension(f) is ".cs" or ".axaml" && !IsBuildOutput(f))
+            .Select(File.ReadAllText));
+
+        var unused = Entries(CultureInfo.InvariantCulture).Keys.Where(key => !Regex.IsMatch(source, $@"\bStrings\.{key}\b")).Order();
+
+        Assert.Empty(unused);
+    }
+
+    private static bool IsBuildOutput(string file) =>
+        file.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Any(part => part is "bin" or "obj");
+
     private static Dictionary<string, string> Entries(CultureInfo culture) =>
         Strings.ResourceManager.GetResourceSet(culture, createIfNotExists: true, tryParents: false)!
             .Cast<DictionaryEntry>()

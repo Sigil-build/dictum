@@ -68,7 +68,7 @@ public sealed class ProcessorsViewTests(AvaloniaFixture fx) : IDisposable
         Assert.True(Banner(window).IsEffectivelyVisible);
         Assert.True(picker.IsEffectivelyVisible);
         Assert.Contains(Strings.SettingsProcessorsNoChain, VisibleTexts(window));
-        Assert.DoesNotContain(Strings.SettingsProcessorsUnused, VisibleTexts(window));
+        Assert.DoesNotContain(VisibleTexts(window), t => t?.StartsWith("Used by", StringComparison.Ordinal) == true);
         Assert.Equal(["Work", "Home"], picker.Items.OfType<Choice<string>>().Select(c => c.Label));
 
         var remove = window.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Content, Strings.SettingsProcessorsRemove));

@@ -821,9 +821,6 @@
   <data name="SettingsProcessorsLlmCaption" xml:space="preserve">
     <value>Запит до LLM · {0}</value>
   </data>
-  <data name="SettingsProcessorsUnused" xml:space="preserve">
-    <value>Не входить у жоден ланцюжок</value>
-  </data>
   <data name="SettingsLlmOnErrorKeep" xml:space="preserve">
     <value>Лишити текст як розпізнано</value>
   </data>
