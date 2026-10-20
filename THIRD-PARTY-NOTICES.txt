@@ -191,20 +191,22 @@ runs it
   Copyright (c) 2004-23 probonopd
   Copyright (c) 2004-24 Simon Peter
   Portions Copyright (c) 2007 Alexander Larsson
-  It is linked statically with:
+  It is linked statically with the versions below, which that release builds: libfuse and
+  squashfuse from their release tarballs, the others from the Alpine Linux 3.21 packages
+  it is built on. The notices are those of these versions.
     libfuse 3.15.0 (its library), https://github.com/libfuse/libfuse
       License: LGPL-2.1. Copyright (C) 2001-2007  Miklos Szeredi <miklos@szeredi.hu>
     squashfuse 0.5.2, https://github.com/vasi/squashfuse
       License: BSD-2-Clause. Copyright (c) 2012 Dave Vasilevsky <dave@vasilevsky.ca>,
       Phillip Lougher <phillip@squashfs.org.uk>
-    Zstandard, https://github.com/facebook/zstd
+    Zstandard 1.5.6, https://github.com/facebook/zstd
       License: BSD-3-Clause (zstd's text).
       Copyright (c) Meta Platforms, Inc. and affiliates. All rights reserved.
-    zlib, https://github.com/madler/zlib
-      License: zlib. (C) 1995-2026 Jean-loup Gailly and Mark Adler
-    mimalloc, https://github.com/microsoft/mimalloc
-      License: MIT. Copyright (c) 2018-2025 Microsoft Corporation, Daan Leijen
-    musl libc, https://musl.libc.org
+    zlib 1.3.1, https://github.com/madler/zlib
+      License: zlib. (C) 1995-2022 Jean-loup Gailly and Mark Adler
+    mimalloc 2.1.7, https://github.com/microsoft/mimalloc
+      License: MIT. Copyright (c) 2018-2021 Microsoft Corporation, Daan Leijen
+    musl libc 1.2.5, https://musl.libc.org
       License: MIT. Copyright © 2005-2020 Rich Felker, et al.
   The runtime is replaceable too: "dictum-<version>-linux-x64.AppImage --appimage-extract"
   unpacks the programs, and appimagetool packs them again with another runtime.
@@ -464,7 +466,7 @@ zlib License
 
 Copyright notice:
 
- (C) 1995-2026 Jean-loup Gailly and Mark Adler
+ (C) 1995-2022 Jean-loup Gailly and Mark Adler
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
