@@ -15,6 +15,7 @@ https://claude.ai/code/artifact/ba039eea-3640-41cc-898a-b1b024e07370
 - No `Assembly.Load` plugins. External providers run as a process or HTTP service.
 - `PublishAot` is set only in `Dictum.App` and `Dictum.Cli`. Libraries set `IsAotCompatible`.
 - `Directory.Build.targets` holds the only agreed AOT exceptions (x86-64-v3, Whisper.net IL3000, native pruning); read its comments before changing it.
+- `Directory.Build.props` turns off CS1591 and CS1573: the build generates XML docs so IDE0005 (unused usings) works, without asking for docs on every member. Besides the AOT ones in `Directory.Build.targets`, they are the only agreed analyzer exceptions.
 
 ## Commands
 - Build: `dotnet build`
