@@ -92,6 +92,8 @@ Skia (milestone 119), in libSkiaSharp.dll (Windows) and libSkiaSharp.so (Linux)
   Source:    https://github.com/mono/skia, Microsoft's fork of https://skia.org
   License:   BSD-3-Clause
   Copyright (c) 2011 Google Inc. All rights reserved.
+  Built in:  Wuffs 0.3.3 (https://github.com/google/wuffs, the release/c file at the commit Skia m119 pins),
+             Apache-2.0, Copyright 2017 The Wuffs Authors.
   The libraries built into libSkiaSharp and libHarfBuzzSharp, with their licenses, are in Part 3.
 
 HarfBuzz 8.3.1, in libHarfBuzzSharp.dll (Windows) and libHarfBuzzSharp.so (Linux)
