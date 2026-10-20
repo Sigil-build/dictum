@@ -18,8 +18,8 @@ public sealed record ProcessorItem(string Id, string Caption)
 
 /// <summary>
 /// Settings → Processors: the processors, and the editor of the selected one. An LLM prompt opens
-/// <see cref="LlmEditor"/>; replace rules open <see cref="RulesEditor"/>. A processor can be removed once no profile's
-/// chain uses it, together with its stored key.
+/// <see cref="LlmEditor"/>; replace rules open <see cref="RulesEditor"/>. A new processor joins every profile whose chain
+/// is empty. A processor can be removed once no profile's chain uses it, together with its stored key.
 /// </summary>
 public sealed partial class ProcessorsPage : SettingsPage, IDisposable
 {
@@ -106,7 +106,7 @@ public sealed partial class ProcessorsPage : SettingsPage, IDisposable
                 Prompt = prompt,
                 ApiKey = model?.ApiKey,
             };
-            return c;
+            return JoinEmptyChains(c, id);
         });
     }
 
@@ -118,8 +118,22 @@ public sealed partial class ProcessorsPage : SettingsPage, IDisposable
         _session.Edit(c =>
         {
             c.Processors[id] = new ReplaceProcessorConfig();
-            return c;
+            return JoinEmptyChains(c, id);
         });
+    }
+
+    /// <summary>
+    /// A processor in no chain never runs, so a new one joins every profile that has no steps yet, in the same edit.
+    /// A profile with steps keeps its chain as it is.
+    /// </summary>
+    private static DictumConfig JoinEmptyChains(DictumConfig config, string id)
+    {
+        foreach (var profile in config.Profiles.Where(p => p.Pipeline.Count == 0))
+        {
+            profile.Pipeline.Add(id);
+        }
+
+        return config;
     }
 
     [RelayCommand(CanExecute = nameof(CanRemove))]

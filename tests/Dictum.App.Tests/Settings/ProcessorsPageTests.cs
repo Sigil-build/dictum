@@ -26,9 +26,9 @@ public sealed class ProcessorsPageTests : IDisposable
     public void Dispose() => _dir.Dispose();
 
     /// <summary>The page on screen; <paramref name="shown"/> false is a window opened on another page.</summary>
-    private (ProcessorsPage Page, SettingsSession Session) Open(bool shown = true, string? cleanupKey = null)
+    private (ProcessorsPage Page, SettingsSession Session) Open(bool shown = true, string? cleanupKey = null, DictumConfig? config = null)
     {
-        var config = ProfilesPageTests.Sample();
+        config ??= ProfilesPageTests.Sample();
         config.Processors["cleanup"] = (LlmProcessorConfig)config.Processors["cleanup"] with { ApiKey = cleanupKey };
         Store.Save(config);
         var session = new SettingsSession(Store, _timers, NullLog.Instance);
@@ -271,6 +271,33 @@ public sealed class ProcessorsPageTests : IDisposable
         Assert.Equal("rules", page.Selected?.Id);
         Assert.True(page.IsRules);
         Assert.False(session.HasErrors);
+    }
+
+    /// <summary>Sample's Work (cleanup → terms) and Home (no steps), and Notes, also with no steps.</summary>
+    private static DictumConfig ThreeProfiles()
+    {
+        var config = ProfilesPageTests.Sample();
+        config.Profiles.Add(new ProfileConfig { Id = "notes", Name = "Notes", Hotkey = "Ctrl+Alt+N", Stt = "local", Language = "en" });
+        return config;
+    }
+
+    private static List<string> Chains(DictumConfig config) => [.. config.Profiles.Select(p => string.Join(" → ", p.Pipeline))];
+
+    // A processor in no chain never runs: a new one joins every profile that has no steps yet, in the same save.
+    [Theory]
+    [InlineData(true, "llm")]
+    [InlineData(false, "rules")]
+    public void ANewProcessorJoinsEveryProfileWithAnEmptyChain(bool llm, string id)
+    {
+        var (page, session) = Open(config: ThreeProfiles());
+
+        (llm ? page.AddLlmCommand : page.AddRulesCommand).Execute(null);
+        Assert.True(session.Flush());
+
+        var saved = Store.Load();
+        Assert.True(saved.Processors.ContainsKey(id));
+        Assert.Equal(["cleanup → terms", id, id], Chains(saved));
+        Assert.Equal("Used by: Home, Notes", page.UsedBy);
     }
 
     [Fact]
