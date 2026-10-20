@@ -54,7 +54,7 @@
             <Grid ColumnDefinitions="*,12,*" RowDefinitions="Auto,12,Auto,12,Auto,12,Auto">
               <StackPanel Spacing="4">
                 <TextBlock Text="{x:Static res:Strings.SettingsProvidersUrl}" Classes="hint" />
-                <TextBox Text="{Binding Llm.Url}" AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersUrl}" />
+                <TextBox x:Name="UrlBox" Text="{Binding Llm.Url}" AutomationProperties.Name="{x:Static res:Strings.SettingsProvidersUrl}" />
                 <TextBlock Text="{Binding Llm.UrlError}" Classes="error" IsVisible="{Binding Llm.UrlError, Converter={x:Static ObjectConverters.IsNotNull}}" />
               </StackPanel>
               <StackPanel Grid.Column="2" Spacing="4">
@@ -145,7 +145,7 @@
               <TextBlock Grid.Column="8" Text="{x:Static res:Strings.SettingsRulesWholeWord}" Classes="hint" />
               <TextBlock Grid.Column="10" Text="{x:Static res:Strings.CommonOn}" Classes="hint" />
             </Grid>
-            <ItemsControl ItemsSource="{Binding Rules.Rows}">
+            <ItemsControl x:Name="RuleList" ItemsSource="{Binding Rules.Rows}">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:RuleRow">
                   <StackPanel Spacing="2" Margin="0,0,0,4">

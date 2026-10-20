@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -121,6 +122,32 @@ public sealed class ProcessorsViewTests(AvaloniaFixture fx) : IDisposable
         Assert.Null(picker.SelectedItem);
         Assert.False(Banner(window).IsEffectivelyVisible);
         Assert.Contains("Used by: Home", VisibleTexts(window));
+        window.Close();
+    });
+
+    // The pick hides the warning and its picker, which had the focus; focus moves on to the editor's first field, where
+    // Tab from the picker would have gone, so a keyboard or screen-reader user is not dropped at the window.
+    [Theory]
+    [InlineData("filler")]
+    [InlineData("cleanup")]
+    public Task APickInTheWarningMovesFocusOnToTheEditor(string id) => fx.Ui(() =>
+    {
+        var config = ProfilesPageTests.Sample();
+        config.Profiles[0].Pipeline = ["terms"];
+        var (window, page, _) = Show(config);
+        page.Selected = page.Processors.Single(p => p.Id == id);
+        Dispatcher.UIThread.RunJobs();
+        var picker = AddToPicker(window);
+        picker.Focus();
+
+        picker.SelectedItem = picker.Items.OfType<Choice<string>>().Single(c => c.Value == "home");
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.False(picker.IsEffectivelyVisible);
+        var first = page.IsLlm
+            ? window.GetVisualDescendants().OfType<TextBox>().Single(t => AutomationProperties.GetName(t) == Strings.SettingsProvidersUrl)
+            : FindBoxes(window)[0];
+        Assert.Same(first, TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement());
         window.Close();
     });
 
