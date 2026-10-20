@@ -1,3 +1,4 @@
+using System.Text;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.App.ViewModels.Settings;
@@ -384,7 +385,7 @@ public sealed class ProcessorsPageTests : IDisposable
             return c;
         });
 
-        Assert.Equal(string.Format(Strings.Culture, Strings.SettingsLlmPromptShared, "summary"), page.Llm.Prompt.Shared);
+        Assert.Equal(string.Format(Strings.Culture, CompositeFormat.Parse(Strings.SettingsLlmPromptShared), "summary"), page.Llm.Prompt.Shared);
     }
 
     // "+ LLM prompt" copies the first processor's key reference.
