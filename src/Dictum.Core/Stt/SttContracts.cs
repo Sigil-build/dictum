@@ -16,8 +16,8 @@ public interface ISpeechToText : IHealthCheck
 /// <param name="Language">ISO 639-1 code, or null to auto-detect.</param>
 /// <param name="Prompt">Vocabulary hint passed to the model.</param>
 /// <param name="Candidates">
-/// With no <paramref name="Language"/>: the languages to pick from, in order of preference. Providers that cannot
-/// limit detection detect any language.
+/// With no <paramref name="Language"/>: the languages to pick from, the first with priority. Providers that take a
+/// single language get the first.
 /// </param>
 public sealed record SttRequest(string? Language, string? Prompt, IReadOnlyList<string>? Candidates = null)
 {

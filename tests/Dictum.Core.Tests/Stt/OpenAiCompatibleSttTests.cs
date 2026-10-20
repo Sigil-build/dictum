@@ -43,15 +43,37 @@ public class OpenAiCompatibleSttTests
         Assert.Equal("en", transcript.Language);
     }
 
-    [Fact]
-    public async Task ALanguageListSendsNoLanguage()
+    /// <summary>
+    /// The server takes one language, and the first of a list has priority: left to detect any, a server answered
+    /// Ukrainian speech in Russian.
+    /// </summary>
+    [Theory]
+    [InlineData("uk, en", "uk")]
+    [InlineData("en, uk", "en")]
+    [InlineData("uk, en, pl", "uk")]
+    [InlineData("uk", "uk")]
+    [InlineData("auto", null)]
+    [InlineData(null, null)]
+    public async Task TheServerGetsTheProfilesLanguageOrTheFirstOfItsList(string? setting, string? sent)
     {
-        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, """{ "text": "hi", "language": "en" }""");
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, """{ "text": "hi" }""");
 
-        var transcript = await Create(http).TranscribeAsync(Clips.Seconds(1), new SttRequest(null, null, ["uk", "en"]), _ct);
+        await Create(http).TranscribeAsync(Clips.Seconds(1), SttRequest.ForSetting(setting, null)!, _ct);
 
-        Assert.DoesNotContain("name=language", http.Requests[0].Body);
-        Assert.Equal("en", transcript.Language);
+        Assert.Equal(sent, FormField(http.Requests[0].Body, "language"));
+    }
+
+    [Fact]
+    public async Task AListIsTranscribedInItsFirstLanguageUnlessTheServerNamesAnother()
+    {
+        var http = new FakeHttpHandler()
+            .Respond(HttpStatusCode.OK, """{ "text": "hi" }""")
+            .Respond(HttpStatusCode.OK, """{ "text": "hi", "language": "en" }""");
+        var stt = Create(http);
+        var list = new SttRequest(null, null, ["uk", "en"]);
+
+        Assert.Equal("uk", (await stt.TranscribeAsync(Clips.Seconds(1), list, _ct)).Language);
+        Assert.Equal("en", (await stt.TranscribeAsync(Clips.Seconds(1), list, _ct)).Language);
     }
 
     [Fact]
@@ -168,6 +190,19 @@ public class OpenAiCompatibleSttTests
             Create(http, timeoutMs: timeoutMs).TranscribeAsync(Clips.Seconds(1), new SttRequest(null, null), _ct))).Message;
 
     private Task<HealthStatus> CheckAsync(FakeHttpHandler http) => Create(http).CheckAsync(_ct);
+
+    /// <summary>The value of a multipart form field, or null when the form has no such field.</summary>
+    private static string? FormField(string body, string name)
+    {
+        var header = body.IndexOf($"name={name}\r\n", StringComparison.Ordinal);
+        if (header < 0)
+        {
+            return null;
+        }
+
+        var start = body.IndexOf("\r\n\r\n", header, StringComparison.Ordinal) + 4;
+        return body[start..body.IndexOf("\r\n", start, StringComparison.Ordinal)];
+    }
 
     private static OpenAiCompatibleStt Create(FakeHttpHandler http, string? apiKey = null, int timeoutMs = OpenAiCompatibleSttConfig.DefaultTimeoutMs) =>
         new(

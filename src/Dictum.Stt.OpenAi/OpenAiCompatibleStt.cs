@@ -56,7 +56,7 @@ public sealed class OpenAiCompatibleStt(
         }
 
         log.Debug($"STT '{id}' answered in {watch.ElapsedMilliseconds} ms");
-        return new Transcript(parsed?.Text ?? string.Empty, parsed?.Language ?? request.Language, watch.Elapsed, config.Model, config.Model);
+        return new Transcript(parsed?.Text ?? string.Empty, parsed?.Language ?? Language(request), watch.Elapsed, config.Model, config.Model);
     }
 
     public async Task<HealthStatus> CheckAsync(CancellationToken ct)
@@ -92,7 +92,7 @@ public sealed class OpenAiCompatibleStt(
         form.Add(audio, "file", "audio.wav");
         form.Add(new StringContent(config.Model), "model");
         form.Add(new StringContent("json"), "response_format");
-        if (request.Language is { Length: > 0 } language && language != LanguageList.Auto)
+        if (Language(request) is { Length: > 0 } language && language != LanguageList.Auto)
         {
             form.Add(new StringContent(language), "language");
         }
@@ -104,6 +104,13 @@ public sealed class OpenAiCompatibleStt(
 
         return form;
     }
+
+    /// <summary>
+    /// The request's language, or the first of its candidates: the endpoint takes one language, and left to detect
+    /// any, a server answered Ukrainian speech in Russian.
+    /// </summary>
+    private static string? Language(SttRequest request) =>
+        request.Language ?? (request.Candidates is [var first, ..] ? first : null);
 }
 
 internal sealed record TranscriptionResponse(string? Text, string? Language);

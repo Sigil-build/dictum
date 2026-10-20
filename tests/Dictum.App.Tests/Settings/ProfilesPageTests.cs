@@ -320,7 +320,7 @@ public sealed class ProfilesPageTests : IDisposable
         page.Provider = page.Providers[1];
 
         Assert.Equal("remote", Saved(session, "work").Stt);
-        Assert.Equal("'remote' takes a single language, so with a list the server detects any language", page.Languages.Note);
+        Assert.Equal("'remote' takes a single language, so with a list the server gets the first language, 'uk'", page.Languages.Note);
     }
 
     [Fact]

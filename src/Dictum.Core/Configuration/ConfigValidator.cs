@@ -130,7 +130,7 @@ public static class ConfigValidator
 
         if (languages.Count > 1 && stt is OpenAiCompatibleSttConfig)
         {
-            Warning(issues, ConfigPaths.Field(path, nameof(ProfileConfig.Language)), $"'{profile.Stt}' takes a single language, so with a list the server detects any language");
+            Warning(issues, ConfigPaths.Field(path, nameof(ProfileConfig.Language)), $"'{profile.Stt}' takes a single language, so with a list the server gets the first language, '{languages[0]}'");
         }
 
         if (LanguageList.SimilarWarning(languages) is { } similar)

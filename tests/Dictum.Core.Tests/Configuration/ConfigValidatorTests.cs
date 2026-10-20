@@ -166,17 +166,19 @@ public class ConfigValidatorTests
     public void LanguageCodes(string? language, bool valid) =>
         Assert.Equal(valid, ConfigValidator.IsValidLanguage(language));
 
-    [Fact]
-    public void ALanguageListOnAnOpenAiCompatibleProviderIsAWarning()
+    [Theory]
+    [InlineData("uk, en", "'remote' takes a single language, so with a list the server gets the first language, 'uk'")]
+    [InlineData("en, uk", "'remote' takes a single language, so with a list the server gets the first language, 'en'")]
+    public void ALanguageListOnAnOpenAiCompatibleProviderIsAWarningNamingTheLanguageSent(string language, string message)
     {
         var config = DefaultConfig.Create();
         config.Stt["remote"] = new OpenAiCompatibleSttConfig { BaseUrl = "https://api.openai.com/v1", Model = "whisper-1" };
-        config.Profiles[0] = config.Profiles[0] with { Stt = "remote", Language = "uk, en" };
+        config.Profiles[0] = config.Profiles[0] with { Stt = "remote", Language = language };
 
         var issue = Assert.Single(ConfigValidator.Validate(config));
 
-        Assert.Equal(ConfigIssueSeverity.Warning, issue.Severity);
-        Assert.Equal("profiles[0].language", issue.Path);
+        Assert.Equal((ConfigIssueSeverity.Warning, "profiles[0].language"), (issue.Severity, issue.Path));
+        Assert.Equal(message, issue.Message);
     }
 
     [Fact]
