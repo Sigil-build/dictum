@@ -18,7 +18,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PublishDocumentationFiles>false</PublishDocumentationFiles>
     <NoWarn>$(NoWarn);CS1573;CS1591</NoWarn>
-    <VersionPrefix>0.3.0</VersionPrefix>
+    <VersionPrefix>0.4.0</VersionPrefix>
     <Product>Dictum</Product>
   </PropertyGroup>
 </Project>

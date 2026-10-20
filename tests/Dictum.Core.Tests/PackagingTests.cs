@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Xml.Linq;
 using Dictum.Testing;
 
 namespace Dictum.Core.Tests;
@@ -6,6 +7,8 @@ namespace Dictum.Core.Tests;
 public class PackagingTests
 {
     private static string Icons => Path.Combine(Repository.Root, "packaging", "icons");
+
+    private static string[] PkgbuildLines => File.ReadAllLines(Path.Combine(Repository.Root, "packaging", "linux", "aur", "PKGBUILD"));
 
     // Every size Windows picks from (16 for small icons up to 256 for large tiles), so none is scaled.
     [Fact]
@@ -35,4 +38,15 @@ public class PackagingTests
     [Fact]
     public void TheScalableIconIsAnSvg() =>
         Assert.StartsWith("<svg", File.ReadAllText(Path.Combine(Icons, "dictum.svg")).TrimStart());
+
+    // The release workflow rewrites pkgver from the tag; the checked-in PKGBUILD, which makepkg uses on a local
+    // tarball, names the version the packages are built with.
+    [Fact]
+    public void ThePkgbuildNamesTheVersionThePackagesAreBuiltWith()
+    {
+        var props = XDocument.Load(Path.Combine(Repository.Root, "Directory.Build.props"));
+        var version = props.Descendants("VersionPrefix").Single().Value;
+
+        Assert.Contains($"pkgver={version}", PkgbuildLines);
+    }
 }

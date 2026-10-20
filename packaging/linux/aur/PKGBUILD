@@ -1,7 +1,7 @@
 # dictum-bin: Dictum's release tarball for Arch and CachyOS.
 # While the repository is private, put dictum-<version>-linux-x64.tar.gz next to this file and run makepkg -si.
 pkgname=dictum-bin
-pkgver=0.3.0
+pkgver=0.4.0
 pkgrel=1
 pkgdesc='Voice to text: dictate into any app with a hotkey, with Whisper on this machine'
 arch=('x86_64')
