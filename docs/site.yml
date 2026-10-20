@@ -1,0 +1,34 @@
+# Read by the build of docs.sigil.build, which publishes this folder without this file.
+# Tests in tests/Dictum.Core.Tests/Docs check it against the pages and Directory.Build.props.
+title: Dictum
+# major.minor of VersionPrefix in Directory.Build.props, quoted so YAML keeps it a string.
+version: "0.4"
+license: MIT License
+license_url: https://github.com/Sigil-build/dictum/blob/HEAD/LICENSE
+repo_url: https://github.com/Sigil-build/dictum
+summary:
+  en: Voice to text for Windows and Linux, with speech recognition on your machine.
+  uk: Голосове введення тексту для Windows і Linux, з розпізнаванням мовлення на вашому комп'ютері.
+# Bare paths: each page's title is its H1, in English or in Ukrainian.
+nav:
+  - index.md
+  - getting-started.md
+  - Guides:
+      - guides/languages.md
+      - guides/profiles.md
+      - guides/llm-cleanup.md
+      - guides/words-and-rules.md
+      - guides/start-at-login.md
+      - guides/update-and-remove.md
+  - Reference:
+      - reference/settings.md
+      - reference/setup-wizard.md
+      - reference/tray-and-overlay.md
+      - reference/cli.md
+      - reference/files.md
+  - troubleshooting.md
+  - privacy.md
+nav_translations:
+  uk:
+    Guides: Посібники
+    Reference: Довідник

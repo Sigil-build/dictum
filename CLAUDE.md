@@ -23,6 +23,7 @@ https://claude.ai/code/artifact/ba039eea-3640-41cc-898a-b1b024e07370
 - Publish CLI: `dotnet publish src/Dictum.Cli -c Release -r linux-x64` (also `win-x64`, `osx-arm64`)
 - Publish GUI: `dotnet publish src/Dictum.App -c Release -r <rid>`
 - Native AOT cannot cross-compile between OSes. Publish on the target OS or in a container.
+- Check the user docs (twins, heading ids, links, nav, version): `dotnet test --project tests/Dictum.Core.Tests --filter-class "*.UserDocsTests"`
 
 ## Layout
 - `src/Dictum.Core`: contracts, pipeline, profiles, history. No project references, no interop or OS APIs; plain .NET `OperatingSystem` branches are fine.
@@ -38,6 +39,7 @@ https://claude.ai/code/artifact/ba039eea-3640-41cc-898a-b1b024e07370
 - `tests/Dictum.App.Tests`: the desktop app on fakes and Avalonia.Headless; the real-daemon test is gated by `DICTUM_INTEGRATION=1`.
 - `tests/Dictum.Integration.Tests`: real STT/LLM tests gated by `DICTUM_INTEGRATION=1`, the catalog check gated by `DICTUM_CHECK_CATALOG=1`, and tests against the current OS (clipboard, Credential Manager, registry, tray, D-Bus).
 - `tests/Dictum.Testing`: the fakes and helpers the test projects share; a library, not a test project.
+- `docs/`: the user documentation, each page in English and in Ukrainian (`*.uk.md`), and `site.yml` with the nav and version for docs.sigil.build; `UserDocsTests` in Core.Tests checks its structure.
 
 ## Conventions
-English for code, comments, docs and commits. Keep the repo lean: no docs/ folder, ADRs or copies of the plan.
+English for code, comments, docs and commits. Keep the repo lean: `docs/` holds only the user documentation published on docs.sigil.build (en and uk); no ADRs, plans or copies of the plan.
