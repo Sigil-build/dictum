@@ -22,12 +22,21 @@ fi
 stage="$out/stage/$name"
 exe=""
 [ "$rid" = win-x64 ] && exe=".exe"
-for file in "dictum$exe" "dictum-gui$exe" runtimes uk; do
+for file in "dictum$exe" "dictum-gui$exe" runtimes uk LICENSE THIRD-PARTY-NOTICES.txt; do
   [ -e "$stage/$file" ] || fail "the staged files lack $file"
 done
 symbols=$(find "$stage" \( -name '*.pdb' -o -name '*.dbg' -o -name '*.dSYM' \) | head -1)
 [ -z "$symbols" ] || fail "debug symbols are staged: $symbols"
 pass "staged files ($stage)"
+
+# Every native library the packages ship is named in the notices, as a whole file name: a new one cannot ship
+# without its license. Dictum's own resources are not third-party. A Windows checkout may have CRLF line ends.
+notices=$(tr -d '\r' < "$stage/THIRD-PARTY-NOTICES.txt")
+while IFS= read -r library; do
+  file=$(basename "$library")
+  grep -qE "(^|[ /(])${file//./[.]}([ ,)]|$)" <<< "$notices" || fail "THIRD-PARTY-NOTICES.txt does not name $file"
+done < <(find "$stage" -type f \( -name '*.dll' -o -name '*.so' \) ! -name '*.resources.dll')
+pass "THIRD-PARTY-NOTICES.txt names every staged native library"
 
 if [ "$rid" = win-x64 ]; then
   archive="$out/$name.zip"
@@ -38,7 +47,9 @@ else
   [ -f "$archive" ] || fail "no $archive"
   entries=$(tar -tzf "$archive")
 fi
-echo "$entries" | tr '\\' '/' | grep -q "^$name/dictum-gui$exe" || fail "the archive has no $name/dictum-gui$exe"
+for file in "dictum-gui$exe" LICENSE THIRD-PARTY-NOTICES.txt; do
+  echo "$entries" | tr '\\' '/' | tr -d '\r' | grep -qx "$name/$file" || fail "the archive has no $name/$file"
+done
 outside=$(echo "$entries" | tr '\\' '/' | grep -v "^$name/" | head -1 || true)
 [ -z "$outside" ] || fail "the archive has an entry outside $name/: $outside"
 echo "$entries" | grep -qiE '\.(pdb|dbg)$' && fail "the archive has debug symbols"
@@ -71,7 +82,8 @@ if [ "$rid" = linux-x64 ]; then
   cli=$(APPIMAGE_EXTRACT_AND_RUN=1 "$appimage" dictum --version)
   [ "${cli%%+*}" = "$version" ] || fail "the AppImage's 'dictum --version' printed $cli"
   inside=$(cd "$(mktemp -d)" && "$appimage" --appimage-extract > /dev/null && find squashfs-root -maxdepth 4 | sort)
-  for path in squashfs-root/AppRun squashfs-root/dictum.desktop squashfs-root/dictum.png squashfs-root/usr/lib/dictum/dictum squashfs-root/usr/lib/dictum/dictum-gui; do
+  for path in squashfs-root/AppRun squashfs-root/dictum.desktop squashfs-root/dictum.png squashfs-root/usr/lib/dictum/dictum \
+    squashfs-root/usr/lib/dictum/dictum-gui squashfs-root/usr/lib/dictum/LICENSE squashfs-root/usr/lib/dictum/THIRD-PARTY-NOTICES.txt; do
     grep -qx "$path" <<< "$inside" || fail "the AppImage has no $path"
   done
   if grep -q "install.sh\|uninstall.sh" <<< "$inside"; then fail "the AppImage carries the tarball's scripts"; fi
@@ -91,6 +103,9 @@ if [ "$rid" = linux-x64 ]; then
   as_user bash "$user/$name/install.sh" > "$out/install.log" 2>&1 || { cat "$out/install.log"; fail "the tarball's install.sh"; }
   installed=$(as_user "$user/home/.local/bin/dictum" --version)
   [ "${installed%%+*}" = "$version" ] || fail "the installed 'dictum --version' printed $installed"
+  for file in LICENSE THIRD-PARTY-NOTICES.txt; do
+    [ -f "$user/home/.local/lib/dictum/$file" ] || fail "install.sh did not install $file with the program"
+  done
   grep -qF "\"$user/home/.local/lib/dictum/dictum-gui\"" "$user/home/.local/share/applications/dictum.desktop" \
     || fail "the menu entry does not start the installed dictum-gui"
   if command -v xvfb-run > /dev/null; then

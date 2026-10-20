@@ -14,7 +14,8 @@ tar -C "$(dirname "$tarball")" -cf - "$(basename "$tarball")" -C "$here" PKGBUIL
   sed -i 's/^pkgver=.*/pkgver=$version/' /build/PKGBUILD
   su builder -c 'cd /build && makepkg --noconfirm --nodeps' > /build/makepkg.log 2>&1 || { tail -30 /build/makepkg.log; exit 1; }
   pacman -U --noconfirm --nodeps /build/dictum-bin-*.pkg.tar.zst > /dev/null
-  for path in /opt/dictum/dictum /opt/dictum/dictum-gui /usr/share/applications/dictum.desktop /usr/share/icons/hicolor/256x256/apps/dictum.png /usr/share/icons/hicolor/scalable/apps/dictum.svg; do
+  for path in /opt/dictum/dictum /opt/dictum/dictum-gui /usr/share/applications/dictum.desktop /usr/share/icons/hicolor/256x256/apps/dictum.png /usr/share/icons/hicolor/scalable/apps/dictum.svg \
+    /usr/share/licenses/dictum-bin/LICENSE /usr/share/licenses/dictum-bin/THIRD-PARTY-NOTICES.txt; do
     [ -e \"\$path\" ] || { echo \"FAIL: no \$path\"; exit 1; }
   done
   [ \"\$(readlink /usr/bin/dictum)\" = /opt/dictum/dictum ] || { echo 'FAIL: /usr/bin/dictum'; exit 1; }

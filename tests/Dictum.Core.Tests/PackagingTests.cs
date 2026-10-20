@@ -49,4 +49,15 @@ public class PackagingTests
 
         Assert.Contains($"pkgver={version}", PkgbuildLines);
     }
+
+    // An MIT license names its copyright holder, so Arch wants the file itself in /usr/share/licenses/<pkgname>/.
+    // test-pkgbuild.sh installs the package for real, but only where Docker runs.
+    [Fact]
+    public void ThePkgbuildIsMitAndInstallsTheLicenseAndTheNotices()
+    {
+        Assert.Contains("license=('MIT')", PkgbuildLines);
+        Assert.Contains(
+            "  install -Dm644 -t \"$pkgdir/usr/share/licenses/$pkgname\" \"$src/LICENSE\" \"$src/THIRD-PARTY-NOTICES.txt\"",
+            PkgbuildLines);
+    }
 }

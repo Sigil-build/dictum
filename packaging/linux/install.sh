@@ -23,6 +23,7 @@ mkdir -p "$(dirname "$lib")" "$bin" "$data/applications" "$data/icons/hicolor/25
 staging="$lib.new.$$"
 retired="$lib.old.$$"
 rm -rf "${staging:?}"
+# The whole package folder but install.sh: the programs, LICENSE, THIRD-PARTY-NOTICES.txt, uninstall.sh and share/.
 cp -a "$here/." "$staging"
 rm -f "${staging:?}/install.sh"
 if [ -e "$lib" ]; then

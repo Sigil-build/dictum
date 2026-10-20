@@ -19,6 +19,8 @@ mkdir -p "$stage"
 dotnet publish "$root/src/Dictum.Cli" -c Release -r "$rid" -o "$stage"
 dotnet publish "$root/src/Dictum.App" -c Release -r "$rid" -o "$stage"
 find "$stage" \( -name '*.pdb' -o -name '*.dbg' -o -name '*.dSYM' \) -prune -exec rm -rf {} +
+# The license and the third-party notices sit next to the programs in every package.
+cp "$root/LICENSE" "$root/THIRD-PARTY-NOTICES.txt" "$stage/"
 
 case "$rid" in
   win-*)

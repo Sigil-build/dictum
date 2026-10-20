@@ -39,6 +39,7 @@ work=$(mktemp -d)
 trap 'rm -rf "${work:?}"' EXIT
 appdir="$work/Dictum.AppDir"
 mkdir -p "$appdir/usr/lib/dictum"
+# The programs' folder as staged, LICENSE and THIRD-PARTY-NOTICES.txt included; the tarball's scripts and share/ stay out.
 cp -a "$stage/." "$appdir/usr/lib/dictum/"
 rm -rf "${appdir:?}/usr/lib/dictum/install.sh" "${appdir:?}/usr/lib/dictum/uninstall.sh" "${appdir:?}/usr/lib/dictum/share"
 install -m 755 "$here/AppRun" "$appdir/AppRun"

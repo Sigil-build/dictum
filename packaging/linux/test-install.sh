@@ -29,7 +29,7 @@ package() {
   chmod +x "$dir/dictum" "$dir/dictum-gui"
   echo native > "$dir/libSkiaSharp.so"
   echo whisper > "$dir/runtimes/linux-x64/libwhisper.so"
-  cp "$root/packaging/linux/install.sh" "$root/packaging/linux/uninstall.sh" "$dir/"
+  cp "$root/packaging/linux/install.sh" "$root/packaging/linux/uninstall.sh" "$root/LICENSE" "$root/THIRD-PARTY-NOTICES.txt" "$dir/"
   cp "$root/packaging/linux/dictum.desktop" "$root/packaging/icons/dictum.svg" "$root/packaging/icons/dictum-256.png" "$dir/share/"
   chmod +x "$dir/install.sh" "$dir/uninstall.sh"
 }
@@ -50,6 +50,7 @@ grep -qx "Icon=dictum" "$HOME/.local/share/applications/dictum.desktop" || fail 
 [ -f "$HOME/.local/share/icons/hicolor/256x256/apps/dictum.png" ] || fail "the 256 px icon"
 [ -f "$HOME/.local/share/icons/hicolor/scalable/apps/dictum.svg" ] || fail "the scalable icon"
 [ -x "$lib/uninstall.sh" ] || fail "uninstall.sh stays with the installed files"
+[ -f "$lib/LICENSE" ] && [ -f "$lib/THIRD-PARTY-NOTICES.txt" ] || fail "the license and the notices are installed with the program"
 [ ! -e "$work/quit.log" ] || fail "a first install asked something to quit"
 pass "install"
 

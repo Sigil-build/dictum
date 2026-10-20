@@ -74,7 +74,7 @@ try {
     $process = Start-Process msiexec.exe -ArgumentList "/a `"$Msi`" /qn TARGETDIR=`"$target`"" -Wait -PassThru
     Check ($process.ExitCode -eq 0) 'the administrative extract succeeds'
     $folder = Join-Path $target 'LocalApp\Programs\Dictum'
-    foreach ($file in 'dictum.exe', 'dictum-gui.exe', 'runtimes\vulkan\win-x64\whisper.dll', 'runtimes\win-x64\whisper.dll', 'uk\dictum-gui.resources.dll') {
+    foreach ($file in 'dictum.exe', 'dictum-gui.exe', 'runtimes\vulkan\win-x64\whisper.dll', 'runtimes\win-x64\whisper.dll', 'uk\dictum-gui.resources.dll', 'LICENSE', 'THIRD-PARTY-NOTICES.txt') {
         Check (Test-Path (Join-Path $folder $file)) "the MSI installs $file under %LOCALAPPDATA%\Programs\Dictum"
     }
     Check (-not (Get-ChildItem -Recurse $folder -Include '*.pdb', '*.dbg')) 'no debug symbols in the MSI'
