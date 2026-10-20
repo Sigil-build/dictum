@@ -11,7 +11,7 @@ for needle in \
   'dictum-<version>-linux-x64.AppImage' 'dictum-<version>-linux-x64.tar.gz' 'install.sh' '~/.local/lib/dictum/uninstall.sh' \
   'makepkg -si' '.AppImage dictum ' 'glibc 2.38' 'xdg-desktop-portal' 'dictum doctor' 'dictum init' \
   '%APPDATA%\Dictum' '%LOCALAPPDATA%\Dictum' '~/.config/dictum' '~/.local/share/dictum' 'packaging/package.sh' \
-  '& "$env:LOCALAPPDATA\Programs\Dictum\dictum.exe" doctor' 'not on PATH'; do
+  '& "$env:LOCALAPPDATA\Programs\Dictum\dictum.exe" doctor' 'not on PATH' '## License' 'MIT License' 'THIRD-PARTY-NOTICES.txt'; do
   grep -qF -- "$needle" "$readme" || fail "'$needle'"
 done
-echo "PASS: the README names the packages, the install folders, the CLI's path on Windows, the AppImage's CLI word and where data lives"
+echo "PASS: the README names the packages, the install folders, the CLI's path on Windows, the AppImage's CLI word, where data lives and the license"

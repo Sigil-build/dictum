@@ -125,3 +125,7 @@ packaging/package.sh linux-x64 artifacts/packages        # the packages for this
 ```
 
 `packaging/tests/test-package.sh` builds and checks the packages for the current OS.
+
+## License
+
+Dictum is released under the MIT License: see [LICENSE](LICENSE). The third-party components it ships (the .NET runtime, Avalonia, whisper.cpp, PortAudio, libuiohook and others) keep their own licenses; [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt) lists them with the license texts. Every package carries both files. Speech models are downloaded separately, each under its own license, which the setup shows.
