@@ -24,6 +24,13 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
 
     private const string EnglishCode = "en";
 
+    /// <summary>
+    /// How sure Whisper must be of a candidate other than the first for it to win. Ukrainian speech often puts most of
+    /// its probability on Russian, which is not in the list, leaving 'en' on top of "uk, en" with p=0.06; decoding in
+    /// English then translates the speech.
+    /// </summary>
+    public const float MinOtherLanguageProbability = 0.5f;
+
     /// <summary>Kept around each speech segment VAD finds, so word edges are not clipped.</summary>
     private static readonly TimeSpan VadSpeechPadding = TimeSpan.FromMilliseconds(200);
 
@@ -183,15 +190,28 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
                 : $"'{unknown}' in the profile's language list is not a language Whisper knows.";
     }
 
-    /// <summary>The most likely of <paramref name="candidates"/>; the first one when the model names none of them.</summary>
+    /// <summary>One of <paramref name="candidates"/>, chosen by <see cref="PickLanguage"/> from Whisper's detection.</summary>
     private async Task<string> PickLanguageAsync(WhisperProcessor processor, float[] samples, IReadOnlyList<string> candidates, CancellationToken ct)
     {
         var watch = Stopwatch.StartNew();
         var (detected, probability) = await Task.Run(() => processor.DetectLanguageWithProbability(samples, [.. candidates]), ct).ConfigureAwait(false);
-        var picked = detected is not null && candidates.Contains(detected) ? detected : candidates[0];
-        log.Debug($"Whisper '{id}' picked '{picked}' from {string.Join(", ", candidates)} (p={probability:F2}) in {watch.ElapsedMilliseconds} ms");
+        var picked = PickLanguage(candidates, detected, probability);
+        var overridden = detected is not null && detected != picked && candidates.Contains(detected)
+            ? $"; the first language has priority over the detected '{detected}', which needs p >= {MinOtherLanguageProbability:F2}"
+            : string.Empty;
+        log.Debug($"Whisper '{id}' picked '{picked}' from {string.Join(", ", candidates)} (p={probability:F2}) in {watch.ElapsedMilliseconds} ms{overridden}");
         return picked;
     }
+
+    /// <summary>
+    /// The language to decode in: the first of <paramref name="candidates"/> has priority, and another one wins only
+    /// when Whisper <paramref name="detected"/> it with at least <see cref="MinOtherLanguageProbability"/>. The first
+    /// also wins when the model names none of the candidates.
+    /// </summary>
+    public static string PickLanguage(IReadOnlyList<string> candidates, string? detected, float probability) =>
+        detected is not null && candidates.Contains(detected) && (detected == candidates[0] || probability >= MinOtherLanguageProbability)
+            ? detected
+            : candidates[0];
 
     /// <summary>Whether the runtime that actually loaded is what the provider asked for.</summary>
     private static bool Satisfies(WhisperRuntime wanted, string? loaded) => wanted switch
