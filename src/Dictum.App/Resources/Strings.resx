@@ -872,6 +872,12 @@
   <data name="SettingsProcessorsRemove" xml:space="preserve">
     <value>Remove processor</value>
   </data>
+  <data name="SettingsProcessorsNoChain" xml:space="preserve">
+    <value>This processor runs in no profile, so dictation never uses it.</value>
+  </data>
+  <data name="SettingsProcessorsAddTo" xml:space="preserve">
+    <value>Add to profile…</value>
+  </data>
   <data name="SettingsLlmTemperature" xml:space="preserve">
     <value>Temperature</value>
   </data>

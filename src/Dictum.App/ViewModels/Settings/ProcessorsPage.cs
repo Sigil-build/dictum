@@ -19,7 +19,8 @@ public sealed record ProcessorItem(string Id, string Caption)
 /// <summary>
 /// Settings → Processors: the processors, and the editor of the selected one. An LLM prompt opens
 /// <see cref="LlmEditor"/>; replace rules open <see cref="RulesEditor"/>. A new processor joins every profile whose chain
-/// is empty. A processor can be removed once no profile's chain uses it, together with its stored key.
+/// is empty; one that no chain runs gets a warning and an "Add to profile…" pick. A processor can be removed once no
+/// profile's chain uses it, together with its stored key.
 /// </summary>
 public sealed partial class ProcessorsPage : SettingsPage, IDisposable
 {
@@ -65,8 +66,24 @@ public sealed partial class ProcessorsPage : SettingsPage, IDisposable
     [ObservableProperty]
     public partial bool IsRules { get; private set; }
 
+    /// <summary>"Used by: Work, Home"; null when no profile's chain runs the processor, which <see cref="NoChainWarning"/> says instead.</summary>
     [ObservableProperty]
-    public partial string UsedBy { get; private set; } = "";
+    public partial string? UsedBy { get; private set; }
+
+    /// <summary>No profile's chain runs the processor, so dictation never uses it; null when one does.</summary>
+    [ObservableProperty]
+    public partial string? NoChainWarning { get; private set; }
+
+    /// <summary>The profiles the warning offers; picking one appends the processor to its chain.</summary>
+    [ObservableProperty]
+    public partial IReadOnlyList<Choice<string>> AddToChoices { get; private set; } = [];
+
+    [ObservableProperty]
+    public partial bool HasAddTo { get; private set; }
+
+    /// <summary>The "Add to profile…" pick; the view clears the dropdown after it.</summary>
+    [ObservableProperty]
+    public partial Choice<string>? AddTo { get; set; }
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RemoveCommand))]
@@ -88,6 +105,25 @@ public sealed partial class ProcessorsPage : SettingsPage, IDisposable
         Llm.Flush();
         _id = value.Id;
         Load();
+    }
+
+    /// <summary>Appends the processor in no chain to the picked profile's chain.</summary>
+    partial void OnAddToChanged(Choice<string>? value)
+    {
+        if (_loading || value is null || _id is not { } id)
+        {
+            return;
+        }
+
+        _session.Edit(c =>
+        {
+            if (c.FindProfile(value.Value) is { } profile && !profile.Pipeline.Contains(id))
+            {
+                profile.Pipeline.Add(id);
+            }
+
+            return c;
+        });
     }
 
     [RelayCommand]
@@ -194,10 +230,17 @@ public sealed partial class ProcessorsPage : SettingsPage, IDisposable
             }
 
             var users = config.Profiles.Where(p => p.Pipeline.Contains(id)).Select(p => p.Name ?? p.Id).ToList();
-            UsedBy = users.Count == 0
-                ? Strings.SettingsProcessorsUnused
-                : UiText.Format(Strings.SettingsProvidersUsedBy, string.Join(", ", users));
-            CanRemove = CanEdit && users.Count == 0;
+            var unused = users.Count == 0;
+            UsedBy = unused ? null : UiText.Format(Strings.SettingsProvidersUsedBy, string.Join(", ", users));
+            NoChainWarning = unused ? Strings.SettingsProcessorsNoChain : null;
+            List<Choice<string>> choices = unused ? [.. config.Profiles.Select(p => new Choice<string>(p.Id, p.Name ?? p.Id))] : [];
+            if (!choices.SequenceEqual(AddToChoices))
+            {
+                AddToChoices = choices;
+            }
+
+            HasAddTo = AddToChoices.Count > 0;
+            CanRemove = CanEdit && unused;
         }
         finally
         {

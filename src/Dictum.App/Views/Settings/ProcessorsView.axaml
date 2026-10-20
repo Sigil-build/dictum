@@ -35,10 +35,19 @@
         <Grid ColumnDefinitions="*,Auto">
           <StackPanel>
             <TextBlock Text="{Binding Selected.Id}" FontWeight="SemiBold" Foreground="{DynamicResource color.text.primary}" />
-            <TextBlock Text="{Binding UsedBy}" Classes="hint" />
+            <TextBlock Text="{Binding UsedBy}" Classes="hint" IsVisible="{Binding UsedBy, Converter={x:Static ObjectConverters.IsNotNull}}" />
           </StackPanel>
           <Button Grid.Column="1" Classes="destructive" Content="{x:Static res:Strings.SettingsProcessorsRemove}" Command="{Binding RemoveCommand}" />
         </Grid>
+        <!-- The picker stays outside the banner, whose text colour would reach the dropdown's items. -->
+        <StackPanel Spacing="6" IsVisible="{Binding NoChainWarning, Converter={x:Static ObjectConverters.IsNotNull}}">
+          <Border Classes="banner">
+            <TextBlock Text="{Binding NoChainWarning}" />
+          </Border>
+          <ComboBox x:Name="AddToPicker" Classes="picker" Width="260" ItemsSource="{Binding AddToChoices}" SelectedItem="{Binding AddTo}"
+                    IsVisible="{Binding HasAddTo}" PlaceholderText="{x:Static res:Strings.SettingsProcessorsAddTo}"
+                    AutomationProperties.Name="{x:Static res:Strings.SettingsProcessorsAddTo}" />
+        </StackPanel>
 
         <StackPanel Spacing="10" IsVisible="{Binding IsLlm}">
           <Border Classes="editorRow">

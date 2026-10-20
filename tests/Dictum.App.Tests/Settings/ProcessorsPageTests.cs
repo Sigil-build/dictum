@@ -300,6 +300,51 @@ public sealed class ProcessorsPageTests : IDisposable
         Assert.Equal("Used by: Home, Notes", page.UsedBy);
     }
 
+    private const string NoChain = "This processor runs in no profile, so dictation never uses it.";
+
+    // A small caption was all that said a processor never runs; now a warning says it, with the profiles to add it to.
+    [Fact]
+    public void AProcessorInNoChainIsWarnedAboutUntilAProfileRunsIt()
+    {
+        var (page, session) = Open();
+        Assert.Null(page.NoChainWarning);
+        Assert.Equal("Used by: Work", page.UsedBy);
+
+        page.Selected = page.Processors.Single(p => p.Id == "filler");
+        Assert.Equal(NoChain, page.NoChainWarning);
+        Assert.Null(page.UsedBy);
+        Assert.Equal(["Work", "Home"], page.AddToChoices.Select(c => c.Label));
+        Assert.True(page.HasAddTo);
+
+        // The Profiles page adds it to Home's chain.
+        session.Edit(c =>
+        {
+            c.Profiles[1].Pipeline.Add("filler");
+            return c;
+        });
+        Assert.Null(page.NoChainWarning);
+        Assert.Equal("Used by: Home", page.UsedBy);
+        Assert.False(page.HasAddTo);
+    }
+
+    [Fact]
+    public void AddToProfileAppendsTheProcessorToThatChainAndSaves()
+    {
+        var (page, session) = Open();
+        page.Selected = page.Processors.Single(p => p.Id == "filler");
+
+        page.AddTo = page.AddToChoices.Single(c => c.Value == "work");
+        page.AddTo = null; // The view clears the dropdown after the pick.
+        _timers.Fire();
+
+        Assert.Equal(["cleanup → terms → filler", ""], Chains(Store.Load()));
+        Assert.Equal("filler", page.Selected?.Id);
+        Assert.Null(page.NoChainWarning);
+        Assert.Equal("Used by: Work", page.UsedBy);
+        Assert.False(page.CanRemove);
+        Assert.False(session.HasErrors);
+    }
+
     [Fact]
     public void OnlyAnUnusedProcessorCanBeRemoved()
     {

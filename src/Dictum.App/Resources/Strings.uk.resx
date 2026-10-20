@@ -872,6 +872,12 @@
   <data name="SettingsProcessorsRemove" xml:space="preserve">
     <value>Прибрати обробник</value>
   </data>
+  <data name="SettingsProcessorsNoChain" xml:space="preserve">
+    <value>Цей обробник не входить у жоден профіль, тож диктування ніколи його не використовує.</value>
+  </data>
+  <data name="SettingsProcessorsAddTo" xml:space="preserve">
+    <value>Додати до профілю…</value>
+  </data>
   <data name="SettingsLlmTemperature" xml:space="preserve">
     <value>Температура</value>
   </data>

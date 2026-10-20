@@ -12,6 +12,7 @@ public sealed partial class ProcessorsView : UserControl
     {
         InitializeComponent();
         ImportButton.Click += async (_, _) => await ImportAsync();
+        Pickers.ClearAfterPick(this);
     }
 
     private async Task ImportAsync()

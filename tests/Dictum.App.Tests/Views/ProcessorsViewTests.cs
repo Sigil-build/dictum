@@ -1,7 +1,10 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.App.Tests.Settings;
 using Dictum.App.ViewModels.Settings;
@@ -35,6 +38,71 @@ public sealed class ProcessorsViewTests(AvaloniaFixture fx) : IDisposable
 
     private static List<TextBox> FindBoxes(Window window) =>
         [.. window.GetVisualDescendants().OfType<TextBox>().Where(t => t.Classes.Contains("ruleFind") && t.IsEffectivelyVisible)];
+
+    private static Border Banner(Window window) => window.GetVisualDescendants().OfType<Border>().Single(b => b.Classes.Contains("banner"));
+
+    private static ComboBox AddToPicker(Window window) => window.GetVisualDescendants().OfType<ComboBox>().Single(c => c.Name == "AddToPicker");
+
+    private static List<string?> VisibleTexts(Window window) =>
+        [.. window.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible).Select(t => t.Text)];
+
+    private static void Tab(Window window)
+    {
+        window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+        Dispatcher.UIThread.RunJobs();
+    }
+
+    // The warning takes the caption's place under the header: Tab and a screen reader reach it after Remove, then its
+    // picker, then the editor.
+    [Fact]
+    public Task AProcessorInNoChainShowsTheWarningInReadingOrder() => fx.Ui(() =>
+    {
+        var (window, page, _) = Show();
+        Assert.False(Banner(window).IsEffectivelyVisible);
+        Assert.Contains("Used by: Work", VisibleTexts(window));
+
+        page.Selected = page.Processors.Single(p => p.Id == "filler");
+        Dispatcher.UIThread.RunJobs();
+
+        var picker = AddToPicker(window);
+        Assert.True(Banner(window).IsEffectivelyVisible);
+        Assert.True(picker.IsEffectivelyVisible);
+        Assert.Contains(Strings.SettingsProcessorsNoChain, VisibleTexts(window));
+        Assert.DoesNotContain(Strings.SettingsProcessorsUnused, VisibleTexts(window));
+        Assert.Equal(["Work", "Home"], picker.Items.OfType<Choice<string>>().Select(c => c.Label));
+
+        var remove = window.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Content, Strings.SettingsProcessorsRemove));
+        var warning = Banner(window).GetVisualDescendants().OfType<TextBlock>().Single();
+        var firstRule = FindBoxes(window)[0];
+        Visual[] reading = [remove, warning, picker, firstRule];
+        Assert.Equal(reading, window.GetVisualDescendants().Where(reading.Contains));
+
+        var focus = TopLevel.GetTopLevel(window)!.FocusManager!;
+        remove.Focus();
+        Tab(window);
+        Assert.Same(picker, focus.GetFocusedElement());
+        Tab(window);
+        Assert.Same(firstRule, focus.GetFocusedElement());
+        window.Close();
+    });
+
+    [Fact]
+    public Task PickingAProfileInTheWarningAddsTheProcessorToItsChain() => fx.Ui(() =>
+    {
+        var (window, page, session) = Show();
+        page.Selected = page.Processors.Single(p => p.Id == "filler");
+        Dispatcher.UIThread.RunJobs();
+        var picker = AddToPicker(window);
+
+        picker.SelectedItem = picker.Items.OfType<Choice<string>>().Single(c => c.Value == "home");
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal(["cleanup → terms", "filler"], session.Config.Profiles.Select(p => string.Join(" → ", p.Pipeline)));
+        Assert.Null(picker.SelectedItem);
+        Assert.False(Banner(window).IsEffectivelyVisible);
+        Assert.Contains("Used by: Home", VisibleTexts(window));
+        window.Close();
+    });
 
     [Fact]
     public Task TheLlmEditorShowsThePrompt() => fx.Ui(() =>
