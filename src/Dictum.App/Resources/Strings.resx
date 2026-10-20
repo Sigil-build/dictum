@@ -596,9 +596,6 @@
   <data name="SettingsProfilesLanguages" xml:space="preserve">
     <value>Languages</value>
   </data>
-  <data name="SettingsProfilesLanguagesHint" xml:space="preserve">
-    <value>Picked per dictation</value>
-  </data>
   <data name="SettingsProfilesLanguageMode" xml:space="preserve">
     <value>Language mode</value>
   </data>
@@ -607,6 +604,15 @@
   </data>
   <data name="SettingsProfilesLanguageAutoHint" xml:space="preserve">
     <value>Whisper detects the language of each dictation.</value>
+  </data>
+  <data name="SettingsProfilesLanguageMain" xml:space="preserve">
+    <value>main</value>
+  </data>
+  <data name="SettingsProfilesLanguageMakeMain" xml:space="preserve">
+    <value>Make main</value>
+  </data>
+  <data name="SettingsProfilesLanguagesMainHint" xml:space="preserve">
+    <value>The main language has priority: another one is used only when Whisper is sure of it.</value>
   </data>
   <data name="SettingsProfilesWords" xml:space="preserve">
     <value>Your words</value>

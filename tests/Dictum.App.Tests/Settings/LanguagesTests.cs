@@ -63,4 +63,14 @@ public sealed class LanguagesTests
         Assert.Equal("uk", LanguageSetting.Parse("uk, en").Without("en").Format());
         Assert.Equal("uk", LanguageSetting.Parse("uk").Without("uk").Format());
     }
+
+    [Fact]
+    public void MakingALanguageMainMovesItToTheFront()
+    {
+        Assert.Equal("en, uk, pl", LanguageSetting.Parse("uk, en, pl").WithMain("en").Format());
+        Assert.Equal("pl, uk, en", LanguageSetting.Parse("uk, en, pl").WithMain("pl").Format());
+        Assert.Equal("uk, en", LanguageSetting.Parse("uk, en").WithMain("uk").Format());
+        Assert.Equal("uk, en", LanguageSetting.Parse("uk, en").WithMain("pl").Format());
+        Assert.Equal(LanguageMode.Several, LanguageSetting.Parse("uk", LanguageMode.Several).WithMain("uk").Mode);
+    }
 }

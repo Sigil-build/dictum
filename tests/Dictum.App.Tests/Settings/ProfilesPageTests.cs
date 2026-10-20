@@ -233,6 +233,35 @@ public sealed class ProfilesPageTests : IDisposable
         Assert.Null(page.Languages.ToAdd);
     }
 
+    // Whisper takes another language of the list only when it is sure of it, so the order is the user's choice.
+    [Fact]
+    public void TheFirstLanguageIsTheMainOneAndAnotherCanTakeItsPlace()
+    {
+        var (page, session) = Open();
+        Assert.Equal([true, false], page.Languages.Chips.Select(l => l.IsMain));
+        Assert.Equal([false, true], page.Languages.Chips.Select(l => l.MakeMain.CanExecute(null)));
+
+        page.Languages.Chips.Single(l => l.Code == "en").MakeMain.Execute(null);
+
+        Assert.Equal("en, uk", Saved(session, "work").Language);
+        Assert.Equal(["en", "uk"], page.Languages.Chips.Select(l => l.Code));
+        Assert.Equal([true, false], page.Languages.Chips.Select(l => l.IsMain));
+        Assert.Equal(LanguageMode.Several, page.Languages.Mode?.Value);
+    }
+
+    [Fact]
+    public void AnAddedLanguageGoesLastUntilItIsMadeMain()
+    {
+        var (page, session) = Open();
+
+        page.Languages.ToAdd = page.Languages.All.Single(l => l.Value == "pl");
+        Assert.Equal([true, false, false], page.Languages.Chips.Select(l => l.IsMain));
+        page.Languages.Chips.Single(l => l.Code == "pl").MakeMain.Execute(null);
+
+        Assert.Equal("pl, uk, en", Saved(session, "work").Language);
+        Assert.Equal([true, false, false], page.Languages.Chips.Select(l => l.IsMain));
+    }
+
     [Fact]
     public void SimilarLanguagesWarnWithTheirOwnNames()
     {

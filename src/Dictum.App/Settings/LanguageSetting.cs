@@ -10,7 +10,7 @@ public enum LanguageMode
 }
 
 /// <summary>
-/// A profile's <c>language</c> as the Profiles page shows it: one code, several codes picked per dictation, or auto. The
+/// A profile's <c>language</c> as the Profiles page shows it: one code, several codes with the main one first, or auto. The
 /// config cannot tell "several" with one code from "one". So <see cref="Parse"/> takes the mode on screen, and the
 /// segmented control does not flip while chips are removed.
 /// </summary>
@@ -39,6 +39,10 @@ public sealed record LanguageSetting(LanguageMode Mode, IReadOnlyList<string> Co
         Mode == LanguageMode.One ? new LanguageSetting(LanguageMode.One, [code])
         : Codes.Contains(code) ? this
         : new LanguageSetting(LanguageMode.Several, [.. Codes, code]);
+
+    /// <summary>Moves the code to the front: the first is the main language, and Whisper takes another only when it is sure of it.</summary>
+    public LanguageSetting WithMain(string code) =>
+        Codes.Contains(code) ? this with { Codes = [code, .. Codes.Where(c => c != code)] } : this;
 
     /// <summary>The last code stays: a profile always has a language unless it is auto.</summary>
     public LanguageSetting Without(string code) =>

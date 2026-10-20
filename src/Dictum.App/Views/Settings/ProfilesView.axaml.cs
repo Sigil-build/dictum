@@ -12,7 +12,8 @@ namespace Dictum.App.Views.Settings;
 
 /// <summary>
 /// The chain reorder. Dragging a row by its handle, or Alt+↑ / Alt+↓ on a focused row, moves the step
-/// through <see cref="ProfileChain.Move"/>, and focus follows the moved row.
+/// through <see cref="ProfileChain.Move"/>, and focus follows the moved row. A language chip's "Make main" rebuilds the
+/// chips, so focus moves on to the language picker.
 /// </summary>
 public sealed partial class ProfilesView : UserControl
 {
@@ -22,6 +23,7 @@ public sealed partial class ProfilesView : UserControl
     private const string ChainRowClass = "chainRow";
     private const string HandleClass = "handle";
     private const string DraggedClass = "dragged";
+    private const string MakeMainClass = "makeMain";
 
     private int? _dragFrom;
     private double _dragStart;
@@ -35,6 +37,13 @@ public sealed partial class ProfilesView : UserControl
         ChainList.AddHandler(PointerMovedEvent, OnMoved, RoutingStrategies.Tunnel);
         ChainList.AddHandler(PointerReleasedEvent, OnReleased, RoutingStrategies.Tunnel);
         ChainList.AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
+        LanguageChips.AddHandler(Button.ClickEvent, (_, e) =>
+        {
+            if (e.Source is Button button && button.Classes.Contains(MakeMainClass))
+            {
+                Dispatcher.UIThread.Post(() => LanguagePicker.Focus(), DispatcherPriority.Loaded);
+            }
+        }, RoutingStrategies.Bubble);
 
         // The view owns the words box and the pickers: the page takes the text and gives back the part still being
         // typed; a picker clears itself once its pick has been taken.

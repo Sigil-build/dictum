@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Dictum.App.Controls;
+using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.App.Tests.Settings;
 using Dictum.App.ViewModels.Settings;
@@ -36,6 +37,20 @@ public sealed class ProfilesViewTests(AvaloniaFixture fx) : IDisposable
     }
 
     private static List<string> Pipeline(SettingsSession session) => session.Config.Profiles[0].Pipeline;
+
+    private static List<Border> LanguageChips(Window window) =>
+        [.. window.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("chip") && b.DataContext is LanguageChip)];
+
+    private static string Code(Border chip) => ((LanguageChip)chip.DataContext!).Code;
+
+    private static TextBlock MainMark(Border chip) =>
+        chip.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == Strings.SettingsProfilesLanguageMain);
+
+    private static Button MakeMain(Border chip) =>
+        chip.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Content, Strings.SettingsProfilesLanguageMakeMain));
+
+    private static List<string?> VisibleTexts(Window window) =>
+        [.. window.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible).Select(t => t.Text)];
 
     [Fact]
     public Task TheListTheRecorderAndTheChipsShow() => fx.Ui(() =>
@@ -127,6 +142,51 @@ public sealed class ProfilesViewTests(AvaloniaFixture fx) : IDisposable
         Type(window, box, "x,");
         Assert.Equal(["x"], session.Config.Profiles[1].Vocabulary);
         Assert.Equal(["Nexus5", "Avalonia"], session.Config.Profiles[0].Vocabulary);
+        window.Close();
+    });
+
+    // The first chip says it is the main language, and the hint says what that means. Another chip's "Make main" moves it
+    // to the front; its button goes with the old chips, so focus moves on to the language picker, where Tab would go.
+    [Fact]
+    public Task TheMainLanguageIsMarkedAndAnotherChipCanTakeItsPlace() => fx.Ui(() =>
+    {
+        var (window, session) = Show();
+        var chips = LanguageChips(window);
+        Assert.Equal(["uk", "en"], chips.Select(Code));
+        Assert.Equal((true, false), (MainMark(chips[0]).IsEffectivelyVisible, MakeMain(chips[0]).IsEffectivelyVisible));
+        Assert.Equal((false, true), (MainMark(chips[1]).IsEffectivelyVisible, MakeMain(chips[1]).IsEffectivelyVisible));
+        Assert.Contains(Strings.SettingsProfilesLanguagesMainHint, VisibleTexts(window));
+
+        var english = chips[1];
+        var name = english.GetVisualDescendants().OfType<TextBlock>().First(t => t.Text == "English");
+        var makeMain = MakeMain(english);
+        var remove = english.GetVisualDescendants().OfType<Button>().Single(b => b.Classes.Contains("chipRemove"));
+        Visual[] reading = [name, makeMain, remove];
+        Assert.Equal(reading, english.GetVisualDescendants().Where(reading.Contains));
+
+        makeMain.Focus();
+        window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal("en, uk", session.Config.Profiles[0].Language);
+        chips = LanguageChips(window);
+        Assert.Equal(["en", "uk"], chips.Select(Code));
+        Assert.Equal((true, true), (MainMark(chips[0]).IsEffectivelyVisible, MakeMain(chips[1]).IsEffectivelyVisible));
+        var picker = window.GetVisualDescendants().OfType<ComboBox>().Single(c => c.Name == "LanguagePicker");
+        Assert.Same(picker, TopLevel.GetTopLevel(window)!.FocusManager!.GetFocusedElement());
+        window.Close();
+    });
+
+    // One language has no main one to speak of, so the hint goes with the chips.
+    [Fact]
+    public Task TheMainLanguageHintShowsOnlyWithSeveral() => fx.Ui(() =>
+    {
+        var (window, _) = Show();
+
+        window.GetVisualDescendants().OfType<ListBox>().First(l => l.ItemCount == 2).SelectedIndex = 1;
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.DoesNotContain(Strings.SettingsProfilesLanguagesMainHint, VisibleTexts(window));
         window.Close();
     });
 

@@ -9,7 +9,8 @@ namespace Dictum.App.ViewModels.Settings;
 
 /// <summary>
 /// The languages of the profile being edited: one, several (as chips, with a warning for closely related ones) or
-/// automatic. The mode shown is kept while the list says otherwise, so "Several" stays when one chip is left.
+/// automatic. With several, the first chip is the main language and any other can take its place. The mode shown is
+/// kept while the list says otherwise, so "Several" stays when one chip is left.
 /// </summary>
 public sealed partial class ProfileLanguages : ObservableObject
 {
@@ -85,7 +86,8 @@ public sealed partial class ProfileLanguages : ObservableObject
             var pairs = LanguageList.SimilarPairs(setting.Codes);
             var warned = pairs.SelectMany(p => new[] { p.First, p.Second }).ToHashSet();
             var removable = setting.Codes.Count > 1;
-            Chips = [.. setting.Codes.Select(code => new LanguageChip(code, WhisperLanguages.Name(code), warned.Contains(code),
+            Chips = [.. setting.Codes.Select((code, i) => new LanguageChip(code, WhisperLanguages.Name(code), warned.Contains(code), i == 0,
+                new RelayCommand(() => Edit(s => s.WithMain(code)), () => i > 0),
                 new RelayCommand(() => Edit(s => s.Without(code)), () => removable)))];
             One = ShowsOne ? All.FirstOrDefault(o => o.Value == setting.Codes[0]) : null;
             ToAdd = null;

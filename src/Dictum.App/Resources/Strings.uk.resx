@@ -596,9 +596,6 @@
   <data name="SettingsProfilesLanguages" xml:space="preserve">
     <value>Мови</value>
   </data>
-  <data name="SettingsProfilesLanguagesHint" xml:space="preserve">
-    <value>Вибір для кожного диктування</value>
-  </data>
   <data name="SettingsProfilesLanguageMode" xml:space="preserve">
     <value>Режим мови</value>
   </data>
@@ -607,6 +604,15 @@
   </data>
   <data name="SettingsProfilesLanguageAutoHint" xml:space="preserve">
     <value>Whisper сам визначає мову кожного диктування.</value>
+  </data>
+  <data name="SettingsProfilesLanguageMain" xml:space="preserve">
+    <value>основна</value>
+  </data>
+  <data name="SettingsProfilesLanguageMakeMain" xml:space="preserve">
+    <value>Зробити основною</value>
+  </data>
+  <data name="SettingsProfilesLanguagesMainHint" xml:space="preserve">
+    <value>Основна мова має перевагу: іншу Dictum бере, лише коли Whisper упевнений у ній.</value>
   </data>
   <data name="SettingsProfilesWords" xml:space="preserve">
     <value>Ваші слова</value>

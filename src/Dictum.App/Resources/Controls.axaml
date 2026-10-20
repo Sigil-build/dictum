@@ -171,7 +171,7 @@
     <Setter Property="Foreground" Value="{DynamicResource color.status.warn.fg}" />
   </Style>
 
-  <!-- Chips: pills, a focusable × to remove; warned chips in the warning colours. -->
+  <!-- Chips: pills, a focusable × to remove, a text action in the hint's size; warned chips in the warning colours. -->
   <Style Selector="Border.chip">
     <Setter Property="Padding" Value="10,2,4,2" />
     <Setter Property="Margin" Value="0,0,6,6" />
@@ -190,6 +190,10 @@
   </Style>
   <Style Selector="Border.chip.warned > StackPanel > TextBlock">
     <Setter Property="Foreground" Value="{DynamicResource color.status.warn.fg}" />
+  </Style>
+  <Style Selector="Border.chip Button.link">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
   <Style Selector="Button.chipRemove">
     <Setter Property="Background" Value="Transparent" />
