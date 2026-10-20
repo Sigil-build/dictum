@@ -44,8 +44,7 @@ public class OpenAiCompatibleSttTests
     }
 
     /// <summary>
-    /// The server takes one language, and the first of a list has priority: left to detect any, a server answered
-    /// Ukrainian speech in Russian.
+    /// The server takes one language: a list sends its first, which has priority; "auto" or none sends nothing.
     /// </summary>
     [Theory]
     [InlineData("uk, en", "uk")]

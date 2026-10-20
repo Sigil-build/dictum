@@ -106,8 +106,8 @@ public sealed class OpenAiCompatibleStt(
     }
 
     /// <summary>
-    /// The request's language, or the first of its candidates: the endpoint takes one language, and left to detect
-    /// any, a server answered Ukrainian speech in Russian.
+    /// The request's language, or the first of its candidates: the endpoint takes one language, the first of a list
+    /// has priority, and a server left to detect can pick a language outside the list.
     /// </summary>
     private static string? Language(SttRequest request) =>
         request.Language ?? (request.Candidates is [var first, ..] ? first : null);

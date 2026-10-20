@@ -302,7 +302,7 @@ public sealed class ProcessorsPageTests : IDisposable
 
     private const string NoChain = "This processor runs in no profile, so dictation never uses it.";
 
-    // A small caption was all that said a processor never runs; now a warning says it, with the profiles to add it to.
+    // Dictation never runs a processor that no chain holds, so the page warns and offers the profiles to add it to.
     [Fact]
     public void AProcessorInNoChainIsWarnedAboutUntilAProfileRunsIt()
     {
