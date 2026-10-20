@@ -6,7 +6,20 @@ pkgrel=1
 pkgdesc='Voice to text: dictate into any app with a hotkey, with Whisper on this machine'
 arch=('x86_64')
 url='https://github.com/shikigami12/dictum'
-license=('MIT')
+# Dictum is MIT; the others are the licenses of the third-party code the package ships, as THIRD-PARTY-NOTICES.txt lists it.
+license=(
+  'MIT'                       # Dictum, .NET, Avalonia, Whisper.net, whisper.cpp, PortAudio and the other MIT components
+  'LGPL-3.0-or-later'         # libuiohook, the libuiohook*.so files
+  'BSD-3-Clause'              # Skia and libwebp in libSkiaSharp.so, code in Avalonia
+  'MIT-Modern-Variant'        # HarfBuzz's "Old MIT", libHarfBuzzSharp.so
+  'Apache-2.0'                # piex in libSkiaSharp.so, RichTextKit in Avalonia
+  'MS-PL'                     # Silverlight Toolkit code in Avalonia
+  'FTL OR GPL-2.0-or-later'   # FreeType in libSkiaSharp.so
+  'libpng-2.0'                # libpng in libSkiaSharp.so
+  'IJG'                       # libjpeg-turbo in libSkiaSharp.so, with BSD-3-Clause and Zlib
+  'Zlib'                      # zlib in libSkiaSharp.so
+  'LicenseRef-Adobe-DNG-SDK'  # Adobe's DNG SDK in libSkiaSharp.so, which has no SPDX identifier
+)
 depends=('glibc>=2.38' 'portaudio' 'libx11' 'libxtst' 'libxkbcommon' 'fontconfig' 'libice' 'libsm')
 # Pasting needs a clipboard tool: wl-clipboard on Wayland, xclip or xsel on X11.
 optdepends=(

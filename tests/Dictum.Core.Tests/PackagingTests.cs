@@ -10,6 +10,9 @@ public class PackagingTests
 
     private static string[] PkgbuildLines => File.ReadAllLines(Path.Combine(Repository.Root, "packaging", "linux", "aur", "PKGBUILD"));
 
+    /// <summary>The PKGBUILD's lines without their comments.</summary>
+    private static IEnumerable<string> PkgbuildCode => PkgbuildLines.Select(line => line.Split('#')[0]);
+
     // Every size Windows picks from (16 for small icons up to 256 for large tiles), so none is scaled.
     [Fact]
     public void TheIconHasEverySizeWindowsUses()
@@ -50,14 +53,46 @@ public class PackagingTests
         Assert.Contains($"pkgver={version}", PkgbuildLines);
     }
 
-    // An MIT license names its copyright holder, so Arch wants the file itself in /usr/share/licenses/<pkgname>/.
-    // test-pkgbuild.sh installs the package for real, but only where Docker runs.
+    // Arch lists every license that applies to a package: Dictum's, and those of the libraries it ships, among them
+    // libuiohook (LGPL), Skia, HarfBuzz and the code Skia and Avalonia include, as THIRD-PARTY-NOTICES.txt has them.
     [Fact]
-    public void ThePkgbuildIsMitAndInstallsTheLicenseAndTheNotices()
+    public void ThePkgbuildListsDictumsLicenseAndThoseOfTheLibrariesItShips()
     {
-        Assert.Contains("license=('MIT')", PkgbuildLines);
-        Assert.Contains(
-            "  install -Dm644 -t \"$pkgdir/usr/share/licenses/$pkgname\" \"$src/LICENSE\" \"$src/THIRD-PARTY-NOTICES.txt\"",
-            PkgbuildLines);
+        HashSet<string> shipped =
+        [
+            "MIT", "LGPL-3.0-or-later", "BSD-3-Clause", "MIT-Modern-Variant", "Apache-2.0", "MS-PL",
+            "FTL OR GPL-2.0-or-later", "libpng-2.0", "IJG", "Zlib", "LicenseRef-Adobe-DNG-SDK",
+        ];
+
+        Assert.Superset(shipped, PkgbuildLicenses());
     }
+
+    // An MIT license names its copyright holder and the notices carry the third-party ones, so Arch wants both files
+    // in /usr/share/licenses/<pkgname>/. test-pkgbuild.sh installs the package for real, but only where Docker runs.
+    [Theory]
+    [InlineData("LICENSE")]
+    [InlineData("THIRD-PARTY-NOTICES.txt")]
+    public void ThePkgbuildInstallsTheFileIntoItsLicensesFolder(string file)
+    {
+        var licenseInstalls = PkgbuildCode
+            .Select(Words)
+            .Where(words => words is ["install", ..] && words.Any(w => w.Contains("/usr/share/licenses/$pkgname", StringComparison.Ordinal)));
+
+        Assert.Contains(licenseInstalls, words => words.Any(w => w.EndsWith($"/{file}", StringComparison.Ordinal)));
+    }
+
+    /// <summary>The entries of the PKGBUILD's license array, which can span lines.</summary>
+    private static HashSet<string> PkgbuildLicenses()
+    {
+        var code = string.Join('\n', PkgbuildCode);
+        var start = code.IndexOf("\nlicense=(", StringComparison.Ordinal);
+        Assert.True(start >= 0, "The PKGBUILD has no license array.");
+        var body = code[(start + "\nlicense=(".Length)..code.IndexOf(')', start)];
+
+        return [.. body.Split('\'').Where((_, i) => i % 2 == 1)];
+    }
+
+    /// <summary>A line's words, with the quotes around them taken off.</summary>
+    private static string[] Words(string line) =>
+        [.. line.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries).Select(w => w.Trim('"', '\''))];
 }
