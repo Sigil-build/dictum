@@ -46,6 +46,23 @@ public partial class StringsTests
         Assert.Empty(unused);
     }
 
+    // The taskbar and Alt+Tab tell the wizard and Settings apart only by their titles.
+    [Theory, InlineData("en"), InlineData("uk")]
+    public void TheWizardAndSettingsHaveTitlesOfTheirOwn(string language) =>
+        Assert.NotEqual(Text(nameof(Strings.SettingsWindowTitle), language), Text(nameof(Strings.SetupWindowTitle), language));
+
+    // The Windows setting that keeps the tray icon in sight goes by one name: the step after the taskbar settings in the
+    // System row's path is the setting the wizard's last step names too.
+    [Theory, InlineData("en"), InlineData("uk")]
+    public void BothTrayHintsNameTheSameWindowsSetting(string language)
+    {
+        var setting = Text(nameof(Strings.SettingsTrayHiddenWindows), language).Split(" → ")[1];
+
+        Assert.Contains(setting, Text(nameof(Strings.SetupTrayWindows), language), StringComparison.Ordinal);
+    }
+
+    private static string Text(string key, string language) => Strings.ResourceManager.GetString(key, CultureInfo.GetCultureInfo(language))!;
+
     private static bool IsBuildOutput(string file) =>
         file.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).Any(part => part is "bin" or "obj");
 

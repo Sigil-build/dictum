@@ -360,7 +360,7 @@
     <value>Сховано серед прихованих значків</value>
   </data>
   <data name="SettingsTrayHiddenWindows" xml:space="preserve">
-    <value>Стан запису видно, лише коли значок закріплено. Параметри панелі завдань → Інші значки в системному треї → Dictum: Увімк.</value>
+    <value>Стан запису видно, лише коли значок закріплено. Параметри панелі завдань → Інші значки на панелі завдань → Dictum: Увімк.</value>
   </data>
   <data name="SettingsTrayHiddenKde" xml:space="preserve">
     <value>Стан запису видно, лише коли значок показано. Параметри системного лотка → Записи → Dictum: Показано.</value>
@@ -1332,7 +1332,7 @@
     <value>Plasma може ховати нові значки серед прихованих записів системного лотка, тож ви не бачитимете стану запису. Параметри системного лотка → Записи → Dictum: Показано.</value>
   </data>
   <data name="SetupWindowTitle" xml:space="preserve">
-    <value>Налаштування Dictum</value>
+    <value>Майстер налаштування Dictum</value>
   </data>
   <data name="SetupLanguagesTitle" xml:space="preserve">
     <value>Якими мовами ви диктуєте?</value>
