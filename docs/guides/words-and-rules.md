@@ -82,13 +82,13 @@ When the hint runs out of room, `dictum vocab` warns you: `warning: the speech h
 ### Create a replace rules processor {#create-rules}
 
 1. Open **Settings** → **Processors** and click **+ Replace rules**. The new processor is named `rules` (then `rules-2` and so on).
-2. Fill in the table. Each row is one rule:
+2. Fill in the rules. Each rule has a **Find** and a **Replace** box, and under them four boxes to tick:
 
-    | Column | What it does |
+    | Field | What it does |
     | --- | --- |
     | **Find** | The text to find. |
-    | **Regex** | **Find** is a .NET regular expression instead of plain text. |
     | **Replace** | The text to put in its place. Empty deletes what was found. |
+    | **Regex** | **Find** is a .NET regular expression instead of plain text. |
     | **Match case** | Find only this exact letter case, in plain text and in a regular expression. Unticked, `avalonia` also finds `Avalonia`. |
     | **Whole word** | For plain text: match only whole words, so `main` leaves `mainframe` alone. |
     | **On** | Untick to keep the rule in the list without applying it. |
