@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 using Dictum.Audio;
@@ -213,14 +214,15 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
 
     /// <summary>
     /// <see cref="PickLanguage"/>'s choice for the debug log: the language picked, the candidates, the language Whisper
-    /// detected with that language's probability, and the priority rule when it overrode the detection.
+    /// detected with that language's probability, and the priority rule when it overrode the detection. Numbers use a
+    /// dot in every culture.
     /// </summary>
     public static string DescribePick(IReadOnlyList<string> candidates, string? detected, float probability)
     {
         var picked = PickLanguage(candidates, detected, probability);
-        var detection = detected is null ? "no language detected" : $"detected '{detected}', p={probability:F2}";
+        var detection = detected is null ? "no language detected" : string.Create(CultureInfo.InvariantCulture, $"detected '{detected}', p={probability:F2}");
         var overridden = detected is not null && detected != picked && candidates.Contains(detected)
-            ? $"; the first language has priority, and another one needs p >= {MinOtherLanguageProbability:F2}"
+            ? string.Create(CultureInfo.InvariantCulture, $"; the first language has priority, and another one needs p >= {MinOtherLanguageProbability:F2}")
             : string.Empty;
         return $"'{picked}' from {string.Join(", ", candidates)} ({detection}{overridden})";
     }

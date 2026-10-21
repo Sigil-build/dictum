@@ -72,4 +72,23 @@ public class WhisperLanguagePriorityTests
             CultureInfo.CurrentCulture = culture;
         }
     }
+
+    // The log line reads the same on every system: a Ukrainian locale writes 0,06, the docs and the threshold say 0.06.
+    [Fact]
+    public void TheDebugLineWritesProbabilitiesWithADotInAnyCulture()
+    {
+        var culture = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("uk-UA");
+
+            Assert.Equal(
+                "'uk' from uk, en (detected 'en', p=0.06; the first language has priority, and another one needs p >= 0.50)",
+                WhisperLocalStt.DescribePick(UkEn, "en", 0.06f));
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = culture;
+        }
+    }
 }
