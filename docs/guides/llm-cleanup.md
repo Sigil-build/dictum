@@ -199,7 +199,7 @@ See [Troubleshooting](../troubleshooting.md#processor-in-no-profile). A processo
 
 **Timeout, seconds** is how long Dictum waits for the whole answer. The wizard sets 15 seconds; **+ LLM prompt** starts with 4. Raise it for a slow model, or for a server that loads the model on the first request, such as llama-swap or Ollama.
 
-**If the server fails** decides what happens when the server does not answer in time, cannot be reached or answers with an error:
+**If the server fails** decides what happens when the server does not answer in time, cannot be reached or answers with an error, and when Dictum cannot read the processor's key:
 
 - **Keep the text as recognised** (the default): Dictum pastes Whisper's text unchanged and writes a warning to its log, for example `Processor 'cleanup' failed, keeping the input text: LLM 'cleanup' did not answer within 15000 ms.`
 - **Fail the dictation**: nothing is pasted, and the overlay says "Dictation failed".
@@ -250,5 +250,6 @@ dictum doctor
 | `… rejected the API key` | "Check the apiKey reference in the config." Store the key again: see [The API key](#api-key). |
 | `…/models answered 404` (or another code) | The URL is probably wrong. It must end with the API's version, usually `/v1`. |
 | The URL, a colon and an error message | "Is the LLM server running, and is baseUrl correct (including /v1)?" Start the server, and check the URL. |
+| `Secret '…' is not in the OS secret store.` or `Environment variable '…' is not set.` | "The API key cannot be read: …" The key is not where the config says. Store it again: see [The API key](#api-key). |
 
 The **System** page in Settings runs the same check, on a row named **Processor cleanup**. For more, see [Troubleshooting](../troubleshooting.md#llm-cleanup).

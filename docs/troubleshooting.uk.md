@@ -396,7 +396,12 @@ API-ключ сервера може бути в конфігурації трь
 :   Сервер відповідає.
 
 `http://…/v1: …` → `Is the LLM server running, and is baseUrl correct (including /v1)?`
-:   Dictum не може достукатися до сервера або прочитати ключ обробника. Перевірте, що сервер працює і що його **URL** у **Налаштування → Обробники** закінчується на `/v1`.
+:   Dictum не може достукатися до сервера. Перевірте, що сервер працює і що його **URL** у **Налаштування → Обробники** закінчується на `/v1`.
+
+`Secret '<name>' is not in the OS secret store.` → `The API key cannot be read: store it with 'dictum secret set <name>', or type it in Settings → Processors.`
+:   Ключ обробника — `secret:<name>`, а в сховищі ключів його немає. Введіть ключ у поле обробника **Ключ API (необов'язково)** або виконайте команду з підказки. Для `env:<VAR>` рядок пише `Environment variable '<VAR>' is not set.`, а підказка називає змінну, яку треба задати. Див. [API-ключі та сховище ключів](#secrets).
+
+    Поки ключа немає, диктування поводиться так, як задано в **Якщо сервер не відповів**: з **Лишити текст як розпізнано** Dictum вставляє текст без змін цього обробника і пише в журнал `Processor 'cleanup' failed, keeping the input text: LLM 'cleanup' cannot read its API key: …`; з **Вважати диктування невдалим** диктування завершується помилкою з цією причиною.
 
 `… rejected the API key` → `Check the apiKey reference in the config.`
 :   Див. [API-ключі та сховище ключів](#secrets).

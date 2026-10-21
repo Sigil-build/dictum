@@ -124,7 +124,18 @@ public sealed partial class LlmProcessor(
         try
         {
             _ = templates.Load(config.Prompt);
-            using var response = await _server.ProbeModelsAsync(ct).ConfigureAwait(false);
+            HttpResponseMessage probe;
+            try
+            {
+                probe = await _server.ProbeModelsAsync(ct).ConfigureAwait(false);
+            }
+            catch (ConfigException ex)
+            {
+                // The probe throws this only for the key: a secret: or env: reference that cannot be read.
+                return HealthStatus.Error(ex.Message, KeyHint());
+            }
+
+            using var response = probe;
             return response.StatusCode switch
             {
                 var status when OpenAiCompatible.RejectsKey(status) =>
@@ -139,16 +150,38 @@ public sealed partial class LlmProcessor(
         }
     }
 
+    /// <summary>How to give the processor its key, for a <c>secret:</c> or <c>env:</c> reference that cannot be read.</summary>
+    private string KeyHint() =>
+        ConfigValueResolver.TryGetEnvVariable(config.ApiKey ?? string.Empty, out var variable)
+            ? $"The API key cannot be read: set the environment variable {variable} where Dictum starts, or type the key in Settings → Processors."
+            : $"The API key cannot be read: store it with 'dictum secret set {SecretName()}', or type it in Settings → Processors.";
+
+    /// <summary>The secret the key reference names, or the name Settings stores this processor's key under.</summary>
+    private string SecretName() =>
+        config.ApiKey is { } key && key.StartsWith(ConfigValueResolver.SecretPrefix, StringComparison.Ordinal)
+            ? key[ConfigValueResolver.SecretPrefix.Length..]
+            : SecretNames.Processor(id);
+
     private async Task<(string Content, string? FinishReason)> CompleteAsync(string prompt, int maxTokens, CancellationToken ct)
     {
         var request = new ChatRequest(config.Model, [new ChatMessage("user", prompt)], config.Temperature, Stream: false, maxTokens);
-        var answer = await _server.SendAsync(
-            () => new HttpRequestMessage(HttpMethod.Post, _server.Endpoint(ChatPath))
-            {
-                Content = JsonContent.Create(request, LlmJsonContext.Default.ChatRequest),
-            },
-            config.TimeoutMs,
-            ct).ConfigureAwait(false);
+        ServerAnswer answer;
+        try
+        {
+            answer = await _server.SendAsync(
+                () => new HttpRequestMessage(HttpMethod.Post, _server.Endpoint(ChatPath))
+                {
+                    Content = JsonContent.Create(request, LlmJsonContext.Default.ChatRequest),
+                },
+                config.TimeoutMs,
+                ct).ConfigureAwait(false);
+        }
+        catch (ConfigException ex)
+        {
+            // Sending throws this only for the key. Like a server that does not answer, it follows onError.
+            throw new ProviderUnavailableException($"LLM '{id}' cannot read its API key: {ex.Message}", ex);
+        }
+
         if (!answer.IsSuccess)
         {
             throw new ProviderUnavailableException($"LLM '{id}' answered {(int)answer.Status}: {OpenAiCompatible.Snippet(answer.Body)}");

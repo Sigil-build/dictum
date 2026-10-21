@@ -396,7 +396,12 @@ Each LLM prompt processor has a row, `processor:<id>` (**Processor &lt;id&gt;**)
 :   The server answers.
 
 `http://…/v1: …` → `Is the LLM server running, and is baseUrl correct (including /v1)?`
-:   Dictum cannot reach the server, or cannot read the processor's key. Check that the server runs, and that its **URL** in **Settings → Processors** ends with `/v1`.
+:   Dictum cannot reach the server. Check that the server runs, and that its **URL** in **Settings → Processors** ends with `/v1`.
+
+`Secret '<name>' is not in the OS secret store.` → `The API key cannot be read: store it with 'dictum secret set <name>', or type it in Settings → Processors.`
+:   The processor's key is `secret:<name>`, and the keyring does not have it. Type the key in the processor's **API key (optional)** box, or run the command the hint gives. With `env:<VAR>`, the row says `Environment variable '<VAR>' is not set.`, and the hint names the variable to set. See [API keys and the keyring](#secrets).
+
+    Until the key is there, a dictation follows **If the server fails**: with **Keep the text as recognised**, Dictum pastes the text without this processor's changes and logs `Processor 'cleanup' failed, keeping the input text: LLM 'cleanup' cannot read its API key: …`; with **Fail the dictation**, the dictation fails with that reason.
 
 `… rejected the API key` → `Check the apiKey reference in the config.`
 :   See [API keys and the keyring](#secrets).

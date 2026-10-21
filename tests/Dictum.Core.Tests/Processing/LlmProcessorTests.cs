@@ -9,6 +9,8 @@ namespace Dictum.Core.Tests.Processing;
 
 public sealed class LlmProcessorTests : IDisposable
 {
+    private const string MissingSecret = "secret:dictum-processor-cleanup-uk";
+
     private readonly TempDirectory _prompts = new();
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
     private readonly ProcessingContext _context = new("p", "uk", null);
@@ -339,6 +341,49 @@ public sealed class LlmProcessorTests : IDisposable
             await CheckAsync(new FakeHttpHandler().Throw(new HttpRequestException("refused"))));
     }
 
+    // A secret: or env: key that cannot be read is a failure like a server that does not answer: "Keep the text as
+    // recognised" pastes the dictation unchanged, and nothing reaches the server.
+    [Fact]
+    public async Task AKeyThatCannotBeReadKeepsTheInputInPassthroughMode()
+    {
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer("Привіт, світ."));
+        var log = new ListLog();
+
+        var result = await Create(http, apiKey: MissingSecret, log: log).ProcessAsync("привіт світ", _context, _ct);
+
+        Assert.Equal("привіт світ", result);
+        Assert.Empty(http.Requests);
+        Assert.True(log.Has("Processor 'cleanup-uk' failed, keeping the input text: LLM 'cleanup-uk' cannot read its API key"));
+    }
+
+    [Fact]
+    public async Task AKeyThatCannotBeReadFailsTheDictationInFailMode()
+    {
+        var ex = await Assert.ThrowsAsync<ProviderUnavailableException>(() =>
+            Create(new FakeHttpHandler(), onError: LlmErrorMode.Fail, apiKey: MissingSecret).ProcessAsync("text", _context, _ct));
+
+        Assert.Equal("LLM 'cleanup-uk' cannot read its API key: Secret 'dictum-processor-cleanup-uk' is not in the OS secret store.", ex.Message);
+    }
+
+    [Theory]
+    [InlineData(
+        MissingSecret,
+        "Secret 'dictum-processor-cleanup-uk' is not in the OS secret store.",
+        "The API key cannot be read: store it with 'dictum secret set dictum-processor-cleanup-uk', or type it in Settings → Processors.")]
+    [InlineData(
+        "env:DICTUM_TEST_SURELY_MISSING",
+        "Environment variable 'DICTUM_TEST_SURELY_MISSING' is not set.",
+        "The API key cannot be read: set the environment variable DICTUM_TEST_SURELY_MISSING where Dictum starts, or type the key in Settings → Processors.")]
+    public async Task TheCheckSaysWhenTheKeyCannotBeRead(string apiKey, string detail, string hint)
+    {
+        var http = new FakeHttpHandler();
+
+        var status = await Create(http, apiKey: apiKey).CheckAsync(_ct);
+
+        Assert.Equal(HealthStatus.Error(detail, hint), status);
+        Assert.Empty(http.Requests);
+    }
+
     private async Task<string> FailureAsync(FakeHttpHandler http, int timeoutMs = LlmProcessorConfig.DefaultTimeoutMs) =>
         (await Assert.ThrowsAsync<ProviderUnavailableException>(() =>
             Create(http, onError: LlmErrorMode.Fail, timeoutMs: timeoutMs).ProcessAsync("text", _context, _ct))).Message;
@@ -368,7 +413,7 @@ public sealed class LlmProcessorTests : IDisposable
                 TimeoutMs = timeoutMs,
             },
             http.Client(),
-            new ConfigValueResolver(new UnavailableSecretStore()),
+            new ConfigValueResolver(new FakeSecrets()),
             new PromptTemplates(_prompts.Path),
             log ?? NullLog.Instance);
 

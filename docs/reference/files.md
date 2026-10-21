@@ -146,7 +146,7 @@ The notes are here, below the file, because the example is plain JSON that you c
     - `prompt`: `cleanup` is the built-in prompt that fixes punctuation and typos. Another name reads `prompts/<name>.md` in the settings folder.
     - `apiKey`: where the server's key comes from: see [API keys in the keyring](#keyring).
     - `timeoutMs`: how long Dictum waits for the answer, in milliseconds: 4000 if you leave it out. The setup wizard writes 15000.
-    - `onError`: what happens when the server fails or is too slow: `passthrough` pastes the text without this processor's changes, `fail` fails the dictation.
+    - `onError`: what happens when the server fails or is too slow, or the key cannot be read: `passthrough` pastes the text without this processor's changes, `fail` fails the dictation.
     - Not in the example: `temperature`, 0 to 2, 0.2 if you leave it out; `preserveText`, which rejects an answer that changes the text instead of fixing it, and is on for the `cleanup` prompt if you leave it out; `maxTokens`, the longest answer, which grows with the text if you leave it out.
 
     [LLM clean-up](../guides/llm-cleanup.md) sets this up step by step.
