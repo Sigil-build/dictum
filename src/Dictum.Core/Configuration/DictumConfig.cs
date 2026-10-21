@@ -97,7 +97,10 @@ public enum OutputMode
     [JsonStringEnumMemberName("paste")]
     Paste,
 
-    /// <summary>Typed character by character.</summary>
+    /// <summary>
+    /// Typing character by character, which Dictum does not support: such a profile pastes, and the validator warns.
+    /// Kept so that configs from earlier versions still load.
+    /// </summary>
     [JsonStringEnumMemberName("type")]
     Type,
 

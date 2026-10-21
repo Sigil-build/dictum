@@ -15,7 +15,7 @@ You edit profiles in **Settings** → **Profiles**. Click the Dictum icon in the
 | **Your words** | Names and terms Whisper should spell your way: see [Your words and replace rules](words-and-rules.md). |
 | **Speech hint** | Extra text Whisper sees before your words. Most people leave it empty. |
 | **Processing chain** | The processors that work on the text, in order: replace rules, an LLM prompt. Empty means the text is pasted as recognised. |
-| **Output** | **Paste into the focused app**, **Type it, key by key**, or **Copy to clipboard only**. |
+| **Output** | **Paste into the focused app** or **Copy to clipboard only**. |
 | **Paste shortcut** | **Automatic**, `Ctrl+V` or `Ctrl+Shift+V`. **Automatic** uses `Ctrl+Shift+V` in terminals Dictum recognises. |
 | **Speech provider** | Which recogniser and model the profile uses, such as **Local Whisper · large-v3-turbo-q8_0**. |
 

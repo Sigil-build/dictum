@@ -110,6 +110,7 @@ WARN config warnings        1 warning(s)
 | `profiles[0].vocabulary: a word list can pull language detection towards its own language; set 'language' for this profile` | У **Налаштування → Профілі** в рядку **Мови** виберіть **Одна** або **Кілька** замість **Авто**. |
 | `profiles[0].vocabulary: the speech hint holds 400 characters; left out: …` | Ваші слова разом із підказкою для розпізнавання не вміщаються в те, що читає Whisper. Скоротіть список; названі слова не ввійшли. |
 | `profiles[0].vocabulary[3]: '…' is listed twice` | Приберіть повтор. |
+| `profiles[0].output: typing is not supported, and the profile pastes instead; use "paste" or "clipboard"` | Попередні версії Dictum дозволяли профілю набирати текст посимвольно, але це ніколи не працювало. Такий профіль тепер вставляє текст. Щоб попередження зникло, виконайте `dictum config edit` і напишіть для цього профілю `"output": "paste"`. |
 | `processors.<id>.rules[0].pattern: contains a backspace character: …` | У JSON `"\b"` — це символ backspace. Для межі слова пишіть `"\\b"`. |
 | `stt.<id>.apiKey: API key is stored in plain text; use 'env:VAR' or 'secret:name' instead` (або `processors.<id>.apiKey`) | Введіть ключ ще раз у «Налаштуваннях», і Dictum перенесе його до сховища ключів. Див. [API-ключі та сховище ключів](#secrets). |
 | `general.historySize: is above 5000, the most Settings offers` | «Налаштування» показують щонайбільше 5000. Зменште число в рядку **Історія** на сторінці **Налаштування → Загальні**. |
@@ -227,7 +228,7 @@ Dictum кладе текст у буфер обміну, сам натискає
 
 Якщо вставити не вдалося, розпізнаний текст лишається в пункті **Історія** меню трею, якщо історію не вимкнено: скопіюйте його звідти.
 
-Якщо **Вивід** профілю — **Набрати посимвольно**, кожне диктування завершується помилкою `Typing text character by character is not supported yet.` Виберіть у **Налаштування → Профілі** варіант **Вставити в активну програму** або **Лише скопіювати в буфер обміну**.
+Dictum не набирає текст посимвольно. Профіль, у якого в `config.json` досі стоїть `"output": "type"` з попередньої версії, вставляє текст, а рядок [попереджень конфігурації](#config-warnings) його називає.
 
 ### Інструменти буфера обміну в Linux {#clipboard-tools}
 

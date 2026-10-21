@@ -161,7 +161,7 @@ The notes are here, below the file, because the example is plain JSON that you c
     - `language`: one language code, such as `uk`; a list, such as `uk, en`, where the first is the main language; or `auto` to detect any language. See [Languages](../guides/languages.md).
     - `vocabulary`: your words, which Whisper should spell as you wrote them. An LLM prompt of your own gets them through `{{vocabulary}}`; the built-in prompts do not.
     - `pipeline`: the ids of the processors to run, in order. Empty, the text is pasted as Whisper heard it.
-    - `output`: `paste` puts the text on the clipboard, presses Ctrl+V and puts back what the clipboard held; `type` types the text key by key; `clipboard` leaves the text on the clipboard.
+    - `output`: `paste` puts the text on the clipboard, presses Ctrl+V and puts back what the clipboard held; `clipboard` leaves the text on the clipboard. `type`, from earlier versions, is not supported: such a profile pastes, and Dictum warns about it.
     - Not in the example: `pasteShortcut`, `auto`, `ctrl+v` or `ctrl+shift+v`, for a terminal on Wayland; `sttPrompt`, a hint for Whisper on top of the words.
 
 ### Editing it by hand {#config-edit}

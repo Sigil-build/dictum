@@ -111,6 +111,11 @@ public static class ConfigValidator
         ValidateLanguage(issues, path, profile, config.Stt.GetValueOrDefault(profile.Stt));
         ValidateVocabulary(issues, path, profile);
 
+        if (profile.Output == OutputMode.Type)
+        {
+            Warning(issues, ConfigPaths.Field(path, nameof(ProfileConfig.Output)), "typing is not supported, and the profile pastes instead; use \"paste\" or \"clipboard\"");
+        }
+
         if (profile.Hotkey is not null)
         {
             if (!Hotkey.TryParse(profile.Hotkey, out var hotkey, out var hotkeyError))

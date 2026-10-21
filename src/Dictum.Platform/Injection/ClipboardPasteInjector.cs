@@ -6,7 +6,8 @@ namespace Dictum.Platform.Injection;
 /// <summary>
 /// Clipboard + simulated paste: save the clipboard, put the text on it, wait for the hotkey modifiers
 /// to be released, send Ctrl+V (Ctrl+Shift+V for terminals), then restore the previous text unless
-/// something else changed the clipboard in the meantime.
+/// something else changed the clipboard in the meantime. <see cref="OutputMode.Type"/> pastes too: typing is not
+/// supported, and a profile that asks for it still gets its text.
 /// </summary>
 public sealed class ClipboardPasteInjector(
     IClipboard clipboard,
@@ -26,15 +27,10 @@ public sealed class ClipboardPasteInjector(
 
     public async Task InjectAsync(string text, InjectionOptions options, CancellationToken ct)
     {
-        switch (options.Mode)
+        if (options.Mode == OutputMode.Clipboard)
         {
-            case OutputMode.Clipboard:
-                await clipboard.SetTextAsync(text, ct).ConfigureAwait(false);
-                return;
-            case OutputMode.Type:
-                throw new InjectionUnavailableException(
-                    "Typing text character by character is not supported yet.",
-                    "Use \"output\": \"paste\" or \"clipboard\" in the profile.");
+            await clipboard.SetTextAsync(text, ct).ConfigureAwait(false);
+            return;
         }
 
         if (keystrokes is null)

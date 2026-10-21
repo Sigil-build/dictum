@@ -55,6 +55,20 @@ public class ConfigValidatorTests
         Assert.Equal(new ConfigIssue(ConfigIssueSeverity.Warning, "processors.llm", "no profile's pipeline runs it, so dictation never uses it"), issue);
     }
 
+    // A config from an earlier version may still say "output": "type"; doctor and 'config validate' say it pastes.
+    [Fact]
+    public void TypeOutputIsWarnedAboutAndPastes()
+    {
+        var config = DefaultConfig.Create();
+        config.Profiles.Add(new ProfileConfig { Id = "typed", Stt = "local", Output = OutputMode.Type });
+
+        var issue = Assert.Single(ConfigValidator.Validate(config));
+
+        Assert.Equal(
+            new ConfigIssue(ConfigIssueSeverity.Warning, "profiles[1].output", "typing is not supported, and the profile pastes instead; use \"paste\" or \"clipboard\""),
+            issue);
+    }
+
     [Fact]
     public void RulesNeedExactlyOneOfFromOrPatternAndAValidRegex()
     {

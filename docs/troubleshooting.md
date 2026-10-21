@@ -110,6 +110,7 @@ The `config warnings` row (**Config warnings**) shows only when the file has war
 | `profiles[0].vocabulary: a word list can pull language detection towards its own language; set 'language' for this profile` | In **Settings → Profiles**, under **Languages**, pick **One** or **Several** instead of **Auto**. |
 | `profiles[0].vocabulary: the speech hint holds 400 characters; left out: …` | Your words and the speech hint do not fit in what Whisper reads. Shorten the list; the words named were left out. |
 | `profiles[0].vocabulary[3]: '…' is listed twice` | Remove the second copy. |
+| `profiles[0].output: typing is not supported, and the profile pastes instead; use "paste" or "clipboard"` | Earlier versions of Dictum let a profile ask for typing the text key by key, which never worked. Such a profile now pastes. To clear the warning, run `dictum config edit` and write `"output": "paste"` for that profile. |
 | `processors.<id>.rules[0].pattern: contains a backspace character: …` | In JSON, `"\b"` is a backspace. Write `"\\b"` for a word boundary. |
 | `stt.<id>.apiKey: API key is stored in plain text; use 'env:VAR' or 'secret:name' instead` (or `processors.<id>.apiKey`) | Type the key again in Settings, which moves it to the keyring. See [API keys and the keyring](#secrets). |
 | `general.historySize: is above 5000, the most Settings offers` | Settings shows at most 5000. Lower the number in the **History** row of **Settings → General**. |
@@ -227,7 +228,7 @@ Dictum puts the text on the clipboard, presses Ctrl+V for you, then puts back wh
 
 When pasting fails, the recognised text is still in **History** in the tray menu, unless history is off: copy it from there.
 
-If a profile's **Output** is **Type it, key by key**, every dictation fails with `Typing text character by character is not supported yet.` Choose **Paste into the focused app** or **Copy to clipboard only** in **Settings → Profiles**.
+Dictum does not type the text key by key. A profile whose `config.json` still says `"output": "type"`, from an earlier version, pastes, and the [config warnings](#config-warnings) row names it.
 
 ### Clipboard tools on Linux {#clipboard-tools}
 

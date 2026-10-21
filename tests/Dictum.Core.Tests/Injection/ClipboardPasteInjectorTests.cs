@@ -81,6 +81,15 @@ public class ClipboardPasteInjectorTests
         Assert.Equal(["set:dictated"], Log());
     }
 
+    // Earlier versions let a profile ask for "output": "type", which never worked; such a profile pastes, so its dictations still arrive.
+    [Fact]
+    public async Task TypeModePastesLikePasteMode()
+    {
+        await Create().InjectAsync("dictated", Options(OutputMode.Type), _ct);
+
+        Assert.Equal(["set:dictated", "paste:CtrlV", "set:previous"], Log());
+    }
+
     [Fact]
     public async Task WithoutKeystrokesTheTextStaysOnTheClipboardAndTheCallerIsTold()
     {
