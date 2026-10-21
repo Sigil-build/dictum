@@ -46,8 +46,13 @@
       </StackPanel>
     </Border>
     <DockPanel Grid.Row="1" Margin="8,4,8,12">
-      <TextBlock DockPanel.Dock="Bottom" Text="{Binding Version}" Margin="12,0" FontSize="11"
-                 Foreground="{DynamicResource color.text.secondary}" />
+      <!-- The version, and Help: the shown page's section of the Settings reference, in the browser. -->
+      <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto" Margin="12,0">
+        <TextBlock Text="{Binding Version}" FontSize="11" VerticalAlignment="Center"
+                   Foreground="{DynamicResource color.text.secondary}" />
+        <Button Grid.Column="1" Classes="link" Content="{x:Static res:Strings.SettingsHelp}" Command="{Binding HelpCommand}"
+                FontSize="11" VerticalAlignment="Center" />
+      </Grid>
       <ListBox Classes="rail" ItemsSource="{Binding Pages}" SelectedItem="{Binding Selected}"
                AutomationProperties.Name="{x:Static res:Strings.SettingsSections}">
         <ListBox.ItemTemplate>

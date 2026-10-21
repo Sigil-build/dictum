@@ -4,6 +4,7 @@ using Dictum.App.Daemon;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.Core.Configuration;
+using Dictum.Core.Docs;
 using Dictum.Host.Ipc;
 
 namespace Dictum.App.ViewModels.Settings;
@@ -42,6 +43,8 @@ public sealed partial class ProfilesPage : SettingsPage
     }
 
     public override string Title => Strings.SettingsProfiles;
+
+    public override string DocsAnchor => DocsAnchors.Settings.Profiles;
 
     public IReadOnlyList<Choice<HotkeyMode>> Modes { get; }
 

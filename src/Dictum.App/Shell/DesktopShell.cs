@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia;
 using Avalonia.Platform;
 using Avalonia.Threading;
@@ -12,6 +13,7 @@ using Dictum.Audio;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Docs;
 using Dictum.Host;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
@@ -91,7 +93,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         _services = new ShellServices(
             paths, Catalog.BuiltIn, Supervisor, Status, Frames, UiTimers.Instance, autostart, OwnExecutable(), _sounds,
             () => _secrets.Value, () => _runner.Value, () => _modelDownloads ?? IModelDownloads.None, Hardware, FreeDiskBytes,
-            new SpeedMeasurements(), desktop, _integration, wait => Task.Delay(wait), TimeProvider.System, log);
+            new SpeedMeasurements(), desktop, _integration, wait => Task.Delay(wait), OpenDocsPage, TimeProvider.System, log);
         _setup = new SetupCoordinator(_services, store, Supervisor.Restart, Supervisor.ConfigSaved, () => _settings?.Session.Flush());
     }
 
@@ -248,6 +250,15 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
 
     public void ShowHistory() => ShowSettings(SettingsPageKey.History);
 
+    public void ShowDocumentation() => OpenDocsPage(DocsPage.Home, null);
+
+    /// <summary>
+    /// Opens the documentation in the language the windows are in, which <see cref="UiCulture.Apply"/> set from
+    /// <c>general.uiLanguage</c>, or the system's. Any thread: the tray's clicks may come off the UI thread.
+    /// </summary>
+    private void OpenDocsPage(DocsPage page, string? anchor) =>
+        WebLinks.Open(DocsLinks.For(page, DocsLinks.Language(null, CultureInfo.CurrentUICulture), anchor), _log);
+
     /// <summary>Opens the Settings window at <paramref name="page"/>, or brings the open one forward there.</summary>
     public void ShowSettings(SettingsPageKey page)
     {
@@ -272,7 +283,8 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
 
         var session = new SettingsSession(_store, UiTimers.Instance, _log);
         session.Load();
-        var settings = new SettingsViewModel(session, SettingsPages.Create(session, _services, new WindowClipboard(() => _settingsWindow), ShowSetup));
+        var settings = new SettingsViewModel(
+            session, SettingsPages.Create(session, _services, new WindowClipboard(() => _settingsWindow), ShowSetup), _services.OpenDocs);
         var window = new SettingsWindow { DataContext = settings };
         window.Closed += (_, _) =>
         {

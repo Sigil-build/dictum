@@ -51,7 +51,7 @@ WARN config warnings        1 warning(s)
 
 `dictum doctor` exits with code 1 when any row is `ERR`, and 0 otherwise. `dictum doctor --json` prints the same rows as JSON, with `level` set to `ok`, `warning` or `error`, and `docs` set to the link for a row that is not OK. Each provider check gets up to 15 seconds, so the command can take a while.
 
-**Settings → System** shows the same rows with a badge (**OK**, **Warning** or **Error**), the check's name in your language, what it found, and what to do. The texts of the checks themselves are in English, in the app and in the terminal. The page adds two rows of its own: **Listening overlay** and **Tray icon**. The [Settings reference](reference/settings.md#system) describes the page.
+**Settings → System** shows the same rows with a badge (**OK**, **Warning** or **Error**), the check's name in your language, what it found, and what to do. The texts of the checks themselves are in English, in the app and in the terminal. The page adds two rows of its own: **Listening overlay** and **Tray icon**. Each of the other rows that is not OK has **How to fix** under its status: it opens the row's section of this page in your browser, the one the `see:` line links to, in the same language. The [Settings reference](reference/settings.md#system) describes the page.
 
 Find your row here:
 

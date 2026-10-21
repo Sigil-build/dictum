@@ -4,6 +4,7 @@ using Dictum.App.Overlay;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.Core.Configuration;
+using Dictum.Core.Docs;
 
 namespace Dictum.App.ViewModels.Settings;
 
@@ -43,6 +44,8 @@ public sealed partial class OverlayPage : SettingsPage
     }
 
     public override string Title => Strings.SettingsOverlay;
+
+    public override string DocsAnchor => DocsAnchors.Settings.Overlay;
 
     public string BackLabel { get; }
 

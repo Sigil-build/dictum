@@ -17,6 +17,8 @@ Asks which languages you dictate in. Tick each one; the box at the top finds a l
 
 One of the ticked languages is the main one, marked **Main**: Whisper writes it unless it is sure you spoke another. The main language is the one you choose with **Make main**, otherwise your system's language when it is ticked, otherwise the first one you ticked.
 
+**How does Dictum work?**, under the line about the main language at the top of the step, opens [How it works](../index.md#how-it-works) in your browser: what happens from the hotkey to the pasted text.
+
 Instead of a list, you can tick **Or let Whisper detect any language (slower, less accurate for mixed speech)**.
 
 Some languages are so close that Whisper often picks the wrong one, such as Ukrainian and Russian. With two of them ticked, a note suggests keeping the one you use most and putting the other in a profile of its own, with its own hotkey. See [Languages](../guides/languages.md).

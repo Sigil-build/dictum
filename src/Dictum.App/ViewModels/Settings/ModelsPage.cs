@@ -5,6 +5,7 @@ using Dictum.App.Settings;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Docs;
 using Dictum.Core.History;
 using Dictum.Host.Ipc;
 using Dictum.Setup;
@@ -80,6 +81,8 @@ public sealed partial class ModelsPage : SettingsPage
     }
 
     public override string Title => Strings.SettingsModels;
+
+    public override string DocsAnchor => DocsAnchors.Settings.Models;
 
     public IReadOnlyList<ModelCard> Cards { get; }
 

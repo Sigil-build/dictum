@@ -1,17 +1,20 @@
 using Avalonia.Controls;
 using Avalonia.VisualTree;
+using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.App.Tests.Settings;
 using Dictum.App.ViewModels.Settings;
 using Dictum.App.Views.Settings;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Docs;
 
 namespace Dictum.App.Tests.Views;
 
 public sealed class SettingsWindowTests(AvaloniaFixture fx) : IDisposable
 {
     private readonly TempDirectory _dir = new();
+    private readonly List<(DocsPage Page, string? Anchor)> _opened = [];
 
     public void Dispose() => _dir.Dispose();
 
@@ -23,8 +26,26 @@ public sealed class SettingsWindowTests(AvaloniaFixture fx) : IDisposable
         session.Load();
         general = new SettingsViewModelTests.Page("General");
         system = new SettingsViewModelTests.Page("System");
-        return new SettingsViewModel(session, [(SettingsPageKey.General, general), (SettingsPageKey.System, system)]);
+        return new SettingsViewModel(session, [(SettingsPageKey.General, general), (SettingsPageKey.System, system)], (page, anchor) => _opened.Add((page, anchor)));
     }
+
+    // Help sits beside the version at the bottom of the rail and opens the shown page's section.
+    [Fact]
+    public Task HelpBesideTheVersionOpensTheShownPagesSection() => fx.Ui(() =>
+    {
+        var model = Model(out _, out _);
+        var window = new SettingsWindow { DataContext = model };
+        window.Show();
+        model.Open(SettingsPageKey.General);
+
+        var help = window.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Content, Strings.SettingsHelp));
+        Assert.True(help.IsEffectivelyVisible);
+        Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == model.Version && t.IsEffectivelyVisible);
+        help.Command!.Execute(null);
+
+        Assert.Equal([(DocsPage.Settings, DocsAnchors.Settings.General)], _opened);
+        window.Close();
+    });
 
     [Fact]
     public Task TheRailListsThePagesAndSelectingOneShowsIt() => fx.Ui(() =>

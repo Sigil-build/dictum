@@ -109,7 +109,6 @@ public sealed partial class ReferenceDocsTests
         AssertNone(steps.Where(step => !page.Chapters.Contains(step)).Select(step => $"{page.Name} has no H2 \"{step}\""));
     }
 
-    // A8 adds MenuDocumentation, which then needs its line on the page too.
     [Theory, InlineData("en"), InlineData("uk")]
     public void EveryTrayMenuItemIsDocumented(string lang)
     {

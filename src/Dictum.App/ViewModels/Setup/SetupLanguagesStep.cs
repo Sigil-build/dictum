@@ -4,7 +4,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
+using Dictum.App.Shell;
 using Dictum.Core.Configuration;
+using Dictum.Core.Docs;
 
 namespace Dictum.App.ViewModels.Setup;
 
@@ -43,20 +45,23 @@ public sealed partial class LanguageRow(string code, Action<LanguageRow> makeMai
 /// Step 1: a row per Whisper language, the picked ones first in the order picked; a search by name or code that keeps
 /// picked rows in sight; "detect any language"; and the similar-language banner. Next needs a language, or "detect any".
 /// The setting lists the main language first: the one the user made main, else the UI language when picked, else the
-/// first picked.
+/// first picked. A link under the lead opens the documentation's "How it works".
 /// </summary>
 public sealed partial class SetupLanguagesStep : SetupStep
 {
     private readonly List<string> _picked = [];
     private readonly string _uiLanguage = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+    private readonly OpenDocs? _openDocs;
 
     /// <summary>The language made main, which is the main one whenever it is picked: a config's or a kept walk's first, or the user's pick.</summary>
     private string? _chosenMain;
 
     /// <param name="setting">The language setting to start from: "uk, en", "uk" or "auto".</param>
     /// <param name="fresh">The setting is a first setup's default, not the user's own list: the main language follows the UI's.</param>
-    public SetupLanguagesStep(string setting, bool fresh = false)
+    /// <param name="openDocs">Opens the documentation; the wizard passes the shell's. Left out, the link does nothing (tests).</param>
+    public SetupLanguagesStep(string setting, bool fresh = false, OpenDocs? openDocs = null)
     {
+        _openDocs = openDocs;
         var codes = LanguageList.Parse(setting);
         var known = (codes ?? []).Where(WhisperLanguages.Codes.Contains).ToList();
         var byName = StringComparer.Create(CultureInfo.CurrentCulture, ignoreCase: true);
@@ -97,6 +102,10 @@ public sealed partial class SetupLanguagesStep : SetupStep
         _chosenMain is { } chosen && _picked.Contains(chosen) ? chosen
         : _picked.Contains(_uiLanguage) ? _uiLanguage
         : _picked.FirstOrDefault();
+
+    /// <summary>"How does Dictum work?": the overview's section on what happens to a dictation.</summary>
+    [RelayCommand]
+    private void HowItWorks() => _openDocs?.Invoke(DocsPage.Home, DocsAnchors.HowItWorks);
 
     partial void OnSearchChanged(string value) => Filter();
 

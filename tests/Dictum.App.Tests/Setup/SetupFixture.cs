@@ -5,6 +5,7 @@ using Dictum.App.ViewModels.Setup;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Docs;
 using Dictum.Setup;
 
 namespace Dictum.App.Tests.Setup;
@@ -56,12 +57,15 @@ internal sealed class SetupFixture : IDisposable
 
     public int Restarts { get; private set; }
 
+    /// <summary>The documentation pages the wizard opened, in order.</summary>
+    public List<(DocsPage Page, string? Anchor)> Opened { get; } = [];
+
     public SetupServices Services() => new(
         Paths, Store, ModelsPageTests.TestCatalog(), Downloads,
         () => Probing?.Task ?? Task.FromResult(Hardware), () => FreeDisk, ModelsPageTests.Memory, 8, Measurements, Probe, Secrets,
         HasAutostart ? Autostart : null, HasAutostart ? Executable : null,
         new TrayHint(Desktop, () => TrayHidden, Desktop == TrayDesktop.Windows ? () => TraySettingsOpened++ : null),
-        Daemon, () => Restarts++,
+        Daemon, () => Restarts++, (page, anchor) => Opened.Add((page, anchor)),
         Timers, Clock, NullLog.Instance);
 
     public void Install(string file, byte[] data)

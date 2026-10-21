@@ -5,6 +5,7 @@ using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Docs;
 using Dictum.Core.History;
 using Dictum.Core.Processing;
 
@@ -50,6 +51,8 @@ public sealed partial class HistoryPage : SettingsPage, IDisposable
     }
 
     public override string Title => Strings.SettingsHistory;
+
+    public override string DocsAnchor => DocsAnchors.Settings.History;
 
     [ObservableProperty]
     public partial string Search { get; set; } = "";

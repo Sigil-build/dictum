@@ -30,6 +30,7 @@
             <StackPanel Spacing="8" Margin="0,0,0,8">
               <TextBlock Classes="h1" Text="{x:Static res:Strings.SetupLanguagesTitle}" />
               <TextBlock Classes="lead" Text="{x:Static res:Strings.SetupLanguagesMainLead}" />
+              <Button Classes="link" Content="{x:Static res:Strings.SetupHowItWorks}" Command="{Binding HowItWorksCommand}" HorizontalAlignment="Left" />
               <TextBox Text="{Binding Search}" PlaceholderText="{x:Static res:Strings.SetupLanguagesSearch}"
                        AutomationProperties.Name="{x:Static res:Strings.SetupLanguagesSearchLabel}" />
             </StackPanel>

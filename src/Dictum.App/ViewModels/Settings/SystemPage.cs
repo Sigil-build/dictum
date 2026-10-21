@@ -3,7 +3,10 @@ using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Daemon;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
+using Dictum.App.Shell;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Docs;
+using Dictum.Host.Diagnostics;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
 
@@ -14,6 +17,7 @@ namespace Dictum.App.ViewModels.Settings;
 /// <param name="Overlay">The overlay row, read on every check.</param>
 /// <param name="Tray">The tray icon row, read on every check.</param>
 /// <param name="Desktop">"Windows 11", "Wayland, KDE": the header's first part.</param>
+/// <param name="OpenDocs">A problem row's "How to fix": the troubleshooting section for its check.</param>
 public sealed record SystemServices(
     IDaemonChannel Channel,
     StatusViewModel Service,
@@ -21,12 +25,14 @@ public sealed record SystemServices(
     Func<SystemRow> Tray,
     ITimers Timers,
     TimeProvider Time,
-    string Desktop);
+    string Desktop,
+    OpenDocs OpenDocs);
 
 /// <summary>
 /// Settings → System. It shows the daemon's <c>doctor</c> checks, then the app's own overlay and tray rows,
 /// with a summary and the daemon card. The checks run each time the page shows, on "Check again", and when the
-/// daemon comes back after a check that could not reach it.
+/// daemon comes back after a check that could not reach it. A check that is not OK, and the row that says the daemon
+/// could not run them, link to the troubleshooting section that <c>dictum doctor</c>'s <c>see:</c> line names.
 /// </summary>
 public sealed partial class SystemPage : SettingsPage
 {
@@ -51,6 +57,8 @@ public sealed partial class SystemPage : SettingsPage
 
     public override string Title => Strings.SettingsSystem;
 
+    public override string DocsAnchor => DocsAnchors.Settings.System;
+
     public StatusViewModel Service => _services.Service;
 
     [ObservableProperty]
@@ -67,8 +75,6 @@ public sealed partial class SystemPage : SettingsPage
 
     [ObservableProperty]
     public partial bool Checking { get; private set; }
-
-    public static SystemRow Row(PlatformCheck check) => new(CheckName(check.Name), check.Status.Level, check.Status.Detail, check.Status.Hint);
 
     /// <summary>The daemon's check names (DoctorChecks and each platform), in the UI language; new ones keep their name.</summary>
     public static string CheckName(string name) => name switch
@@ -143,7 +149,8 @@ public sealed partial class SystemPage : SettingsPage
         else
         {
             rows.Add(new SystemRow(Strings.SettingsCheckDaemon, HealthLevel.Error,
-                answer?.Error ?? Strings.SettingsSystemNoDaemon, answer is null ? Strings.SettingsSystemNoDaemonDetail : null));
+                answer?.Error ?? Strings.SettingsSystemNoDaemon, answer is null ? Strings.SettingsSystemNoDaemonDetail : null,
+                Help: HowToFix(DocsAnchors.Troubleshooting.Daemon)));
         }
 
         rows.Add(_services.Overlay());
@@ -160,6 +167,12 @@ public sealed partial class SystemPage : SettingsPage
         Checking = false;
         UpdateHeader();
     }
+
+    /// <summary>A doctor check as a row; one that is not OK links to its troubleshooting section, as doctor's <c>see:</c> line does.</summary>
+    private SystemRow Row(PlatformCheck check) => new(CheckName(check.Name), check.Status.Level, check.Status.Detail, check.Status.Hint,
+        Help: check.Status.Level == HealthLevel.Ok ? null : HowToFix(DoctorDocs.AnchorFor(check.Name)));
+
+    private RelayCommand HowToFix(string anchor) => new(() => _services.OpenDocs(DocsPage.Troubleshooting, anchor));
 
     private void UpdateHeader() => Header = Checking || _checkedAt is not { } at
         ? UiText.Format(Strings.SettingsSystemChecking, _services.Desktop)

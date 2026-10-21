@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.Core.Configuration;
+using Dictum.Core.Docs;
 
 namespace Dictum.App.ViewModels.Settings;
 
@@ -39,6 +40,8 @@ public sealed partial class PastingPage : SettingsPage
     }
 
     public override string Title => Strings.SettingsPasting;
+
+    public override string DocsAnchor => DocsAnchors.Settings.Pasting;
 
     public string BackLabel { get; }
 

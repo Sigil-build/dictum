@@ -8,6 +8,7 @@ using Dictum.Audio;
 using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Docs;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
 
@@ -87,6 +88,8 @@ public sealed partial class GeneralPage : SettingsPage
     }
 
     public override string Title => Strings.SettingsGeneral;
+
+    public override string DocsAnchor => DocsAnchors.Settings.General;
 
     public IReadOnlyList<Choice<string?>> UiLanguages { get; }
 

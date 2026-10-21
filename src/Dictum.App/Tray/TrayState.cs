@@ -149,6 +149,7 @@ public sealed class TrayState(TimeProvider time)
 
         items.Add(TrayMenuItem.Action(Strings.MenuHistory, TrayCommand.History));
         items.Add(TrayMenuItem.Action(Strings.MenuSettings, TrayCommand.Settings));
+        items.Add(TrayMenuItem.Action(Strings.MenuDocumentation, TrayCommand.Documentation));
         items.Add(TrayMenuItem.Separator);
         items.Add(TrayMenuItem.Action(Strings.MenuQuit, TrayCommand.Quit));
         return items;

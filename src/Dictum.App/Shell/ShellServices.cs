@@ -19,6 +19,7 @@ namespace Dictum.App.Shell;
 /// <param name="Hardware">The one GPU probe, which Settings → Models and the wizard share.</param>
 /// <param name="FreeDiskBytes">Free space where the models go; <see cref="long.MaxValue"/> when unknown.</param>
 /// <param name="Delay">The waits for the daemon's reload before a test.</param>
+/// <param name="OpenDocs">Opens the documentation in the browser: Settings' Help, System's "How to fix", the wizard's step 1.</param>
 internal sealed record ShellServices(
     AppPaths Paths,
     Catalog Catalog,
@@ -38,5 +39,6 @@ internal sealed record ShellServices(
     DesktopEnvironment Desktop,
     DesktopIntegration Integration,
     Func<TimeSpan, Task> Delay,
+    OpenDocs OpenDocs,
     TimeProvider Time,
     ILog Log);

@@ -12,7 +12,7 @@ If Dictum is not set up yet, each of these opens the [setup wizard](setup-wizard
 - If `config.json` cannot be read, for example after a hand edit broke it, the pages are greyed out and the banner says what is wrong. See [Troubleshooting](../troubleshooting.md#config).
 - Two settings need a restart, and say so under the field: **UI language** and a local Whisper provider's **Runtime**.
 
-The column on the left lists the pages. The version of Dictum is at its bottom.
+The column on the left lists the pages. At its bottom are the version of Dictum and **Help**, which opens this reference in your browser at the section for the page you are on, **Listening overlay** and **Pasting** included.
 
 ## The pages {#pages}
 
@@ -328,6 +328,10 @@ The checks run each time the page opens.
 #### Check again {#check-again}
 
 Runs the checks again, for example after you fixed something. The checks run inside the daemon; if it is not running, the Daemon row says so, and the checks run again as soon as it is back.
+
+#### How to fix {#how-to-fix}
+
+A link under the status of a check that is not OK, and under the Daemon row when the checks could not run. It opens the row's section of [Troubleshooting](../troubleshooting.md) in your browser: the one in the table above, which `dictum doctor` links to as well. The **Listening overlay** and **Tray icon** rows have no link.
 
 ### History {#history}
 

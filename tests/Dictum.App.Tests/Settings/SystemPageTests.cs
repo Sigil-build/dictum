@@ -4,6 +4,7 @@ using Dictum.App.Settings;
 using Dictum.App.ViewModels;
 using Dictum.App.ViewModels.Settings;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Docs;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
 
@@ -18,7 +19,19 @@ public sealed class SystemPageTests
     private readonly SystemRow _overlay = new("Listening overlay", HealthLevel.Ok, "Shows while you dictate");
     private SystemRow _tray = new("Tray icon", HealthLevel.Ok, "Always visible");
 
-    private SystemPage Page() => new(new SystemServices(_channel, _service, () => _overlay, () => _tray, _timers, _clock, "Windows 11"));
+    /// <summary>What the rows' "How to fix" opened, in order.</summary>
+    private readonly List<(DocsPage Page, string? Anchor)> _opened = [];
+
+    private SystemPage Page() => new(new SystemServices(_channel, _service, () => _overlay, () => _tray, _timers, _clock, "Windows 11",
+        (page, anchor) => _opened.Add((page, anchor))));
+
+    /// <summary>Clicks the row's "How to fix" and returns what it opened.</summary>
+    private (DocsPage Page, string? Anchor) Help(SystemRow row)
+    {
+        Assert.NotNull(row.Help);
+        row.Help.Execute(null);
+        return _opened[^1];
+    }
 
     private void Doctor(params PlatformCheck[] checks) =>
         _channel.Answer = request => request.Command == IpcCommand.Doctor ? new IpcResponse(true, Checks: checks) : new IpcResponse(true);
@@ -35,7 +48,7 @@ public sealed class SystemPageTests
         page.OnShown();
 
         Assert.Equal(["Config file", "Paste", "Speech provider local", "Listening overlay", "Tray icon"], page.Rows.Select(r => r.Name));
-        Assert.Equal(new SystemRow("Paste", HealthLevel.Error, "SendInput failed", "Run Dictum without administrator rights."), page.Rows[1]);
+        Assert.Equal(new SystemRow("Paste", HealthLevel.Error, "SendInput failed", "Run Dictum without administrator rights."), page.Rows[1] with { Help = null });
         Assert.Equal("Problems: 1. Warnings: 1.", page.Summary);
         Assert.True(page.HasProblems);
         Assert.Equal(SystemPage.DoctorTimeout, _channel.LastTimeout);
@@ -49,7 +62,7 @@ public sealed class SystemPageTests
 
         page.OnShown();
 
-        Assert.Equal(new SystemRow(Strings.SettingsCheckDaemon, HealthLevel.Error, Strings.SettingsSystemNoDaemon, Strings.SettingsSystemNoDaemonDetail), page.Rows[0]);
+        Assert.Equal(new SystemRow(Strings.SettingsCheckDaemon, HealthLevel.Error, Strings.SettingsSystemNoDaemon, Strings.SettingsSystemNoDaemonDetail), page.Rows[0] with { Help = null });
         Assert.Equal(["Daemon", "Listening overlay", "Tray icon"], page.Rows.Select(r => r.Name));
         Assert.Equal("Problems: 1. Warnings: 0.", page.Summary);
     }
@@ -79,6 +92,72 @@ public sealed class SystemPageTests
         page.OnShown();
 
         Assert.Equal("This daemon cannot run the checks.", page.Rows[0].Status);
+        Assert.Equal((DocsPage.Troubleshooting, DocsAnchors.Troubleshooting.Daemon), Help(page.Rows[0]));
+    }
+
+    [Fact]
+    public void AWarningLinksToItsTroubleshootingSection()
+    {
+        Doctor(new PlatformCheck("hotkeys", new HealthStatus(HealthLevel.Warning, "No shortcut portal", "Log in to a Plasma or GNOME session.")));
+        var page = Page();
+
+        page.OnShown();
+
+        Assert.Equal((DocsPage.Troubleshooting, "hotkeys"), Help(page.Rows[0]));
+        Assert.Equal([(DocsPage.Troubleshooting, "hotkeys")], _opened);
+    }
+
+    // Each check opens the section that dictum doctor's see: line names; a check with no section of its own opens #doctor.
+    [Theory]
+    [InlineData("paste (ydotool)", HealthLevel.Error, "pasting")]
+    [InlineData("stt:local", HealthLevel.Warning, "speech-recognition")]
+    [InlineData("processor:cleanup", HealthLevel.Error, "llm-cleanup")]
+    [InlineData("config warnings", HealthLevel.Warning, "config-warnings")]
+    [InlineData("something new", HealthLevel.Warning, "doctor")]
+    public void EachCheckLinksWhereDoctorDoes(string name, HealthLevel level, string anchor)
+    {
+        Doctor(new PlatformCheck(name, new HealthStatus(level, "not right")));
+        var page = Page();
+
+        page.OnShown();
+
+        Assert.Equal((DocsPage.Troubleshooting, anchor), Help(page.Rows[0]));
+    }
+
+    [Fact]
+    public void AnOkCheckHasNoHowToFix()
+    {
+        Doctor(new PlatformCheck("hotkeys", new HealthStatus(HealthLevel.Ok, "low-level keyboard hook (SharpHook)")));
+        var page = Page();
+
+        page.OnShown();
+
+        Assert.Null(page.Rows[0].Help);
+    }
+
+    [Fact]
+    public void ADaemonThatCannotBeReachedLinksToTheDaemonSection()
+    {
+        _channel.Link = new DaemonLink(DaemonLinkState.Restarting);
+        var page = Page();
+
+        page.OnShown();
+
+        Assert.Equal((DocsPage.Troubleshooting, DocsAnchors.Troubleshooting.Daemon), Help(page.Rows[0]));
+    }
+
+    // The overlay and tray rows are the app's own, not doctor's: the page links neither, even with a problem.
+    [Fact]
+    public void TheOverlayAndTrayRowsGetNoHowToFix()
+    {
+        Doctor();
+        _tray = new SystemRow("Tray icon", HealthLevel.Warning, "Hidden in the overflow area");
+        var page = Page();
+
+        page.OnShown();
+
+        Assert.Equal(["Listening overlay", "Tray icon"], page.Rows.Select(r => r.Name));
+        Assert.All(page.Rows, row => Assert.Null(row.Help));
     }
 
     [Fact]

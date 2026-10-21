@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.Core.Configuration;
+using Dictum.Core.Docs;
 
 namespace Dictum.App.ViewModels.Settings;
 
@@ -30,6 +31,8 @@ public sealed partial class SpeechProvidersPage : SettingsPage
     }
 
     public override string Title => Strings.SettingsSpeechProviders;
+
+    public override string DocsAnchor => DocsAnchors.Settings.SpeechRecognition;
 
     /// <summary>Models downloaded on Settings → Models since the page was built appear in its model dropdowns.</summary>
     public override void OnShown() => Load();

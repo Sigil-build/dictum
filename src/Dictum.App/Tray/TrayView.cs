@@ -18,6 +18,7 @@ public enum TrayCommand
     ResumeHotkeys,
     History,
     Settings,
+    Documentation,
     RestartDaemon,
     Quit,
 }

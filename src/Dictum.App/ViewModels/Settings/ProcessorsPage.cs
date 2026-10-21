@@ -4,6 +4,7 @@ using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Docs;
 using Dictum.Processing;
 
 namespace Dictum.App.ViewModels.Settings;
@@ -45,6 +46,8 @@ public sealed partial class ProcessorsPage : SettingsPage, IDisposable
     }
 
     public override string Title => Strings.SettingsProcessors;
+
+    public override string DocsAnchor => DocsAnchors.Settings.Processors;
 
     public LlmEditor Llm { get; }
 

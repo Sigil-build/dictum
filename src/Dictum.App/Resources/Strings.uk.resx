@@ -101,6 +101,9 @@
   <data name="MenuSettings" xml:space="preserve">
     <value>Налаштування</value>
   </data>
+  <data name="MenuDocumentation" xml:space="preserve">
+    <value>Документація</value>
+  </data>
   <data name="MenuRestartDaemon" xml:space="preserve">
     <value>Перезапустити демон</value>
   </data>
@@ -196,6 +199,9 @@
   </data>
   <data name="SettingsVersion" xml:space="preserve">
     <value>Dictum {0}</value>
+  </data>
+  <data name="SettingsHelp" xml:space="preserve">
+    <value>Довідка</value>
   </data>
   <data name="CommonOn" xml:space="preserve">
     <value>Увімк.</value>
@@ -391,6 +397,9 @@
   </data>
   <data name="SettingsSystemCheckAgain" xml:space="preserve">
     <value>Перевірити ще раз</value>
+  </data>
+  <data name="SettingsSystemHelp" xml:space="preserve">
+    <value>Як виправити</value>
   </data>
   <data name="SettingsSystemChecking" xml:space="preserve">
     <value>{0} · перевірка…</value>
@@ -1333,6 +1342,9 @@
   </data>
   <data name="SetupLanguagesMainLead" xml:space="preserve">
     <value>Позначте всі потрібні. Основна мова має перевагу: іншу Dictum бере, лише коли Whisper упевнений у ній.</value>
+  </data>
+  <data name="SetupHowItWorks" xml:space="preserve">
+    <value>Як працює Dictum?</value>
   </data>
   <data name="SetupLanguagesMain" xml:space="preserve">
     <value>Основна</value>

@@ -10,6 +10,12 @@ public abstract class SettingsPage : ViewModelBase
 {
     public abstract string Title { get; }
 
+    /// <summary>
+    /// The page's section of the Settings reference, which the window's Help opens: one of
+    /// <see cref="Dictum.Core.Docs.DocsAnchors.Settings"/>.
+    /// </summary>
+    public abstract string DocsAnchor { get; }
+
     public event Action<SettingsPage>? NavigateRequested;
 
     public event Action? BackRequested;

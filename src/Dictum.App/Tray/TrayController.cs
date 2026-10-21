@@ -17,6 +17,9 @@ public interface ITrayCommands
 
     void ShowHistory();
 
+    /// <summary>Opens the documentation's overview in the browser.</summary>
+    void ShowDocumentation();
+
     void RestartDaemon();
 
     void Quit();
@@ -105,6 +108,9 @@ public sealed class TrayController(TrayState state, ITrayCommands commands, Time
                 break;
             case TrayCommand.Settings:
                 commands.ShowSettings();
+                break;
+            case TrayCommand.Documentation:
+                commands.ShowDocumentation();
                 break;
             case TrayCommand.RestartDaemon:
                 commands.RestartDaemon();

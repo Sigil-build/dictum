@@ -24,7 +24,7 @@ internal static class SettingsPages
             services.Delay, services.Time, services.Log));
         var system = new SystemPage(new SystemServices(
             services.Daemon, services.Status, () => services.Integration.OverlayRow(session.Config.General.Overlay.Enabled), services.Integration.TrayRow,
-            services.Timers, services.Time, services.Integration.Name));
+            services.Timers, services.Time, services.Integration.Name, services.OpenDocs));
         var runner = services.Runner();
         var processors = new ProcessorsPage(session, new ProcessorsServices(
             runner, secrets, new PromptLibrary(services.Paths.PromptsDirectory), services.Timers, services.Log));

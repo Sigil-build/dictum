@@ -1,6 +1,7 @@
 using System.Globalization;
 using Dictum.App.Settings;
 using Dictum.App.ViewModels.Setup;
+using Dictum.Core.Docs;
 
 namespace Dictum.App.Tests.Setup;
 
@@ -210,5 +211,28 @@ public sealed class SetupLanguagesStepTests
         var step = new SetupLanguagesStep("en") { Search = search };
 
         Assert.Contains(code, step.Rows.Where(r => r.IsShown).Select(r => r.Code));
+    }
+
+    [Fact]
+    public void HowItWorksOpensTheOverview()
+    {
+        var opened = new List<(DocsPage Page, string? Anchor)>();
+        var step = new SetupLanguagesStep("uk, en", openDocs: (page, anchor) => opened.Add((page, anchor)));
+
+        step.HowItWorksCommand.Execute(null);
+
+        Assert.Equal([(DocsPage.Home, DocsAnchors.HowItWorks)], opened);
+    }
+
+    // The wizard hands its step the shell's opener.
+    [Fact]
+    public void TheWizardsStepOpensTheShellsDocs()
+    {
+        using var setup = new SetupFixture();
+        var wizard = new SetupViewModel(setup.Services());
+
+        wizard.Languages.HowItWorksCommand.Execute(null);
+
+        Assert.Equal([(DocsPage.Home, DocsAnchors.HowItWorks)], setup.Opened);
     }
 }

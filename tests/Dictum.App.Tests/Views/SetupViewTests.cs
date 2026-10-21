@@ -9,6 +9,7 @@ using Dictum.App.Resources;
 using Dictum.App.Tests.Setup;
 using Dictum.App.ViewModels.Setup;
 using Dictum.App.Views.Setup;
+using Dictum.Core.Docs;
 using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 
@@ -170,7 +171,7 @@ public sealed class SetupViewTests(AvaloniaFixture fx) : IDisposable
         window.Close();
     });
 
-    // Tab follows reading order: the step's search, its list, the option under the list, then Next.
+    // Tab follows reading order: the link under the lead, the step's search, its list, the option under the list, then Next.
     [Fact]
     public Task TabFollowsReadingOrder() => fx.UiAsync(() =>
     {
@@ -190,7 +191,7 @@ public sealed class SetupViewTests(AvaloniaFixture fx) : IDisposable
         }
 
         window.Close();
-        Assert.Equal(["search", "row en", "row pl", "detect any", "Next"], order);
+        Assert.Equal([Strings.SetupHowItWorks, "search", "row en", "row pl", "detect any", "Next"], order);
         return Task.CompletedTask;
     });
 
@@ -215,8 +216,27 @@ public sealed class SetupViewTests(AvaloniaFixture fx) : IDisposable
         }
 
         window.Close();
-        Assert.Equal(["search", "row en", "row pl", Strings.SettingsProfilesLanguageMakeMain, "detect any", "Next"], order);
+        Assert.Equal([Strings.SetupHowItWorks, "search", "row en", "row pl", Strings.SettingsProfilesLanguageMakeMain, "detect any", "Next"], order);
         return Task.CompletedTask;
+    });
+
+    // "How does Dictum work?" sits under step 1's lead and opens the overview's section.
+    [Fact]
+    public Task StepOneLinksToHowDictumWorks() => fx.Ui(() =>
+    {
+        var wizard = new SetupViewModel(_setup.Services());
+        var window = Show(wizard);
+
+        var lead = window.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == Strings.SetupLanguagesMainLead);
+        var link = window.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Content, Strings.SetupHowItWorks));
+        var search = window.GetVisualDescendants().OfType<TextBox>().Single();
+        Visual[] reading = [lead, link, search];
+        Assert.Equal(reading, window.GetVisualDescendants().Where(reading.Contains));
+        Assert.True(link.IsEffectivelyVisible);
+        link.Command!.Execute(null);
+
+        Assert.Equal([(DocsPage.Home, DocsAnchors.HowItWorks)], _setup.Opened);
+        window.Close();
     });
 
     private static string Describe(IInputElement? element) => element switch

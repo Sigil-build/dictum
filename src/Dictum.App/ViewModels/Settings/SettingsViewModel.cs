@@ -1,8 +1,11 @@
 using System.Reflection;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Daemon;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
+using Dictum.App.Shell;
+using Dictum.Core.Docs;
 
 namespace Dictum.App.ViewModels.Settings;
 
@@ -19,8 +22,8 @@ public enum SettingsPageKey
 
 /// <summary>
 /// The Settings window: the rail's pages and the page on screen (a sub-page keeps its parent selected in the rail),
-/// and a banner when the pages cannot edit or a save failed. Closing hides the page and saves pending edits; disposing
-/// ends the pages' timers and runs.
+/// and a banner when the pages cannot edit or a save failed. Help, beside the version, opens the shown page's section
+/// of the Settings reference. Closing hides the page and saves pending edits; disposing ends the pages' timers and runs.
 /// </summary>
 public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
 {
@@ -29,10 +32,12 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
 
     private readonly Dictionary<SettingsPageKey, SettingsPage> _byKey;
     private readonly HashSet<SettingsPage> _followed = [];
+    private readonly OpenDocs _openDocs;
 
-    public SettingsViewModel(SettingsSession session, IReadOnlyList<(SettingsPageKey Key, SettingsPage Page)> pages)
+    public SettingsViewModel(SettingsSession session, IReadOnlyList<(SettingsPageKey Key, SettingsPage Page)> pages, OpenDocs openDocs)
     {
         Session = session;
+        _openDocs = openDocs;
         _byKey = pages.ToDictionary(p => p.Key, p => p.Page);
         Pages = [.. pages.Select(p => p.Page)];
         foreach (var page in Pages)
@@ -97,6 +102,10 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
             page.OnLink(link);
         }
     }
+
+    /// <summary>The page on screen, a sub-page included, at its section; the top of the reference when none is shown.</summary>
+    [RelayCommand]
+    private void Help() => _openDocs(DocsPage.Settings, Current?.DocsAnchor);
 
     partial void OnSelectedChanged(SettingsPage? value) => Show(value);
 

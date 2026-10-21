@@ -192,8 +192,9 @@ public static class SelfTest
                 UiTimers.Instance, null, null, sounds, () => secrets, () => runner, () => IModelDownloads.None,
                 () => Task.FromResult(new HardwareInfo(null, 0)), () => long.MaxValue, new SpeedMeasurements(),
                 desktop, new DesktopIntegration(desktop, (_, _) => Task.FromResult<ITrayPresenter?>(null), NullLog.Instance),
-                _ => Task.CompletedTask, TimeProvider.System, NullLog.Instance);
-            using var settings = new SettingsViewModel(session, SettingsPages.Create(session, services, new WindowClipboard(() => null), () => { }));
+                _ => Task.CompletedTask, (_, _) => { }, TimeProvider.System, NullLog.Instance);
+            using var settings = new SettingsViewModel(
+                session, SettingsPages.Create(session, services, new WindowClipboard(() => null), () => { }), services.OpenDocs);
             var general = settings.Pages.OfType<GeneralPage>().Single();
             using var setup = new SetupCoordinator(services, store, () => { }, () => { }, () => { });
             ViewModelBase[] models = [.. settings.Pages, general.Overlay, general.Pasting, setup.Create()];

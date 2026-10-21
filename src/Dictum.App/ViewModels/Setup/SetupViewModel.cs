@@ -57,8 +57,8 @@ public sealed partial class SetupViewModel : ViewModelBase
             : null;
 
         Languages = resume is null && current is null
-            ? new SetupLanguagesStep(LanguageList.Format([.. new[] { WhisperLanguages.Fallback(), English }.Distinct()]), fresh: true)
-            : new SetupLanguagesStep(resume?.Language ?? defaults.Language);
+            ? new SetupLanguagesStep(LanguageList.Format([.. new[] { WhisperLanguages.Fallback(), English }.Distinct()]), fresh: true, services.OpenDocs)
+            : new SetupLanguagesStep(resume?.Language ?? defaults.Language, openDocs: services.OpenDocs);
         Model = new SetupModelStep(services, defaults.KeptModelFile, currentModel);
         Cleanup = new SetupCleanupStep(services.Server, defaults.Server);
         Words = new SetupWordsStep(resume?.Words ?? current?.Profiles.FirstOrDefault()?.Vocabulary ?? []);

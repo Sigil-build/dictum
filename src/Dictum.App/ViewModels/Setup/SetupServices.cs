@@ -1,5 +1,6 @@
 using Dictum.App.Daemon;
 using Dictum.App.Settings;
+using Dictum.App.Shell;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
@@ -17,6 +18,7 @@ namespace Dictum.App.ViewModels.Setup;
 /// <param name="Executable">The running <c>dictum-gui</c>, which the login item starts; null when unknown.</param>
 /// <param name="Daemon">The daemon link, for step 8's live line.</param>
 /// <param name="RestartDaemon">Step 8's Restart: the supervisor's, as on the System page.</param>
+/// <param name="OpenDocs">Step 1's "How does Dictum work?".</param>
 public sealed record SetupServices(
     AppPaths Paths,
     ConfigStore Store,
@@ -34,6 +36,7 @@ public sealed record SetupServices(
     TrayHint Tray,
     IDaemonChannel Daemon,
     Action RestartDaemon,
+    OpenDocs OpenDocs,
     ITimers Timers,
     TimeProvider Time,
     ILog Log);

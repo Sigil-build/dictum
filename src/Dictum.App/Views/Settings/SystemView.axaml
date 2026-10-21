@@ -40,6 +40,10 @@
                 <StackPanel Grid.Column="1" Margin="14,0" VerticalAlignment="Center">
                   <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
                   <TextBlock Text="{Binding Status}" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource color.text.secondary}" />
+                  <!-- The troubleshooting section for the check, in the browser; the row's name tells a screen reader which one. -->
+                  <Button Classes="link" Content="{x:Static res:Strings.SettingsSystemHelp}" Command="{Binding Help}" FontSize="12"
+                          Margin="0,2,0,0" HorizontalAlignment="Left" AutomationProperties.HelpText="{Binding Name}"
+                          IsVisible="{Binding Help, Converter={x:Static ObjectConverters.IsNotNull}}" />
                 </StackPanel>
                 <TextBlock Grid.Column="2" Text="{Binding Detail}" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center"
                            Foreground="{DynamicResource color.text.primary}"

@@ -77,7 +77,7 @@ internal sealed class SetupCoordinator(
             services.Paths, store, services.Catalog, services.Downloads(), services.Hardware, services.FreeDiskBytes,
             GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, Environment.ProcessorCount, services.Measurements,
             new ServerProbe(_serverHttp ??= ProviderHttp.CreateClient(), secrets, services.Time), secrets, services.Autostart, services.Executable,
-            services.Integration.SetupTray(), services.Daemon, restartDaemon, services.Timers, services.Time, services.Log),
+            services.Integration.SetupTray(), services.Daemon, restartDaemon, services.OpenDocs, services.Timers, services.Time, services.Log),
             SavedSetupFile.Load(services.Paths, services.Log));
         walk.Finished += () =>
         {
