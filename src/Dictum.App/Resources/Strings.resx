@@ -656,9 +656,6 @@
   <data name="SettingsProfilesOutputPaste" xml:space="preserve">
     <value>Paste into the focused app</value>
   </data>
-  <data name="SettingsProfilesOutputType" xml:space="preserve">
-    <value>Type it, key by key</value>
-  </data>
   <data name="SettingsProfilesOutputClipboard" xml:space="preserve">
     <value>Copy to clipboard only</value>
   </data>

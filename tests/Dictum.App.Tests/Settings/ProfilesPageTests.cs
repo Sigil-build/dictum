@@ -330,13 +330,36 @@ public sealed class ProfilesPageTests : IDisposable
     {
         var (page, session) = Open();
 
-        page.OutputType = true;
-        Assert.Equal(OutputMode.Type, Saved(session, "work").Output);
+        page.OutputClipboard = true;
+        Assert.Equal(OutputMode.Clipboard, Saved(session, "work").Output);
         Assert.False(page.OutputPaste);
 
         page.OutputPaste = true;
         page.Shortcut = page.PasteShortcuts.Single(s => s.Value == PasteShortcut.CtrlShiftV);
         Assert.Equal((OutputMode.Paste, PasteShortcut.CtrlShiftV), (Saved(session, "work").Output, Saved(session, "work").PasteShortcut));
+    }
+
+    // Dictum 0.4 cannot type text key by key, so Settings offers no such output: a profile that a 0.3 config set to type
+    // shows Paste, and its next save writes Paste with the profile's other fields as they were.
+    [Fact]
+    public void ATypeProfileShowsPasteAndSavesPaste()
+    {
+        var config = Sample();
+        config.Profiles[0] = config.Profiles[0] with { Output = OutputMode.Type, PasteShortcut = PasteShortcut.CtrlShiftV, SttPrompt = "Розмова про код." };
+        var (page, _) = Open(config);
+
+        Assert.Equal((true, false), (page.OutputPaste, page.OutputClipboard));
+
+        page.Mode = page.Modes.Single(m => m.Value == HotkeyMode.Toggle);
+        _timers.Fire();
+
+        var saved = Store.Load().Profiles.Single(p => p.Id == "work");
+        Assert.Equal(OutputMode.Paste, saved.Output);
+        Assert.Equal(
+            ("Work", "Ctrl+Alt+Space", HotkeyMode.Toggle, "local", "uk, en", "Розмова про код.", PasteShortcut.CtrlShiftV),
+            (saved.Name, saved.Hotkey, saved.Mode, saved.Stt, saved.Language, saved.SttPrompt, saved.PasteShortcut));
+        Assert.Equal(["Nexus5", "Avalonia"], saved.Vocabulary);
+        Assert.Equal(["cleanup", "terms"], saved.Pipeline);
     }
 
     [Fact]

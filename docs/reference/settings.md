@@ -152,7 +152,6 @@ The processors that work on the text after recognition, in order, such as an LLM
 What Dictum does with the text:
 
 - **Paste into the focused app** (the default): the text appears where your cursor is. The [Pasting](#pasting) page tunes how.
-- **Type it, key by key**: not available in Dictum 0.4. A profile set to it fails each dictation with "Typing text character by character is not supported yet."
 - **Copy to clipboard only**: the text goes to the clipboard and you paste it yourself. Use it for apps that refuse a simulated paste.
 
 #### Paste shortcut {#paste-shortcut}

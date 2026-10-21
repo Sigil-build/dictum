@@ -656,9 +656,6 @@
   <data name="SettingsProfilesOutputPaste" xml:space="preserve">
     <value>Вставити в активну програму</value>
   </data>
-  <data name="SettingsProfilesOutputType" xml:space="preserve">
-    <value>Набрати посимвольно</value>
-  </data>
   <data name="SettingsProfilesOutputClipboard" xml:space="preserve">
     <value>Лише скопіювати в буфер обміну</value>
   </data>

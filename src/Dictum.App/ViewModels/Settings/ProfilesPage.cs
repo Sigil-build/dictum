@@ -99,9 +99,6 @@ public sealed partial class ProfilesPage : SettingsPage
     public partial bool OutputPaste { get; set; }
 
     [ObservableProperty]
-    public partial bool OutputType { get; set; }
-
-    [ObservableProperty]
     public partial bool OutputClipboard { get; set; }
 
     [ObservableProperty]
@@ -176,8 +173,6 @@ public sealed partial class ProfilesPage : SettingsPage
     partial void OnSpeechHintChanged(string value) => EditProfile(p => p with { SttPrompt = value.Length == 0 ? null : value });
 
     partial void OnOutputPasteChanged(bool value) => SetOutput(value, OutputMode.Paste);
-
-    partial void OnOutputTypeChanged(bool value) => SetOutput(value, OutputMode.Type);
 
     partial void OnOutputClipboardChanged(bool value) => SetOutput(value, OutputMode.Clipboard);
 
@@ -261,12 +256,19 @@ public sealed partial class ProfilesPage : SettingsPage
             var index = c.Profiles.FindIndex(p => p.Id == id);
             if (index >= 0)
             {
-                c.Profiles[index] = change(c.Profiles[index]);
+                c.Profiles[index] = Pasting(change(c.Profiles[index]));
             }
 
             return c;
         });
     }
+
+    /// <summary>
+    /// Dictum 0.4 cannot type text key by key, and Settings offers no such output: a profile that a 0.3 config set to
+    /// type shows Paste, which its next edit saves.
+    /// </summary>
+    private static ProfileConfig Pasting(ProfileConfig profile) =>
+        profile.Output == OutputMode.Type ? profile with { Output = OutputMode.Paste } : profile;
 
     private void ResumeHotkeys()
     {
@@ -347,8 +349,7 @@ public sealed partial class ProfilesPage : SettingsPage
 
     private void LoadOutput(ProfileConfig profile)
     {
-        OutputPaste = profile.Output == OutputMode.Paste;
-        OutputType = profile.Output == OutputMode.Type;
+        OutputPaste = profile.Output is OutputMode.Paste or OutputMode.Type;
         OutputClipboard = profile.Output == OutputMode.Clipboard;
         Shortcut = PasteShortcuts.FirstOrDefault(s => s.Value == profile.PasteShortcut) ?? PasteShortcuts[0];
     }

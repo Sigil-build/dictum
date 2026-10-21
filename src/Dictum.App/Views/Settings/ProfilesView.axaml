@@ -225,7 +225,6 @@
             <StackPanel Grid.Column="2" Spacing="8">
               <StackPanel Orientation="Horizontal" Spacing="20">
                 <RadioButton GroupName="output" Content="{x:Static res:Strings.SettingsProfilesOutputPaste}" IsChecked="{Binding OutputPaste}" />
-                <RadioButton GroupName="output" Content="{x:Static res:Strings.SettingsProfilesOutputType}" IsChecked="{Binding OutputType}" />
                 <RadioButton GroupName="output" Content="{x:Static res:Strings.SettingsProfilesOutputClipboard}" IsChecked="{Binding OutputClipboard}" />
               </StackPanel>
               <StackPanel Spacing="4" IsVisible="{Binding OutputPaste}">
