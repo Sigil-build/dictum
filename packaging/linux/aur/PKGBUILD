@@ -5,7 +5,7 @@ pkgver=0.4.0
 pkgrel=1
 pkgdesc='Voice to text: dictate into any app with a hotkey, with Whisper on this machine'
 arch=('x86_64')
-url='https://github.com/shikigami12/dictum'
+url='https://github.com/Sigil-build/dictum'
 # Dictum is MIT; the others are the licenses of the third-party code the package ships, as THIRD-PARTY-NOTICES.txt lists it.
 license=(
   'MIT'                       # Dictum, .NET, Avalonia, Whisper.net, whisper.cpp, PortAudio and the other MIT components
@@ -37,7 +37,7 @@ optdepends=(
 provides=('dictum')
 conflicts=('dictum')
 options=('!strip' '!debug')
-source=("https://github.com/shikigami12/dictum/releases/download/v${pkgver}/dictum-${pkgver}-linux-x64.tar.gz")
+source=("https://github.com/Sigil-build/dictum/releases/download/v${pkgver}/dictum-${pkgver}-linux-x64.tar.gz")
 # The release workflow writes the tarball's sum into its copy of this file; a local makepkg against a tarball you built yourself skips it.
 sha256sums=('SKIP')
 

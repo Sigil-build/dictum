@@ -42,6 +42,16 @@ public class PackagingTests
     public void TheScalableIconIsAnSvg() =>
         Assert.StartsWith("<svg", File.ReadAllText(Path.Combine(Icons, "dictum.svg")).TrimStart());
 
+    // The repository lives in the Sigil-build organization; the package's page and its download come from there.
+    [Fact]
+    public void PkgbuildPointsAtTheOrganization()
+    {
+        Assert.Contains("url='https://github.com/Sigil-build/dictum'", PkgbuildCode);
+
+        var source = Assert.Single(PkgbuildCode, line => line.StartsWith("source=", StringComparison.Ordinal));
+        Assert.StartsWith("source=(\"https://github.com/Sigil-build/dictum/releases/download/v${pkgver}/", source);
+    }
+
     // The release workflow rewrites pkgver from the tag; the checked-in PKGBUILD, which makepkg uses on a local
     // tarball, names the version the packages are built with.
     [Fact]
