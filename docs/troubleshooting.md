@@ -361,8 +361,8 @@ Each speech provider has a row, `stt:<id>` (**Speech provider &lt;id&gt;**). For
 `ggml-large-v3-turbo-q8_0.bin, runtime Vulkan on …`
 :   All is well: the model, and where it runs.
 
-`Model not found: …` or `VAD model not found: …`
-:   The model file is missing. See [Model files](#models). For the voice activity model, run `dictum models pull vad-silero-6.2`, or turn **Voice activity detection** off in **Settings → Speech providers**.
+`Model not found: …` or `VAD model not found: …` → `Run 'dictum models pull …', which downloads …`
+:   The model file is missing. The hint names the model's id in Dictum's catalog, such as `vad-silero-6.2` for the voice activity model, and the address the file comes from. Run that command, or download the model in **Settings → Models**. You can also turn **Voice activity detection** off in **Settings → Speech providers**. For a file the catalog does not know, see [Model files](#models).
 
 `… on a software Vulkan device (…)` → `This is slow and can produce wrong text; set "runtime": "cpu".`
 :   Whisper found no real graphics card for Vulkan, only a software one. In **Settings → Speech providers**, set **Runtime** to **CPU**, then quit Dictum from the tray menu and start it again: a runtime change applies after the daemon restarts.

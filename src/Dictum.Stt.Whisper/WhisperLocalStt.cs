@@ -13,7 +13,8 @@ using Whisper.net.LibraryLoader;
 namespace Dictum.Stt.Whisper;
 
 /// <summary>In-process whisper.cpp through Whisper.net, with optional Silero VAD.</summary>
-public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig config, AppPaths paths, ILog log)
+/// <param name="sources">Where a model file comes from, for the hint when it is missing; null for a file Dictum cannot download.</param>
+public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig config, AppPaths paths, ILog log, Func<string, ModelSource?>? sources = null)
     : ISpeechToText, IDisposable
 {
     /// <summary>Upper bound of the default thread count, which follows the CPU count.</summary>
@@ -64,12 +65,12 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
     {
         if (!File.Exists(ModelPath))
         {
-            return Task.FromResult(HealthStatus.Error($"Model not found: {ModelPath}", DownloadHint(config.Model)));
+            return Task.FromResult(HealthStatus.Error($"Model not found: {ModelPath}", ModelHint()));
         }
 
         if (config.Vad && !File.Exists(paths.ResolveModel(config.VadModel)))
         {
-            return Task.FromResult(HealthStatus.Error($"VAD model not found: {paths.ResolveModel(config.VadModel)}", VadDownloadHint()));
+            return Task.FromResult(HealthStatus.Error($"VAD model not found: {paths.ResolveModel(config.VadModel)}", VadHint()));
         }
 
         try
@@ -249,7 +250,7 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
 
             if (!File.Exists(ModelPath))
             {
-                throw new ProviderUnavailableException($"Whisper model not found: {ModelPath}. {DownloadHint(config.Model)}");
+                throw new ProviderUnavailableException($"Whisper model not found: {ModelPath}. {ModelHint()}");
             }
 
             ConfigureRuntime(config.Runtime, log);
@@ -269,7 +270,7 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
             var vadPath = paths.ResolveModel(config.VadModel);
             if (!File.Exists(vadPath))
             {
-                throw new ProviderUnavailableException($"VAD model not found: {vadPath}. {VadDownloadHint()}");
+                throw new ProviderUnavailableException($"VAD model not found: {vadPath}. {VadHint()}");
             }
 
             _ = Factory();
@@ -335,11 +336,19 @@ public sealed partial class WhisperLocalStt(string id, WhisperLocalSttConfig con
         }
     }
 
-    public static string DownloadHint(string model) =>
-        $"Download it into the models directory, e.g. https://huggingface.co/ggerganov/whisper.cpp/resolve/main/{Path.GetFileName(model)}";
+    private string ModelHint() => DownloadHint(config.Model, sources?.Invoke(config.Model));
 
-    public static string VadDownloadHint() =>
-        $"Download https://huggingface.co/sandrohanea/whisper.net/resolve/v4/vad/{WhisperLocalSttConfig.DefaultVadModel} into the models directory, or set \"vad\": false.";
+    private string VadHint() => VadDownloadHint(config.VadModel, sources?.Invoke(config.VadModel));
+
+    /// <summary>How to get a missing speech model: the catalog's pull for a file it knows, otherwise where to look for it.</summary>
+    public static string DownloadHint(string model, ModelSource? source) => source is null
+        ? $"Download it into the models directory, e.g. https://huggingface.co/ggerganov/whisper.cpp/resolve/main/{Path.GetFileName(model)}"
+        : $"Run 'dictum models pull {source.Id}', which downloads {source.Url}.";
+
+    /// <summary>How to get a missing VAD model, the same way, or to turn VAD off.</summary>
+    public static string VadDownloadHint(string vadModel, ModelSource? source) => source is null
+        ? $"Copy {Path.GetFileName(vadModel)} into the models directory, or set \"vad\": false."
+        : $"Run 'dictum models pull {source.Id}', which downloads {source.Url}, or set \"vad\": false.";
 
     /// <summary>Whisper marks non-speech as e.g. "[BLANK_AUDIO]", "[Music]" or "(silence)".</summary>
     private static bool IsNonSpeechTag(string segment) => NonSpeechTag().IsMatch(segment);

@@ -5,6 +5,7 @@ using Dictum.Core.Http;
 using Dictum.Core.Processing;
 using Dictum.Core.Stt;
 using Dictum.Processing;
+using Dictum.Setup;
 using Dictum.Stt.OpenAi;
 using Dictum.Stt.Whisper;
 
@@ -24,7 +25,7 @@ public sealed class ProviderFactory : IDisposable
         var values = new ConfigValueResolver(secrets);
         var templates = new PromptTemplates(paths.PromptsDirectory);
         _registry = new ProviderRegistry()
-            .AddStt<WhisperLocalSttConfig>((id, c) => new WhisperLocalStt(id, c, paths, log))
+            .AddStt<WhisperLocalSttConfig>((id, c) => new WhisperLocalStt(id, c, paths, log, CatalogSource))
             .AddStt<OpenAiCompatibleSttConfig>((id, c) => new OpenAiCompatibleStt(id, c, _http, values, log))
             .AddProcessor<ReplaceProcessorConfig>((id, c) => new ReplaceProcessor(id, c, log))
             .AddProcessor<LlmProcessorConfig>((id, c) => new LlmProcessor(id, c, _http, values, templates, log));
@@ -35,4 +36,8 @@ public sealed class ProviderFactory : IDisposable
     public ITextProcessor CreateProcessor(string id, ProcessorConfig config) => _registry.CreateProcessor(id, config);
 
     public void Dispose() => _http.Dispose();
+
+    /// <summary>The catalog's id and URL for a model file, so that a missing model's hint names the pull that fetches it.</summary>
+    private static ModelSource? CatalogSource(string file) =>
+        Catalog.BuiltIn.ForFile(file) is { } entry ? new ModelSource(entry.Id, entry.Url) : null;
 }

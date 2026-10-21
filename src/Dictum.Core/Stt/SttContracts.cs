@@ -31,6 +31,9 @@ public sealed record SttRequest(string? Language, string? Prompt, IReadOnlyList<
     };
 }
 
+/// <summary>Where a model file comes from: its id in Dictum's catalog, for <c>dictum models pull</c>, and its download URL.</summary>
+public sealed record ModelSource(string Id, string Url);
+
 /// <param name="Backend">Provider-specific detail, e.g. the loaded Whisper runtime.</param>
 /// <param name="Model">The model that produced the text: a Whisper file name or a server's model name.</param>
 public sealed record Transcript(string Text, string? Language, TimeSpan Elapsed, string? Backend = null, string? Model = null);
