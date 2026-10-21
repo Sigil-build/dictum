@@ -137,7 +137,7 @@ Some languages are so close that Whisper often confuses them, such as Ukrainian 
 
 #### Your words {#words}
 
-Names and terms the recogniser gets wrong, spelled the way you want them, such as Nexus5 or Avalonia. Type one and press Enter, or paste a list, one per line or comma-separated; click × on a word to remove it. Dictum gives the list to Whisper as a hint, and to the profile's LLM prompts. The hint holds 400 characters together with the **Speech hint**; words beyond that are left out, and a warning names them. With **Auto** languages, a word list can pull detection towards its own language, so set the profile's languages too. See [Your words and replace rules](../guides/words-and-rules.md).
+Names and terms the recogniser gets wrong, spelled the way you want them, such as Nexus5 or Avalonia. Type one and press Enter, or paste a list, one per line or comma-separated; click × on a word to remove it. Dictum gives the list to Whisper as a hint, and to an LLM prompt of your own that uses `{{vocabulary}}`; the built-in prompts do not get it. The hint holds 400 characters together with the **Speech hint**; words beyond that are left out, and a warning names them. With **Auto** languages, a word list can pull detection towards its own language, so set the profile's languages too. See [Your words and replace rules](../guides/words-and-rules.md).
 
 #### Speech hint {#speech-hint}
 

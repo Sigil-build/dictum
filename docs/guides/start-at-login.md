@@ -1,6 +1,6 @@
 # Start at login
 
-With start at login on, Dictum's desktop app starts when you log in. It sits in the tray, and nothing opens on screen. The app starts the daemon, which loads the speech model in the background, so your first dictation is not slower than the others. It uses no GPU until you hold the hotkey.
+With start at login on, Dictum's desktop app starts when you log in. It sits in the tray, and nothing opens on screen. The app starts the daemon, which loads the speech model in the background, so your first dictation is not slower than the others. When Whisper runs on the graphics card, the loaded model stays in the card's memory, but Dictum does no work on the card until you dictate.
 
 ## In the setup wizard {#in-the-wizard}
 
