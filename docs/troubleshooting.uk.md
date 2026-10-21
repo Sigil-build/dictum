@@ -110,7 +110,7 @@ WARN config warnings        1 warning(s)
 | `profiles[0].vocabulary: a word list can pull language detection towards its own language; set 'language' for this profile` | У **Налаштування → Профілі** в рядку **Мови** виберіть **Одна** або **Кілька** замість **Авто**. |
 | `profiles[0].vocabulary: the speech hint holds 400 characters; left out: …` | Ваші слова разом із підказкою для розпізнавання не вміщаються в те, що читає Whisper. Скоротіть список; названі слова не ввійшли. |
 | `profiles[0].vocabulary[3]: '…' is listed twice` | Приберіть повтор. |
-| `profiles[0].output: typing is not supported, and the profile pastes instead; use "paste" or "clipboard"` | Попередні версії Dictum дозволяли профілю набирати текст посимвольно, але це ніколи не працювало. Такий профіль тепер вставляє текст. Щоб попередження зникло, виконайте `dictum config edit` і напишіть для цього профілю `"output": "paste"`. |
+| `profiles[0].output: typing is not supported, and the profile pastes instead; use "paste" or "clipboard"` | Попередні версії Dictum дозволяли профілю набирати текст посимвольно, але це ніколи не працювало. Такий профіль тепер вставляє текст. Щоб попередження зникло, змініть будь-що в цьому профілі в **Налаштування → Профілі**, і Dictum збереже його з **Вставити в активну програму**, або виконайте `dictum config edit` і напишіть для цього профілю `"output": "paste"`. |
 | `processors.<id>.rules[0].pattern: contains a backspace character: …` | У JSON `"\b"` — це символ backspace. Для межі слова пишіть `"\\b"`. |
 | `stt.<id>.apiKey: API key is stored in plain text; use 'env:VAR' or 'secret:name' instead` (або `processors.<id>.apiKey`) | Введіть ключ ще раз у «Налаштуваннях», і Dictum перенесе його до сховища ключів. Див. [API-ключі та сховище ключів](#secrets). |
 | `general.historySize: is above 5000, the most Settings offers` | «Налаштування» показують щонайбільше 5000. Зменште число в рядку **Історія** на сторінці **Налаштування → Загальні**. |
@@ -326,7 +326,7 @@ API-ключ сервера може бути в конфігурації трь
 :   GNOME показує значки в треї лише з розширенням. Установіть «AppIndicator and KStatusNotifierItem Support» і запустіть Dictum знову.
 
 `Сховано серед прихованих значків`
-:   Значок показує, чи Dictum записує, тож тримайте його на виду. У Windows натисніть **Відкрити параметри трею** і ввімкніть «Інші значки в системному треї» → Dictum. У KDE відкрийте «Параметри системного лотка» → «Записи» і для Dictum виберіть «Показано».
+:   Значок показує, чи Dictum записує, тож тримайте його на виду. У Windows натисніть **Відкрити параметри трею** і ввімкніть «Інші значки на панелі завдань» → Dictum. У KDE відкрийте «Параметри системного лотка» → «Записи» і для Dictum виберіть «Показано».
 
 ### Немає індикатора {#overlay}
 
