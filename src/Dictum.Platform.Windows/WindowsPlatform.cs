@@ -44,13 +44,22 @@ public static class WindowsPlatform
         };
 
         using var identity = WindowsIdentity.GetCurrent();
-        if (new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))
+        if (ElevationCheck(new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator)) is { } elevation)
         {
-            checks.Add(new(PlatformCheckNames.Elevation, HealthStatus.Warning(
-                "Running as administrator",
-                "Start Dictum as a normal user: pasting only works into apps at the same or lower privilege level.")));
+            checks.Add(elevation);
         }
 
         return checks;
     }
+
+    /// <summary>
+    /// The <c>elevation</c> row, shown only while Dictum runs as administrator. Windows (UIPI) lets SendInput reach only
+    /// apps at the sender's integrity level or below, so an elevated Dictum pastes into normal and elevated apps alike,
+    /// and a normal one cannot paste into an elevated app. Nothing else in Dictum needs the rights.
+    /// </summary>
+    public static PlatformCheck? ElevationCheck(bool administrator) => administrator
+        ? new(PlatformCheckNames.Elevation, HealthStatus.Warning(
+            "Running as administrator",
+            "Dictum needs administrator rights only to paste into apps that run as administrator; if you do not dictate into such apps, start it as a normal user."))
+        : null;
 }

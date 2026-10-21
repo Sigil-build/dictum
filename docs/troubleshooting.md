@@ -271,10 +271,10 @@ Dictum puts back the previous clipboard text 150 ms after it presses Ctrl+V. A s
 
 On Windows, the `elevation` row (**Administrator rights**) shows only when Dictum runs as administrator:
 
-`Running as administrator` → `Start Dictum as a normal user: pasting only works into apps at the same or lower privilege level.`
-:   Quit Dictum and start it again the usual way, from the Start menu. Dictum installs for your user and needs no administrator rights.
+`Running as administrator` → `Dictum needs administrator rights only to paste into apps that run as administrator; if you do not dictate into such apps, start it as a normal user.`
+:   Dictum installs for your user and needs no administrator rights for anything else. Unless you dictate into such apps, quit Dictum and start it again the usual way, from the Start menu. **Start Dictum at login** always starts it as a normal user.
 
-Windows does not let a program press keys in a program with higher rights. While Dictum runs as a normal user, it cannot paste into an app that runs as administrator, such as a terminal opened with "Run as administrator". Nothing is pasted there. Copy the text from **History** in the tray menu, and paste it with Ctrl+V yourself.
+Windows lets a program press keys only in programs with the same rights or fewer. Running as administrator, Dictum pastes into every app, those that run as administrator included. Running as a normal user, it cannot paste into an app that runs as administrator, such as a terminal opened with "Run as administrator": nothing is pasted there, and its hotkeys do nothing while such an app has the focus. Copy the text from **History** in the tray menu, and paste it with Ctrl+V yourself.
 
 ## API keys and the keyring {#secrets}
 
