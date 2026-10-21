@@ -107,12 +107,12 @@ WARN config warnings        1 warning(s)
 | `processors.<id>: no profile's pipeline runs it, so dictation never uses it` | Див. [Обробник, якого немає в жодному профілі](#processor-in-no-profile). |
 | `profiles[0].language: 'uk' and 'ru' sound alike to Whisper; with both in the list it may pick the wrong one. Keep only the languages you dictate in.` | Приберіть мову, якою не диктуєте, або винесіть її в окремий профіль. Див. [Слова виходять перекладеними](#translated-words). |
 | `profiles[0].language: '<provider>' takes a single language, so with a list the server gets the first language, '<code>'` | Сервер розпізнавання приймає одну мову. Залиште в цьому профілі одну мову або зробіть по профілю на кожну. |
-| `profiles[0].vocabulary: a word list can pull language detection towards its own language; set 'language' for this profile` | У **Налаштування → Профілі** замість **Авто** виберіть у полі **Режим мови** значення **Одна** або **Кілька**. |
+| `profiles[0].vocabulary: a word list can pull language detection towards its own language; set 'language' for this profile` | У **Налаштування → Профілі** в рядку **Мови** виберіть **Одна** або **Кілька** замість **Авто**. |
 | `profiles[0].vocabulary: the speech hint holds 400 characters; left out: …` | Ваші слова разом із підказкою для розпізнавання не вміщаються в те, що читає Whisper. Скоротіть список; названі слова не ввійшли. |
 | `profiles[0].vocabulary[3]: '…' is listed twice` | Приберіть повтор. |
 | `processors.<id>.rules[0].pattern: contains a backspace character: …` | У JSON `"\b"` — це символ backspace. Для межі слова пишіть `"\\b"`. |
 | `stt.<id>.apiKey: API key is stored in plain text; use 'env:VAR' or 'secret:name' instead` (або `processors.<id>.apiKey`) | Введіть ключ ще раз у «Налаштуваннях», і Dictum перенесе його до сховища ключів. Див. [API-ключі та сховище ключів](#secrets). |
-| `general.historySize: is above 5000, the most Settings offers` | «Налаштування» показують щонайбільше 5000. Зменште значення **Скільки диктувань зберігати** в **Налаштування → Загальні**. |
+| `general.historySize: is above 5000, the most Settings offers` | «Налаштування» показують щонайбільше 5000. Зменште число в рядку **Історія** на сторінці **Налаштування → Загальні**. |
 
 ### Обробник, якого немає в жодному профілі {#processor-in-no-profile}
 
@@ -415,7 +415,7 @@ API-ключ сервера може бути в конфігурації трь
 
 Ви кажете речення англійською, а Dictum вставляє його українською, або навпаки. Whisper пише тією мовою, яку йому назвали: якщо це не та мова, якою ви говорите, він перекладає.
 
-Як Dictum вибирає мову, залежить від **Режим мови** профілю в **Налаштування → Профілі**:
+Як Dictum вибирає мову, залежить від того, що вибрано в рядку **Мови** профілю в **Налаштування → Профілі**:
 
 - **Одна:** кожне диктування — цією мовою. Мовлення іншою мовою виходить перекладеним.
 - **Кілька:** Whisper вибирає з ваших мов. *Основна* мова має перевагу: іншу Dictum бере, лише коли Whisper упевнений у ній. Коротка фраза другою мовою може його не переконати, і тоді вона виходить основною мовою.

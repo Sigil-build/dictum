@@ -107,12 +107,12 @@ The `config warnings` row (**Config warnings**) shows only when the file has war
 | `processors.<id>: no profile's pipeline runs it, so dictation never uses it` | See [A processor in no profile](#processor-in-no-profile). |
 | `profiles[0].language: 'uk' and 'ru' sound alike to Whisper; with both in the list it may pick the wrong one. Keep only the languages you dictate in.` | Remove the language you do not dictate in, or give it a profile of its own. See [Translated words](#translated-words). |
 | `profiles[0].language: '<provider>' takes a single language, so with a list the server gets the first language, '<code>'` | A remote speech server takes one language. Keep one language in this profile, or use a profile per language. |
-| `profiles[0].vocabulary: a word list can pull language detection towards its own language; set 'language' for this profile` | In **Settings → Profiles**, set **Language mode** to **One** or **Several** instead of **Auto**. |
+| `profiles[0].vocabulary: a word list can pull language detection towards its own language; set 'language' for this profile` | In **Settings → Profiles**, under **Languages**, pick **One** or **Several** instead of **Auto**. |
 | `profiles[0].vocabulary: the speech hint holds 400 characters; left out: …` | Your words and the speech hint do not fit in what Whisper reads. Shorten the list; the words named were left out. |
 | `profiles[0].vocabulary[3]: '…' is listed twice` | Remove the second copy. |
 | `processors.<id>.rules[0].pattern: contains a backspace character: …` | In JSON, `"\b"` is a backspace. Write `"\\b"` for a word boundary. |
 | `stt.<id>.apiKey: API key is stored in plain text; use 'env:VAR' or 'secret:name' instead` (or `processors.<id>.apiKey`) | Type the key again in Settings, which moves it to the keyring. See [API keys and the keyring](#secrets). |
-| `general.historySize: is above 5000, the most Settings offers` | Settings shows at most 5000. Lower **Dictations to keep** in **Settings → General**. |
+| `general.historySize: is above 5000, the most Settings offers` | Settings shows at most 5000. Lower the number in the **History** row of **Settings → General**. |
 
 ### A processor in no profile {#processor-in-no-profile}
 
@@ -415,7 +415,7 @@ To make such a dictation fail instead, set **If the server fails** to **Fail the
 
 You say a sentence in English, and Dictum pastes it in Ukrainian, or the other way round. Whisper writes in the language it is told to use: when that is not the language you speak, it translates.
 
-How Dictum chooses the language depends on the profile's **Language mode** in **Settings → Profiles**:
+How Dictum chooses the language depends on what you pick under the profile's **Languages** in **Settings → Profiles**:
 
 - **One:** every dictation is in that language. Speech in another language comes out translated.
 - **Several:** Whisper chooses from your languages. The *main* language has priority: another one is used only when Whisper is sure of it. A short phrase in your second language may not convince it, and then comes out in the main language.

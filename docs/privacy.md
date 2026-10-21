@@ -94,8 +94,8 @@ Dictum keeps your recent dictations, so that you can copy one again.
 
 - **Where:** `history.jsonl`, in `%LOCALAPPDATA%\Dictum` on Windows and `~/.local/share/dictum` on Linux. It stays on your computer.
 - **What:** for each dictation, the time, the profile, the speech provider, the recognised text, the final text, the language, the length of the recording, the model, where it ran, and the time recognition took. When a dictation fails after recognition, the recognised text is kept with the error, so it is not lost. No sound is kept.
-- **How many:** the last 200, unless you change **Dictations to keep** in **Settings → General**. When you lower the number, the file is cut to that size at the next dictation.
-- **Turn it off:** set **Dictations to keep** to 0. Dictum then adds nothing to the file. The entries already in it stay until you delete them.
+- **How many:** the last 200, unless you change the number in the **History** row of **Settings → General**. When you lower the number, the file is cut to that size at the next dictation.
+- **Turn it off:** set the **History** number to 0. Dictum then adds nothing to the file. The entries already in it stay until you delete them.
 - **Delete one:** open **History** from the tray menu, select the entry, and click **Delete**.
 - **Delete all:** quit Dictum from the tray menu, then delete `history.jsonl`.
 
