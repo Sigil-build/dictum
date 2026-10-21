@@ -31,7 +31,7 @@ internal static class InitCommand
         var llmModel = new Option<string?>("--llm-model") { Description = "Model name on that server" };
         var llmApiKey = new Option<string?>("--llm-api-key") { Description = "API key for that server: env:VAR, secret:name, or the key itself (then kept in the OS secret store)" };
         var vocabFile = new Option<string?>("--vocab-file") { Description = "Words to add to the profile, one per line" };
-        var autostart = new Option<bool>("--autostart") { Description = "Start the daemon at login" };
+        var autostart = new Option<bool>("--autostart") { Description = "Start Dictum at login: the desktop app when dictum-gui sits next to dictum, otherwise the daemon" };
         var gpu = new Option<string?>("--gpu") { Description = "auto (default) or cpu" };
         gpu.AcceptOnlyFromAmong(GpuAuto, GpuCpu);
         var json = new Option<bool>("--json") { Description = "Print a JSON summary" };

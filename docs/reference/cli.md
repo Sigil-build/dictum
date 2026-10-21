@@ -30,7 +30,7 @@ Usage: `dictum init [options]`
 | `--llm-model` | Model name on that server |
 | `--llm-api-key` | API key for that server: env:VAR, secret:name, or the key itself (then kept in the OS secret store) |
 | `--vocab-file` | Words to add to the profile, one per line |
-| `--autostart` | Start the daemon at login |
+| `--autostart` | Start Dictum at login: the desktop app when dictum-gui sits next to dictum, otherwise the daemon |
 | `--gpu` | auto (default) or cpu<br>Values: auto, cpu |
 | `--json` | Print a JSON summary |
 
