@@ -31,6 +31,11 @@ public partial class CatalogTests
     public void TheConfigsDefaultVadModelIsTheCatalogsVadFile() =>
         Assert.Equal(SetupPlanner.VadId, BuiltIn.ForFile(WhisperLocalSttConfig.DefaultVadModel)?.Id);
 
+    // 'dictum config init' writes DefaultConfig and tells you to pull the CPU model, so the two must name the same file.
+    [Fact]
+    public void TheStarterConfigsModelIsTheCatalogsCpuModel() =>
+        Assert.Equal(SetupPlanner.CpuModel, BuiltIn.ForFile(DefaultConfig.DefaultModel)?.Id);
+
     [Fact]
     public void IdsAndFilesAreUnique()
     {

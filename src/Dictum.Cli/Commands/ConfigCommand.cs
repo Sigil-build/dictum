@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Diagnostics;
 using Dictum.Core.Configuration;
+using Dictum.Setup;
 
 namespace Dictum.Cli.Commands;
 
@@ -30,7 +31,7 @@ internal static class ConfigCommand
             context.Store.Save(DefaultConfig.Create());
             Directory.CreateDirectory(context.Paths.ModelsDirectory);
             context.Out.WriteLine(context.ConfigPath);
-            context.Error.WriteLine("Created a starter config. Download a speech model with 'dictum models pull whisper-small-q8',");
+            context.Error.WriteLine($"Created a starter config. Download its speech model with 'dictum models pull {SetupPlanner.CpuModel}',");
             context.Error.WriteLine("or run 'dictum init' instead, which also chooses a model for this machine.");
             return Task.FromResult(ExitCodes.Success);
         }, ct));

@@ -5,6 +5,8 @@ namespace Dictum.Core.Tests.Setup;
 
 public class SetupPlannerTests
 {
+    private const string HandPlaced = "ggml-base.bin";
+
     private static readonly Catalog Catalog = Catalog.BuiltIn;
 
     [Fact]
@@ -193,9 +195,9 @@ public class SetupPlannerTests
     [Fact]
     public void KeepingTheCurrentModelDownloadsOnlyVad()
     {
-        var plan = SetupPlanner.Plan(DefaultConfig.Create(), Answers(speechModel: null), Catalog, _ => false);
+        var plan = SetupPlanner.Plan(WithModel(HandPlaced), Answers(speechModel: null), Catalog, _ => false);
 
-        Assert.Equal("ggml-base.bin", Assert.IsType<WhisperLocalSttConfig>(plan.Config.Stt["local"]).Model);
+        Assert.Equal(HandPlaced, Assert.IsType<WhisperLocalSttConfig>(plan.Config.Stt["local"]).Model);
         Assert.Equal(["vad-silero-6.2"], plan.Downloads.Select(d => d.Id));
     }
 
@@ -229,9 +231,9 @@ public class SetupPlannerTests
     [Fact]
     public void DefaultsKeepAHandPlacedModelAndAutoDetection()
     {
-        var defaults = SetupPlanner.Defaults(DefaultConfig.Create(), new HardwareInfo("GPU", 1), Catalog, file => file == "ggml-base.bin");
+        var defaults = SetupPlanner.Defaults(WithModel(HandPlaced), new HardwareInfo("GPU", 1), Catalog, file => file == HandPlaced);
 
-        Assert.Equal(new SetupDefaults("auto", null, "ggml-base.bin", null), defaults);
+        Assert.Equal(new SetupDefaults("auto", null, HandPlaced, null), defaults);
     }
 
     [Fact]
@@ -248,7 +250,15 @@ public class SetupPlannerTests
 
     [Fact]
     public void DefaultsRecommendAModelWhenTheCurrentFileIsGone() =>
-        Assert.Equal("whisper-small-q8", SetupPlanner.Defaults(DefaultConfig.Create(), new HardwareInfo(null, 1), Catalog, _ => false).SpeechModel);
+        Assert.Equal("whisper-small-q8", SetupPlanner.Defaults(WithModel(HandPlaced), new HardwareInfo(null, 1), Catalog, _ => false).SpeechModel);
+
+    /// <summary>The starter config with a model file the catalog does not know, as someone may copy in by hand.</summary>
+    private static DictumConfig WithModel(string file)
+    {
+        var config = DefaultConfig.Create();
+        config.Stt[DefaultConfig.LocalSttId] = new WhisperLocalSttConfig { Model = file };
+        return config;
+    }
 
     private static DictumConfig WithReplaceCleanup()
     {

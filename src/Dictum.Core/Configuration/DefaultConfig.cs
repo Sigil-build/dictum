@@ -3,7 +3,11 @@ namespace Dictum.Core.Configuration;
 public static class DefaultConfig
 {
     public const string LocalSttId = "local";
-    public const string DefaultModel = "ggml-base.bin";
+    /// <summary>
+    /// The file of the catalog's CPU model, whisper-small-q8, which <c>dictum config init</c> tells you to pull. Core cannot
+    /// read the catalog, so a test keeps the two in step.
+    /// </summary>
+    public const string DefaultModel = "ggml-small-q8_0.bin";
 
     /// <summary>Where llama-server and whisper-server listen by default, with the API's version segment.</summary>
     public const string LocalServerUrl = "http://localhost:8080/v1";

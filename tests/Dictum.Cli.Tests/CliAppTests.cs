@@ -173,6 +173,22 @@ public sealed class CliAppTests(CliSandbox sandbox)
         Assert.Equal(2, await console.RunAsync("config", "validate", "--config", file));
     }
 
+    // After the pull the message suggests, the starter config's model is there, so doctor does not report it missing.
+    [Fact]
+    public async Task ConfigInitNamesTheModelItsMessageTellsYouToPull()
+    {
+        var file = sandbox.File("starter.json");
+        using var console = new ConsoleCapture();
+
+        Assert.Equal(0, await console.RunAsync("config", "init", "--config", file));
+
+        var pull = System.Text.RegularExpressions.Regex.Match(console.Error.ToString(), @"dictum models pull ([\w.-]+)");
+        Assert.True(pull.Success, console.Error.ToString());
+        var config = ConfigStore.Parse(await File.ReadAllTextAsync(file, _ct));
+        var model = Assert.IsType<WhisperLocalSttConfig>(config.Stt[DefaultConfig.LocalSttId]).Model;
+        Assert.Equal(Catalog.BuiltIn.Get(pull.Groups[1].Value).File, model);
+    }
+
     private static ParseResult Parse(params string[] args) => CliApp.BuildRoot().Parse(args);
 
     private Task<int> RunAsync(Exception thrown, params string[] args) =>
