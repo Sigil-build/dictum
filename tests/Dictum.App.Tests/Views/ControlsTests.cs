@@ -52,6 +52,36 @@ public class ControlsTests(AvaloniaFixture fx)
         window.Close();
     });
 
+    // A label wraps between its words beside the row's control; when a word of it would not fit there, as in a narrow
+    // window or a wide font, the control goes under the label, where the label has the row's width.
+    [Theory]
+    [InlineData(600, true)]
+    [InlineData(460, false)]
+    public Task ASettingsRowPutsItsControlUnderTheLabelRatherThanBreakAWord(double width, bool beside) => fx.Ui(() =>
+    {
+        var control = new Border { Width = 360, Height = 32 };
+        var row = new SettingsRow { Label = "Colour theme", Content = control };
+        var window = new Window { Content = row, Width = width, Height = 200 };
+        window.Show();
+
+        var label = window.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == "Colour theme");
+        var (labelBox, controlBox) = (Within(label, window), Within(control, window));
+        Assert.Single(label.TextLayout.TextLines);
+        if (beside)
+        {
+            Assert.True(controlBox.Left > labelBox.Right, $"{controlBox} is not beside the label's {labelBox}");
+            Assert.Equal(labelBox.Center.Y, controlBox.Center.Y, precision: 0);
+        }
+        else
+        {
+            Assert.True(controlBox.Top >= labelBox.Bottom, $"{controlBox} is not under the label's {labelBox}");
+            Assert.Equal(labelBox.Left, controlBox.Left, precision: 0);
+            Assert.True(controlBox.Right <= Within(row, window).Right, $"{controlBox} runs past the row's {Within(row, window)}");
+        }
+
+        window.Close();
+    });
+
     // A placeholder wider than its box ends in an ellipsis instead of running under the box's edge, in a text box and in
     // a dropdown; once something is typed, the text box scrolls sideways again.
     [Fact]
@@ -139,6 +169,22 @@ public class ControlsTests(AvaloniaFixture fx)
         Lay(row, 400);
         Assert.Equal(new Rect(0, label.Bounds.Height + 8, 400, 30), field.Bounds);
         Assert.Equal(400, label.Bounds.Width);
+    });
+
+    // A label with a word wider than the label's column would break that word across lines: the field goes under it,
+    // however wide the row, and the label has the row's width.
+    [Fact]
+    public Task AFieldRowPutsTheFieldUnderALabelWithAWordWiderThanItsColumn() => fx.Ui(() =>
+    {
+        var label = new TextBlock { Text = "Spracherkennungsmodell", TextWrapping = TextWrapping.Wrap };
+        var field = new Border { Height = 30 };
+        var row = new FieldRow { LabelWidth = 60, MinFieldWidth = 320, ColumnSpacing = 16, RowSpacing = 8, Children = { label, field } };
+
+        Lay(row, 1000);
+
+        Assert.False(row.IsBeside);
+        Assert.Single(label.TextLayout.TextLines);
+        Assert.Equal(new Rect(0, label.Bounds.Height + 8, 1000, 30), field.Bounds);
     });
 
     // Two columns while each has its minimum width, then one; a row is as tall as its tallest field.

@@ -19,19 +19,22 @@
             <Border Background="{DynamicResource color.bg.layer}" BorderBrush="{DynamicResource color.border}" BorderThickness="1"
                     CornerRadius="{DynamicResource radius.control}" Padding="16,12" MinHeight="{DynamicResource settingsRow.minHeight}">
               <StackPanel Spacing="12" VerticalAlignment="Center">
-                <Grid ColumnDefinitions="20,16,*,16,Auto">
+                <Grid ColumnDefinitions="20,16,*">
                   <Path Data="{TemplateBinding Icon}" Width="20" Height="20" VerticalAlignment="Center"
                         Stroke="{DynamicResource color.text.secondary}" StrokeThickness="1.6" StrokeLineCap="Round" StrokeJoin="Round" />
-                  <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                    <TextBlock Text="{TemplateBinding Label}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
-                    <TextBlock Text="{TemplateBinding Description}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap"
-                               Foreground="{DynamicResource color.text.secondary}"
-                               IsVisible="{TemplateBinding Description, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                    <TextBlock Text="{TemplateBinding Error}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap"
-                               Foreground="{DynamicResource color.status.error.fg}"
-                               IsVisible="{TemplateBinding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
-                  </StackPanel>
-                  <ContentPresenter Grid.Column="4" Content="{TemplateBinding Content}" VerticalAlignment="Center" />
+                  <!-- The control beside the texts, or under them when beside it a word of theirs would not fit. -->
+                  <controls:SettingsRowPanel Grid.Column="2" ColumnSpacing="16" RowSpacing="8">
+                    <StackPanel VerticalAlignment="Center">
+                      <TextBlock Text="{TemplateBinding Label}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
+                      <TextBlock Text="{TemplateBinding Description}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource color.text.secondary}"
+                                 IsVisible="{TemplateBinding Description, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                      <TextBlock Text="{TemplateBinding Error}" FontSize="12" Margin="0,2,0,0" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource color.status.error.fg}"
+                                 IsVisible="{TemplateBinding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                    </StackPanel>
+                    <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center" />
+                  </controls:SettingsRowPanel>
                 </Grid>
                 <ContentPresenter Content="{TemplateBinding Footer}" Margin="36,0,0,0"
                                   IsVisible="{TemplateBinding Footer, Converter={x:Static ObjectConverters.IsNotNull}}" />

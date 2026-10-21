@@ -6,7 +6,9 @@ namespace Dictum.App.Controls;
 /// <summary>
 /// A labelled field of an editor row: the label, its first child, in a column of <see cref="LabelWidth"/> beside the
 /// field, its second child. When the field would get less than <see cref="MinFieldWidth"/>, as in a narrow Settings
-/// window, the field wraps under its label and takes the row's whole width, rather than being cut off at the side.
+/// window, the field wraps under its label and takes the row's whole width, rather than being cut off at the side; so
+/// it does when a word of the label is wider than the label's column, which would break the word across lines, and the
+/// label then takes the row's width too.
 /// </summary>
 public sealed class FieldRow : Panel
 {
@@ -53,16 +55,21 @@ public sealed class FieldRow : Panel
         set => SetValue(RowSpacingProperty, value);
     }
 
-    /// <summary>Whether the field sits beside its label at this width; an unbounded width has room for both.</summary>
-    public bool IsBeside(double width) => width >= LabelWidth + ColumnSpacing + MinFieldWidth;
+    /// <summary>Whether the field sits beside its label: the layout the last measure chose.</summary>
+    public bool IsBeside => _beside;
 
     protected override Size MeasureOverride(Size availableSize)
     {
         var (label, field) = Parts();
-        _beside = IsBeside(availableSize.Width);
+        _beside = availableSize.Width >= LabelWidth + ColumnSpacing + MinFieldWidth;
         if (_beside)
         {
             label?.Measure(availableSize.WithWidth(LabelWidth));
+            _beside = !WordBreaks.AnyIn(label);
+        }
+
+        if (_beside)
+        {
             field?.Measure(availableSize.WithWidth(availableSize.Width - LabelWidth - ColumnSpacing));
             return new Size(LabelWidth + ColumnSpacing + DesiredWidth(field), Math.Max(DesiredHeight(label), DesiredHeight(field)));
         }

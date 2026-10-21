@@ -31,7 +31,8 @@
           <StackPanel Orientation="Horizontal" Spacing="12">
             <Slider Width="200" Minimum="{x:Static vm:OverlayPage.MinOpacityPercent}" Maximum="{x:Static vm:OverlayPage.MaxOpacityPercent}" TickFrequency="5" IsSnapToTickEnabled="True"
                     Value="{Binding Opacity}" AutomationProperties.Name="{x:Static res:Strings.SettingsOverlayOpacity}" />
-            <TextBlock Width="48" Text="{Binding OpacityText}" VerticalAlignment="Center" TextAlignment="Right"
+            <!-- At least 48 px, so the slider stays put as the value changes; wider in a wider font. -->
+            <TextBlock MinWidth="48" Text="{Binding OpacityText}" VerticalAlignment="Center" TextAlignment="Right"
                        Foreground="{DynamicResource color.text.secondary}" />
           </StackPanel>
         </controls:SettingsRow>

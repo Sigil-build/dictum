@@ -12,7 +12,7 @@
       <Grid ColumnDefinitions="Auto,*,Auto">
         <TextBlock Classes="title" Text="{Binding Title}" />
         <TextBlock Grid.Column="1" Text="{Binding Header}" FontSize="12" Margin="16,0" VerticalAlignment="Bottom"
-                   HorizontalAlignment="Right" Foreground="{DynamicResource color.text.secondary}" />
+                   HorizontalAlignment="Right" TextAlignment="Right" TextWrapping="Wrap" Foreground="{DynamicResource color.text.secondary}" />
         <Button Grid.Column="2" Content="{x:Static res:Strings.SettingsSystemCheckAgain}" VerticalAlignment="Bottom"
                 Command="{Binding CheckAgainCommand}" />
       </Grid>

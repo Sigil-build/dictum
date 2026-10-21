@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Styling;
 using Avalonia.VisualTree;
 using Dictum.App.Tests.Docs;
 using Dictum.App.ViewModels.Settings;
@@ -15,6 +16,7 @@ namespace Dictum.App.Tests.Views;
 /// Ukrainian, in the world the docs' screenshots show, less the speech model's 870 MB file: no button or text runs past
 /// the side of the page, of the scroll area it is in or under that area's scroll bar; no text is wider than its own box;
 /// no wrapped text splits a word, such as a folder's name in a path, across two lines; and no control lies over another.
+/// All of it in the platform's font, and again in a font a good deal wider, as Linux's are.
 /// </summary>
 public sealed class SettingsLayoutTests(AvaloniaFixture fx)
 {
@@ -39,8 +41,34 @@ public sealed class SettingsLayoutTests(AvaloniaFixture fx)
         new("replace-rules", SettingsPageKey.Processors, page => ((ProcessorsPage)page).AddRulesCommand.Execute(null)),
     ];
 
+    /// <summary>
+    /// The font the wider text is set in: DejaVu Sans, which a Linux desktop without Noto Sans draws the app in, or
+    /// Verdana, its twin in width, where it is missing, as on Windows.
+    /// </summary>
+    private const string WideFont = "DejaVu Sans, Verdana";
+
+    /// <summary>How much further apart the wider text sets its letters, in pixels.</summary>
+    private const double WideLetterSpacing = 1;
+
     [Theory, MemberData(nameof(Windows))]
-    public Task NothingIsCutOffAtTheSides(string language, int width, int height) => fx.UiAsync(async () =>
+    public Task NothingIsCutOffAtTheSides(string language, int width, int height) => fx.UiAsync(() => AssertNothingCutOffAsync(language, width, height));
+
+    /// <summary>
+    /// The same in text a good deal wider than the platform's font, so that a layout that fits Segoe UI on Windows by
+    /// a few pixels fails on Windows too, not only on Linux, whose fonts are wider: <see cref="WideFont"/>, which is
+    /// about 15 % wider than Segoe UI, with its letters <see cref="WideLetterSpacing"/> further apart, which adds about
+    /// a tenth more. The application is the test's own, so the font goes with it.
+    /// </summary>
+    [Theory, MemberData(nameof(Windows))]
+    public Task NothingIsCutOffInAWiderFont(string language, int width, int height) => fx.UiAsync(() =>
+    {
+        var app = Application.Current!;
+        app.Resources["ContentControlThemeFontFamily"] = new FontFamily(WideFont);
+        app.Styles.Add(new Style(x => x.OfType<Window>()) { Setters = { new Setter(TextBlock.LetterSpacingProperty, WideLetterSpacing) } });
+        return AssertNothingCutOffAsync(language, width, height);
+    });
+
+    private static async Task AssertNothingCutOffAsync(string language, int width, int height)
     {
         using var culture = new ScreenshotTests.CultureScope(language, language == "uk" ? "uk-UA" : "en-US");
         using var world = new ScreenshotTests.SettingsWorld(language, speechModel: false);
@@ -53,7 +81,7 @@ public sealed class SettingsLayoutTests(AvaloniaFixture fx)
         }
 
         Assert.True(problems.Count == 0, $"{problems.Count} problem(s) at {width} × {height} in {language}:\n{string.Join('\n', problems)}");
-    });
+    }
 
     /// <summary>The page's visible buttons and texts that do not fit across, and its controls that lie over one another, each described.</summary>
     private static IEnumerable<string> CutOff(Control page)

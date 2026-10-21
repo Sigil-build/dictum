@@ -26,9 +26,10 @@
                     AutomationProperties.Name="{x:Static res:Strings.SettingsMicrophone}" />
           <controls:SettingsRow.Footer>
             <StackPanel Spacing="6">
-              <Grid ColumnDefinitions="*,12,64">
+              <!-- The reading keeps at least 64 px, so the bar does not move as it changes, and widens in a wider font. -->
+              <Grid ColumnDefinitions="*,12,Auto">
                 <controls:LevelMeterBar Level="{Binding MeterLevel}" VerticalAlignment="Center" />
-                <TextBlock Grid.Column="2" Text="{Binding MeterText}" FontSize="12" TextAlignment="Right"
+                <TextBlock Grid.Column="2" MinWidth="64" Text="{Binding MeterText}" FontSize="12" TextAlignment="Right"
                            Foreground="{DynamicResource color.text.secondary}" />
               </Grid>
               <TextBlock Text="{Binding MeterNote}" FontSize="12" TextWrapping="Wrap"

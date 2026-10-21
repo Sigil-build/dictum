@@ -69,7 +69,7 @@ public sealed class ProfilesViewTests(AvaloniaFixture fx) : IDisposable
         var warning = window.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == page.Languages.SimilarWarning);
         double Left(Visual visual) => visual.TranslatePoint(default, window)!.Value.X;
 
-        Assert.Equal(beside, row.IsBeside(row.Bounds.Width));
+        Assert.Equal(beside, row.IsBeside);
         Assert.Equal(Left(picker), Left(warning), precision: 0);
         window.Close();
     });
