@@ -10,7 +10,8 @@ namespace Dictum.Platform.Input;
 /// <summary>
 /// Global hotkeys through a low-level keyboard hook (Windows, Linux X11). Pressing the combination
 /// raises Pressed; releasing any key of it raises Released. On Windows the combination is suppressed
-/// so it does not also reach the focused app.
+/// so it does not also reach the focused app. The hook runs only while there are bindings: an empty set, as
+/// Pause all hotkeys sends, removes it.
 /// </summary>
 /// <param name="createHook">Makes the hook for each start; null uses SharpHook's libuiohook hook.</param>
 /// <param name="startTimeout">How long a starting hook may take to enable.</param>
@@ -44,6 +45,8 @@ public sealed class SharpHookHotkeyService(ILog log, string backend, Func<IGloba
 
         if (bindings.Count == 0)
         {
+            // Paused, or no profile has a hotkey: let go of the keyboard, so nothing sees the keys while Dictum does not listen.
+            await StopAsync().ConfigureAwait(false);
             return;
         }
 
@@ -138,6 +141,41 @@ public sealed class SharpHookHotkeyService(ILog log, string backend, Func<IGloba
 
         ct.ThrowIfCancellationRequested();
         throw new HotkeyUnavailableException("The keyboard hook did not start in time.");
+    }
+
+    /// <summary>
+    /// Removes the running hook and waits for its run to end, so the next bindings start a new one. A hook still
+    /// starting is kept: stopping it before its native run begins would not stop that run, and the next bindings wait
+    /// on it as before. With no bindings it raises nothing meanwhile.
+    /// </summary>
+    private async Task StopAsync()
+    {
+        if (_hook is not { Enabled.IsCompleted: true } started)
+        {
+            return;
+        }
+
+        _hook = null;
+        started.Hook.KeyPressed -= OnKeyPressed;
+        started.Hook.KeyReleased -= OnKeyReleased;
+        lock (_gate)
+        {
+            // Without the hook no key-up arrives, so a modifier seen going down would otherwise stay held.
+            _held = HotkeyModifiers.None;
+        }
+
+        try
+        {
+            started.Hook.Dispose();
+            await started.Run.ConfigureAwait(false);
+        }
+        catch (HookException ex)
+        {
+            // A hook that stopped with an error has nothing left to release.
+            log.Debug($"The keyboard hook stopped with an error: {ex.Result}");
+        }
+
+        log.Info($"Keyboard hook stopped ({backend})");
     }
 
     /// <summary>Drops a hook whose run ended before it enabled, or whose start was cancelled, so the next bindings start a new one.</summary>

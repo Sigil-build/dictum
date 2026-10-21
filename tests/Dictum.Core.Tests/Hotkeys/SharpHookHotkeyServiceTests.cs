@@ -92,6 +92,34 @@ public sealed class SharpHookHotkeyServiceTests
         Assert.True(working.Enabled);
     }
 
+    // Pause all hotkeys sets no bindings: the hook must let go of the keyboard then, and Resume must bring the hotkeys back.
+    [Fact(Timeout = TestTimeout.Default)]
+    public async Task NoBindingsStopTheHookAndTheNextBindingsStartANewOneThatDelivers()
+    {
+        var paused = new SimpleGlobalHook(new FakeHookProvider(enables: true));
+        var resumed = new FakeHookProvider(enables: true);
+        var hooks = new Queue<SimpleGlobalHook>([paused, new SimpleGlobalHook(resumed)]);
+        await using var service = new SharpHookHotkeyService(NullLog.Instance, "test", hooks.Dequeue, LongStart);
+        var pressed = new TaskCompletionSource<HotkeyEvent>(TaskCreationOptions.RunContinuationsAsynchronously);
+        service.Triggered += e => pressed.TrySetResult(e);
+
+        await service.SetBindingsAsync(Bindings, TestContext.Current.CancellationToken);
+        var ranBeforeThePause = paused.IsRunning;
+        await service.SetBindingsAsync([], TestContext.Current.CancellationToken);
+        var (runningWhilePaused, disposedWhilePaused) = (paused.IsRunning, paused.IsDisposed);
+        await service.SetBindingsAsync(Bindings, TestContext.Current.CancellationToken);
+        resumed.Press(KeyCode.VcLeftControl);
+        resumed.Press(KeyCode.VcLeftAlt);
+        resumed.Press(KeyCode.VcSpace);
+
+        Assert.True(ranBeforeThePause);
+        Assert.False(runningWhilePaused);
+        Assert.True(disposedWhilePaused);
+        Assert.True(resumed.Enabled);
+        Assert.Equal(new HotkeyEvent("dictate", HotkeyPhase.Pressed), await pressed.Task.WaitAsync(DeliveryTimeout, TestContext.Current.CancellationToken));
+        Assert.Empty(hooks);
+    }
+
     [Fact(Timeout = TestTimeout.Default)]
     public async Task ACancelledStartIsReportedAsCancelledAndDisposesTheHook()
     {
