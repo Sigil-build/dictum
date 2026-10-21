@@ -79,7 +79,7 @@ WARN config warnings        1 warning(s)
 Рядок `config` (**Файл конфігурації**) читає `config.json`: у Windows це `%APPDATA%\Dictum\config.json`, у Linux — `~/.config/dictum/config.json`.
 
 `No config at …` → `Run 'dictum init'.`
-:   Dictum ще не налаштовано. Запустіть програму для робочого столу: її вікно налаштування проведе вас крок за кроком. У терміналі виконайте `dictum init`.
+:   Dictum ще не налаштовано. Запустіть програму для робочого столу: її майстер налаштування проведе вас крок за кроком. У терміналі виконайте `dictum init`.
 
 `Config is invalid: …` → `Fix the file, then run 'dictum config validate'.`
 :   У файлі є помилки. Рядок перелічує кожну з місцем у файлі, наприклад `profiles[0].hotkey: …` або `processors.cleanup.baseUrl: '…' is not an absolute http(s) URL`.
