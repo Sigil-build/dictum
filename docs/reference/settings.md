@@ -243,7 +243,7 @@ LLM prompt. The longest answer the model may give, in tokens. Empty, the default
 
 #### If the server fails {#on-error}
 
-LLM prompt. What happens when the server cannot be reached, answers with an error or takes longer than the timeout: **Keep the text as recognised** (the default) pastes the text without this step, and **Fail the dictation** pastes nothing.
+LLM prompt. What happens when the server cannot be reached, answers with an error or takes longer than the timeout, or when Dictum cannot read the processor's API key: **Keep the text as recognised** (the default) pastes the text without this step, and **Fail the dictation** pastes nothing.
 
 #### Wording {#wording}
 
@@ -271,7 +271,7 @@ Replace rules. The text that takes the place of what was found. Leave it empty t
 
 #### Match case {#rule-match-case}
 
-Replace rules. Ticked, the rule finds only the same capital and small letters. Off by default. It applies to plain text only: a regex always matches case exactly, unless it starts with `(?i)`.
+Replace rules. Ticked, the rule finds only the same capital and small letters. Off by default. It applies to regular expressions too.
 
 #### Whole word {#rule-whole-word}
 
