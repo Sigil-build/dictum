@@ -1,4 +1,7 @@
 using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Input;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
@@ -46,6 +49,36 @@ public sealed class SettingsWindowTests(AvaloniaFixture fx) : IDisposable
         Assert.Equal([(DocsPage.Settings, DocsAnchors.Settings.General)], _opened);
         window.Close();
     });
+
+    // Tab follows the reading order: the rail first, then Help at its foot.
+    [Fact]
+    public Task TabReachesTheRailBeforeHelp() => fx.Ui(() =>
+    {
+        var model = Model(out _, out _);
+        var window = new SettingsWindow { DataContext = model };
+        window.Show();
+        model.Open(SettingsPageKey.General);
+        Dispatcher.UIThread.RunJobs();
+
+        var focus = TopLevel.GetTopLevel(window)!.FocusManager!;
+        var order = new List<string>();
+        for (var i = 0; i < 2; i++)
+        {
+            window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+            Dispatcher.UIThread.RunJobs();
+            order.Add(Describe(focus.GetFocusedElement()));
+        }
+
+        window.Close();
+        Assert.Equal(["rail General", Strings.SettingsHelp], order);
+    });
+
+    private static string Describe(IInputElement? element) => element switch
+    {
+        ListBoxItem { DataContext: SettingsPage page } => "rail " + page.Title,
+        Button { Content: string text } => text,
+        _ => element?.GetType().Name ?? "none",
+    };
 
     [Fact]
     public Task TheRailListsThePagesAndSelectingOneShowsIt() => fx.Ui(() =>

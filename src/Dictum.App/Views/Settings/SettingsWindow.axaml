@@ -45,14 +45,8 @@
         <TextBlock Text="Dictum" FontSize="12" VerticalAlignment="Center" Foreground="{DynamicResource color.text.primary}" />
       </StackPanel>
     </Border>
-    <DockPanel Grid.Row="1" Margin="8,4,8,12">
-      <!-- The version, and Help: the shown page's section of the Settings reference, in the browser. -->
-      <Grid DockPanel.Dock="Bottom" ColumnDefinitions="*,Auto" Margin="12,0">
-        <TextBlock Text="{Binding Version}" FontSize="11" VerticalAlignment="Center"
-                   Foreground="{DynamicResource color.text.secondary}" />
-        <Button Grid.Column="1" Classes="link" Content="{x:Static res:Strings.SettingsHelp}" Command="{Binding HelpCommand}"
-                FontSize="11" VerticalAlignment="Center" />
-      </Grid>
+    <!-- The rail, then its foot: in reading order, which is also the Tab order. -->
+    <Grid Grid.Row="1" RowDefinitions="*,Auto" Margin="8,4,8,12">
       <ListBox Classes="rail" ItemsSource="{Binding Pages}" SelectedItem="{Binding Selected}"
                AutomationProperties.Name="{x:Static res:Strings.SettingsSections}">
         <ListBox.ItemTemplate>
@@ -65,7 +59,14 @@
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
-    </DockPanel>
+      <!-- The version, and Help: the shown page's section of the Settings reference, in the browser. -->
+      <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="12,0">
+        <TextBlock Text="{Binding Version}" FontSize="11" VerticalAlignment="Center"
+                   Foreground="{DynamicResource color.text.secondary}" />
+        <Button Grid.Column="1" Classes="link" Content="{x:Static res:Strings.SettingsHelp}" Command="{Binding HelpCommand}"
+                FontSize="11" VerticalAlignment="Center" />
+      </Grid>
+    </Grid>
     <DockPanel Grid.Row="1" Grid.Column="1">
       <Border DockPanel.Dock="Top" Classes="banner" Margin="16,4,32,8"
               IsVisible="{Binding Banner, Converter={x:Static ObjectConverters.IsNotNull}}">
