@@ -148,21 +148,22 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:RuleRow">
                   <StackPanel Spacing="2" Margin="0,0,0,8">
-                    <Grid ColumnDefinitions="*,8,*,8,32">
+                    <!-- Tab follows the children: the boxes, the options under them, then × at the first line's end. -->
+                    <Grid ColumnDefinitions="*,8,*,8,32" RowDefinitions="Auto,2,Auto">
                       <TextBox Classes="ruleFind" Text="{Binding Find}" AutomationProperties.Name="{x:Static res:Strings.SettingsRulesFind}" />
                       <TextBox Grid.Column="2" Text="{Binding Replace}" AutomationProperties.Name="{x:Static res:Strings.SettingsRulesReplace}" />
+                      <WrapPanel Grid.Row="2" Grid.ColumnSpan="5" ItemSpacing="16" TextElement.FontSize="12">
+                        <CheckBox IsChecked="{Binding IsRegex}" Content="{x:Static res:Strings.SettingsRulesRegex}"
+                                  AutomationProperties.Name="{x:Static res:Strings.SettingsRulesRegex}" />
+                        <CheckBox IsChecked="{Binding MatchCase}" Content="{x:Static res:Strings.SettingsRulesMatchCase}"
+                                  AutomationProperties.Name="{x:Static res:Strings.SettingsRulesMatchCase}" />
+                        <CheckBox IsChecked="{Binding WholeWord}" IsEnabled="{Binding CanWholeWord}" Content="{x:Static res:Strings.SettingsRulesWholeWord}"
+                                  AutomationProperties.Name="{x:Static res:Strings.SettingsRulesWholeWord}" />
+                        <CheckBox IsChecked="{Binding On}" Content="{x:Static res:Strings.CommonOn}" AutomationProperties.Name="{x:Static res:Strings.CommonOn}" />
+                      </WrapPanel>
                       <Button Grid.Column="4" Classes="chipRemove" Command="{Binding RemoveCommand}" IsVisible="{Binding !IsDraft}"
                               AutomationProperties.Name="{x:Static res:Strings.SettingsRemove}" />
                     </Grid>
-                    <WrapPanel ItemSpacing="16" TextElement.FontSize="12">
-                      <CheckBox IsChecked="{Binding IsRegex}" Content="{x:Static res:Strings.SettingsRulesRegex}"
-                                AutomationProperties.Name="{x:Static res:Strings.SettingsRulesRegex}" />
-                      <CheckBox IsChecked="{Binding MatchCase}" Content="{x:Static res:Strings.SettingsRulesMatchCase}"
-                                AutomationProperties.Name="{x:Static res:Strings.SettingsRulesMatchCase}" />
-                      <CheckBox IsChecked="{Binding WholeWord}" IsEnabled="{Binding CanWholeWord}" Content="{x:Static res:Strings.SettingsRulesWholeWord}"
-                                AutomationProperties.Name="{x:Static res:Strings.SettingsRulesWholeWord}" />
-                      <CheckBox IsChecked="{Binding On}" Content="{x:Static res:Strings.CommonOn}" AutomationProperties.Name="{x:Static res:Strings.CommonOn}" />
-                    </WrapPanel>
                     <TextBlock Text="{Binding Error}" Classes="error" IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
                   </StackPanel>
                 </DataTemplate>

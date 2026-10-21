@@ -179,6 +179,31 @@ public sealed class ProcessorsViewTests(AvaloniaFixture fx) : IDisposable
         window.Close();
     });
 
+    // Tab goes through a rule as it reads: its two boxes, its four options, and its remove button last, then the next rule.
+    [Fact]
+    public Task TabGoesThroughARuleAndReachesItsRemoveButtonLast() => fx.Ui(() =>
+    {
+        var (window, page, _) = Show();
+        page.Selected = page.Processors.Single(p => p.Id == "terms");
+        Dispatcher.UIThread.RunJobs();
+        var focus = TopLevel.GetTopLevel(window)!.FocusManager!;
+        FindBoxes(window)[0].Focus();
+
+        var reached = new List<string?>();
+        for (var i = 0; i < 7; i++)
+        {
+            Tab(window);
+            reached.Add(focus.GetFocusedElement() is Control control ? AutomationProperties.GetName(control) : null);
+        }
+
+        Assert.Equal(
+            [Strings.SettingsRulesReplace, Strings.SettingsRulesRegex, Strings.SettingsRulesMatchCase, Strings.SettingsRulesWholeWord,
+                Strings.CommonOn, Strings.SettingsRemove, Strings.SettingsRulesFind],
+            reached);
+        Assert.Same(FindBoxes(window)[1], focus.GetFocusedElement());
+        window.Close();
+    });
+
     // Typing in the blank row adds a rule and a new blank row.
     [Fact]
     public Task TypingInTheBlankRowOfTheTableAddsARule() => fx.Ui(() =>
