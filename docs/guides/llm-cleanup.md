@@ -67,9 +67,9 @@ Step 3 of the setup wizard is **Text clean-up**. To change it later, open **Sett
 3. In **Model**, enter the model's name on that server.
 4. Leave **API key (optional)** empty for a local server. For a server that needs a key, type it.
 5. Click **Test connection**. Dictum asks the server for its list of models:
-   - **Reachable · 14 ms**: go on.
-   - **Reachable, but the server has no model “…”. It has: …**: copy one of the listed names into **Model**.
-   - **The server rejected the API key.**: check the key.
+    - **Reachable · 14 ms**: go on.
+    - **Reachable, but the server has no model “…”. It has: …**: copy one of the listed names into **Model**.
+    - **The server rejected the API key.**: check the key.
 6. Click **Next**. **Next** works only after the test passes for exactly what is in the fields.
 7. Finish the wizard.
 

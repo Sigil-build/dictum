@@ -46,8 +46,8 @@ This example keeps `dictate` for Ukrainian and English on `Ctrl+Alt+Space`, and 
 7. Leave **Processing chain** as it is: "No processing: the text is used as recognised."
 8. Wait a moment. Settings saves the profile half a second after your last change, and the running Dictum registers the new hotkey.
 9. Try both. Put the cursor in a text editor:
-   - hold `Ctrl+Alt+Space`, say a sentence in Ukrainian, and let go;
-   - press `Ctrl+Alt+E`, say a sentence in English, and press `Ctrl+Alt+E` again.
+    - hold `Ctrl+Alt+Space`, say a sentence in Ukrainian, and let go;
+    - press `Ctrl+Alt+E`, say a sentence in English, and press `Ctrl+Alt+E` again.
 
 If the hotkey does not take:
 

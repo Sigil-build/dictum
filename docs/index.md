@@ -30,12 +30,12 @@ Everyday use needs only the desktop app. If you prefer the terminal, `dictum ini
 
 - [Getting started](getting-started.md): install Dictum, set it up and dictate for the first time.
 - Guides, each from start to finish:
-  - [Languages](guides/languages.md): dictate in more than one language, and what the main language is for.
-  - [Profiles](guides/profiles.md): several setups, each with its own hotkey.
-  - [LLM clean-up](guides/llm-cleanup.md): let a language model on a server you choose fix punctuation and typos.
-  - [Your words and replace rules](guides/words-and-rules.md): teach Dictum names and terms, and fix words that come out wrong.
-  - [Start at login](guides/start-at-login.md).
-  - [Update and remove](guides/update-and-remove.md).
+    - [Languages](guides/languages.md): dictate in more than one language, and what the main language is for.
+    - [Profiles](guides/profiles.md): several setups, each with its own hotkey.
+    - [LLM clean-up](guides/llm-cleanup.md): let a language model on a server you choose fix punctuation and typos.
+    - [Your words and replace rules](guides/words-and-rules.md): teach Dictum names and terms, and fix words that come out wrong.
+    - [Start at login](guides/start-at-login.md).
+    - [Update and remove](guides/update-and-remove.md).
 - [Troubleshooting](troubleshooting.md): when something does not work, start with `dictum doctor`.
 - Reference: [Settings](reference/settings.md), the [setup wizard](reference/setup-wizard.md), the [tray and overlay](reference/tray-and-overlay.md), the [command line](reference/cli.md) and the [files Dictum keeps](reference/files.md).
 - [Privacy](privacy.md): what Dictum uses on your computer, and when.

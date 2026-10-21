@@ -26,9 +26,9 @@ The wizard sets the languages of your first profile. Other profiles keep their o
 1. Click the Dictum icon in the tray, or choose **Settings** in its menu.
 2. Open **Profiles** and select the profile on the left.
 3. Under **Languages**, pick the mode: **One**, **Several** or **Auto**.
-   - **One**: choose the language from the list.
-   - **Several**: each language is a chip. The first chip is marked **main**. Click **Make main** on another chip to put it first. Add a language with **Add a language**, and remove one with the × on its chip. The last chip cannot be removed.
-   - **Auto**: "Whisper detects the language of each dictation."
+    - **One**: choose the language from the list.
+    - **Several**: each language is a chip. The first chip is marked **main**. Click **Make main** on another chip to put it first. Add a language with **Add a language**, and remove one with the × on its chip. The last chip cannot be removed.
+    - **Auto**: "Whisper detects the language of each dictation."
 
 There is no Save button. Settings saves a change half a second after you make it, and the running Dictum picks it up for the next dictation.
 
