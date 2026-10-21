@@ -192,6 +192,9 @@ If the hotkey does nothing:
 `The keyboard hook did not start in time.`
 :   Restart the daemon: quit Dictum from the tray menu and start it again.
 
+`The previous keyboard hook has not stopped yet.`
+:   Dictum removes the keyboard hook while the hotkeys are paused, or while no profile has a hotkey. This time the old hook did not stop within two seconds, and Dictum does not start a second hook beside it. Click **Pause all hotkeys** and then **Resume hotkeys** in the tray menu to try again. If the message comes back, restart the daemon: quit Dictum from the tray menu and start it again.
+
 On Windows, Dictum keeps its hotkey from reaching the app you type in. On X11 the app also gets the keys, so pick a combination that the app does not use.
 
 ### Wayland: the shortcut portal {#shortcuts-portal}
