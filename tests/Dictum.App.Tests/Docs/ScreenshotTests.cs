@@ -42,11 +42,24 @@ namespace Dictum.App.Tests.Docs;
 /// </summary>
 public sealed class ScreenshotTests(AvaloniaFixture fx)
 {
+    /// <summary>The Settings shots: the page each shows, and how the page is set up first.</summary>
+    internal static readonly IReadOnlyList<SettingsShot> SettingsShots =
+    [
+        new("settings-general", SettingsPageKey.General),
+        new("settings-overlay", SettingsPageKey.General, page => ((GeneralPage)page).OpenOverlayCommand.Execute(null)),
+        new("settings-pasting", SettingsPageKey.General, page => ((GeneralPage)page).OpenPastingCommand.Execute(null)),
+        new("settings-profiles", SettingsPageKey.Profiles),
+        new("settings-speech", SettingsPageKey.SpeechProviders),
+        new("settings-processors", SettingsPageKey.Processors),
+        new("settings-models", SettingsPageKey.Models),
+        new("settings-history", SettingsPageKey.History, page => ((HistoryPage)page).Selected = ((HistoryPage)page).Items[0]),
+        new("settings-system", SettingsPageKey.System),
+    ];
+
     /// <summary>The shots, each the name of four files in <c>docs/images/</c>.</summary>
     public static readonly IReadOnlyList<string> Shots =
     [
-        "settings-general", "settings-overlay", "settings-pasting", "settings-profiles", "settings-speech",
-        "settings-processors", "settings-models", "settings-history", "settings-system",
+        .. SettingsShots.Select(shot => shot.Name),
         "setup-languages", "setup-model", "setup-cleanup", "setup-words", "setup-login", "setup-downloads",
         "setup-downloading", "setup-ready",
         OverlayShot(OverlayPhase.Listening), OverlayShot(OverlayPhase.Transcribing),
@@ -201,15 +214,7 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
 
     private static Task<Bitmap> RenderAsync(string shot, SettingsWorld settings) => shot switch
     {
-        "settings-general" => SettingsAsync(settings, SettingsPageKey.General),
-        "settings-overlay" => SettingsAsync(settings, SettingsPageKey.General, page => ((GeneralPage)page).OpenOverlayCommand.Execute(null)),
-        "settings-pasting" => SettingsAsync(settings, SettingsPageKey.General, page => ((GeneralPage)page).OpenPastingCommand.Execute(null)),
-        "settings-profiles" => SettingsAsync(settings, SettingsPageKey.Profiles),
-        "settings-speech" => SettingsAsync(settings, SettingsPageKey.SpeechProviders),
-        "settings-processors" => SettingsAsync(settings, SettingsPageKey.Processors),
-        "settings-models" => SettingsAsync(settings, SettingsPageKey.Models),
-        "settings-history" => SettingsAsync(settings, SettingsPageKey.History, page => ((HistoryPage)page).Selected = ((HistoryPage)page).Items[0]),
-        "settings-system" => SettingsAsync(settings, SettingsPageKey.System),
+        _ when SettingsShots.FirstOrDefault(s => s.Name == shot) is { } page => SettingsAsync(settings, page),
         "setup-languages" => SetupAsync(Step.Languages),
         "setup-model" => SetupAsync(Step.Model),
         "setup-cleanup" => SetupAsync(Step.Cleanup),
@@ -225,32 +230,33 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
 
     // ---- Settings ----
 
-    /// <summary>The Settings window at its designed size, on <paramref name="key"/>; <paramref name="arrange"/> then sets the page up.</summary>
-    private static async Task<Bitmap> SettingsAsync(SettingsWorld world, SettingsPageKey key, Action<SettingsPage>? arrange = null)
+    /// <summary>The Settings window at its designed size, on the shot's page.</summary>
+    private static async Task<Bitmap> SettingsAsync(SettingsWorld world, SettingsShot shot)
     {
-        var timers = new ManualTimers();
-        var session = new SettingsSession(new ConfigStore(world.Paths.ConfigFile, NullLog.Instance), timers, NullLog.Instance);
-        session.Load();
-        var pages = world.Pages(session, timers);
-        using var model = new SettingsViewModel(session, pages, (_, _) => { });
-        model.OnLink(world.Channel.Link);
-
-        var window = new SettingsWindow { DataContext = model };
-        window.FindControl<TransitioningContentControl>("PageHost")!.PageTransition = null;
-        Opaque(window);
-        window.Show();
-        model.Open(key);
-        var page = pages.Single(p => p.Key == key).Page;
-        arrange?.Invoke(page);
-        await world.SettleAsync(timers);
-
-        var frame = await CaptureAsync(window, world.Root);
-        window.Close();
-        return frame;
+        using var shown = await world.ShowAsync(shot);
+        return await CaptureAsync(shown.Window, world.Root);
     }
 
-    /// <summary>The config, the files and the fakes the Settings pages show: one installed model, three dictations, every check OK.</summary>
-    private sealed class SettingsWorld : IDisposable
+    /// <summary>A Settings shot: its name in <c>docs/images/</c>, the page, and what is done on the page before the shot.</summary>
+    internal sealed record SettingsShot(string Name, SettingsPageKey Key, Action<SettingsPage>? Arrange = null);
+
+    /// <summary>A Settings window that a <see cref="SettingsWorld"/> shows; disposing it closes the window.</summary>
+    internal sealed class ShownSettings(SettingsWindow window, SettingsViewModel model) : IDisposable
+    {
+        public SettingsWindow Window => window;
+
+        public void Dispose()
+        {
+            window.Close();
+            model.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// The config, the files and the fakes the Settings pages show: one installed model, three dictations, every check OK.
+    /// Without <c>speechModel</c> the speech model is not installed, which spares the temp folder its 870 MB.
+    /// </summary>
+    internal sealed class SettingsWorld : IDisposable
     {
         private const int MeterTicks = 12;
 
@@ -261,12 +267,16 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
         private readonly ManualClock _clock = new(Today(10, 2));
         private readonly FrameHub _frames;
 
-        public SettingsWorld(string language)
+        public SettingsWorld(string language, bool speechModel = true)
         {
             Paths = new AppPaths(Path.Combine(Root, "Roaming", "Dictum"), Path.Combine(Root, "Local", "Dictum"));
             Directory.CreateDirectory(Paths.ConfigDirectory);
             File.Copy(Path.Combine(Repository.Root, "tests", "Dictum.App.Tests", "Docs", "docs-config.json"), Paths.ConfigFile);
-            Install(Paths, Catalog.BuiltIn.Find(ModelsPageTests.Turbo)!);
+            if (speechModel)
+            {
+                Install(Paths, Catalog.BuiltIn.Find(ModelsPageTests.Turbo)!);
+            }
+
             Install(Paths, Catalog.BuiltIn.Find(SetupPlanner.VadId)!);
             WriteHistory(Paths.HistoryFile, language);
             _frames = new FrameHub(_clock);
@@ -285,6 +295,34 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
         public StatusViewModel Status { get; }
 
         public FakeRunner Runner { get; } = new();
+
+        /// <summary>
+        /// The Settings window on the shot's page, set up and settled, at <paramref name="size"/> or at the window's
+        /// designed size.
+        /// </summary>
+        public async Task<ShownSettings> ShowAsync(SettingsShot shot, Size? size = null)
+        {
+            var timers = new ManualTimers();
+            var session = new SettingsSession(new ConfigStore(Paths.ConfigFile, NullLog.Instance), timers, NullLog.Instance);
+            session.Load();
+            var pages = Pages(session, timers);
+            var model = new SettingsViewModel(session, pages, (_, _) => { });
+            model.OnLink(Channel.Link);
+
+            var window = new SettingsWindow { DataContext = model };
+            if (size is { } chosen)
+            {
+                (window.Width, window.Height) = (chosen.Width, chosen.Height);
+            }
+
+            window.FindControl<TransitioningContentControl>("PageHost")!.PageTransition = null;
+            Opaque(window);
+            window.Show();
+            model.Open(shot.Key);
+            shot.Arrange?.Invoke(pages.Single(p => p.Key == shot.Key).Page);
+            await SettleAsync(timers);
+            return new ShownSettings(window, model);
+        }
 
         /// <summary>The pages as the shell builds them, on fakes.</summary>
         public IReadOnlyList<(SettingsPageKey Key, SettingsPage Page)> Pages(SettingsSession session, ManualTimers timers)
@@ -605,6 +643,7 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
         var leaks = window.GetVisualDescendants()
             .Select(v => v switch { TextBlock t => t.Text, TextBox b => b.Text, _ => null })
             .OfType<string>()
+            .Select(text => text.Replace("\u200B", "", StringComparison.Ordinal))
             .Where(text => secret.Any(s => text.Contains(s, StringComparison.OrdinalIgnoreCase)))
             .ToList();
         Assert.True(leaks.Count == 0, $"A shot would show a local path: {string.Join(" | ", leaks)}");
@@ -652,7 +691,7 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
     private static string Relative(string path) => Path.GetRelativePath(Docs, path).Replace('\\', '/');
 
     /// <summary>A UI language and its formats, on this thread and on threads started later, until disposed.</summary>
-    private sealed class CultureScope : IDisposable
+    internal sealed class CultureScope : IDisposable
     {
         private readonly (CultureInfo Ui, CultureInfo Formats, CultureInfo? DefaultUi, CultureInfo? DefaultFormats) _saved =
             (CultureInfo.CurrentUICulture, CultureInfo.CurrentCulture, CultureInfo.DefaultThreadCurrentUICulture, CultureInfo.DefaultThreadCurrentCulture);

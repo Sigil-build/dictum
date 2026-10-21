@@ -4,6 +4,7 @@
              xmlns:settings="using:Dictum.App.Settings"
              xmlns:controls="using:Dictum.App.Controls"
              xmlns:res="using:Dictum.App.Resources"
+             xmlns:views="using:Dictum.App.Views.Settings"
              x:Class="Dictum.App.Views.Settings.SystemView"
              x:DataType="vm:SystemPage">
   <ScrollViewer>
@@ -37,15 +38,17 @@
                   <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <controls:StatusBadge Level="{Binding Level}" VerticalAlignment="Center" />
-                <StackPanel Grid.Column="1" Margin="14,0" VerticalAlignment="Center">
+                <StackPanel Grid.Column="1" Grid.ColumnSpan="{Binding Detail, Converter={x:Static views:SystemView.StatusSpan}}" Margin="14,0"
+                            VerticalAlignment="Center">
                   <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
-                  <TextBlock Text="{Binding Status}" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource color.text.secondary}" />
+                  <TextBlock Text="{Binding Status, Converter={x:Static views:SystemView.Breakable}}" FontSize="12" TextWrapping="Wrap"
+                             Foreground="{DynamicResource color.text.secondary}" />
                   <!-- The troubleshooting section for the check, in the browser; its accessible name names the row. -->
                   <Button Classes="link" Content="{x:Static res:Strings.SettingsSystemHelp}" Command="{Binding Help}" FontSize="12"
                           Margin="0,2,0,0" HorizontalAlignment="Left" AutomationProperties.Name="{Binding HelpName}"
                           IsVisible="{Binding Help, Converter={x:Static ObjectConverters.IsNotNull}}" />
                 </StackPanel>
-                <TextBlock Grid.Column="2" Text="{Binding Detail}" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center"
+                <TextBlock Grid.Column="2" Text="{Binding Detail, Converter={x:Static views:SystemView.Breakable}}" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center"
                            Foreground="{DynamicResource color.text.primary}"
                            IsVisible="{Binding Detail, Converter={x:Static ObjectConverters.IsNotNull}}" />
                 <Button Grid.Column="3" Classes="primary" Margin="14,0,0,0" VerticalAlignment="Center"

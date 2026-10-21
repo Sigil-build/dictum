@@ -20,6 +20,16 @@ namespace Dictum.App.Tests.Views;
 
 public class SystemViewTests(AvaloniaFixture fx)
 {
+    // A path in a row may break after each folder, and a row without a detail gives its status the detail's column.
+    [Fact]
+    public void ARowsPathWrapsAfterAFolderAndAStatusTakesAnEmptyDetailsColumn()
+    {
+        Assert.Equal("C:\\\u200BUsers\\\u200Bconfig.json and /\u200Bhome/\u200Bconfig.json",
+            SystemView.Breakable.Convert(@"C:\Users\config.json and /home/config.json", typeof(string), null, CultureInfo.InvariantCulture));
+        Assert.Equal(2, (int)SystemView.StatusSpan.Convert(null, typeof(int), null, CultureInfo.InvariantCulture)!);
+        Assert.Equal(1, (int)SystemView.StatusSpan.Convert("Pin it.", typeof(int), null, CultureInfo.InvariantCulture)!);
+    }
+
     [Fact]
     public Task TheRowsTheCardAndTheBannerShow() => fx.Ui(() =>
     {

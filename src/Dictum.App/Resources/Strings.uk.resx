@@ -759,7 +759,7 @@
     <value>Ключ API (необов'язково)</value>
   </data>
   <data name="SettingsProvidersApiKeyPlaceholder" xml:space="preserve">
-    <value>Залиште порожнім для локальних серверів</value>
+    <value>Локальним серверам не потрібен</value>
   </data>
   <data name="SettingsProvidersRemoveKey" xml:space="preserve">
     <value>Прибрати ключ</value>

@@ -12,14 +12,20 @@
     <TextBlock Grid.Row="2" Text="{Binding Error}" TextWrapping="Wrap" Margin="0,0,0,12"
                Foreground="{DynamicResource color.status.error.fg}"
                IsVisible="{Binding Error, Converter={x:Static ObjectConverters.IsNotNull}}" />
-    <Grid Grid.Row="3" ColumnDefinitions="320,16,*">
+    <!-- The list takes two fifths, up to 320 px, so that the two texts beside it keep room in a narrow window. -->
+    <Grid Grid.Row="3">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="2*" MaxWidth="320" />
+        <ColumnDefinition Width="16" />
+        <ColumnDefinition Width="3*" />
+      </Grid.ColumnDefinitions>
       <Panel>
         <ListBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected}"
                  AutomationProperties.Name="{x:Static res:Strings.SettingsHistory}">
           <ListBox.ItemTemplate>
             <DataTemplate x:DataType="vm:HistoryItem">
               <StackPanel Spacing="2" Margin="0,4">
-                <StackPanel Orientation="Horizontal" Spacing="8">
+                <WrapPanel ItemSpacing="8">
                   <TextBlock Text="{Binding When}" FontSize="12" Foreground="{DynamicResource color.text.secondary}" />
                   <TextBlock Text="{Binding Profile}" FontSize="12" Foreground="{DynamicResource color.text.secondary}" />
                   <Border CornerRadius="{DynamicResource radius.control}" Padding="6,0" Background="{DynamicResource color.accent.subtleBg}"
@@ -27,7 +33,7 @@
                     <TextBlock Text="{Binding Language}" FontSize="11" Foreground="{DynamicResource color.accent.subtleText}" />
                   </Border>
                   <TextBlock Text="{Binding Duration}" FontSize="12" Foreground="{DynamicResource color.text.secondary}" />
-                </StackPanel>
+                </WrapPanel>
                 <TextBlock Text="{Binding FirstLine}" TextTrimming="CharacterEllipsis" MaxLines="1"
                            Foreground="{DynamicResource color.text.primary}" />
               </StackPanel>

@@ -20,7 +20,8 @@
         </DataTemplate>
       </ItemsControl.ItemTemplate>
     </ItemsControl>
-    <SelectableTextBlock Text="{Binding ConfigLine}" Foreground="{DynamicResource color.text.secondary}" />
-    <SelectableTextBlock Text="{Binding LogLine}" Foreground="{DynamicResource color.text.secondary}" />
+    <!-- Selectable to copy a path, so no breaks go into the text: a path too long for the line wraps onto its own. -->
+    <SelectableTextBlock Text="{Binding ConfigLine}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.secondary}" />
+    <SelectableTextBlock Text="{Binding LogLine}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.secondary}" />
   </StackPanel>
 </UserControl>

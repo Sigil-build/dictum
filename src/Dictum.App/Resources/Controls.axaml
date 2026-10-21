@@ -43,6 +43,21 @@
     </ResourceDictionary>
   </Styles.Resources>
 
+  <!-- Editor rows: the label column, and the narrowest field beside it before the field wraps under its label. -->
+  <Style Selector="controls|FieldRow">
+    <Setter Property="LabelWidth" Value="{DynamicResource settings.label.width}" />
+    <Setter Property="MinFieldWidth" Value="{DynamicResource settings.field.minWidth}" />
+  </Style>
+
+  <!-- A dropdown's choice that is wider than the box ends in an ellipsis rather than being cut off; the list shows it whole. -->
+  <Style Selector="ComboBox">
+    <Setter Property="SelectionBoxItemTemplate">
+      <DataTemplate x:DataType="x:Object">
+        <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" />
+      </DataTemplate>
+    </Setter>
+  </Style>
+
   <!-- Page titles. -->
   <Style Selector="TextBlock.title">
     <Setter Property="FontSize" Value="{DynamicResource type.title.size}" />

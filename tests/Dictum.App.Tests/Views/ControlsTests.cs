@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.VisualTree;
@@ -93,6 +94,43 @@ public class ControlsTests(AvaloniaFixture fx)
         Assert.Equal(items[0].Bounds.Y, items[1].Bounds.Y);
         window.Close();
     });
+
+    // A row too narrow for the label and the field side by side wraps the field under its label, at the row's width.
+    [Fact]
+    public Task AFieldRowPutsTheFieldBesideItsLabelOrUnderIt() => fx.Ui(() =>
+    {
+        var label = new TextBlock { Text = "Hotkey" };
+        var field = new Border { Height = 30 };
+        var row = new FieldRow { LabelWidth = 140, MinFieldWidth = 320, ColumnSpacing = 16, RowSpacing = 8, Children = { label, field } };
+
+        Lay(row, 500);
+        Assert.Equal(new Rect(156, 0, 344, 30), field.Bounds);
+
+        Lay(row, 400);
+        Assert.Equal(new Rect(0, label.Bounds.Height + 8, 400, 30), field.Bounds);
+        Assert.Equal(400, label.Bounds.Width);
+    });
+
+    // Two columns while each has its minimum width, then one; a row is as tall as its tallest field.
+    [Fact]
+    public Task FormColumnsGoFromTwoColumnsToOne() => fx.Ui(() =>
+    {
+        Border[] fields = [new() { Height = 20, VerticalAlignment = VerticalAlignment.Top }, new() { Height = 40 }, new() { Height = 20 }];
+        var form = new FormColumns { MinColumnWidth = 220, ColumnSpacing = 12, RowSpacing = 12 };
+        form.Children.AddRange(fields);
+
+        Lay(form, 500);
+        Assert.Equal([new Rect(0, 0, 244, 20), new Rect(256, 0, 244, 40), new Rect(0, 52, 244, 20)], fields.Select(f => f.Bounds));
+
+        Lay(form, 400);
+        Assert.Equal([new Rect(0, 0, 400, 20), new Rect(0, 32, 400, 40), new Rect(0, 84, 400, 20)], fields.Select(f => f.Bounds));
+    });
+
+    private static void Lay(Control panel, double width)
+    {
+        panel.Measure(new Size(width, double.PositiveInfinity));
+        panel.Arrange(new Rect(0, 0, width, panel.DesiredSize.Height));
+    }
 
     [Fact]
     public Task TheRowIconsAreResources() => fx.Ui(() =>
