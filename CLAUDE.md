@@ -22,6 +22,7 @@ https://claude.ai/code/artifact/ba039eea-3640-41cc-898a-b1b024e07370
 - Test: `dotnet test`
 - Publish CLI: `dotnet publish src/Dictum.Cli -c Release -r linux-x64` (also `win-x64`, `osx-arm64`)
 - Publish GUI: `dotnet publish src/Dictum.App -c Release -r <rid>`
+- Docs: pages live in `docs/` and go live from a `docs/X.Y` branch, which `.github/workflows/docs.yml` cuts from the `vX.Y.Z` tag when a release is published (a patch release or a pre-release cuts nothing). Fix a typo on `docs/X.Y`, then merge it back into `main`.
 - Native AOT cannot cross-compile between OSes. Publish on the target OS or in a container.
 - Check the user docs (twins, heading ids, links, nav, version): `dotnet test --project tests/Dictum.Core.Tests --filter-class "*.UserDocsTests"`
 

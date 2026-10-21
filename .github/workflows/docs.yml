@@ -1,0 +1,66 @@
+# The docs at docs.sigil.build come from a docs/X.Y branch. A published release cuts docs/X.Y from its tag
+# (once: a patch release leaves the branch as it is), and every push to a docs branch rebuilds the site.
+name: Docs
+
+on:
+  release:
+    types: [published]
+  push:
+    branches: ['docs/**']
+
+permissions:
+  contents: read
+
+jobs:
+  branch:
+    if: github.event_name == 'release'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Cut the docs branch from the release tag
+        id: cut
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          branch=$(bash packaging/docs-branch.sh "$TAG")
+          if [ -z "$branch" ]; then
+            echo "::notice::$TAG is a pre-release, so it gets no docs branch."
+            exit 0
+          fi
+          if git ls-remote --exit-code --heads origin "$branch" > /dev/null; then
+            echo "::notice::$branch exists; merge the release's docs/ changes into it by hand."
+            exit 0
+          fi
+          git push origin "refs/tags/$TAG:refs/heads/$branch"
+
+      # A push made with GITHUB_TOKEN starts no workflow, so the new branch's build is started here.
+      - name: Rebuild the site
+        env:
+          DOCS_DEPLOY_HOOK: ${{ secrets.DOCS_DEPLOY_HOOK }}
+        run: |
+          if [ -n "$DOCS_DEPLOY_HOOK" ]; then
+            curl -fsS -X POST "$DOCS_DEPLOY_HOOK"
+          else
+            echo "::notice::DOCS_DEPLOY_HOOK is not set, so the site was not rebuilt."
+          fi
+
+  rebuild:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: Rebuild the site
+        env:
+          DOCS_DEPLOY_HOOK: ${{ secrets.DOCS_DEPLOY_HOOK }}
+        run: |
+          if [ -n "$DOCS_DEPLOY_HOOK" ]; then
+            curl -fsS -X POST "$DOCS_DEPLOY_HOOK"
+          else
+            echo "::notice::DOCS_DEPLOY_HOOK is not set, so the site was not rebuilt."
+          fi
