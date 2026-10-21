@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using Dictum.App.Resources;
 using Dictum.Core.Diagnostics;
 
 namespace Dictum.App.Settings;
@@ -9,4 +10,8 @@ namespace Dictum.App.Settings;
 /// </summary>
 /// <param name="Help">Opens the documentation that explains the problem; null on a row that has none.</param>
 public sealed record SystemRow(
-    string Name, HealthLevel Level, string Status, string? Detail = null, string? FixLabel = null, ICommand? Fix = null, ICommand? Help = null);
+    string Name, HealthLevel Level, string Status, string? Detail = null, string? FixLabel = null, ICommand? Fix = null, ICommand? Help = null)
+{
+    /// <summary>The "How to fix" link's accessible name, "How to fix: Paste", so a screen reader's list of links tells the rows apart.</summary>
+    public string HelpName => $"{Strings.SettingsSystemHelp}: {Name}";
+}

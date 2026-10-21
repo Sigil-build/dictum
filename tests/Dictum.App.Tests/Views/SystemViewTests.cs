@@ -1,4 +1,6 @@
+using System.Globalization;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.VisualTree;
 using Dictum.App.Controls;
@@ -77,5 +79,46 @@ public class SystemViewTests(AvaloniaFixture fx)
         Assert.Equal([(DocsPage.Troubleshooting, DocsAnchors.Troubleshooting.Pasting)], opened);
         page.OnHidden();
         window.Close();
+    });
+
+    // Each "How to fix" link is named after its row, so a screen reader's list of links tells them apart.
+    [Theory]
+    [InlineData("en", "How to fix: Global hotkey", "How to fix: Paste")]
+    [InlineData("uk", "Як виправити: Глобальна гаряча клавіша", "Як виправити: Вставлення")]
+    public Task EachHowToFixLinkIsNamedAfterItsRow(string language, string hotkeys, string paste) => fx.Ui(() =>
+    {
+        var ui = CultureInfo.CurrentUICulture;
+        try
+        {
+            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
+            var channel = new FakeChannel
+            {
+                Answer = _ => new IpcResponse(true, Checks:
+                [
+                    new PlatformCheck("hotkeys", new HealthStatus(HealthLevel.Warning, "no portal")),
+                    new PlatformCheck("paste", new HealthStatus(HealthLevel.Error, "SendInput failed")),
+                ]),
+            };
+            var page = new SystemPage(new SystemServices(channel, new StatusViewModel("c", "l", () => { }),
+                () => new SystemRow("Listening overlay", HealthLevel.Ok, "Shows while you dictate"),
+                () => new SystemRow("Tray icon", HealthLevel.Ok, "Shown"),
+                new ManualTimers(), TimeProvider.System, "Windows 11", (_, _) => { }));
+            page.OnShown();
+
+            var window = new Window { Content = new ViewLocator().Build(page), Width = 760, Height = 900 };
+            window.Show();
+
+            var names = window.GetVisualDescendants().OfType<Button>()
+                .Where(b => Equals(b.Content, Strings.SettingsSystemHelp) && b.IsEffectivelyVisible)
+                .Select(AutomationProperties.GetName)
+                .ToList();
+            Assert.Equal([hotkeys, paste], names);
+            page.OnHidden();
+            window.Close();
+        }
+        finally
+        {
+            CultureInfo.CurrentUICulture = ui;
+        }
     });
 }
