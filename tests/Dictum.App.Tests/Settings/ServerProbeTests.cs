@@ -154,7 +154,8 @@ public sealed class ServerProbeTests : IDisposable
         }
     }
 
-    // Windows Credential Manager and the Linux portal throw their own errors, not ConfigException.
+    // Windows Credential Manager and the Linux portal throw their own errors; the resolver names the secret and passes
+    // on their reason.
     [Fact]
     public async Task AKeyringThatFailsSaysSo()
     {
@@ -162,7 +163,9 @@ public sealed class ServerProbeTests : IDisposable
 
         var check = await probe.CheckAsync(Url, "qwen2.5:7b", "secret:dictum-processor-cleanup", _ct);
 
-        Assert.Equal(new ServerCheck(false, "The stored API key could not be read: No session bus."), check);
+        Assert.Equal(
+            new ServerCheck(false, "The stored API key could not be read: Secret 'dictum-processor-cleanup' cannot be read from the OS secret store: No session bus."),
+            check);
         Assert.Empty(_server.Requests);
     }
 

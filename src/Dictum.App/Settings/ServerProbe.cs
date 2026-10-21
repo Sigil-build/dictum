@@ -54,7 +54,7 @@ public sealed class ServerProbe(HttpClient http, ISecretStore secrets, TimeProvi
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            // A missing secret is a ConfigException; Credential Manager and the portal throw their own.
+            // A secret that is missing, or that the store fails to read, is a ConfigException that names it.
             return new ServerCheck(false, UiText.Format(Strings.SetupServerKeyUnreadable, ex.Message));
         }
 
