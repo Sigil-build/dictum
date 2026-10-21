@@ -34,7 +34,7 @@ With a local Whisper provider, the sound never leaves your computer. If a profil
 
 **Listening for hotkeys.** While the daemon runs, it waits for the hotkeys of your profiles:
 
-- **On Windows and X11**, Dictum uses SharpHook: a low-level keyboard hook on Windows, the XRecord extension on X11. The hook sees every key you press, in every app. Dictum compares each key with your hotkeys and does nothing else with it: it does not store, send or log the keys. On Windows it keeps its own hotkey from reaching the app you type in. **Pause all hotkeys** in the tray menu removes the hook, so nothing in Dictum sees your keys until you click **Resume hotkeys**. Dictum also runs no hook while no profile has a hotkey.
+- **On Windows and X11**, Dictum uses SharpHook: a low-level keyboard hook on Windows, the XRecord extension on X11. The hook sees every key you press, in every app. Dictum compares each key with your hotkeys and does nothing else with it: it does not store, send or log the keys. On Windows it keeps its own hotkey from reaching the app you type in. **Pause all hotkeys** in the tray menu removes the hook, so nothing in Dictum sees your keys until you click **Resume hotkeys** or the daemon restarts. Dictum also runs no hook while no profile has a hotkey.
 - **On Wayland**, Dictum uses the desktop's GlobalShortcuts portal. Dictum sees no keys at all: the desktop tells it only when one of Dictum's own shortcuts is pressed and released. The desktop asks you before it gives Dictum a shortcut.
 
 **Pressing Ctrl+V.** To paste, Dictum presses Ctrl+V, or Ctrl+Shift+V in a terminal, for you. It presses nothing else.
