@@ -89,7 +89,7 @@ When the hint runs out of room, `dictum vocab` warns you: `warning: the speech h
     | **Find** | The text to find. |
     | **Regex** | **Find** is a .NET regular expression instead of plain text. |
     | **Replace** | The text to put in its place. Empty deletes what was found. |
-    | **Match case** | For plain text: find only this exact letter case. Unticked, `avalonia` also finds `Avalonia`. |
+    | **Match case** | Find only this exact letter case, in plain text and in a regular expression. Unticked, `avalonia` also finds `Avalonia`. |
     | **Whole word** | For plain text: match only whole words, so `main` leaves `mainframe` alone. |
     | **On** | Untick to keep the rule in the list without applying it. |
 
@@ -102,9 +102,9 @@ Some rules that fix what Whisper writes:
 | --- | --- | --- | --- | --- |
 | `a valonia` | | `Avalonia` | | yes |
 | `nexus five` | | `Nexus5` | | yes |
-| `(?i)\bvs code\b` | yes | `VS Code` | | |
+| `\bvs code\b` | yes | `VS Code` | | |
 
-A regular expression follows its own rules: **Match case** and **Whole word** do not apply to it. Start it with `(?i)` to ignore letter case, and use `\b` for word edges. `$1` in **Replace** puts back the first group in brackets. A regular expression that takes longer than 200 ms on one text is skipped.
+In a regular expression, **Match case** works as for plain text, but **Whole word** does not apply: use `\b` for word edges. `$1` in **Replace** puts back the first group in brackets. A regular expression that takes longer than 200 ms on one text is skipped.
 
 ### Import rules from a CSV file {#import-csv}
 

@@ -43,6 +43,24 @@ public class ReplaceProcessorTests
         Assert.Equal("api API 50%", result);
     }
 
+    // "Match case" in Settings applies to a regex rule too: off, the rule finds any letter case; on, only the same.
+    [Fact]
+    public async Task MatchCaseAppliesToRegexRules()
+    {
+        var processor = new ReplaceProcessor("r", new ReplaceProcessorConfig
+        {
+            Rules =
+            [
+                new ReplaceRule { Pattern = @"\bвіжуал студіо\b", To = "Visual Studio" },
+                new ReplaceRule { Pattern = @"\bApi\b", To = "API", IgnoreCase = false },
+            ],
+        }, NullLog.Instance);
+
+        var result = await processor.ProcessAsync("Віжуал Студіо і віжуал студіо, api і Api", Context, TestContext.Current.CancellationToken);
+
+        Assert.Equal("Visual Studio і Visual Studio, api і API", result);
+    }
+
     [Fact]
     public async Task WholeWordLeavesLongerWordsAlone()
     {

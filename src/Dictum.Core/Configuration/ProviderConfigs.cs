@@ -90,7 +90,7 @@ public sealed record ReplaceRule
 
     public string To { get; set; } = string.Empty;
 
-    /// <summary>Applies to literal rules; regex rules use inline flags such as <c>(?i)</c>.</summary>
+    /// <summary>Applies to literal and regex rules alike (Settings' "Match case", off); a regex may still set <c>(?-i)</c> inline.</summary>
     public bool IgnoreCase { get; set; } = true;
 
     /// <summary>A literal rule matches whole words only: "мейн" leaves "мейнфрейм" alone. Regex rules write their own boundaries.</summary>

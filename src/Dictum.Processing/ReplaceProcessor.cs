@@ -45,9 +45,10 @@ public sealed class ReplaceProcessor : ITextProcessor
             return null;
         }
 
+        var options = RegexOptions.CultureInvariant | (rule.IgnoreCase ? RegexOptions.IgnoreCase : RegexOptions.None);
         if (!string.IsNullOrEmpty(rule.Pattern))
         {
-            var regex = new Regex(rule.Pattern, RegexOptions.CultureInvariant, ReplaceRule.RegexTimeout);
+            var regex = new Regex(rule.Pattern, options, ReplaceRule.RegexTimeout);
             return text => regex.Replace(text, rule.To);
         }
 
@@ -60,7 +61,6 @@ public sealed class ReplaceProcessor : ITextProcessor
         if (rule.WholeWord)
         {
             // No letter or digit on either side; the replacement is literal, so a "$" stays a dollar sign.
-            var options = RegexOptions.CultureInvariant | (rule.IgnoreCase ? RegexOptions.IgnoreCase : RegexOptions.None);
             var word = new Regex($@"(?<!\w){Regex.Escape(from)}(?!\w)", options, ReplaceRule.RegexTimeout);
             var to = rule.To.Replace("$", "$$", StringComparison.Ordinal);
             return text => word.Replace(text, to);
