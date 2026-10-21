@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   branch:
-    if: github.event_name == 'release'
+    if: github.event_name == 'release' && !github.event.release.prerelease
     runs-on: ubuntu-22.04
     timeout-minutes: 10
     permissions:
@@ -37,7 +37,8 @@ jobs:
             echo "::notice::$branch exists; merge the release's docs/ changes into it by hand."
             exit 0
           fi
-          git push origin "refs/tags/$TAG:refs/heads/$branch"
+          # ^{commit} peels an annotated tag: a branch can only point at a commit.
+          git push origin "refs/tags/$TAG^{commit}:refs/heads/$branch"
 
       # A push made with GITHUB_TOKEN starts no workflow, so the new branch's build is started here.
       - name: Rebuild the site

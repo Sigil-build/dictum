@@ -24,6 +24,15 @@ for bad in 0.4.0 vfoo v0.4 v0.4.0.1 v01.2.3 vx.y.z v0.4.0+build ""; do
 done
 echo "PASS: a malformed tag exits 1"
 
+# A release that GitHub marks as a pre-release cuts no branch, even under a vX.Y.Z tag.
+job_if=$(awk '
+  /^  branch:/ { inside = 1; next }
+  inside && /^  [^ ]/ { exit }
+  inside && /^    if:/ { print; exit }
+' "$root/.github/workflows/docs.yml")
+case $job_if in *'!github.event.release.prerelease'*) ;; *) fail "docs.yml's branch job runs for a release marked pre-release: '$job_if'" ;; esac
+echo "PASS: a release marked pre-release in GitHub cuts no branch"
+
 # The workflow's own step (the one with id cut), run the way Actions runs it (bash -eo pipefail)
 # against a local bare repository standing in for origin.
 step=$(awk '
@@ -48,30 +57,40 @@ mkdir "$work/repo/packaging"
 cp "$root/packaging/docs-branch.sh" "$work/repo/packaging/"
 repo() { git -C "$work/repo" -c user.name=t -c user.email=t@example.com -c commit.gpgsign=false -c tag.gpgsign=false "$@"; }
 repo remote add origin "$work/origin.git"
+# Release tags are often annotated (git tag -a); the branch must point at the tag's commit, not at the tag object.
 repo commit -q --allow-empty -m one
-repo tag v0.4.0
+repo tag -a v0.4.0 -m v0.4.0
 repo commit -q --allow-empty -m two
-repo tag v0.4.1
+repo tag -a v0.4.1 -m v0.4.1
 repo commit -q --allow-empty -m three
-repo tag v0.5.0-rc.1
+repo tag -a v0.5.0-rc.1 -m v0.5.0-rc.1
+repo commit -q --allow-empty -m four
+repo tag v0.6.0
 
 run_step() {
   (cd "$work/repo" && TAG=$1 bash --noprofile --norc -eo pipefail -c "$step")
 }
 origin_heads() { git -C "$work/origin.git" for-each-ref --format='%(refname:short) %(objectname)' refs/heads/; }
+commit_of() { repo rev-parse "$1^{commit}"; }
 
-run_step v0.4.0 > /dev/null 2>&1 || fail "the step failed on v0.4.0"
-[ "$(origin_heads)" = "docs/0.4 $(repo rev-parse v0.4.0)" ] || fail "v0.4.0 did not create docs/0.4 at the tag: $(origin_heads)"
-echo "PASS: the first release of a minor creates docs/X.Y at the tag"
+run_step v0.4.0 > /dev/null 2>&1 || fail "the step failed on the annotated tag v0.4.0"
+[ "$(origin_heads)" = "docs/0.4 $(commit_of v0.4.0)" ] || fail "v0.4.0 did not create docs/0.4 at the tag's commit: $(origin_heads)"
+echo "PASS: the first release of a minor creates docs/X.Y at the annotated tag's commit"
 
 out=$(run_step v0.4.1 2>&1) || fail "the step failed on v0.4.1"
-[ "$(origin_heads)" = "docs/0.4 $(repo rev-parse v0.4.0)" ] || fail "v0.4.1 moved docs/0.4: $(origin_heads)"
+[ "$(origin_heads)" = "docs/0.4 $(commit_of v0.4.0)" ] || fail "v0.4.1 moved docs/0.4: $(origin_heads)"
 case $out in *"::notice::"*"docs/0.4"*"by hand"*) ;; *) fail "v0.4.1 gave no notice about merging by hand: $out" ;; esac
 echo "PASS: a patch release leaves the existing docs branch alone and says so"
 
 run_step v0.5.0-rc.1 > /dev/null 2>&1 || fail "the step failed on v0.5.0-rc.1"
-[ "$(origin_heads)" = "docs/0.4 $(repo rev-parse v0.4.0)" ] || fail "the pre-release changed the branches: $(origin_heads)"
+[ "$(origin_heads)" = "docs/0.4 $(commit_of v0.4.0)" ] || fail "the pre-release changed the branches: $(origin_heads)"
 echo "PASS: a pre-release creates no docs branch"
 
 if run_step oops > /dev/null 2>&1; then fail "the step passed on a malformed tag"; fi
 echo "PASS: a malformed tag fails the step"
+
+run_step v0.6.0 > /dev/null 2>&1 || fail "the step failed on the lightweight tag v0.6.0"
+want="docs/0.4 $(commit_of v0.4.0)
+docs/0.6 $(commit_of v0.6.0)"
+[ "$(origin_heads)" = "$want" ] || fail "v0.6.0 did not create docs/0.6 at the tag: $(origin_heads)"
+echo "PASS: a lightweight tag creates its docs branch too"
