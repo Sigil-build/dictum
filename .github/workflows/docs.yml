@@ -1,12 +1,11 @@
 # The docs at docs.sigil.build come from a docs/X.Y branch. A published release cuts docs/X.Y from its tag
-# (once: a patch release leaves the branch as it is), and every push to a docs branch rebuilds the site.
+# (once: a patch release leaves the branch as it is). docs-site.yml builds the pages on every docs change and
+# rebuilds the site after a push to a docs branch.
 name: Docs
 
 on:
   release:
     types: [published]
-  push:
-    branches: ['docs/**']
 
 permissions:
   contents: read
@@ -41,21 +40,6 @@ jobs:
           git push origin "refs/tags/$TAG^{commit}:refs/heads/$branch"
 
       # A push made with GITHUB_TOKEN starts no workflow, so the new branch's build is started here.
-      - name: Rebuild the site
-        env:
-          DOCS_DEPLOY_HOOK: ${{ secrets.DOCS_DEPLOY_HOOK }}
-        run: |
-          if [ -n "$DOCS_DEPLOY_HOOK" ]; then
-            curl -fsS -X POST "$DOCS_DEPLOY_HOOK"
-          else
-            echo "::notice::DOCS_DEPLOY_HOOK is not set, so the site was not rebuilt."
-          fi
-
-  rebuild:
-    if: github.event_name == 'push'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 10
-    steps:
       - name: Rebuild the site
         env:
           DOCS_DEPLOY_HOOK: ${{ secrets.DOCS_DEPLOY_HOOK }}

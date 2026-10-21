@@ -1,0 +1,70 @@
+# Builds Dictum's pages the way docs.sigil.build does (strict MkDocs: anchors, tabs, admonitions, the uk twins
+# and images), with the build script in Sigil-build/docs. A docs change that would break the site fails here,
+# not at the site's next deploy. A push to a docs/X.Y branch then asks the site to rebuild.
+name: Docs site
+
+on:
+  push:
+    branches: [main, 'docs/**']
+    paths:
+      - docs/**
+      - .github/workflows/docs-site.yml
+  pull_request:
+    branches: [main, 'docs/**']
+    paths:
+      - docs/**
+      - .github/workflows/docs-site.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-site-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: dictum
+          persist-credentials: false
+
+      # DOCS_SITE_TOKEN is needed only while Sigil-build/docs is private; a public repository needs no token.
+      - uses: actions/checkout@v7
+        with:
+          repository: Sigil-build/docs
+          path: site
+          token: ${{ secrets.DOCS_SITE_TOKEN || github.token }}
+          persist-credentials: false
+
+      # Cloudflare Pages builds the live site with Python 3.12.
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      - name: Install the site's pinned requirements
+        working-directory: site
+        run: pip install -r requirements.txt -c constraints.txt
+
+      - name: Build Dictum's pages (strict)
+        working-directory: site
+        run: python build.py --only dictum --local dictum="$GITHUB_WORKSPACE/dictum"
+
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/docs/')
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Rebuild the site
+        env:
+          DOCS_DEPLOY_HOOK: ${{ secrets.DOCS_DEPLOY_HOOK }}
+        run: |
+          if [ -n "$DOCS_DEPLOY_HOOK" ]; then
+            curl -fsS -X POST "$DOCS_DEPLOY_HOOK" > /dev/null
+          else
+            echo "::notice::DOCS_DEPLOY_HOOK is not set, so the site was not rebuilt."
+          fi
