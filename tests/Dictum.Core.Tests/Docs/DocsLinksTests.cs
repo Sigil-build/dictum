@@ -119,18 +119,36 @@ public sealed partial class DocsLinksTests
         return anchor.Length > 0 && !HeadingIds(file).Contains(anchor) ? $"docs/{page} has no heading {{#{anchor}}}" : null;
     }
 
+    // A heading inside a code block is sample text: fences open with ``` or ~~~, and a longer fence holds shorter ones.
+    [Fact]
+    public void HeadingIdsSkipEveryKindOfFence()
+    {
+        using var dir = new TempDirectory();
+        var file = dir.File("page.md");
+        File.WriteAllLines(file,
+        [
+            "## Real {#real}",
+            "~~~markdown",
+            "## In a tilde fence {#tilde}",
+            "~~~",
+            "````markdown",
+            "```",
+            "## In a longer fence {#longer}",
+            "```",
+            "````",
+            "## After {#after}",
+        ]);
+
+        Assert.Equal(["after", "real"], HeadingIds(file).Order(StringComparer.Ordinal));
+    }
+
     /// <summary>The <c>{#id}</c>s of a page's headings, outside fenced code blocks.</summary>
     private static HashSet<string> HeadingIds(string file)
     {
         var ids = new HashSet<string>(StringComparer.Ordinal);
-        var fenced = false;
-        foreach (var line in File.ReadAllLines(file))
+        foreach (var line in MarkdownFences.ProseLines(File.ReadAllLines(file)))
         {
-            if (line.TrimStart().StartsWith("```", StringComparison.Ordinal))
-            {
-                fenced = !fenced;
-            }
-            else if (!fenced && HeadingId().Match(line) is { Success: true } heading)
+            if (HeadingId().Match(line) is { Success: true } heading)
             {
                 ids.Add(heading.Groups["id"].Value);
             }

@@ -132,26 +132,7 @@ public sealed partial class UserDocsTests
     private static string[] Lines(string file) => File.ReadAllText(file).ReplaceLineEndings("\n").Split('\n');
 
     /// <summary>A page's lines outside fenced code blocks: there a <c>#</c> or a <c>](</c> is sample text, not Markdown.</summary>
-    private static IEnumerable<string> ProseLines(string page)
-    {
-        string? fence = null;
-        foreach (var line in Lines(Full(page)))
-        {
-            var trimmed = line.Trim();
-            if (fence is null && Fence().Match(trimmed) is { Success: true } open)
-            {
-                fence = open.Value;
-            }
-            else if (fence is null)
-            {
-                yield return line;
-            }
-            else if (trimmed.Length >= fence.Length && trimmed.Trim(fence[0]).Length == 0)
-            {
-                fence = null;
-            }
-        }
-    }
+    private static IEnumerable<string> ProseLines(string page) => MarkdownFences.ProseLines(Lines(Full(page)));
 
     /// <summary>The ids of a page's headings, in order.</summary>
     private static List<string> Ids(string page) =>
@@ -249,8 +230,7 @@ public sealed partial class UserDocsTests
         return entries;
     }
 
-    [GeneratedRegex(@"^(`{3,}|~{3,})")]
-    private static partial Regex Fence();
+    private static Regex Fence() => MarkdownFences.Fence();
 
     [GeneratedRegex(@"^\s*(?<level>#{1,6})\s")]
     private static partial Regex Heading();
