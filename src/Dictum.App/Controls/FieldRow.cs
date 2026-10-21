@@ -20,6 +20,13 @@ public sealed class FieldRow : Panel
     /// <summary>The gap between the label and the field under it.</summary>
     public static readonly StyledProperty<double> RowSpacingProperty = AvaloniaProperty.Register<FieldRow, double>(nameof(RowSpacing), 8);
 
+    /// <summary>
+    /// The layout the last measure chose. Arrange keeps it: layout rounding or DPI scaling can arrange the row a little
+    /// narrower than it was measured, and a field arranged under its label after a measure beside it would overflow the
+    /// height the row asked for and cover the next row.
+    /// </summary>
+    private bool _beside = true;
+
     static FieldRow() => AffectsMeasure<FieldRow>(LabelWidthProperty, MinFieldWidthProperty, ColumnSpacingProperty, RowSpacingProperty);
 
     public double LabelWidth
@@ -52,7 +59,8 @@ public sealed class FieldRow : Panel
     protected override Size MeasureOverride(Size availableSize)
     {
         var (label, field) = Parts();
-        if (IsBeside(availableSize.Width))
+        _beside = IsBeside(availableSize.Width);
+        if (_beside)
         {
             label?.Measure(availableSize.WithWidth(LabelWidth));
             field?.Measure(availableSize.WithWidth(availableSize.Width - LabelWidth - ColumnSpacing));
@@ -67,7 +75,7 @@ public sealed class FieldRow : Panel
     protected override Size ArrangeOverride(Size finalSize)
     {
         var (label, field) = Parts();
-        if (IsBeside(finalSize.Width))
+        if (_beside)
         {
             label?.Arrange(new Rect(0, 0, LabelWidth, finalSize.Height));
             field?.Arrange(new Rect(LabelWidth + ColumnSpacing, 0, finalSize.Width - LabelWidth - ColumnSpacing, finalSize.Height));

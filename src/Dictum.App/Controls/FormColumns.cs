@@ -15,6 +15,12 @@ public sealed class FormColumns : Panel
 
     public static readonly StyledProperty<double> RowSpacingProperty = AvaloniaProperty.Register<FormColumns, double>(nameof(RowSpacing), 12);
 
+    /// <summary>
+    /// The columns the last measure chose. Arrange keeps them: layout rounding or DPI scaling can arrange the form a
+    /// little narrower than it was measured, and one column after a measure for two would overflow the height it asked for.
+    /// </summary>
+    private int _columns = 2;
+
     static FormColumns() => AffectsMeasure<FormColumns>(MinColumnWidthProperty, ColumnSpacingProperty, RowSpacingProperty);
 
     public double MinColumnWidth
@@ -40,7 +46,7 @@ public sealed class FormColumns : Panel
 
     protected override Size MeasureOverride(Size availableSize)
     {
-        var columns = ColumnsFor(availableSize.Width);
+        var columns = _columns = ColumnsFor(availableSize.Width);
         var column = ColumnWidth(availableSize.Width, columns);
         var shown = Shown();
         foreach (var child in shown)
@@ -55,7 +61,7 @@ public sealed class FormColumns : Panel
 
     protected override Size ArrangeOverride(Size finalSize)
     {
-        var columns = ColumnsFor(finalSize.Width);
+        var columns = _columns;
         var column = ColumnWidth(finalSize.Width, columns);
         var shown = Shown();
         var rows = Rows(shown, columns);

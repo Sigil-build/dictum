@@ -126,6 +126,37 @@ public class ControlsTests(AvaloniaFixture fx)
         Assert.Equal([new Rect(0, 0, 400, 20), new Rect(0, 32, 400, 40), new Rect(0, 84, 400, 20)], fields.Select(f => f.Bounds));
     });
 
+    // Layout rounding or DPI scaling can arrange a panel a little narrower than it was measured, right at the width where
+    // its layout changes. It keeps the layout it measured, so nothing is placed outside the height it asked for.
+    [Fact]
+    public Task AFieldRowArrangedJustUnderItsMeasuredWidthKeepsTheMeasuredLayout() => fx.Ui(() =>
+    {
+        var label = new TextBlock { Text = "Hotkey" };
+        var field = new Border { Height = 30 };
+        var row = new FieldRow { LabelWidth = 140, MinFieldWidth = 320, ColumnSpacing = 16, RowSpacing = 8, Children = { label, field } };
+
+        row.Measure(new Size(476, double.PositiveInfinity));
+        row.Arrange(new Rect(0, 0, 475, row.DesiredSize.Height));
+
+        Assert.Equal(new Rect(156, 0, 319, 30), field.Bounds);
+        Assert.True(field.Bounds.Bottom <= row.DesiredSize.Height, $"{field.Bounds} is below the row's {row.DesiredSize.Height}");
+    });
+
+    [Fact]
+    public Task FormColumnsArrangedJustUnderTheirMeasuredWidthKeepTheMeasuredColumns() => fx.Ui(() =>
+    {
+        Border[] fields = [new() { Height = 20, VerticalAlignment = VerticalAlignment.Top }, new() { Height = 40 }];
+        var form = new FormColumns { MinColumnWidth = 220, ColumnSpacing = 12, RowSpacing = 12 };
+        form.Children.AddRange(fields);
+
+        form.Measure(new Size(452, double.PositiveInfinity));
+        form.Arrange(new Rect(0, 0, 451, form.DesiredSize.Height));
+
+        Assert.Equal((0, 0), (fields[0].Bounds.Y, fields[1].Bounds.Y));
+        Assert.True(fields[1].Bounds.X > fields[0].Bounds.Right, $"{fields[1].Bounds} is not beside {fields[0].Bounds}");
+        Assert.All(fields, f => Assert.True(f.Bounds.Bottom <= form.DesiredSize.Height, $"{f.Bounds} is below the form's {form.DesiredSize.Height}"));
+    });
+
     private static void Lay(Control panel, double width)
     {
         panel.Measure(new Size(width, double.PositiveInfinity));
