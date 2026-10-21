@@ -18,8 +18,8 @@ public sealed record ConfigIssue(ConfigIssueSeverity Severity, string Path, stri
     }
 }
 
-/// <summary>The config file is missing, unreadable or invalid. Maps to exit code 2.</summary>
-public sealed class ConfigException : Exception
+/// <summary>The config file is missing, unreadable or invalid, or a value it refers to cannot be read. Maps to exit code 2.</summary>
+public class ConfigException : Exception
 {
     public ConfigException(string message)
         : this(message, [])

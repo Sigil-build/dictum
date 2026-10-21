@@ -63,7 +63,18 @@ public sealed class OpenAiCompatibleStt(
     {
         try
         {
-            using var response = await _server.ProbeModelsAsync(ct).ConfigureAwait(false);
+            HttpResponseMessage probe;
+            try
+            {
+                probe = await _server.ProbeModelsAsync(ct).ConfigureAwait(false);
+            }
+            catch (ConfigException ex)
+            {
+                // The probe throws this only for the key: a secret: or env: reference that cannot be read.
+                return HealthStatus.Error(ex.Message, _server.KeyHint(ex, SecretNames.Stt(id), "Settings → Speech providers"));
+            }
+
+            using var response = probe;
             if (OpenAiCompatible.RejectsKey(response.StatusCode))
             {
                 return HealthStatus.Error($"{config.BaseUrl} rejected the API key ({(int)response.StatusCode})", "Check the apiKey reference in the config.");

@@ -20,6 +20,29 @@ public sealed class OpenAiCompatibleServer(HttpClient http, ConfigValueResolver 
 {
     public Uri Endpoint(string path) => OpenAiCompatible.Endpoint(baseUrl, path);
 
+    /// <summary>How to give the provider its key, when its <c>secret:</c> or <c>env:</c> reference cannot be read.</summary>
+    /// <param name="error">Why the key cannot be read.</param>
+    /// <param name="secretName">The secret Settings keeps this provider's key under.</param>
+    /// <param name="settings">Where in Settings the key can be typed, e.g. <c>Settings → Processors</c>.</param>
+    public string KeyHint(ConfigException error, string secretName, string settings)
+    {
+        if (ConfigValueResolver.TryGetEnvVariable(apiKey ?? string.Empty, out var variable))
+        {
+            return $"The API key cannot be read: set the environment variable {variable} where Dictum starts, or type the key in {settings}.";
+        }
+
+        if (error is SecretStoreUnavailableException)
+        {
+            // Both 'dictum secret set' and Settings store the key there, so neither would help.
+            return "The API key cannot be read: with no OS secret store, give it as 'env:VAR' in the config and set that variable where Dictum starts.";
+        }
+
+        var name = apiKey is { } key && key.StartsWith(ConfigValueResolver.SecretPrefix, StringComparison.Ordinal)
+            ? key[ConfigValueResolver.SecretPrefix.Length..]
+            : secretName;
+        return $"The API key cannot be read: store it with 'dictum secret set {name}', or type it in {settings}.";
+    }
+
     /// <summary><c>GET /models</c> with the key, within <see cref="IHealthCheck.ServerTimeout"/>. The caller disposes the answer.</summary>
     public async Task<HttpResponseMessage> ProbeModelsAsync(CancellationToken ct)
     {

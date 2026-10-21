@@ -9,10 +9,14 @@ public sealed class FakeSecrets : ISecretStore
 
     public Exception? Fails { get; set; }
 
+    /// <summary>Thrown by every read, as a store that cannot be reached throws.</summary>
+    public Exception? ReadFails { get; set; }
+
     /// <summary>Holds the next store until the test completes it, as a keyring prompt would.</summary>
     public TaskCompletionSource? Held { get; set; }
 
-    public Task<string?> GetAsync(string key, CancellationToken ct) => Task.FromResult(Values.GetValueOrDefault(key));
+    public Task<string?> GetAsync(string key, CancellationToken ct) =>
+        ReadFails is { } error ? Task.FromException<string?>(error) : Task.FromResult(Values.GetValueOrDefault(key));
 
     public async Task SetAsync(string key, string value, CancellationToken ct)
     {

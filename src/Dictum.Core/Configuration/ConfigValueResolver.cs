@@ -42,8 +42,19 @@ public sealed class ConfigValueResolver(ISecretStore secrets)
         if (value.StartsWith(SecretPrefix, StringComparison.Ordinal))
         {
             var key = value[SecretPrefix.Length..];
-            return await secrets.GetAsync(key, ct).ConfigureAwait(false)
-                ?? throw new ConfigException($"Secret '{key}' is not in the OS secret store.");
+            string? stored;
+            try
+            {
+                stored = await secrets.GetAsync(key, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not (ConfigException or OperationCanceledException))
+            {
+                // The store itself failed: Credential Manager throws Win32Exception for anything but not-found, and the
+                // keyring's D-Bus can fail to connect. Either way the key cannot be read, like a key that is not there.
+                throw new ConfigException($"Secret '{key}' cannot be read from the OS secret store: {ex.Message}", [], ex);
+            }
+
+            return stored ?? throw new ConfigException($"Secret '{key}' is not in the OS secret store.");
         }
 
         return value;

@@ -296,6 +296,9 @@ API-ключ сервера може бути в конфігурації трь
 `Secret '<name>' is not in the OS secret store.`
 :   Конфігурація називає ключ, якого немає у сховищі. Введіть ключ ще раз у «Налаштуваннях» або збережіть його командою `dictum secret set <name>`. `dictum secret check <name>` каже, чи ключ є, не показуючи його.
 
+`Secret '<name>' cannot be read from the OS secret store: …`
+:   Диспетчер облікових даних або сховище ключів не змогли відповісти, а решта тексту каже чому. Поки воно не відповідає, обробник, якому потрібен ключ, поводиться так, як задано в **Якщо сервер не відповів**, — як і тоді, коли ключа немає у сховищі.
+
 `No Secret Service is running (KWallet or GNOME Keyring); use 'env:VAR' for API keys instead.`
 :   Установіть і запустіть GNOME Keyring або KWallet, або покладіть ключ у змінну середовища й запишіть у поле `env:<VAR>`.
 
@@ -386,6 +389,9 @@ API-ключ сервера може бути в конфігурації трь
 `… rejected the API key (401)` → `Check the apiKey reference in the config.`
 :   Див. [API-ключі та сховище ключів](#secrets).
 
+`Secret '<name>' is not in the OS secret store.` → `The API key cannot be read: store it with 'dictum secret set <name>', or type it in Settings → Speech providers.`
+:   Ключ постачальника — `secret:<name>`, а в сховищі ключів його немає. Введіть ключ у поле постачальника **Ключ API (необов'язково)** або виконайте команду з підказки. Для `env:<VAR>` рядок пише `Environment variable '<VAR>' is not set.`, а підказка називає змінну, яку треба задати. Коли сховища ключів немає, як-от у Linux без Secret Service, підказка радить задати ключ як `env:VAR`. Див. [API-ключі та сховище ключів](#secrets).
+
 `http://…/v1: …` → `Is the server running, and is baseUrl correct (including /v1)?`
 :   Dictum не може достукатися до сервера. Перевірте, що сервер працює і що **URL** закінчується версією API, наприклад `http://localhost:8080/v1`.
 
@@ -402,7 +408,7 @@ API-ключ сервера може бути в конфігурації трь
 :   Dictum не може достукатися до сервера. Перевірте, що сервер працює і що його **URL** у **Налаштування → Обробники** закінчується на `/v1`.
 
 `Secret '<name>' is not in the OS secret store.` → `The API key cannot be read: store it with 'dictum secret set <name>', or type it in Settings → Processors.`
-:   Ключ обробника — `secret:<name>`, а в сховищі ключів його немає. Введіть ключ у поле обробника **Ключ API (необов'язково)** або виконайте команду з підказки. Для `env:<VAR>` рядок пише `Environment variable '<VAR>' is not set.`, а підказка називає змінну, яку треба задати. Див. [API-ключі та сховище ключів](#secrets).
+:   Ключ обробника — `secret:<name>`, а в сховищі ключів його немає. Введіть ключ у поле обробника **Ключ API (необов'язково)** або виконайте команду з підказки. Для `env:<VAR>` рядок пише `Environment variable '<VAR>' is not set.`, а підказка називає змінну, яку треба задати. Коли сховища ключів немає, як-от у Linux без Secret Service, підказка радить задати ключ як `env:VAR`. Див. [API-ключі та сховище ключів](#secrets).
 
     Поки ключа немає, диктування поводиться так, як задано в **Якщо сервер не відповів**: з **Лишити текст як розпізнано** Dictum вставляє текст без змін цього обробника і пише в журнал `Processor 'cleanup' failed, keeping the input text: LLM 'cleanup' cannot read its API key: …`; з **Вважати диктування невдалим** диктування завершується помилкою з цією причиною.
 

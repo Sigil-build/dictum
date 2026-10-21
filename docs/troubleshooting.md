@@ -296,6 +296,9 @@ These texts mean:
 `Secret '<name>' is not in the OS secret store.`
 :   The config names a key that is not stored. Type the key again in Settings, or store it with `dictum secret set <name>`. `dictum secret check <name>` tells whether it is there, without printing it.
 
+`Secret '<name>' cannot be read from the OS secret store: …`
+:   Credential Manager or the keyring failed to answer, and the rest of the text says why. Until it answers, a processor that needs the key follows **If the server fails**, as when the key is not stored.
+
 `No Secret Service is running (KWallet or GNOME Keyring); use 'env:VAR' for API keys instead.`
 :   Install and start GNOME Keyring or KWallet, or put the key in an environment variable and set the field to `env:<VAR>`.
 
@@ -386,6 +389,9 @@ For a remote server:
 `… rejected the API key (401)` → `Check the apiKey reference in the config.`
 :   See [API keys and the keyring](#secrets).
 
+`Secret '<name>' is not in the OS secret store.` → `The API key cannot be read: store it with 'dictum secret set <name>', or type it in Settings → Speech providers.`
+:   The provider's key is `secret:<name>`, and the keyring does not have it. Type the key in the provider's **API key (optional)** box, or run the command the hint gives. With `env:<VAR>`, the row says `Environment variable '<VAR>' is not set.`, and the hint names the variable to set. Without a secret store, such as on Linux with no Secret Service, the hint says to give the key as `env:VAR`. See [API keys and the keyring](#secrets).
+
 `http://…/v1: …` → `Is the server running, and is baseUrl correct (including /v1)?`
 :   Dictum cannot reach the server. Check that it runs, and that the **URL** ends with the API's version, such as `http://localhost:8080/v1`.
 
@@ -402,7 +408,7 @@ Each LLM prompt processor has a row, `processor:<id>` (**Processor &lt;id&gt;**)
 :   Dictum cannot reach the server. Check that the server runs, and that its **URL** in **Settings → Processors** ends with `/v1`.
 
 `Secret '<name>' is not in the OS secret store.` → `The API key cannot be read: store it with 'dictum secret set <name>', or type it in Settings → Processors.`
-:   The processor's key is `secret:<name>`, and the keyring does not have it. Type the key in the processor's **API key (optional)** box, or run the command the hint gives. With `env:<VAR>`, the row says `Environment variable '<VAR>' is not set.`, and the hint names the variable to set. See [API keys and the keyring](#secrets).
+:   The processor's key is `secret:<name>`, and the keyring does not have it. Type the key in the processor's **API key (optional)** box, or run the command the hint gives. With `env:<VAR>`, the row says `Environment variable '<VAR>' is not set.`, and the hint names the variable to set. Without a secret store, such as on Linux with no Secret Service, the hint says to give the key as `env:VAR`. See [API keys and the keyring](#secrets).
 
     Until the key is there, a dictation follows **If the server fails**: with **Keep the text as recognised**, Dictum pastes the text without this processor's changes and logs `Processor 'cleanup' failed, keeping the input text: LLM 'cleanup' cannot read its API key: …`; with **Fail the dictation**, the dictation fails with that reason.
 

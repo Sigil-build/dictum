@@ -156,7 +156,7 @@ public sealed class SecretServiceStore(Portal portal, ILog log) : ISecretStore, 
         }
         catch (DBusErrorReplyException ex) when (ex.ErrorName == DBusNames.ServiceUnknownError)
         {
-            throw new ConfigException("No Secret Service is running (KWallet or GNOME Keyring); use 'env:VAR' for API keys instead.");
+            throw new SecretStoreUnavailableException("No Secret Service is running (KWallet or GNOME Keyring); use 'env:VAR' for API keys instead.");
         }
         catch (DBusErrorReplyException ex)
         {

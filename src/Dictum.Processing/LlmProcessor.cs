@@ -132,7 +132,7 @@ public sealed partial class LlmProcessor(
             catch (ConfigException ex)
             {
                 // The probe throws this only for the key: a secret: or env: reference that cannot be read.
-                return HealthStatus.Error(ex.Message, KeyHint());
+                return HealthStatus.Error(ex.Message, _server.KeyHint(ex, SecretNames.Processor(id), "Settings → Processors"));
             }
 
             using var response = probe;
@@ -149,18 +149,6 @@ public sealed partial class LlmProcessor(
             return HealthStatus.Error($"{config.BaseUrl}: {ex.Message}", "Is the LLM server running, and is baseUrl correct (including /v1)?");
         }
     }
-
-    /// <summary>How to give the processor its key, for a <c>secret:</c> or <c>env:</c> reference that cannot be read.</summary>
-    private string KeyHint() =>
-        ConfigValueResolver.TryGetEnvVariable(config.ApiKey ?? string.Empty, out var variable)
-            ? $"The API key cannot be read: set the environment variable {variable} where Dictum starts, or type the key in Settings → Processors."
-            : $"The API key cannot be read: store it with 'dictum secret set {SecretName()}', or type it in Settings → Processors.";
-
-    /// <summary>The secret the key reference names, or the name Settings stores this processor's key under.</summary>
-    private string SecretName() =>
-        config.ApiKey is { } key && key.StartsWith(ConfigValueResolver.SecretPrefix, StringComparison.Ordinal)
-            ? key[ConfigValueResolver.SecretPrefix.Length..]
-            : SecretNames.Processor(id);
 
     private async Task<(string Content, string? FinishReason)> CompleteAsync(string prompt, int maxTokens, CancellationToken ct)
     {

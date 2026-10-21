@@ -3,6 +3,7 @@ using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Stt;
 using Dictum.Stt.OpenAi;
+using Dictum.Testing;
 
 namespace Dictum.Core.Tests.Stt;
 
@@ -184,6 +185,38 @@ public class OpenAiCompatibleSttTests
             await CheckAsync(new FakeHttpHandler().Throw(new HttpRequestException("Connection refused"))));
     }
 
+    // A key that cannot be read is not a server that cannot be reached: the hint says how to give the key, and nothing
+    // reaches the server.
+    [Theory]
+    [InlineData(
+        "secret:dictum-stt-llama-swap",
+        "Secret 'dictum-stt-llama-swap' is not in the OS secret store.",
+        "The API key cannot be read: store it with 'dictum secret set dictum-stt-llama-swap', or type it in Settings → Speech providers.")]
+    [InlineData(
+        "env:DICTUM_TEST_SURELY_MISSING",
+        "Environment variable 'DICTUM_TEST_SURELY_MISSING' is not set.",
+        "The API key cannot be read: set the environment variable DICTUM_TEST_SURELY_MISSING where Dictum starts, or type the key in Settings → Speech providers.")]
+    public async Task TheCheckSaysWhenTheKeyCannotBeRead(string apiKey, string detail, string hint)
+    {
+        var http = new FakeHttpHandler();
+
+        var status = await Create(http, apiKey: apiKey, secrets: new FakeSecrets()).CheckAsync(_ct);
+
+        Assert.Equal(HealthStatus.Error(detail, hint), status);
+        Assert.Empty(http.Requests);
+    }
+
+    [Fact]
+    public async Task WithNoSecretStoreTheCheckSaysToGiveTheKeyAsAnEnvVariable()
+    {
+        var status = await Create(new FakeHttpHandler(), apiKey: "secret:dictum-stt-llama-swap", secrets: new UnavailableSecretStore()).CheckAsync(_ct);
+
+        Assert.Equal(
+            HealthStatus.Error(
+                "The OS secret store is not supported yet; use 'env:VAR' for API keys.",
+                "The API key cannot be read: with no OS secret store, give it as 'env:VAR' in the config and set that variable where Dictum starts."),
+            status);
+    }
     private async Task<string> FailureAsync(FakeHttpHandler http, int timeoutMs = OpenAiCompatibleSttConfig.DefaultTimeoutMs) =>
         (await Assert.ThrowsAsync<ProviderUnavailableException>(() =>
             Create(http, timeoutMs: timeoutMs).TranscribeAsync(Clips.Seconds(1), new SttRequest(null, null), _ct))).Message;
@@ -203,11 +236,15 @@ public class OpenAiCompatibleSttTests
         return body[start..body.IndexOf("\r\n", start, StringComparison.Ordinal)];
     }
 
-    private static OpenAiCompatibleStt Create(FakeHttpHandler http, string? apiKey = null, int timeoutMs = OpenAiCompatibleSttConfig.DefaultTimeoutMs) =>
+    private static OpenAiCompatibleStt Create(
+        FakeHttpHandler http,
+        string? apiKey = null,
+        int timeoutMs = OpenAiCompatibleSttConfig.DefaultTimeoutMs,
+        ISecretStore? secrets = null) =>
         new(
             "llama-swap",
             new OpenAiCompatibleSttConfig { BaseUrl = "http://localhost:8080/v1/", Model = "whisper-large-v3-turbo", ApiKey = apiKey, TimeoutMs = timeoutMs },
             http.Client(),
-            new ConfigValueResolver(new UnavailableSecretStore()),
+            new ConfigValueResolver(secrets ?? new UnavailableSecretStore()),
             NullLog.Instance);
 }

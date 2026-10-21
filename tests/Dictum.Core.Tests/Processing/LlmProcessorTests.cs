@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Net;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
@@ -10,6 +11,9 @@ namespace Dictum.Core.Tests.Processing;
 public sealed class LlmProcessorTests : IDisposable
 {
     private const string MissingSecret = "secret:dictum-processor-cleanup-uk";
+
+    private const string NoSecretStoreHint =
+        "The API key cannot be read: with no OS secret store, give it as 'env:VAR' in the config and set that variable where Dictum starts.";
 
     private readonly TempDirectory _prompts = new();
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
@@ -384,6 +388,37 @@ public sealed class LlmProcessorTests : IDisposable
         Assert.Empty(http.Requests);
     }
 
+    // Credential Manager and the keyring can fail to answer: that too is a key that cannot be read, not a crash.
+    [Fact]
+    public async Task AKeyTheStoreFailsToReadKeepsTheInputAndTheCheckSaysHowToStoreIt()
+    {
+        var http = new FakeHttpHandler().Respond(HttpStatusCode.OK, Answer("Привіт, світ."));
+        var log = new ListLog();
+        var secrets = new FakeSecrets { ReadFails = new Win32Exception(1312, "Reading from Credential Manager failed") };
+        const string detail = "Secret 'dictum-processor-cleanup-uk' cannot be read from the OS secret store: Reading from Credential Manager failed";
+
+        var result = await Create(http, apiKey: MissingSecret, log: log, secrets: secrets).ProcessAsync("привіт світ", _context, _ct);
+        var status = await Create(http, apiKey: MissingSecret, secrets: secrets).CheckAsync(_ct);
+
+        Assert.Equal("привіт світ", result);
+        Assert.Empty(http.Requests);
+        Assert.True(log.Has($"LLM 'cleanup-uk' cannot read its API key: {detail}"));
+        Assert.Equal(
+            HealthStatus.Error(detail, "The API key cannot be read: store it with 'dictum secret set dictum-processor-cleanup-uk', or type it in Settings → Processors."),
+            status);
+    }
+
+    // With no Secret Service, neither 'dictum secret set' nor Settings can store a key, so the hint names env:VAR.
+    [Fact]
+    public async Task WithNoSecretStoreTheCheckSaysToGiveTheKeyAsAnEnvVariable()
+    {
+        const string noService = "No Secret Service is running (KWallet or GNOME Keyring); use 'env:VAR' for API keys instead.";
+        var secrets = new FakeSecrets { ReadFails = new SecretStoreUnavailableException(noService) };
+
+        var status = await Create(new FakeHttpHandler(), apiKey: MissingSecret, secrets: secrets).CheckAsync(_ct);
+
+        Assert.Equal(HealthStatus.Error(noService, NoSecretStoreHint), status);
+    }
     private async Task<string> FailureAsync(FakeHttpHandler http, int timeoutMs = LlmProcessorConfig.DefaultTimeoutMs) =>
         (await Assert.ThrowsAsync<ProviderUnavailableException>(() =>
             Create(http, onError: LlmErrorMode.Fail, timeoutMs: timeoutMs).ProcessAsync("text", _context, _ct))).Message;
@@ -398,7 +433,8 @@ public sealed class LlmProcessorTests : IDisposable
         int? maxTokens = null,
         ILog? log = null,
         string? apiKey = null,
-        int timeoutMs = LlmProcessorConfig.DefaultTimeoutMs) =>
+        int timeoutMs = LlmProcessorConfig.DefaultTimeoutMs,
+        ISecretStore? secrets = null) =>
         new(
             "cleanup-uk",
             new LlmProcessorConfig
@@ -413,7 +449,7 @@ public sealed class LlmProcessorTests : IDisposable
                 TimeoutMs = timeoutMs,
             },
             http.Client(),
-            new ConfigValueResolver(new FakeSecrets()),
+            new ConfigValueResolver(secrets ?? new FakeSecrets()),
             new PromptTemplates(_prompts.Path),
             log ?? NullLog.Instance);
 
