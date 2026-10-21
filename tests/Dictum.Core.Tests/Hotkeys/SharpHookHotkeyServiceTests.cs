@@ -194,6 +194,28 @@ public sealed class SharpHookHotkeyServiceTests
         Assert.True(next.Enabled);
     }
 
+    // A key-down that reaches the hook as it stops is handled on the hook's thread before its run ends. A modifier seen
+    // then must not stay held: no key-up follows, and the hotkeys would not match after Resume until it is pressed again.
+    [Fact(Timeout = TestTimeout.Default)]
+    public async Task AModifierThatGoesDownAsTheHookStopsIsNotHeldAfterThePause()
+    {
+        var paused = new FakeHookProvider(enables: true) { KeyDownWhileStopping = KeyCode.VcLeftShift };
+        var resumed = new FakeHookProvider(enables: true);
+        var providers = new Queue<IGlobalHookProvider>([paused, resumed]);
+        await using var service = new SharpHookHotkeyService(NullLog.Instance, "test", providers.Dequeue, LongStart);
+        var pressed = new TaskCompletionSource<HotkeyEvent>(TaskCreationOptions.RunContinuationsAsynchronously);
+        service.Triggered += e => pressed.TrySetResult(e);
+
+        await service.SetBindingsAsync(Bindings, TestContext.Current.CancellationToken);
+        await service.SetBindingsAsync([], TestContext.Current.CancellationToken);
+        await service.SetBindingsAsync(Bindings, TestContext.Current.CancellationToken);
+        resumed.Press(KeyCode.VcLeftControl);
+        resumed.Press(KeyCode.VcLeftAlt);
+        resumed.Press(KeyCode.VcSpace);
+
+        Assert.Equal(new HotkeyEvent("dictate", HotkeyPhase.Pressed), await pressed.Task.WaitAsync(DeliveryTimeout, TestContext.Current.CancellationToken));
+    }
+
     [Fact(Timeout = TestTimeout.Default)]
     public async Task ACancelledStartIsReportedAsCancelledAndStopsTheHook()
     {

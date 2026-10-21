@@ -202,9 +202,9 @@ public sealed class SharpHookHotkeyService(ILog log, string backend, Func<IGloba
     }
 
     /// <summary>
-    /// Removes the running hook and waits until its run has ended, so the next bindings start a new one. A hook still
-    /// starting is kept: stopping it before its native run begins would not stop that run, and the next bindings wait
-    /// on it as before. With no bindings it raises nothing meanwhile.
+    /// Removes the running hook and waits until its run has ended, so the next bindings start a new one, and only then
+    /// forgets the modifiers it saw held. A hook still starting is kept: stopping it before its native run begins would
+    /// not stop that run, and the next bindings wait on it as before. With no bindings it raises nothing meanwhile.
     /// </summary>
     private async Task StopAsync()
     {
@@ -214,6 +214,10 @@ public sealed class SharpHookHotkeyService(ILog log, string backend, Func<IGloba
         }
 
         _hook = null;
+        var ended = await LetGoAsync(started).ConfigureAwait(false);
+
+        // The run's thread can be in a handler until the run has ended: a key-down that reached the hook as it stopped,
+        // or one whose handler was already running when its handlers were removed. Only now does none run any more.
         started.Hook.KeyPressed -= OnKeyPressed;
         started.Hook.KeyReleased -= OnKeyReleased;
         lock (_gate)
@@ -222,7 +226,7 @@ public sealed class SharpHookHotkeyService(ILog log, string backend, Func<IGloba
             _held = HotkeyModifiers.None;
         }
 
-        if (await LetGoAsync(started).ConfigureAwait(false))
+        if (ended)
         {
             log.Info($"Keyboard hook stopped ({backend})");
         }
@@ -277,6 +281,12 @@ public sealed class SharpHookHotkeyService(ILog log, string backend, Func<IGloba
         catch (HookException)
         {
             // Stopping a hook that never enabled can fail; without its handlers it raises nothing even if it starts later.
+        }
+
+        lock (_gate)
+        {
+            // A hook whose run ended after it enabled sends no more key-ups.
+            _held = HotkeyModifiers.None;
         }
 
         if (!started.Ended.IsCompleted)
