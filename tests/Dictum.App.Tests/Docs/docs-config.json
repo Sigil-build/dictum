@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "general": {
+    "historySize": 200,
+    "sounds": true,
+    "pasteDelayMs": 150,
+    "overlay": {
+      "enabled": true,
+      "position": "bottom",
+      "size": "medium",
+      "opacity": 1.0,
+      "palette": "aurora"
+    }
+  },
+  "stt": {
+    "local": {
+      "type": "whisper-local",
+      "model": "ggml-large-v3-turbo-q8_0.bin",
+      "vad": true,
+      "vadModel": "ggml-silero-v6.2.0.bin",
+      "runtime": "auto"
+    }
+  },
+  "processors": {
+    "cleanup": {
+      "type": "llm",
+      "baseUrl": "http://localhost:8080/v1",
+      "model": "qwen3-4b",
+      "prompt": "cleanup",
+      "timeoutMs": 15000,
+      "onError": "passthrough"
+    }
+  },
+  "profiles": [
+    {
+      "id": "dictate",
+      "hotkey": "Ctrl+Alt+Space",
+      "mode": "PushToTalk",
+      "stt": "local",
+      "language": "uk, en",
+      "vocabulary": ["Dictum", "Whisper", "llama.cpp"],
+      "pipeline": ["cleanup"],
+      "output": "paste"
+    },
+    {
+      "id": "toggle",
+      "hotkey": "Ctrl+Alt+D",
+      "mode": "Toggle",
+      "stt": "local",
+      "language": "uk, en",
+      "pipeline": [],
+      "output": "paste"
+    }
+  ]
+}

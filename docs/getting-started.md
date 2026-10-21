@@ -148,6 +148,9 @@ Dictum then lives in the tray, by the clock. Windows hides new tray icons behind
 3. Speak.
 4. Release the keys. A moment later, the text appears where the cursor is.
 
+![The overlay while Dictum listens](images/overlay-listening.png#gh-light-mode-only)
+![The overlay while Dictum listens](images/overlay-listening-dark.png#gh-dark-mode-only)
+
 The **Ready** step of the wizard has a box, **Try dictation**, to try this before you close it. The first dictation after Dictum starts waits until the speech model is in memory.
 
 If no text appears, run `dictum doctor` (on Windows by its full path, see [The command line](#command-line)) and see [Troubleshooting](troubleshooting.md#doctor). Dictum cannot paste into an app that runs as administrator: see [Troubleshooting](troubleshooting.md#administrator).

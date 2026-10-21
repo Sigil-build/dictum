@@ -18,6 +18,9 @@ The column on the left lists the pages. At its bottom are the version of Dictum 
 
 ### General {#general}
 
+![The General page of Settings](../images/settings-general.png#gh-light-mode-only)
+![The General page of Settings](../images/settings-general-dark.png#gh-dark-mode-only)
+
 #### Start Dictum at login {#start-at-login}
 
 Starts the desktop app, with its tray icon, each time you log in to your computer. No window opens. On Windows 11 this is the value `Dictum` under the registry key `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`; on Linux it is the file `~/.config/autostart/dictum.desktop`. The switch changes it at once; it is not part of `config.json`. Dictum keeps one login item, so turning this on replaces one that starts the daemon alone. See [Start at login](../guides/start-at-login.md).
@@ -52,6 +55,9 @@ The language of the desktop app: **Same as the system**, **English** or **Укр
 
 ### Listening overlay {#overlay}
 
+![The Listening overlay page of Settings](../images/settings-overlay.png#gh-light-mode-only)
+![The Listening overlay page of Settings](../images/settings-overlay-dark.png#gh-dark-mode-only)
+
 The overlay is the small animation that shows while you dictate; [Tray icon and overlay](tray-and-overlay.md#overlay) describes what it shows. Open this page from General with **Overlay settings ›**, and go back with the link above its title. The **Preview** at the bottom plays the overlay with your choices. Changes apply at once, even to an overlay on screen.
 
 #### Show the overlay while you dictate {#overlay-enabled}
@@ -76,6 +82,9 @@ How opaque the overlay is, from 30 % to 100 % in steps of 5; 100 % by default. L
 
 ### Pasting {#pasting}
 
+![The Pasting page of Settings](../images/settings-pasting.png#gh-light-mode-only)
+![The Pasting page of Settings](../images/settings-pasting-dark.png#gh-dark-mode-only)
+
 For profiles whose **Output** is **Paste into the focused app**, Dictum puts the text on the clipboard, presses the paste shortcut for you, then puts back the text the clipboard held before, unless something else changed the clipboard in the meantime. This page tunes that. Open it from General with **Pasting settings ›**.
 
 #### Clipboard restore delay, ms {#paste-delay}
@@ -98,6 +107,9 @@ Linux only; Windows does not show this row. How Dictum presses the paste shortcu
 Pick one yourself when **Automatic** picks one that does not work for you; the **Paste order** row on the [System](#system) page shows the order in use. See [Troubleshooting](../troubleshooting.md#pasting).
 
 ### Profiles {#profiles}
+
+![The Profiles page of Settings](../images/settings-profiles.png#gh-light-mode-only)
+![The Profiles page of Settings](../images/settings-profiles-dark.png#gh-dark-mode-only)
 
 A profile is one way to dictate: its own hotkey, languages, words and processing. The list on the left shows each profile with its languages and hotkey; select one to edit it on the right. **+ New profile** adds a profile with the selected one's languages and speech provider and no hotkey. **Delete profile** removes the selected one; it is off while only one profile is left. See [Profiles](../guides/profiles.md).
 
@@ -153,6 +165,9 @@ Which speech recogniser this profile uses, from the [Speech providers](#speech-r
 
 ### Speech providers {#speech-recognition}
 
+![The Speech providers page of Settings](../images/settings-speech.png#gh-light-mode-only)
+![The Speech providers page of Settings](../images/settings-speech-dark.png#gh-dark-mode-only)
+
 A card for each speech recogniser that profiles can use. Each card says which profiles use it. **+ Local Whisper** adds a Whisper that runs on your computer, with voice activity detection on. **+ Remote server** adds a server with an OpenAI-compatible transcription API, such as whisper-server behind llama-swap, speaches, OpenAI or Groq. **Remove provider** is on only while no profile uses the provider; it also deletes the provider's stored API key.
 
 #### Model {#whisper-model}
@@ -192,6 +207,9 @@ Remote server. How long Dictum waits for the server's answer, from 1 to 600 seco
 **Test** records 5 seconds from your microphone, with a level bar, and shows what the provider recognised and how long it took. **Test with a sample** sends a built-in recording instead. Both save your pending changes first and need the daemon to run. Fix any field marked in red before you test.
 
 ### Processors {#processors}
+
+![The Processors page of Settings](../images/settings-processors.png#gh-light-mode-only)
+![The Processors page of Settings](../images/settings-processors-dark.png#gh-dark-mode-only)
 
 Processors work on the text after recognition, in the order a profile's **Processing chain** gives. The list on the left shows each processor with its kind; select one to edit it on the right. There are two kinds:
 
@@ -270,6 +288,9 @@ Replace rules. Adds rules from a CSV file to the end of the list. The columns ar
 
 ### Models {#models}
 
+![The Models page of Settings](../images/settings-models.png#gh-light-mode-only)
+![The Models page of Settings](../images/settings-models-dark.png#gh-dark-mode-only)
+
 The speech models in Dictum's catalog, with the space they use on disk and the free space at the top. The line under the title names your graphics card and memory; the recommendation follows from it. Each card shows:
 
 - badges: a recommendation for your graphics card or computer; the state, such as "Installed", "Downloading" or "Not installed"; and a speed class, **Fast**, **Usable** or **Too slow here**;
@@ -300,6 +321,9 @@ Pauses the downloads; **Resume** continues them where they stopped.
 Stops this model's download and drops the part already fetched.
 
 ### System {#system}
+
+![The System page of Settings](../images/settings-system.png#gh-light-mode-only)
+![The System page of Settings](../images/settings-system-dark.png#gh-dark-mode-only)
 
 The state of Dictum on this computer. The header names your desktop and when the checks last ran. The card at the top shows whether the desktop app is connected to the daemon, the profiles and their hotkeys, and the paths of the config file and the log; **Restart daemon** shows when the daemon is not running. Under it, a summary counts the problems and warnings, then one row per check, each with a badge. Some rows have a button that fixes the problem.
 
@@ -334,6 +358,9 @@ Runs the checks again, for example after you fixed something. The checks run ins
 A link under the status of a check that is not OK, and under the Daemon row when the checks could not run. It opens the row's section of [Troubleshooting](../troubleshooting.md) in your browser: the one in the table above, which `dictum doctor` links to as well. The **Listening overlay** and **Tray icon** rows have no link.
 
 ### History {#history}
+
+![The History page of Settings](../images/settings-history.png#gh-light-mode-only)
+![The History page of Settings](../images/settings-history-dark.png#gh-dark-mode-only)
 
 Your recent dictations, newest first, as many as **History** on the [General](#general) page keeps. Each entry shows when it was made, the profile, the language Whisper picked, how long the recording was and the first line of the text. A failed dictation says why. The page reads the history file each time it opens.
 

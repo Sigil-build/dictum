@@ -71,6 +71,12 @@ The icon is the quickest way to see that Dictum is recording. Some desktops hide
 
 ## Listening overlay {#overlay}
 
+![The overlay while Dictum listens](../images/overlay-listening.png#gh-light-mode-only)
+![The overlay while Dictum listens](../images/overlay-listening-dark.png#gh-dark-mode-only)
+
+![The overlay while Whisper transcribes](../images/overlay-transcribing.png#gh-light-mode-only)
+![The overlay while Whisper transcribes](../images/overlay-transcribing-dark.png#gh-dark-mode-only)
+
 The overlay is a small animation that appears while you dictate, at the bottom of the screen unless you choose the top. It shows on the screen with the mouse pointer, centred, next to the taskbar or panel on that edge. It lets clicks through to the window under it and never takes the keyboard focus, so the text still goes where your cursor is.
 
 On Linux the overlay is an X11 window, so a Wayland session needs XWayland, which most Wayland desktops provide. Without it, Settings → **System** shows "Needs XWayland" in the **Listening overlay** row, and the tray icon still shows the state.
