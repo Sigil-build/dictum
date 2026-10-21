@@ -1,10 +1,13 @@
 using System.CommandLine;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using Dictum.Cli.Output;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Docs;
 using Dictum.Host.Diagnostics;
+using Dictum.Platform;
 
 namespace Dictum.Cli.Commands;
 
@@ -35,7 +38,9 @@ internal static class DoctorCommand
             var results = await DoctorChecks.RunAsync(
                 DoctorInputs.ForCli(context.ConfigPath, config, error, warnings, context.Paths, context.Platform, context.Host, context.SocketPath),
                 token).ConfigureAwait(false);
-            var checks = results.Select(c => new CheckJson(c.Name, c.Status.Level, c.Status.Detail, c.Status.Hint)).ToList();
+            // The pages in the UI language: the config's, or the system's when there is none or it failed to load.
+            var language = DocsLinks.Language(config?.General.UiLanguage, CultureInfo.CurrentUICulture);
+            var checks = results.Select(c => new CheckJson(c.Name, c.Status.Level, c.Status.Detail, c.Status.Hint, Docs(c, language))).ToList();
 
             if (parse.GetValue(json))
             {
@@ -52,6 +57,11 @@ internal static class DoctorCommand
                     {
                         context.Out.WriteLine($"     {"",-NameWidth} → {check.Hint}");
                     }
+
+                    if (check.Docs is not null)
+                    {
+                        context.Out.WriteLine($"     {"",-NameWidth} see: {check.Docs}");
+                    }
                 }
             }
 
@@ -60,6 +70,12 @@ internal static class DoctorCommand
 
         return command;
     }
+
+    /// <summary>The troubleshooting section that explains <paramref name="check"/>, in <paramref name="language"/>; null when the row is OK.</summary>
+    private static string? Docs(PlatformCheck check, string language) =>
+        check.Status.Level == HealthLevel.Ok
+            ? null
+            : DocsLinks.For(DocsPage.Troubleshooting, language, DoctorDocs.AnchorFor(check.Name)).AbsoluteUri;
 
     private static string Label(HealthLevel level) => level switch
     {

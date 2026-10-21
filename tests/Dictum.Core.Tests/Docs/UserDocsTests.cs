@@ -58,7 +58,7 @@ public sealed partial class UserDocsTests
 
     // Links keep `.md` and stay relative, so the pages read the same on GitHub and on the site, which has only docs/.
     // The nav's entries are links as well: one to a missing page fails the site's strict build.
-    [Fact(Skip = "until A2–A5")]
+    [Fact]
     public void EveryRelativeLinkStaysInsideDocsAndResolves()
     {
         var files = Directory.EnumerateFiles(Docs, "*", SearchOption.AllDirectories).Select(Relative).ToHashSet(StringComparer.Ordinal);

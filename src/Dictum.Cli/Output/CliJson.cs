@@ -47,7 +47,8 @@ internal sealed record ModelJson(string Id, string Kind, string Title, string Fi
 
 internal sealed record InitJson(string Config, string SpeechModel, IReadOnlyList<string> Downloaded, string Cleanup, bool? Autostart);
 
-internal sealed record CheckJson(string Name, HealthLevel Level, string Detail, string? Hint);
+/// <param name="Docs">The URL of the troubleshooting section that explains the row; null for a row that is OK.</param>
+internal sealed record CheckJson(string Name, HealthLevel Level, string Detail, string? Hint, string? Docs);
 
 internal sealed record DoctorJson(string Version, string Os, string Rid, IReadOnlyList<CheckJson> Checks);
 
