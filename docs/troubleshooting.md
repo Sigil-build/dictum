@@ -30,12 +30,13 @@ When something does not work, start with `dictum doctor`, or with **Settings →
     ./dictum-0.4.0-linux-x64.AppImage dictum doctor
     ```
 
-Each row starts with `OK`, `WARN` or `ERR`, then the check's name and what it found. A row that is not OK has a second line, after `→`: what to do. The first line of the output names Dictum's version and your system. A part of the output on Windows:
+Each row starts with `OK`, `WARN` or `ERR`, then the check's name and what it found. A row that is not OK has two more lines: after `→`, what to do; after `see:`, the link to its section on this page. The link opens the page in the language that **UI language** sets in **Settings → General**. With **Same as the system**, that is Ukrainian on a Ukrainian system and English on any other. The first line of the output names Dictum's version and your system. A part of the output on Windows:
 
 ```text
   OK config                 C:\Users\you\AppData\Roaming\Dictum\config.json (1 STT, 1 processors, 1 profiles)
 WARN config warnings        1 warning(s)
                             → processors.cleanup: no profile's pipeline runs it, so dictation never uses it
+                            see: https://docs.sigil.build/dictum/troubleshooting/#config-warnings
   OK models                 C:\Users\you\AppData\Local\Dictum\models (1 configured file(s) present)
   OK gpu                    NVIDIA GeForce RTX 3060, 12.0 GB VRAM
   OK audio library          PortAudio V19.7.0-devel, revision … (bundled portaudio.dll)
@@ -48,7 +49,7 @@ WARN config warnings        1 warning(s)
   OK processor:cleanup      http://localhost:8080/v1 reachable, model qwen3-4b, prompt 'cleanup'
 ```
 
-`dictum doctor` exits with code 1 when any row is `ERR`, and 0 otherwise. `dictum doctor --json` prints the same rows as JSON, with `level` set to `ok`, `warning` or `error`. Each provider check gets up to 15 seconds, so the command can take a while.
+`dictum doctor` exits with code 1 when any row is `ERR`, and 0 otherwise. `dictum doctor --json` prints the same rows as JSON, with `level` set to `ok`, `warning` or `error`, and `docs` set to the link for a row that is not OK. Each provider check gets up to 15 seconds, so the command can take a while.
 
 **Settings → System** shows the same rows with a badge (**OK**, **Warning** or **Error**), the check's name in your language, what it found, and what to do. The texts of the checks themselves are in English, in the app and in the terminal. The page adds two rows of its own: **Listening overlay** and **Tray icon**. The [Settings reference](reference/settings.md#system) describes the page.
 
@@ -120,6 +121,7 @@ A processor, such as an LLM prompt or a set of replace rules, works only in the 
 ```text
 WARN config warnings        1 warning(s)
                             → processors.cleanup: no profile's pipeline runs it, so dictation never uses it
+                            see: https://docs.sigil.build/dictum/troubleshooting/#config-warnings
 ```
 
 In **Settings → Processors**, such a processor is marked **In no profile** in the list. When you open it, the page says "This processor runs in no profile, so dictation never uses it."

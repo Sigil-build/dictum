@@ -30,12 +30,13 @@
     ./dictum-0.4.0-linux-x64.AppImage dictum doctor
     ```
 
-Кожен рядок починається з `OK`, `WARN` або `ERR`, далі йдуть назва перевірки й те, що вона знайшла. Під рядком, який не «OK», є другий, після `→`: що зробити. Перший рядок виводу називає версію Dictum і вашу систему. Ось частина виводу у Windows:
+Кожен рядок починається з `OK`, `WARN` або `ERR`, далі йдуть назва перевірки й те, що вона знайшла. Під рядком, який не «OK», є ще два: після `→` — що зробити, після `see:` — посилання на його розділ цієї сторінки. Посилання веде на сторінку мовою, яку задає поле **Мова інтерфейсу** в **Налаштування → Загальні**. Якщо там вибрано **Як у системі**, це українська в українській системі й англійська в будь-якій іншій. Перший рядок виводу називає версію Dictum і вашу систему. Ось частина виводу у Windows:
 
 ```text
   OK config                 C:\Users\you\AppData\Roaming\Dictum\config.json (1 STT, 1 processors, 1 profiles)
 WARN config warnings        1 warning(s)
                             → processors.cleanup: no profile's pipeline runs it, so dictation never uses it
+                            see: https://docs.sigil.build/uk/dictum/troubleshooting/#config-warnings
   OK models                 C:\Users\you\AppData\Local\Dictum\models (1 configured file(s) present)
   OK gpu                    NVIDIA GeForce RTX 3060, 12.0 GB VRAM
   OK audio library          PortAudio V19.7.0-devel, revision … (bundled portaudio.dll)
@@ -48,7 +49,7 @@ WARN config warnings        1 warning(s)
   OK processor:cleanup      http://localhost:8080/v1 reachable, model qwen3-4b, prompt 'cleanup'
 ```
 
-`dictum doctor` завершується з кодом 1, якщо хоч один рядок — `ERR`, інакше з кодом 0. `dictum doctor --json` виводить ті самі рядки у JSON, де `level` має значення `ok`, `warning` або `error`. Кожна перевірка постачальника може тривати до 15 секунд, тож команда іноді працює довго.
+`dictum doctor` завершується з кодом 1, якщо хоч один рядок — `ERR`, інакше з кодом 0. `dictum doctor --json` виводить ті самі рядки у JSON, де `level` має значення `ok`, `warning` або `error`, а `docs` — посилання для кожного рядка, який не «OK». Кожна перевірка постачальника може тривати до 15 секунд, тож команда іноді працює довго.
 
 Сторінка **Налаштування → Система** показує ті самі рядки: позначку (**Гаразд**, **Попередження** або **Помилка**), назву перевірки вашою мовою, що знайдено і що зробити. Самі тексти перевірок англійською — і в програмі, і в терміналі. Сторінка додає два власні рядки: **Індикатор диктування** і **Значок у треї**. Саму сторінку описано в [довіднику налаштувань](reference/settings.md#system).
 
@@ -120,6 +121,7 @@ WARN config warnings        1 warning(s)
 ```text
 WARN config warnings        1 warning(s)
                             → processors.cleanup: no profile's pipeline runs it, so dictation never uses it
+                            see: https://docs.sigil.build/uk/dictum/troubleshooting/#config-warnings
 ```
 
 У **Налаштування → Обробники** такий обробник у списку позначено як **Не в жодному профілі**. Коли ви його відкриєте, сторінка скаже: «Цей обробник не входить у жоден профіль, тож диктування ніколи його не використовує.»
