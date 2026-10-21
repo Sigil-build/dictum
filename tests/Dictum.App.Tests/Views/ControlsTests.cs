@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Dictum.App.Controls;
 using Dictum.App.Resources;
@@ -50,6 +51,35 @@ public class ControlsTests(AvaloniaFixture fx)
         Assert.Equal(["Sounds"], visible.Select(t => t.Text));
         window.Close();
     });
+
+    // A placeholder wider than its box ends in an ellipsis instead of running under the box's edge, in a text box and in
+    // a dropdown; once something is typed, the text box scrolls sideways again.
+    [Fact]
+    public Task APlaceholderWiderThanItsBoxEndsInAnEllipsis() => fx.Ui(() =>
+    {
+        const string Placeholder = "A placeholder a good deal wider than its box";
+        var box = new TextBox { Width = 140, PlaceholderText = Placeholder };
+        var dropdown = new ComboBox { Width = 140, PlaceholderText = Placeholder };
+        var window = new Window { Content = new StackPanel { Children = { box, dropdown } }, Width = 400, Height = 200 };
+        window.Show();
+
+        Control[] owners = [box, dropdown];
+        foreach (var owner in owners)
+        {
+            var text = owner.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == Placeholder && t.IsEffectivelyVisible);
+            Assert.True(text.TextLayout.TextLines[0].HasCollapsed, $"The {owner.GetType().Name}'s placeholder is not trimmed");
+            Assert.True(Within(text, owner).Right <= owner.Bounds.Width, $"The {owner.GetType().Name}'s placeholder spans {Within(text, owner)}");
+        }
+
+        box.Text = Placeholder + Placeholder;
+        Dispatcher.UIThread.RunJobs();
+        var scroll = box.GetVisualDescendants().OfType<ScrollViewer>().Single();
+        Assert.True(scroll.Extent.Width > scroll.Viewport.Width, $"The typed text does not scroll: extent {scroll.Extent}, viewport {scroll.Viewport}");
+        window.Close();
+    });
+
+    private static Rect Within(Visual visual, Visual ancestor) =>
+        new Rect(visual.Bounds.Size).TransformToAABB(visual.TransformToVisual(ancestor) ?? Matrix.Identity);
 
     [Theory]
     [InlineData(HealthLevel.Ok, "color.status.ok.bg")]

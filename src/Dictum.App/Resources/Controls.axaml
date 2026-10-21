@@ -49,13 +49,27 @@
     <Setter Property="MinFieldWidth" Value="{DynamicResource settings.field.minWidth}" />
   </Style>
 
-  <!-- A dropdown's choice that is wider than the box ends in an ellipsis rather than being cut off; the list shows it whole. -->
+  <!-- A dropdown's choice or placeholder that is wider than the box ends in an ellipsis rather than being cut off; the list
+       shows a choice whole. -->
   <Style Selector="ComboBox">
     <Setter Property="SelectionBoxItemTemplate">
       <DataTemplate x:DataType="x:Object">
         <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" />
       </DataTemplate>
     </Setter>
+  </Style>
+  <Style Selector="ComboBox /template/ TextBlock#PlaceholderTextBlock">
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+  </Style>
+
+  <!-- So does a text box's placeholder, as a Ukrainian one in a Linux font, which is wider than Segoe UI. A text box scrolls
+       its text sideways, which gives the placeholder all the width it asks for; an empty one does not, so the placeholder
+       gets the box's width. -->
+  <Style Selector="TextBox:empty">
+    <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+  </Style>
+  <Style Selector="TextBox /template/ TextBlock#PART_Placeholder">
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
   </Style>
 
   <!-- Page titles. -->
