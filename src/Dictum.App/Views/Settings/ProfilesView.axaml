@@ -98,7 +98,12 @@
           </controls:FieldRow>
         </Border>
         <Border Classes="banner" Margin="0,-4,0,0" IsVisible="{Binding Languages.SimilarWarning, Converter={x:Static ObjectConverters.IsNotNull}}">
-          <TextBlock Text="{Binding Languages.SimilarWarning}" Margin="{StaticResource settings.label.indent}" />
+          <!-- A row of its own with an empty label, 2 px in to be as wide as an editor row's: the text starts where the
+               fields start, beside their labels or under them. -->
+          <controls:FieldRow Margin="2,0" RowSpacing="0">
+            <Panel />
+            <TextBlock Text="{Binding Languages.SimilarWarning}" />
+          </controls:FieldRow>
         </Border>
 
         <Border Classes="editorRow">

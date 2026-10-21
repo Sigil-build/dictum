@@ -21,7 +21,7 @@ public sealed class ProfilesViewTests(AvaloniaFixture fx) : IDisposable
 
     public void Dispose() => _dir.Dispose();
 
-    private (Window Window, SettingsSession Session) Show()
+    private (Window Window, SettingsSession Session) Show(double width = 960)
     {
         var config = ProfilesPageTests.Sample();
         config.Profiles[0].Pipeline = ["cleanup", "terms", "filler"];
@@ -30,7 +30,7 @@ public sealed class ProfilesViewTests(AvaloniaFixture fx) : IDisposable
         var session = new SettingsSession(store, new ManualTimers(), NullLog.Instance);
         session.Load();
         var page = new ProfilesPage(session, new FakeChannel());
-        var window = new Window { Content = new ViewLocator().Build(page), Width = 960, Height = 1400 };
+        var window = new Window { Content = new ViewLocator().Build(page), Width = width, Height = 1400 };
         window.Show();
         Dispatcher.UIThread.RunJobs();
         return (window, session);
@@ -52,6 +52,27 @@ public sealed class ProfilesViewTests(AvaloniaFixture fx) : IDisposable
     private static List<string?> VisibleTexts(Window window) =>
         [.. window.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible).Select(t => t.Text)];
 
+    // The similar-languages warning starts where the fields start: beside their labels in a wide window, and at the left
+    // edge once the rows put each field under its label.
+    [Theory]
+    [InlineData(960, true)]
+    [InlineData(640, false)]
+    public Task TheSimilarLanguagesWarningLinesUpWithTheFields(double width, bool beside) => fx.Ui(() =>
+    {
+        var (window, _) = Show(width);
+        var page = (ProfilesPage)((Control)window.Content!).DataContext!;
+        page.Languages.ToAdd = page.Languages.All.Single(l => l.Value == "be");
+        Dispatcher.UIThread.RunJobs();
+
+        var picker = window.GetVisualDescendants().OfType<ComboBox>().Single(c => c.Name == "LanguagePicker");
+        var row = picker.GetVisualAncestors().OfType<FieldRow>().First();
+        var warning = window.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == page.Languages.SimilarWarning);
+        double Left(Visual visual) => visual.TranslatePoint(default, window)!.Value.X;
+
+        Assert.Equal(beside, row.IsBeside(row.Bounds.Width));
+        Assert.Equal(Left(picker), Left(warning), precision: 0);
+        window.Close();
+    });
     [Fact]
     public Task TheListTheRecorderAndTheChipsShow() => fx.Ui(() =>
     {

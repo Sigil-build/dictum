@@ -132,11 +132,10 @@
   <Thickness x:Key="settings.listPage.margin">16,4,8,16</Thickness>
   <GridLength x:Key="settings.listPage.listWidth">180</GridLength>
   <Thickness x:Key="settings.listPage.editorMargin">0,48,16,0</Thickness>
-  <!-- Labelled editor rows (FieldRow): the label column, the narrowest field beside it before the field wraps under its
-       label, and the indent that lines a note up with the fields past the 16 px gap. -->
+  <!-- Labelled editor rows (FieldRow): the label column, and the narrowest field beside it before the field wraps under
+       its label. -->
   <x:Double x:Key="settings.label.width">140</x:Double>
   <x:Double x:Key="settings.field.minWidth">320</x:Double>
-  <Thickness x:Key="settings.label.indent">156,0,0,0</Thickness>
   <!-- The status badge's column beside a check or a test result. -->
   <GridLength x:Key="settings.badge.width">28</GridLength>
 </ResourceDictionary>
