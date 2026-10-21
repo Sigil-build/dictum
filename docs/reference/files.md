@@ -126,7 +126,7 @@ The notes are here, below the file, because the example is plain JSON that you c
     - `sounds`: a short tick when recording starts and stops.
     - `pasteDelayMs`: how long Dictum waits after it presses Ctrl+V before it puts back what the clipboard held, from 0 to 5000 milliseconds.
     - `overlay`: the listening overlay that the desktop app draws: `enabled`, `position` (`bottom` or `top`), `size` (`small`, `medium` or `large`), `opacity` (0.3 to 1.0) and `palette` (`aurora`, `ember` or `mist`).
-    - Not in the example: `audioDevice`, the microphone's name, where none means the system's default microphone; `uiLanguage`, `"en"` or `"uk"`, where none follows the system; `injector`, how Dictum presses Ctrl+V on Wayland: `auto` tries the RemoteDesktop portal, then `ydotool`, then `wtype`; `terminalApps`, the apps that get Ctrl+Shift+V, by process or window class name, on Windows and X11.
+    - Not in the example: `audioDevice`, the microphone's name, where none means the system's default microphone; `uiLanguage`, `"en"` or `"uk"`, where none follows the system; `injector`, how Dictum presses Ctrl+V on Wayland: `auto` tries, on Sway and Hyprland, `wtype`, then `ydotool`, then the RemoteDesktop portal, and elsewhere the portal, then `ydotool`; `terminalApps`, the apps that get Ctrl+Shift+V, by process or window class name, on Windows and X11.
 
 `stt`
 :   The speech recognition providers. Each has an id of your choice, here `local`, which profiles name.

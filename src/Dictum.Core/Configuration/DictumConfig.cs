@@ -58,7 +58,7 @@ public sealed record GeneralSettings
 
 public enum InjectorBackend
 {
-    /// <summary>RemoteDesktop portal, then ydotool, then wtype.</summary>
+    /// <summary>On Sway and Hyprland wtype, then ydotool, then the RemoteDesktop portal; elsewhere the portal, then ydotool.</summary>
     [JsonStringEnumMemberName("auto")]
     Auto,
 

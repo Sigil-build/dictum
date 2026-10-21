@@ -252,7 +252,7 @@ On Wayland, Dictum presses Ctrl+V through one of three ways, and keeps the first
 - **ydotool.** It needs `ydotoold` running, with access to `/dev/uinput`. Install it and start the service: `sudo pacman -S ydotool`, then `systemctl --user enable --now ydotool`. The `paste (ydotool)` row warns `ydotoold not running (optional fallback)` until then. That warning is fine while the portal works.
 - **wtype**, on Hyprland and Sway, which Dictum tries first there.
 
-To choose one, open **Settings → General → Pasting settings ›** and set **Paste backend on Wayland**. **Automatic** tries the desktop portal first, then ydotool or wtype.
+To choose one, open **Settings → General → Pasting settings ›** and set **Paste backend on Wayland**. **Automatic** tries them in turn and keeps the first that works: on Sway and Hyprland wtype, then ydotool, then the desktop portal; elsewhere, such as GNOME and KDE Plasma, the desktop portal, then ydotool.
 
 When none works, a dictation fails with `No way to send Ctrl+V; the text is on the clipboard.` Paste it yourself with Ctrl+V.
 

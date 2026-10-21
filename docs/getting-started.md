@@ -166,7 +166,7 @@ echo $XDG_SESSION_TYPE
 - **X11:** the hotkeys and pasting work without any setup.
 - **Wayland:** an app may not watch the keyboard or press keys in other apps by itself, so Dictum asks the desktop portal, `xdg-desktop-portal`:
     - for the hotkey, through the GlobalShortcuts portal, which KDE Plasma 6, GNOME 48 and newer, and Hyprland have. The desktop asks you once to allow the shortcut.
-    - for pressing Ctrl+V, through the RemoteDesktop portal. The desktop asks you once whether Dictum may control the keyboard, and Dictum remembers the answer. Without that portal, Dictum uses `ydotool`, or else `wtype`, when one is installed.
+    - for pressing Ctrl+V, through the RemoteDesktop portal. The desktop asks you once whether Dictum may control the keyboard, and Dictum remembers the answer. Without that portal, Dictum uses `ydotool` when it is installed. On Sway and Hyprland the order is different: `wtype` first, then `ydotool`, then the portal.
 - **No GlobalShortcuts portal**, as on GNOME before 48: bind a key in your desktop's keyboard settings to the command `dictum toggle`. Press it once to start and once more to stop and paste. In Sway, you can hold the key to talk:
 
     ```text

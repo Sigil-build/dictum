@@ -810,7 +810,7 @@
     <value>Paste backend on Wayland</value>
   </data>
   <data name="SettingsInjectorHint" xml:space="preserve">
-    <value>Automatic tries the desktop portal first, then ydotool or wtype.</value>
+    <value>Automatic tries wtype, then ydotool, then the desktop portal on Sway and Hyprland; elsewhere the desktop portal, then ydotool.</value>
   </data>
   <data name="SettingsInjectorAuto" xml:space="preserve">
     <value>Automatic</value>

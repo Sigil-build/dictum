@@ -810,7 +810,7 @@
     <value>Спосіб вставлення у Wayland</value>
   </data>
   <data name="SettingsInjectorHint" xml:space="preserve">
-    <value>«Автоматично» спершу пробує портал робочого столу, потім ydotool або wtype.</value>
+    <value>«Автоматично» у Sway та Hyprland пробує wtype, потім ydotool, потім портал робочого столу; деінде — портал робочого столу, потім ydotool.</value>
   </data>
   <data name="SettingsInjectorAuto" xml:space="preserve">
     <value>Автоматично</value>
