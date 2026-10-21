@@ -11,7 +11,7 @@ internal static class DaemonCommand
     public static Command Create()
     {
         var install = new Option<bool>("--install-autostart") { Description = "Start the daemon at login, then exit" };
-        var uninstall = new Option<bool>("--uninstall-autostart") { Description = "Stop starting the daemon at login, then exit" };
+        var uninstall = new Option<bool>("--uninstall-autostart") { Description = "Remove every Dictum login entry (the desktop app's or the daemon's), then exit" };
         var command = new Command(DictumExecutables.DaemonVerb, "Run in the background: hotkeys, dictation and the control socket (Ctrl+C stops)")
         {
             install,

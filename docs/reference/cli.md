@@ -328,7 +328,7 @@ Usage: `dictum daemon [options]`
 | Option | Description |
 | --- | --- |
 | `--install-autostart` | Start the daemon at login, then exit |
-| `--uninstall-autostart` | Stop starting the daemon at login, then exit |
+| `--uninstall-autostart` | Remove every Dictum login entry (the desktop app's or the daemon's), then exit |
 
 ## `dictum toggle` {#toggle}
 
