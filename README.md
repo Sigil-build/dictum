@@ -13,7 +13,7 @@ The guides, the reference and the troubleshooting are at [docs.sigil.build/dictu
 
 ## Install
 
-Download the package for your system from [GitHub Releases](https://github.com/Sigil-build/dictum/releases): an MSI or a zip for Windows 11, an AppImage or a tarball for Linux (x86-64). The PKGBUILD for Arch and CachyOS is `packaging/linux/aur/PKGBUILD`.
+Download the package for your system from [GitHub Releases](https://github.com/Sigil-build/dictum/releases): an MSI or a zip for Windows 11, an AppImage or a tarball for Linux (x86-64). For Arch and CachyOS, use the `PKGBUILD` attached to each release, which carries the tarball's checksum.
 
 The steps for each package, the requirements and the first run are in [Getting started](https://docs.sigil.build/dictum/getting-started/).
 
