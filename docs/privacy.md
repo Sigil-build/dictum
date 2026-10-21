@@ -88,6 +88,8 @@ The desktop app and the daemon talk to each other through a local socket file, w
 
 Dictum does not collect or send usage statistics, crash reports or analytics, and does not check for updates. The connections under [Network](#network) are the only ones in its code.
 
+**Documentation** in the tray menu, **Help** in Settings, **How does Dictum work?** in the setup wizard and **How to fix** in **Settings → System** open pages of docs.sigil.build in your browser, and `dictum doctor` prints links to them: that connection is made by your browser, not by Dictum.
+
 ## History {#history}
 
 Dictum keeps your recent dictations, so that you can copy one again.
