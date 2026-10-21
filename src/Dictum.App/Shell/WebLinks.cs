@@ -16,6 +16,9 @@ public static class WebLinks
     public static bool Open(Uri url, ILog log, Func<ProcessStartInfo, Process?>? start = null)
     {
         ArgumentNullException.ThrowIfNull(url);
+        ArgumentNullException.ThrowIfNull(log);
+        // A handler that starts and then fails tells Dictum nothing, so the URL is in the log either way.
+        log.Info($"Opening {url.AbsoluteUri} in the browser");
         try
         {
             (start ?? Process.Start)(new ProcessStartInfo(url.AbsoluteUri) { UseShellExecute = true })?.Dispose();
