@@ -1385,9 +1385,6 @@
   <data name="SetupCleanupTest" xml:space="preserve">
     <value>Test connection</value>
   </data>
-  <data name="SetupCleanupManaged" xml:space="preserve">
-    <value>Managed local model — coming in a later version</value>
-  </data>
   <data name="SetupWordsTitle" xml:space="preserve">
     <value>Your words</value>
   </data>

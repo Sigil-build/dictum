@@ -321,9 +321,6 @@
   <Style Selector="Border.pickRow.on">
     <Setter Property="BorderBrush" Value="{DynamicResource color.accent}" />
   </Style>
-  <Style Selector="Border.pickRow.disabled">
-    <Setter Property="Background" Value="{DynamicResource color.bg.layerAlt}" />
-  </Style>
   <Style Selector="ListBox.radioCards">
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />

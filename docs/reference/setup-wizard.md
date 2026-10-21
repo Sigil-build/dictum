@@ -49,7 +49,7 @@ Asks whether a language model should fix punctuation and typos after recognition
 - **Off — paste exactly what was recognised**: the default on a first setup.
 - **Use a server I already run (llama-server, llama-swap, Ollama or any OpenAI-compatible API)**: fill in the server's **URL**, such as `http://localhost:8080/v1`, the **Model** name on that server and, if the server needs one, the **API key (optional)**. Then click **Test connection**. **Next** works only after the test passes for exactly what is on screen; the test checks that the server answers and, when it lists several models, that yours is among them. On a second run, leave the key empty to keep the one stored for the same server; the line under the field then says "Keeps the API key stored for this server."
 
-The third row cannot be picked in Dictum 0.4. See [LLM clean-up](../guides/llm-cleanup.md).
+See [LLM clean-up](../guides/llm-cleanup.md).
 
 Writes: with a server, an LLM processor named `cleanup` with the built-in `cleanup` prompt, at the end of the first profile's chain. A key you typed goes to the system keyring when the wizard saves, and `config.json` refers to it as `secret:dictum-processor-cleanup`. With **Off**, `cleanup` leaves the first profile's chain.
 

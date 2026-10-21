@@ -1385,9 +1385,6 @@
   <data name="SetupCleanupTest" xml:space="preserve">
     <value>Перевірити з'єднання</value>
   </data>
-  <data name="SetupCleanupManaged" xml:space="preserve">
-    <value>Керована локальна модель — з'явиться в одній із наступних версій</value>
-  </data>
   <data name="SetupWordsTitle" xml:space="preserve">
     <value>Ваші слова</value>
   </data>

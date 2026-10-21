@@ -144,9 +144,6 @@
                   </Grid>
                 </StackPanel>
               </Border>
-              <Border Classes="pickRow disabled">
-                <TextBlock Text="{x:Static res:Strings.SetupCleanupManaged}" Classes="hint" VerticalAlignment="Center" Margin="30,0,0,0" />
-              </Border>
             </StackPanel>
           </ScrollViewer>
         </DataTemplate>

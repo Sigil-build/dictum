@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -168,6 +169,23 @@ public sealed class SetupViewTests(AvaloniaFixture fx) : IDisposable
         var label = window.GetVisualDescendants().OfType<TextBlock>().Single(t => t.Text == Strings.SetupCleanupServer);
 
         Assert.True(label.TextLayout.TextLines.Count > 1, $"{label.TextLayout.TextLines.Count} line(s)");
+        window.Close();
+    });
+
+    // Step 3 offers only what this version can do: no clean-up, or a server the user runs; no row that cannot be picked.
+    [Fact]
+    public Task TheCleanupStepOffersOffOrAServer() => fx.UiAsync(async () =>
+    {
+        var wizard = new SetupViewModel(_setup.Services());
+        var window = Show(wizard);
+        await wizard.NextCommand.ExecuteAsync(null);
+        await wizard.NextCommand.ExecuteAsync(null);
+        Dispatcher.UIThread.RunJobs();
+
+        var rows = window.GetVisualDescendants().OfType<Border>().Where(b => b.Classes.Contains("pickRow") && b.IsEffectivelyVisible);
+
+        Assert.Equal([Strings.SetupCleanupOff, Strings.SetupCleanupServer],
+            rows.Select(row => row.GetVisualDescendants().OfType<RadioButton>().Select(AutomationProperties.GetName).FirstOrDefault()));
         window.Close();
     });
 
