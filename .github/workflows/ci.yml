@@ -169,7 +169,7 @@ jobs:
       - name: Download Whisper test model
         run: |
           mkdir -p models
-          test -f models/ggml-tiny.en.bin || curl -fsSL -o models/ggml-tiny.en.bin \
+          test -f models/ggml-tiny.en.bin || curl --proto '=https' --tlsv1.2 -fsSL -o models/ggml-tiny.en.bin \
             https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin
 
       - name: Daemon smoke test (X11, Secret Service, hotkey)

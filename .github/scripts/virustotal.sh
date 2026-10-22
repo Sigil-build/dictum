@@ -44,7 +44,7 @@ attempt() {
   fi
   if (( pause > 0 )); then sleep "$pause"; fi
   : > "$response"
-  code=$(curl -sS --max-time "$max_time" -H "@$headers" -o "$response" -w '%{http_code}' "$@") || code=000
+  code=$(curl --proto '=https' --tlsv1.2 -sS --max-time "$max_time" -H "@$headers" -o "$response" -w '%{http_code}' "$@") || code=000
   pause=$interval
   [ "$code" != 429 ] || pause=$retry_wait
 }

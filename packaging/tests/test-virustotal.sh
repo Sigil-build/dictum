@@ -27,7 +27,7 @@ while [ $# -gt 0 ]; do
     -o) out=$2; shift ;;
     -H) header=$2; shift ;;
     -F) form=$2; shift ;;
-    -w | --max-time) shift ;;
+    -w | --max-time | --proto) shift ;;
     -*) ;;
     *) url=$1 ;;
   esac
