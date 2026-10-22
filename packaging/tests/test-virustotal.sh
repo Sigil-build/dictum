@@ -106,32 +106,62 @@ expected
 $want"
 }
 
+# Before a package goes up, GET /files/<sha256> asks whether VirusTotal has it: 404 is a file it has never seen.
+unknown='404 {"error": {"code": "NotFoundError"}}'
+known='200 {"data": {"type": "file"}}'
+lookup() { echo "GET $api/files/$(sha "$work/files/$1")"; }
+
 files dictum-1.0.0-big-linux-x64.tar.gz dictum-1.0.0-win-x64.msi dictum-1.0.0-win-x64.zip
 big_sha=$(sha "$work/files/dictum-1.0.0-big-linux-x64.tar.gz")
 msi_sha=$(sha "$work/files/dictum-1.0.0-win-x64.msi")
 zip_sha=$(sha "$work/files/dictum-1.0.0-win-x64.zip")
 run_upload \
-  '200 {"data": "https://www.virustotal.com/_ah/upload/one/"}' \
+  "$unknown" '200 {"data": "https://www.virustotal.com/_ah/upload/one/"}' \
   '200 {"data": {"type": "analysis", "id": "id-big"}}' \
-  '200 {"data": {"type": "analysis", "id": "id-msi"}}' \
-  '200 {"data": {"type": "analysis", "id": "id-zip"}}'
+  "$unknown" '200 {"data": {"type": "analysis", "id": "id-msi"}}' \
+  "$unknown" '200 {"data": {"type": "analysis", "id": "id-zip"}}'
 expect_log \
-  "GET $api/files/upload_url" \
-  "sleep 15" \
-  "POST https://www.virustotal.com/_ah/upload/one/ dictum-1.0.0-big-linux-x64.tar.gz" \
-  "sleep 15" \
-  "POST $api/files dictum-1.0.0-win-x64.msi" \
-  "sleep 15" \
+  "$(lookup dictum-1.0.0-big-linux-x64.tar.gz)" "sleep 15" \
+  "GET $api/files/upload_url" "sleep 15" \
+  "POST https://www.virustotal.com/_ah/upload/one/ dictum-1.0.0-big-linux-x64.tar.gz" "sleep 15" \
+  "$(lookup dictum-1.0.0-win-x64.msi)" "sleep 15" \
+  "POST $api/files dictum-1.0.0-win-x64.msi" "sleep 15" \
+  "$(lookup dictum-1.0.0-win-x64.zip)" "sleep 15" \
   "POST $api/files dictum-1.0.0-win-x64.zip"
 expect_results \
   "$(row "dictum-1.0.0-big-linux-x64.tar.gz" "$big_sha" "id-big" "")" \
   "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "id-msi" "")" \
   "$(row "dictum-1.0.0-win-x64.zip" "$zip_sha" "id-zip" "")"
-echo "PASS: a file over 32 MB goes to an upload URL, the rest to /files, 15 s apart, the key in a header file"
+echo "PASS: a package VirusTotal does not know goes up: over 32 MB to an upload URL, the rest to /files, 15 s apart, the key in a header file"
+
+run_upload "$known" "$unknown" '200 {"data": {"id": "id-msi"}}' "$known"
+expect_log \
+  "$(lookup dictum-1.0.0-big-linux-x64.tar.gz)" "sleep 15" \
+  "$(lookup dictum-1.0.0-win-x64.msi)" "sleep 15" "POST $api/files dictum-1.0.0-win-x64.msi" "sleep 15" \
+  "$(lookup dictum-1.0.0-win-x64.zip)"
+expect_results \
+  "$(row "dictum-1.0.0-big-linux-x64.tar.gz" "$big_sha" "known" "")" \
+  "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "id-msi" "")" \
+  "$(row "dictum-1.0.0-win-x64.zip" "$zip_sha" "known" "")"
+grep -q "dictum-1.0.0-win-x64.zip: VirusTotal has it already, report https://www.virustotal.com/gui/file/$zip_sha" "$work/out" \
+  || fail "a known package's report is not in the log: $(cat "$work/out")"
+echo "PASS: a package VirusTotal knows already is not sent again, which saves the quota"
+
+files dictum-1.0.0-win-x64.msi dictum-1.0.0-win-x64.zip
+run_upload '503 {}' '503 {}' '503 {}' '503 {}' "$unknown" '200 {"data": {"id": "id-zip"}}'
+expect_log \
+  "$(lookup dictum-1.0.0-win-x64.msi)" "sleep 15" "$(lookup dictum-1.0.0-win-x64.msi)" "sleep 15" \
+  "$(lookup dictum-1.0.0-win-x64.msi)" "sleep 15" "$(lookup dictum-1.0.0-win-x64.msi)" "sleep 15" \
+  "$(lookup dictum-1.0.0-win-x64.zip)" "sleep 15" "POST $api/files dictum-1.0.0-win-x64.zip"
+expect_results \
+  "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "" "VirusTotal answered HTTP 503")" \
+  "$(row dictum-1.0.0-win-x64.zip "$zip_sha" "id-zip" "")"
+echo "PASS: a lookup that keeps failing sends nothing for that package, and the next one goes on"
 
 files dictum-1.0.0-win-x64.msi
-run_upload '429 {"error": {"code": "QuotaExceededError"}}' '503 {}' none '200 {"data": {"id": "id-msi"}}'
+run_upload "$unknown" '429 {"error": {"code": "QuotaExceededError"}}' '503 {}' none '200 {"data": {"id": "id-msi"}}'
 expect_log \
+  "$(lookup dictum-1.0.0-win-x64.msi)" "sleep 15" \
   "POST $api/files dictum-1.0.0-win-x64.msi" "sleep 60" \
   "POST $api/files dictum-1.0.0-win-x64.msi" "sleep 15" \
   "POST $api/files dictum-1.0.0-win-x64.msi" "sleep 15" \
@@ -141,21 +171,21 @@ echo "PASS: a 429 is tried again after 60 s, a 5xx and no answer after 15 s"
 
 # An upload URL takes one upload, which a try that failed may have used: the next try asks for a new one.
 files dictum-1.0.0-big-linux-x64.tar.gz
-run_upload \
+run_upload "$unknown" \
   '200 {"data": "https://www.virustotal.com/_ah/upload/one/"}' none \
   '200 {"data": "https://www.virustotal.com/_ah/upload/two/"}' '503 {}' \
   '200 {"data": "https://www.virustotal.com/_ah/upload/three/"}' '429 {"error": {"code": "QuotaExceededError"}}' \
   '200 {"data": "https://www.virustotal.com/_ah/upload/four/"}' '200 {"data": {"id": "id-big"}}'
-expect_log \
+expect_log "$(lookup dictum-1.0.0-big-linux-x64.tar.gz)" "sleep 15" \
   "GET $api/files/upload_url" "sleep 15" "POST https://www.virustotal.com/_ah/upload/one/ dictum-1.0.0-big-linux-x64.tar.gz" \
   "sleep 15" "GET $api/files/upload_url" "sleep 15" "POST https://www.virustotal.com/_ah/upload/two/ dictum-1.0.0-big-linux-x64.tar.gz" \
   "sleep 15" "GET $api/files/upload_url" "sleep 15" "POST https://www.virustotal.com/_ah/upload/three/ dictum-1.0.0-big-linux-x64.tar.gz" \
   "sleep 60" "GET $api/files/upload_url" "sleep 15" "POST https://www.virustotal.com/_ah/upload/four/ dictum-1.0.0-big-linux-x64.tar.gz"
 expect_results "$(row dictum-1.0.0-big-linux-x64.tar.gz "$big_sha" "id-big" "")"
-VT_RETRIES=1 run_upload \
+VT_RETRIES=1 run_upload "$unknown" \
   '200 {"data": "https://www.virustotal.com/_ah/upload/one/"}' none \
   '200 {"data": "https://www.virustotal.com/_ah/upload/two/"}' '502 {}'
-expect_log \
+expect_log "$(lookup dictum-1.0.0-big-linux-x64.tar.gz)" "sleep 15" \
   "GET $api/files/upload_url" "sleep 15" "POST https://www.virustotal.com/_ah/upload/one/ dictum-1.0.0-big-linux-x64.tar.gz" \
   "sleep 15" "GET $api/files/upload_url" "sleep 15" "POST https://www.virustotal.com/_ah/upload/two/ dictum-1.0.0-big-linux-x64.tar.gz"
 expect_results "$(row dictum-1.0.0-big-linux-x64.tar.gz "$big_sha" "" "VirusTotal answered HTTP 502")"
@@ -164,7 +194,7 @@ echo "PASS: an upload to an upload URL that fails is tried again with a new URL,
 files dictum-1.0.0-linux-x64.AppImage dictum-1.0.0-win-x64.msi dictum-1.0.0-win-x64.zip
 appimage_sha=$(sha "$work/files/dictum-1.0.0-linux-x64.AppImage")
 VT_RETRIES=1 run_upload '429 {"error": {"code": "QuotaExceededError"}}' '429 {"error": {"code": "QuotaExceededError"}}'
-expect_log "POST $api/files dictum-1.0.0-linux-x64.AppImage" "sleep 60" "POST $api/files dictum-1.0.0-linux-x64.AppImage"
+expect_log "$(lookup dictum-1.0.0-linux-x64.AppImage)" "sleep 60" "$(lookup dictum-1.0.0-linux-x64.AppImage)"
 expect_results \
   "$(row dictum-1.0.0-linux-x64.AppImage "$appimage_sha" "" "VirusTotal's request quota was used up")" \
   "$(row dictum-1.0.0-win-x64.msi "$msi_sha" "" "VirusTotal's request quota was used up")" \
@@ -175,35 +205,37 @@ echo "PASS: a quota still used up after the retries ends the uploads, and every 
 
 files dictum-1.0.0-win-x64.msi dictum-1.0.0-win-x64.zip
 run_upload '401 {"error": {"code": "WrongCredentialsError"}}'
-expect_log "POST $api/files dictum-1.0.0-win-x64.msi"
+expect_log "$(lookup dictum-1.0.0-win-x64.msi)"
 [ "$(cut -f4 "$work/results" | sort -u)" = "VirusTotal refused the API key" ] || fail "a refused key: $(cat "$work/results")"
 echo "PASS: a refused key is not tried again and ends the uploads"
 
-files dictum-1.0.0-win-x64.msi dictum-1.0.0-win-x64.zip
-run_upload '400 {"error": {"code": "BadRequestError"}}' '200 {"data": {"id": "id-zip"}}'
-expect_log "POST $api/files dictum-1.0.0-win-x64.msi" "sleep 15" "POST $api/files dictum-1.0.0-win-x64.zip"
+run_upload "$unknown" '400 {"error": {"code": "BadRequestError"}}' "$unknown" '200 {"data": {"id": "id-zip"}}'
+expect_log \
+  "$(lookup dictum-1.0.0-win-x64.msi)" "sleep 15" "POST $api/files dictum-1.0.0-win-x64.msi" "sleep 15" \
+  "$(lookup dictum-1.0.0-win-x64.zip)" "sleep 15" "POST $api/files dictum-1.0.0-win-x64.zip"
 expect_results \
   "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "" "VirusTotal answered HTTP 400")" \
   "$(row dictum-1.0.0-win-x64.zip "$zip_sha" "id-zip" "")"
 echo "PASS: a file VirusTotal refuses does not stop the next one"
 
-files dictum-1.0.0-win-x64.msi dictum-1.0.0-win-x64.zip
-VT_DEADLINE=10 run_upload '200 {"data": {"id": "id-msi"}}'
-expect_log "POST $api/files dictum-1.0.0-win-x64.msi"
+# The stand-in sleep takes no time, so every request after the first starts 15 s past a 10 s limit.
+VT_DEADLINE=10 run_upload "$known"
+expect_log "$(lookup dictum-1.0.0-win-x64.msi)"
 expect_results \
-  "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "id-msi" "")" \
+  "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "known" "")" \
   "$(row dictum-1.0.0-win-x64.zip "$zip_sha" "" "the time limit came first")"
 echo "PASS: no request starts after the time limit, and the files left say so"
 
 files dictum-1.0.0-big-a.AppImage dictum-1.0.0-big-b.tar.gz dictum-1.0.0-win-x64.msi
 run_upload \
-  '200 {"data": "http://www.virustotal.com/_ah/upload/two/"}' '200 {"data": {"id": "id-a"}}' \
-  '200 {"data": null}' \
-  '200 {"data": {"type": "analysis"}}'
+  "$unknown" '200 {"data": "http://www.virustotal.com/_ah/upload/two/"}' '200 {"data": {"id": "id-a"}}' \
+  "$unknown" '200 {"data": null}' \
+  "$unknown" '200 {"data": {"type": "analysis"}}'
 expect_log \
-  "GET $api/files/upload_url" "sleep 15" "POST https://www.virustotal.com/_ah/upload/two/ dictum-1.0.0-big-a.AppImage" \
-  "sleep 15" "GET $api/files/upload_url" \
-  "sleep 15" "POST $api/files dictum-1.0.0-win-x64.msi"
+  "$(lookup dictum-1.0.0-big-a.AppImage)" "sleep 15" \
+  "GET $api/files/upload_url" "sleep 15" "POST https://www.virustotal.com/_ah/upload/two/ dictum-1.0.0-big-a.AppImage" "sleep 15" \
+  "$(lookup dictum-1.0.0-big-b.tar.gz)" "sleep 15" "GET $api/files/upload_url" "sleep 15" \
+  "$(lookup dictum-1.0.0-win-x64.msi)" "sleep 15" "POST $api/files dictum-1.0.0-win-x64.msi"
 [ "$(cut -f4 "$work/results")" = "
 VirusTotal gave no upload URL
 VirusTotal's answer had no analysis id" ] || fail "odd answers: $(cat "$work/results")"
@@ -294,6 +326,12 @@ grep -qxF -e "$(link dictum-1.0.0-win-x64.zip "$b") (not sent in the last run: t
   || fail "the package not sent this time lost its link: $out"
 echo "PASS: a run that sends some packages keeps the link of each one it did not send, and says why"
 
+results "$(row "dictum-1.0.0-win-x64.msi" "$a" "known" "")" "$(row "dictum-1.0.0-win-x64.zip" "$b" "known" "")"
+out=$(printf '%s\n' "$second" | section) || fail "section failed on packages VirusTotal knew"
+[ "$(grep '^- ' <<< "$out")" = "$(link dictum-1.0.0-win-x64.msi "$a")
+$(link dictum-1.0.0-win-x64.zip "$b")" ] || fail "packages VirusTotal knew are not linked as sent: $out"
+echo "PASS: packages VirusTotal knew already are linked as if this run sent them"
+
 out=$(printf '' | section) || fail "section failed on empty notes"
 case $out in '<!-- virustotal:start -->'*'<!-- virustotal:end -->') ;; *) fail "empty notes: $out" ;; esac
 echo "PASS: empty notes become the section alone"
@@ -301,7 +339,8 @@ echo "PASS: empty notes become the section alone"
 # A whole release: the four packages go to VirusTotal; SHA256SUMS, the PKGBUILD and the SBOM are text, and stay out.
 files dictum-1.0.0-linux-x64.AppImage dictum-1.0.0-linux-x64.tar.gz dictum-1.0.0-win-x64.msi dictum-1.0.0-win-x64.zip \
   PKGBUILD SHA256SUMS dictum-1.0.0-sbom.spdx.json
-run_upload '200 {"data": {"id": "1"}}' '200 {"data": {"id": "2"}}' '200 {"data": {"id": "3"}}' '200 {"data": {"id": "4"}}'
+run_upload "$unknown" '200 {"data": {"id": "1"}}' "$unknown" '200 {"data": {"id": "2"}}' \
+  "$unknown" '200 {"data": {"id": "3"}}' "$unknown" '200 {"data": {"id": "4"}}'
 sent=$(awk '$1 == "POST" { print $3 }' "$STUB/log" | sort)
 packages=$(printf '%s\n' dictum-1.0.0-linux-x64.AppImage dictum-1.0.0-linux-x64.tar.gz dictum-1.0.0-win-x64.msi \
   dictum-1.0.0-win-x64.zip | sort)
@@ -335,3 +374,18 @@ needs=$(awk '
 ' "$root/.github/workflows/release.yml")
 [ "$needs" = "    needs: release" ] || fail "release.yml's virustotal job does not wait for the release job: '$needs'"
 echo "PASS: the key is passed only through env, and release.yml sends the files once the draft exists"
+
+# Publishing a release, whose notes a person may have replaced, writes the section again.
+vt=$root/.github/workflows/virustotal.yml
+on_release=$(awk '
+  /^on:/ { inside = 1; next }
+  inside && /^[^ ]/ { exit }
+  inside && /^  release:/ { found = 1; next }
+  found && /^    types:/ { print; exit }
+' "$vt")
+[ "$on_release" = "    types: [published]" ] || fail "virustotal.yml does not run when a release is published: '$on_release'"
+tag="\${{ inputs.tag || github.event.release.tag_name }}"
+grep -qxF "      TAG: $tag" "$vt" || fail "virustotal.yml does not take the published release's tag"
+grep -qxF "      group: virustotal-$tag" "$vt" || fail "virustotal.yml's runs for one release do not wait for each other"
+if grep -q 'inputs\.tag }}' "$vt"; then fail "virustotal.yml still reads inputs.tag alone somewhere"; fi
+echo "PASS: virustotal.yml runs again when a release is published, for that release's tag"

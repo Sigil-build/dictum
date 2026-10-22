@@ -1,11 +1,16 @@
 # Sends the packages of a release (the MSI, the zip, the AppImage and the tarball) to VirusTotal and writes a
 # "VirusTotal" section with a link to each one's report into the release notes, between marker comments, so a run
-# for the same release replaces the section. SHA256SUMS, the PKGBUILD and the SBOM are text, and are not sent.
-# release.yml calls it once the draft release exists. By hand, for an earlier release or to check the files again:
+# for the same release replaces the section. SHA256SUMS, the PKGBUILD and the SBOM are text, and are not sent. A
+# package VirusTotal knows already is not sent again: a run for a release whose packages went up costs one request each.
+# release.yml calls it once the draft release exists. It runs again when the release is published, so that the section
+# is back if a person replaced the draft's notes, as the release notes prepared for 0.4.0 did. By hand, for an earlier
+# release or to check the files again:
 #   gh workflow run virustotal.yml -f tag=v0.4.0
 name: VirusTotal
 
 on:
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       tag:
@@ -34,9 +39,9 @@ jobs:
       contents: write
     # A second run for the same release waits for the first, rather than sharing the quota and the notes with it.
     concurrency:
-      group: virustotal-${{ inputs.tag }}
+      group: virustotal-${{ inputs.tag || github.event.release.tag_name }}
     env:
-      TAG: ${{ inputs.tag }}
+      TAG: ${{ inputs.tag || github.event.release.tag_name }}
     steps:
       - name: The API key is set
         id: key

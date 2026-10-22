@@ -5,9 +5,11 @@
 # virustotal.sh upload <dir> <results>
 #   Uploads the packages in <dir>, *.msi, *.zip, *.AppImage and *.tar.gz, with the API key in VIRUSTOTAL_API_KEY. The
 #   other release files (SHA256SUMS, the PKGBUILD, the SBOM) are text a person can read, and would only spend quota.
-#   Writes a line per package to <results>, in tabs: its name, its SHA-256, the id of VirusTotal's analysis, and why
-#   it was not sent when it was not. POST /files takes files up to 32 MB; a larger one goes to the one-time URL that
-#   GET /files/upload_url gives, which is one request more. The free API allows 4 requests a minute and 500 a day:
+#   A package VirusTotal knows already (GET /files/<sha256>) is not sent again, so a second run for a release costs a
+#   request per package. Writes a line per package to <results>, in tabs: its name, its SHA-256, the id of
+#   VirusTotal's analysis or "known", and why it was not sent when it was not. POST /files takes files up to 32 MB; a
+#   larger one goes to the one-time URL that GET /files/upload_url gives, which is one request more. The free API
+#   allows 4 requests a minute and 500 a day:
 #   - a request starts VT_INTERVAL (15) seconds after the previous one ended;
 #   - a 429 is tried again after VT_RETRY_WAIT (60) seconds, and no answer or a 5xx after VT_INTERVAL, up to
 #     VT_RETRIES (3) times; a quota still used up after that, or a refused key, ends the uploads;
@@ -111,8 +113,23 @@ send() {
   [ -n "$id" ] || why="VirusTotal's answer had no analysis id"
 }
 
+# Sends one package unless VirusTotal has it already: GET /files/<sha256> answers 200 for a file it knows and 404 for
+# one it has never seen. Sets $id to the analysis id, or to "known" when nothing had to be sent, or else $why.
+check() {
+  local path=$1 sha=$2
+  if ! request 60 "$api/files/$sha"; then
+    why=$(reason)
+    return
+  fi
+  case $code in
+    200) id=known ;;
+    404) send "$path" ;;
+    *) why=$(reason) ;;
+  esac
+}
+
 upload() {
-  local dir=$1 results=$2 path name sha id why stop="" sent=0 total=0
+  local dir=$1 results=$2 path name sha id why stop="" sent=0 known=0 total=0
   [ -d "$dir" ] || die "$dir is not a folder"
   [ -n "${VIRUSTOTAL_API_KEY:-}" ] || die "VIRUSTOTAL_API_KEY is empty"
   interval=${VT_INTERVAL:-15} retry_wait=${VT_RETRY_WAIT:-60} retries=${VT_RETRIES:-3} deadline=${VT_DEADLINE:-1200}
@@ -133,11 +150,14 @@ upload() {
     total=$((total + 1))
     id="" why=$stop
     if [ -z "$stop" ]; then
-      send "$path"
+      check "$path" "$sha"
       # The quota, the key and the time limit would fail every later package the same way.
       case $code in 429 | 401 | 403 | deadline) stop=$why ;; esac
     fi
-    if [ -n "$id" ]; then
+    if [ "$id" = known ]; then
+      known=$((known + 1))
+      echo "$name: VirusTotal has it already, report https://www.virustotal.com/gui/file/$sha"
+    elif [ -n "$id" ]; then
       sent=$((sent + 1))
       echo "$name: sent, analysis https://www.virustotal.com/gui/file-analysis/$id"
     else
@@ -146,7 +166,7 @@ upload() {
     printf '%s\t%s\t%s\t%s\n' "$name" "$sha" "$id" "$why" >> "$results"
   done
   (( total > 0 )) || die "$dir has no packages (*.msi, *.zip, *.AppImage, *.tar.gz)"
-  echo "$sent of $total packages sent to VirusTotal."
+  echo "Of $total packages, $sent sent to VirusTotal and $known it had already."
 }
 
 # The section, markers included, for the files in <results>.
