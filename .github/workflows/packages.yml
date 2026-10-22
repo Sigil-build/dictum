@@ -1,5 +1,6 @@
 # Builds and checks Dictum's packages, each on its own OS: Native AOT cannot cross-compile.
-# Called by ci.yml on every push and by release.yml on a tag.
+# Called by ci.yml on each pull request and push to main, and by release.yml on a tag. No concurrency of its own: a
+# called workflow's github.workflow is its caller's, so a group here would collide with the caller's.
 name: Packages
 
 on:

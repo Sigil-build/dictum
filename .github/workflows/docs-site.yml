@@ -18,8 +18,9 @@ on:
 permissions:
   contents: read
 
+# A newer commit on the same pull request or branch cancels the run it has made stale.
 concurrency:
-  group: docs-site-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:

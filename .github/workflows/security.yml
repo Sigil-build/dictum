@@ -16,6 +16,13 @@ on:
 permissions:
   contents: read
 
+# A newer commit on the same pull request, or on main, cancels the run it has made stale. The weekly run shares main's
+# group but cancels nothing, so a push's gitleaks scan is never cut short by it; a push's run cancels it (that run
+# checks the packages of the newer main too).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'schedule' }}
+
 env:
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
   DOTNET_NOLOGO: 1

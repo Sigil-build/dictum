@@ -21,6 +21,11 @@ on:
 permissions:
   contents: read
 
+# A newer commit on the same pull request, or on main, cancels the run it has made stale.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 env:
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
   DOTNET_NOLOGO: 1

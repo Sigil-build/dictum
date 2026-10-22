@@ -1,11 +1,19 @@
 name: CI
 
+# Once per change: a pull request's commits run as the pull request (whatever its base), main's after the merge. A push
+# to any other branch or a tag runs nothing here; release.yml checks and builds a tag itself.
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:
   contents: read
+
+# A newer commit on the same pull request, or on main, cancels the run it has made stale.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
   DOTNET_CLI_TELEMETRY_OPTOUT: 1

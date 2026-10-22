@@ -17,6 +17,12 @@ on:
 permissions:
   contents: read
 
+# Every run grades main as it is then, so a newer one cancels the run it has made stale. The weekly run cancels
+# nothing: it waits for a running one to finish. (The Scorecard API's check of this file, above, ignores concurrency.)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'schedule' }}
+
 jobs:
   analysis:
     runs-on: ubuntu-22.04
