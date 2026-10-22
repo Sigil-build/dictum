@@ -43,6 +43,9 @@ public sealed class AppPaths
     /// <summary>The setup wizard's answers while its files download, so a restart returns to the walk.</summary>
     public string SetupFile => Path.Combine(DataDirectory, "setup.json");
 
+    /// <summary>When dictum-gui last asked GitHub for the newest release, what it found and which version it last announced.</summary>
+    public string UpdateCheckFile => Path.Combine(DataDirectory, "update-check.json");
+
     public string LogsDirectory => Path.Combine(DataDirectory, "logs");
 
     /// <summary>The tray glyphs as SVG files, for a StatusNotifierItem's icon theme path.</summary>

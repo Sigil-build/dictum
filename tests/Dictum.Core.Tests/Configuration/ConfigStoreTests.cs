@@ -208,4 +208,15 @@ public class ConfigStoreTests
         Assert.Equal(OverlaySize.Medium, config.General.Overlay.Size);
         Assert.Contains("\"palette\": \"mist\"", ConfigStore.Serialize(config));
     }
+
+    // The desktop app asks GitHub for the newest release unless the file turns it off; a bool takes no other value.
+    [Fact]
+    public void CheckForUpdatesIsOnUnlessTheFileTurnsItOff()
+    {
+        Assert.True(ConfigStore.Parse("{}").General.CheckForUpdates);
+        Assert.True(DefaultConfig.Create().General.CheckForUpdates);
+        Assert.False(ConfigStore.Parse("""{ "general": { "checkForUpdates": false } }""").General.CheckForUpdates);
+        Assert.Contains("\"checkForUpdates\": true", ConfigStore.Serialize(DefaultConfig.Create()));
+        Assert.Throws<ConfigException>(() => ConfigStore.Parse("""{ "general": { "checkForUpdates": "yes" } }"""));
+    }
 }

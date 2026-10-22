@@ -54,6 +54,9 @@ public sealed record GeneralSettings
 
     /// <summary>Language of dictum-gui: null follows the OS, otherwise "en" or "uk".</summary>
     public string? UiLanguage { get; init; }
+
+    /// <summary>dictum-gui asks GitHub for the newest release a minute after it starts, then once a day; the daemon ignores it.</summary>
+    public bool CheckForUpdates { get; set; } = true;
 }
 
 public enum InjectorBackend
