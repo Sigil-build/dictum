@@ -6,10 +6,14 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <OutputType>Exe</OutputType>
+    <!-- SonarQube Cloud counts all of tests/ as test code, Dictum.Testing's fakes too: no coverage is asked of it. -->
+    <SonarQubeTestProject>true</SonarQubeTestProject>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="xunit.v3" />
+    <!-- The coverage that sonarcloud.yml collects with dotnet test's coverage option; nothing is collected without it. -->
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" />
   </ItemGroup>
 
   <ItemGroup>
