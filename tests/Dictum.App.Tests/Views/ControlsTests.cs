@@ -234,6 +234,22 @@ public class ControlsTests(AvaloniaFixture fx)
         Assert.True(field.Bounds.Bottom <= row.DesiredSize.Height, $"{field.Bounds} is below the row's {row.DesiredSize.Height}");
     });
 
+    // A row measured beside its label and then arranged narrower than the label's column gives the field no width,
+    // where a negative one would make Avalonia refuse the arrange.
+    [Fact]
+    public Task AFieldRowArrangedNarrowerThanItsLabelColumnGivesTheFieldNoWidth() => fx.Ui(() =>
+    {
+        var label = new TextBlock { Text = "Hotkey" };
+        var field = new Border { Height = 30 };
+        var row = new FieldRow { LabelWidth = 140, MinFieldWidth = 320, ColumnSpacing = 16, RowSpacing = 8, Children = { label, field } };
+
+        row.Measure(new Size(476, double.PositiveInfinity));
+        row.Arrange(new Rect(0, 0, 100, row.DesiredSize.Height));
+
+        Assert.True(row.IsBeside);
+        Assert.Equal(new Rect(156, 0, 0, 30), field.Bounds);
+    });
+
     [Fact]
     public Task FormColumnsArrangedJustUnderTheirMeasuredWidthKeepTheMeasuredColumns() => fx.Ui(() =>
     {
