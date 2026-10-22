@@ -470,6 +470,36 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         await launcher.DisposeAsync();
     });
 
+    // The file may say the check is off: one Dictum cannot read must not turn it on. Without a file it is on.
+    [Fact]
+    public Task AConfigThatCannotBeReadDoesNotStartTheCheck() => fx.UiAsync(async () =>
+    {
+        var (updates, timers) = Updates("v0.5.0");
+        var (shell, launcher, _) = Create(config: false, updates: updates, popup: new FakePopup());
+        Directory.CreateDirectory(Path.GetDirectoryName(Paths().ConfigFile)!);
+        File.WriteAllText(Paths().ConfigFile, """{ "general": { "checkForUpdates": false, """);
+
+        shell.Start(Application.Current!, _ => { });
+
+        Assert.Equal((false, 0), (updates.Enabled, timers.Pending));
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
+    [Fact]
+    public Task WithoutAConfigTheCheckIsOn() => fx.UiAsync(async () =>
+    {
+        var (updates, timers) = Updates("v0.5.0");
+        var (shell, launcher, _) = Create(config: false, updates: updates, popup: new FakePopup());
+
+        shell.Start(Application.Current!, _ => { });
+
+        Assert.Equal((true, 1), (updates.Enabled, timers.Pending));
+        CloseSetup();
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
     // A version found in an earlier run is in the menu from the start, before any check of this run.
     [Fact]
     public Task AnUpdateFoundBeforeARestartIsInTheMenuAtOnce() => fx.UiAsync(async () =>

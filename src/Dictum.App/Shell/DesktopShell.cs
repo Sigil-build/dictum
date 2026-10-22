@@ -277,7 +277,8 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
 
     /// <summary>
     /// Shows what an earlier run found at once, then checks on the schedule while <c>general.checkForUpdates</c> is on,
-    /// which it is without a config. A new version goes into the tray menu and, once, into the OS's notification.
+    /// which it is without a config. A config that cannot be read may have turned it off, so it stays off until the file
+    /// reads again. A new version goes into the tray menu and, once, into the OS's notification.
     /// </summary>
     private void StartUpdates(DictumConfig? config)
     {
@@ -291,7 +292,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             _integration.Tray, UiText.Format(Strings.UpdateNotificationTitle, update.Version), Strings.UpdateNotificationText,
             () => WebLinks.Open(update.Page, _log));
         _tray.OnUpdate(updates.Status.Available);
-        updates.Enable(config?.General.CheckForUpdates ?? true);
+        updates.Enable(config?.General.CheckForUpdates ?? !_store.Exists);
     }
 
     /// <summary>
