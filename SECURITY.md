@@ -20,7 +20,7 @@ Dictum's programs, its packages and the workflows that build and release them ar
 
 ## What to expect
 
-- A reply within a week, saying whether we can reproduce the problem.
+- We aim to acknowledge a report within a week, and to say whether we can reproduce the problem.
 - News in the advisory while we work on a fix.
 - A release with the fix, then the published advisory, which credits you unless you would rather not be named.
 
