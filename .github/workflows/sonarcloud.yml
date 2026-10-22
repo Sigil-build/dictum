@@ -1,0 +1,87 @@
+# SonarQube Cloud (sonarcloud.io) analyses every push to main and each pull request from a branch of this repository,
+# with the SonarScanner for .NET around a dotnet build. A fork's pull request is not analysed, and a run without
+# SONAR_TOKEN (a fork's, Dependabot's, or before the secret exists) skips with a notice.
+#
+# Set up once, in SonarQube Cloud:
+# - import the GitHub organization as sigil-build and the repository as the project Sigil-build_dictum (the two
+#   names are in env below);
+# - turn off Automatic Analysis (the project's Administration > Analysis Method): with it on, this analysis fails;
+# - create a token and store it in GitHub as the organization secret SONAR_TOKEN.
+name: SonarCloud
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+  SONAR_ORGANIZATION: sigil-build
+  SONAR_PROJECT_KEY: Sigil-build_dictum
+  SONAR_SCANNER_VERSION: 12.0.0
+
+jobs:
+  token:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - name: Analyse only with SONAR_TOKEN, and never a fork's code
+        id: check
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          FROM_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        run: |
+          if [ "$FROM_FORK" = true ]; then
+            echo "::notice::A pull request from a fork gets no SONAR_TOKEN, so SonarQube Cloud does not analyse it."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "$SONAR_TOKEN" ]; then
+            echo "::notice::SONAR_TOKEN is not set, so SonarQube Cloud did not analyse this change."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  analyze:
+    needs: token
+    if: needs.token.outputs.run == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      # The whole history, so that SonarQube Cloud can tell new code and blame each line.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # The scanner runs on this Java (SonarQube Cloud needs 21 or later) instead of downloading a JRE.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Install the SonarScanner for .NET
+        run: dotnet tool install dotnet-sonarscanner --version "$SONAR_SCANNER_VERSION" --tool-path "$RUNNER_TEMP/sonar"
+
+      # The scanner's analyzers report as warnings, and its targets turn TreatWarningsAsErrors off; this build turns
+      # Directory.Build.props' MSBuildTreatWarningsAsErrors off too, which would make them errors. ci.yml keeps both.
+      - name: Build and analyse
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          set -euo pipefail
+          scanner="$RUNNER_TEMP/sonar/dotnet-sonarscanner"
+          "$scanner" begin /k:"$SONAR_PROJECT_KEY" /o:"$SONAR_ORGANIZATION" /d:sonar.token="$SONAR_TOKEN" \
+            /d:sonar.scanner.skipJreProvisioning=true
+          dotnet build Dictum.slnx -c Release -p:MSBuildTreatWarningsAsErrors=false
+          "$scanner" end /d:sonar.token="$SONAR_TOKEN"
