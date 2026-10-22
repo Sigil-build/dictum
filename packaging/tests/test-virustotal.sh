@@ -62,7 +62,7 @@ chmod +x "$work/bin/curl" "$work/bin/sleep"
 
 api=https://www.virustotal.com/api/v3
 sha() { sha256sum < "$1" | cut -d' ' -f1; }
-# A line of the results: name, SHA-256, analysis id, why not sent.
+# A line of the results: name, SHA-256, analysis id, why not sent, "new" when the lookup answered 404.
 row() { local IFS=$'\t'; echo "$*"; }
 
 # A folder of release files: a name with "big" in it is over the 32 MB that POST /files takes.
@@ -129,9 +129,9 @@ expect_log \
   "$(lookup dictum-1.0.0-win-x64.zip)" "sleep 15" \
   "POST $api/files dictum-1.0.0-win-x64.zip"
 expect_results \
-  "$(row "dictum-1.0.0-big-linux-x64.tar.gz" "$big_sha" "id-big" "")" \
-  "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "id-msi" "")" \
-  "$(row "dictum-1.0.0-win-x64.zip" "$zip_sha" "id-zip" "")"
+  "$(row "dictum-1.0.0-big-linux-x64.tar.gz" "$big_sha" "id-big" "" new)" \
+  "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "id-msi" "" new)" \
+  "$(row "dictum-1.0.0-win-x64.zip" "$zip_sha" "id-zip" "" new)"
 echo "PASS: a package VirusTotal does not know goes up: over 32 MB to an upload URL, the rest to /files, 15 s apart, the key in a header file"
 
 run_upload "$known" "$unknown" '200 {"data": {"id": "id-msi"}}' "$known"
@@ -140,9 +140,9 @@ expect_log \
   "$(lookup dictum-1.0.0-win-x64.msi)" "sleep 15" "POST $api/files dictum-1.0.0-win-x64.msi" "sleep 15" \
   "$(lookup dictum-1.0.0-win-x64.zip)"
 expect_results \
-  "$(row "dictum-1.0.0-big-linux-x64.tar.gz" "$big_sha" "known" "")" \
-  "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "id-msi" "")" \
-  "$(row "dictum-1.0.0-win-x64.zip" "$zip_sha" "known" "")"
+  "$(row "dictum-1.0.0-big-linux-x64.tar.gz" "$big_sha" "known" "" "")" \
+  "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "id-msi" "" new)" \
+  "$(row "dictum-1.0.0-win-x64.zip" "$zip_sha" "known" "" "")"
 grep -q "dictum-1.0.0-win-x64.zip: VirusTotal has it already, report https://www.virustotal.com/gui/file/$zip_sha" "$work/out" \
   || fail "a known package's report is not in the log: $(cat "$work/out")"
 echo "PASS: a package VirusTotal knows already is not sent again, which saves the quota"
@@ -154,8 +154,8 @@ expect_log \
   "$(lookup dictum-1.0.0-win-x64.msi)" "sleep 15" "$(lookup dictum-1.0.0-win-x64.msi)" "sleep 15" \
   "$(lookup dictum-1.0.0-win-x64.zip)" "sleep 15" "POST $api/files dictum-1.0.0-win-x64.zip"
 expect_results \
-  "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "" "VirusTotal answered HTTP 503")" \
-  "$(row dictum-1.0.0-win-x64.zip "$zip_sha" "id-zip" "")"
+  "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "" "VirusTotal answered HTTP 503" "")" \
+  "$(row dictum-1.0.0-win-x64.zip "$zip_sha" "id-zip" "" new)"
 echo "PASS: a lookup that keeps failing sends nothing for that package, and the next one goes on"
 
 files dictum-1.0.0-win-x64.msi
@@ -166,7 +166,7 @@ expect_log \
   "POST $api/files dictum-1.0.0-win-x64.msi" "sleep 15" \
   "POST $api/files dictum-1.0.0-win-x64.msi" "sleep 15" \
   "POST $api/files dictum-1.0.0-win-x64.msi"
-expect_results "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "id-msi" "")"
+expect_results "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "id-msi" "" new)"
 echo "PASS: a 429 is tried again after 60 s, a 5xx and no answer after 15 s"
 
 # An upload URL takes one upload, which a try that failed may have used: the next try asks for a new one.
@@ -181,14 +181,14 @@ expect_log "$(lookup dictum-1.0.0-big-linux-x64.tar.gz)" "sleep 15" \
   "sleep 15" "GET $api/files/upload_url" "sleep 15" "POST https://www.virustotal.com/_ah/upload/two/ dictum-1.0.0-big-linux-x64.tar.gz" \
   "sleep 15" "GET $api/files/upload_url" "sleep 15" "POST https://www.virustotal.com/_ah/upload/three/ dictum-1.0.0-big-linux-x64.tar.gz" \
   "sleep 60" "GET $api/files/upload_url" "sleep 15" "POST https://www.virustotal.com/_ah/upload/four/ dictum-1.0.0-big-linux-x64.tar.gz"
-expect_results "$(row dictum-1.0.0-big-linux-x64.tar.gz "$big_sha" "id-big" "")"
+expect_results "$(row dictum-1.0.0-big-linux-x64.tar.gz "$big_sha" "id-big" "" new)"
 VT_RETRIES=1 run_upload "$unknown" \
   '200 {"data": "https://www.virustotal.com/_ah/upload/one/"}' none \
   '200 {"data": "https://www.virustotal.com/_ah/upload/two/"}' '502 {}'
 expect_log "$(lookup dictum-1.0.0-big-linux-x64.tar.gz)" "sleep 15" \
   "GET $api/files/upload_url" "sleep 15" "POST https://www.virustotal.com/_ah/upload/one/ dictum-1.0.0-big-linux-x64.tar.gz" \
   "sleep 15" "GET $api/files/upload_url" "sleep 15" "POST https://www.virustotal.com/_ah/upload/two/ dictum-1.0.0-big-linux-x64.tar.gz"
-expect_results "$(row dictum-1.0.0-big-linux-x64.tar.gz "$big_sha" "" "VirusTotal answered HTTP 502")"
+expect_results "$(row dictum-1.0.0-big-linux-x64.tar.gz "$big_sha" "" "VirusTotal answered HTTP 502" new)"
 echo "PASS: an upload to an upload URL that fails is tried again with a new URL, within the same number of tries"
 
 files dictum-1.0.0-linux-x64.AppImage dictum-1.0.0-win-x64.msi dictum-1.0.0-win-x64.zip
@@ -196,9 +196,9 @@ appimage_sha=$(sha "$work/files/dictum-1.0.0-linux-x64.AppImage")
 VT_RETRIES=1 run_upload '429 {"error": {"code": "QuotaExceededError"}}' '429 {"error": {"code": "QuotaExceededError"}}'
 expect_log "$(lookup dictum-1.0.0-linux-x64.AppImage)" "sleep 60" "$(lookup dictum-1.0.0-linux-x64.AppImage)"
 expect_results \
-  "$(row dictum-1.0.0-linux-x64.AppImage "$appimage_sha" "" "VirusTotal's request quota was used up")" \
-  "$(row dictum-1.0.0-win-x64.msi "$msi_sha" "" "VirusTotal's request quota was used up")" \
-  "$(row dictum-1.0.0-win-x64.zip "$zip_sha" "" "VirusTotal's request quota was used up")"
+  "$(row dictum-1.0.0-linux-x64.AppImage "$appimage_sha" "" "VirusTotal's request quota was used up" "")" \
+  "$(row dictum-1.0.0-win-x64.msi "$msi_sha" "" "VirusTotal's request quota was used up" "")" \
+  "$(row dictum-1.0.0-win-x64.zip "$zip_sha" "" "VirusTotal's request quota was used up" "")"
 grep -q "::warning::dictum-1.0.0-win-x64.zip was not sent to VirusTotal: VirusTotal's request quota was used up." "$work/out" \
   || fail "no warning for a package not sent: $(cat "$work/out")"
 echo "PASS: a quota still used up after the retries ends the uploads, and every package left says why"
@@ -214,16 +214,16 @@ expect_log \
   "$(lookup dictum-1.0.0-win-x64.msi)" "sleep 15" "POST $api/files dictum-1.0.0-win-x64.msi" "sleep 15" \
   "$(lookup dictum-1.0.0-win-x64.zip)" "sleep 15" "POST $api/files dictum-1.0.0-win-x64.zip"
 expect_results \
-  "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "" "VirusTotal answered HTTP 400")" \
-  "$(row dictum-1.0.0-win-x64.zip "$zip_sha" "id-zip" "")"
+  "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "" "VirusTotal answered HTTP 400" new)" \
+  "$(row dictum-1.0.0-win-x64.zip "$zip_sha" "id-zip" "" new)"
 echo "PASS: a file VirusTotal refuses does not stop the next one"
 
 # The stand-in sleep takes no time, so every request after the first starts 15 s past a 10 s limit.
 VT_DEADLINE=10 run_upload "$known"
 expect_log "$(lookup dictum-1.0.0-win-x64.msi)"
 expect_results \
-  "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "known" "")" \
-  "$(row dictum-1.0.0-win-x64.zip "$zip_sha" "" "the time limit came first")"
+  "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "known" "" "")" \
+  "$(row dictum-1.0.0-win-x64.zip "$zip_sha" "" "the time limit came first" "")"
 echo "PASS: no request starts after the time limit, and the files left say so"
 
 files dictum-1.0.0-big-a.AppImage dictum-1.0.0-big-b.tar.gz dictum-1.0.0-win-x64.msi
@@ -261,6 +261,10 @@ echo "PASS: without a key or without packages the upload fails before any reques
 section() { bash "$script" section "$work/section-results"; }
 results() { printf '%s\n' "$@" > "$work/section-results"; }
 link() { echo "- [\`$1\`](https://www.virustotal.com/gui/file/$2)"; }
+# What follows the link of a package not sent: VirusTotal does not have it (its lookup answered 404), or the run did
+# not learn whether it does.
+absent() { echo " (not sent yet: $1; VirusTotal does not have it, so the link shows \"File not found\" until a run sends it)"; }
+unsent() { echo " (not sent in the last run: $1; unless an earlier run sent it, the link shows \"File not found\")"; }
 a=$(printf 'a%.0s' {1..64})
 b=$(printf 'b%.0s' {1..64})
 
@@ -274,7 +278,7 @@ $first" ;;
 esac
 grep -qxF -e "$(link dictum-1.0.0-win-x64.msi "$a")" <<< "$first" || fail "no link to the MSI's report: $first"
 # The link needs only the SHA-256, so a package not sent has one too, with why it was not sent this time.
-grep -qxF -e "$(link PKGBUILD "$b") (not sent in the last run: VirusTotal did not answer)" <<< "$first" \
+grep -qxF -e "$(link PKGBUILD "$b")$(unsent "VirusTotal did not answer")" <<< "$first" \
   || fail "no link and reason for PKGBUILD: $first"
 grep -q 'antivirus engines' <<< "$first" || fail "the section does not say what a report is"
 grep -q 'not signed' <<< "$first" || fail "the section does not say an unsigned app may be flagged"
@@ -318,16 +322,24 @@ out=$(printf '%s\n' "$first" | section 2> /dev/null) || fail "section failed whe
 [ "$out" = "$first" ] || fail "with no file sent, the section that was there changed:
 $out"
 out=$(printf '%s' "$notes" | section) || fail "section failed on new notes when no file was sent"
-grep -qxF -e "$(link dictum-1.0.0-win-x64.msi "$a") (not sent in the last run: VirusTotal's request quota was used up)" <<< "$out" \
+grep -qxF -e "$(link dictum-1.0.0-win-x64.msi "$a")$(unsent "VirusTotal's request quota was used up")" <<< "$out" \
   || fail "new notes do not say why the report may not be there: $out"
 echo "PASS: with no file sent, a section that is there stays, and notes without one say why there are no reports"
 
 results "$(row "dictum-1.0.0-win-x64.msi" "$a" "id-a" "")" "$(row "dictum-1.0.0-win-x64.zip" "$b" "" "the time limit came first")"
 out=$(printf '%s\n' "$second" | section) || fail "section failed on a run that sent one package of two"
 grep -qxF -e "$(link dictum-1.0.0-win-x64.msi "$a")" <<< "$out" || fail "no link for the package sent: $out"
-grep -qxF -e "$(link dictum-1.0.0-win-x64.zip "$b") (not sent in the last run: the time limit came first)" <<< "$out" \
+grep -qxF -e "$(link dictum-1.0.0-win-x64.zip "$b")$(unsent "the time limit came first")" <<< "$out" \
   || fail "the package not sent this time lost its link: $out"
 echo "PASS: a run that sends some packages keeps the link of each one it did not send, and says why"
+
+# A package VirusTotal said it has never seen, and that this run then failed to send, has no report behind its link.
+results "$(row "dictum-1.0.0-win-x64.msi" "$a" "id-a" "" new)" "$(row "dictum-1.0.0-win-x64.zip" "$b" "" "VirusTotal answered HTTP 400" new)"
+out=$(printf '%s\n' "$notes" | section) || fail "section failed on a package VirusTotal does not have"
+grep -qxF -e "$(link dictum-1.0.0-win-x64.msi "$a")" <<< "$out" || fail "no link for the package sent: $out"
+grep -qxF -e "$(link dictum-1.0.0-win-x64.zip "$b")$(absent "VirusTotal answered HTTP 400")" <<< "$out" \
+  || fail "a package VirusTotal does not have does not say its link shows File not found: $out"
+echo "PASS: a package VirusTotal does not have keeps its link, which says it shows File not found until a run sends it"
 
 results "$(row "dictum-1.0.0-win-x64.msi" "$a" "known" "")" "$(row "dictum-1.0.0-win-x64.zip" "$b" "known" "")"
 out=$(printf '%s\n' "$second" | section) || fail "section failed on packages VirusTotal knew"

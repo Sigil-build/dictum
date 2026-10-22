@@ -85,7 +85,8 @@ public sealed class FieldRow : Panel
         if (_beside)
         {
             label?.Arrange(new Rect(0, 0, LabelWidth, finalSize.Height));
-            field?.Arrange(new Rect(LabelWidth + ColumnSpacing, 0, finalSize.Width - LabelWidth - ColumnSpacing, finalSize.Height));
+            // Kept from a measure beside, a row arranged narrower than the label's column leaves the field no width.
+            field?.Arrange(new Rect(LabelWidth + ColumnSpacing, 0, Math.Max(0, finalSize.Width - LabelWidth - ColumnSpacing), finalSize.Height));
         }
         else
         {

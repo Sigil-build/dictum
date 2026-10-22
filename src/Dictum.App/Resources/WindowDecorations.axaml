@@ -87,6 +87,13 @@
     <Style Selector="^ /template/ Path">
       <Setter Property="Fill" Value="{DynamicResource color.text.primary}" />
     </Style>
+    <!-- Dimmed while another window is active, as Windows 11's, but not under the pointer. -->
+    <Style Selector="^ /template/ controls|CaptionButton:inactive Path">
+      <Setter Property="Fill" Value="{DynamicResource color.caption.inactive}" />
+    </Style>
+    <Style Selector="^ /template/ controls|CaptionButton:inactive:pointerover Path">
+      <Setter Property="Fill" Value="{DynamicResource color.text.primary}" />
+    </Style>
     <Style Selector="^ /template/ controls|CaptionButton#PART_CloseButton:pointerover Path">
       <Setter Property="Fill" Value="White" />
     </Style>

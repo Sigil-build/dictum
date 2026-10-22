@@ -8,7 +8,9 @@ namespace Dictum.Platform.Linux.DBus;
 /// registration and interface versions. Messages are built by hand with <see cref="MessageWriter"/>
 /// (no code generator, no reflection).
 /// </summary>
-public sealed class Portal : IDisposable
+/// <param name="log">Where host app registration that the portal refuses is logged.</param>
+/// <param name="address">The session bus; the one <c>DBUS_SESSION_BUS_ADDRESS</c> names when left out.</param>
+public sealed class Portal(ILog log, string? address = null) : IDisposable
 {
     public const string Destination = "org.freedesktop.portal.Desktop";
     public const string ObjectPath = "/org/freedesktop/portal/desktop";
@@ -20,12 +22,9 @@ public sealed class Portal : IDisposable
     internal const uint ResponseSuccess = 0;
     internal const uint ResponseCancelled = 1;
 
-    private readonly ILog _log;
-    private readonly SessionBus _bus = new();
+    private readonly SessionBus _bus = new(address);
     private int _token;
     private bool _registered;
-
-    public Portal(ILog log) => _log = log;
 
     public Task<DBusConnection> ConnectAsync(CancellationToken ct) => _bus.ConnectAsync(ct);
 
@@ -55,11 +54,11 @@ public sealed class Portal : IDisposable
         try
         {
             await connection.CallMethodAsync(BuildRegister(connection)).ConfigureAwait(false);
-            _log.Debug($"Registered with the portal as {DesktopIdentity.AppId}");
+            log.Debug($"Registered with the portal as {DesktopIdentity.AppId}");
         }
         catch (DBusErrorReplyException ex)
         {
-            _log.Info($"Host app registration not available: {ex.ErrorName}: {ex.ErrorMessage}");
+            log.Info($"Host app registration not available: {ex.ErrorName}: {ex.ErrorMessage}");
         }
 
         _registered = true;

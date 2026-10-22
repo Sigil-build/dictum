@@ -33,7 +33,7 @@ sudo pacman -S wl-clipboard xclip
 
 ## Завантаження {#download}
 
-Завантажте Dictum зі [сторінки випусків](https://github.com/Sigil-build/dictum/releases/latest). Кожен випуск має такі файли, де `<version>` — версія випуску, наприклад `0.5.0`:
+Завантажте Dictum зі [сторінки випусків](https://github.com/Sigil-build/dictum/releases/latest). Кожен випуск має такі файли, де `<version>` — версія випуску, наприклад `0.5.1`:
 
 | Файл | Що це |
 | --- | --- |
@@ -57,14 +57,14 @@ sha256sum --check --ignore-missing SHA256SUMS
 У Windows ця команда пише `True`, якщо MSI збігається:
 
 ```powershell
-(Get-FileHash .\dictum-0.5.0-win-x64.msi).Hash -eq ((Select-String 'win-x64.msi' .\SHA256SUMS).Line -split ' ')[0]
+(Get-FileHash .\dictum-0.5.1-win-x64.msi).Hash -eq ((Select-String 'win-x64.msi' .\SHA256SUMS).Line -split ' ')[0]
 ```
 
 **Звіт VirusTotal.** В описі кожного випуску на [сторінці випусків](https://github.com/Sigil-build/dictum/releases) є розділ VirusTotal з посиланням для кожного пакета. [VirusTotal](https://www.virustotal.com/) перевіряє файл десятками антивірусів, а звіт показує, що знайшов кожен із них. Dictum поки не підписаний і ще мало відомий, тож один-два антивіруси можуть позначити його як підозрілий, хоча решта нічого не знаходить.
 
 ## Встановлення {#install}
 
-Команди на цій сторінці написано для версії 0.5.0. Підставте версію, яку ви завантажили.
+Команди на цій сторінці написано для версії 0.5.1. Підставте версію, яку ви завантажили.
 
 === "Windows 11"
 
@@ -91,7 +91,7 @@ sha256sum --check --ignore-missing SHA256SUMS
 
         ```sh
         mkdir -p ~/Applications
-        mv ~/Downloads/dictum-0.5.0-linux-x64.AppImage ~/Applications/Dictum.AppImage
+        mv ~/Downloads/dictum-0.5.1-linux-x64.AppImage ~/Applications/Dictum.AppImage
         chmod +x ~/Applications/Dictum.AppImage
         ```
 
@@ -109,8 +109,8 @@ sha256sum --check --ignore-missing SHA256SUMS
 
         ```sh
         cd ~/Downloads
-        tar -xzf dictum-0.5.0-linux-x64.tar.gz
-        ./dictum-0.5.0-linux-x64/install.sh
+        tar -xzf dictum-0.5.1-linux-x64.tar.gz
+        ./dictum-0.5.1-linux-x64/install.sh
         ```
 
     2. `install.sh` копіює Dictum у `~/.local/lib/dictum`, створює посилання `dictum` і `dictum-gui` у `~/.local/bin` і додає Dictum до меню програм. Права root йому не потрібні. Потім архів і розпаковану теку можна видалити.

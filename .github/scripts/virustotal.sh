@@ -7,7 +7,8 @@
 #   other release files (SHA256SUMS, the PKGBUILD, the SBOM) are text a person can read, and would only spend quota.
 #   A package VirusTotal knows already (GET /files/<sha256>) is not sent again, so a second run for a release costs a
 #   request per package. Writes a line per package to <results>, in tabs: its name, its SHA-256, the id of
-#   VirusTotal's analysis or "known", and why it was not sent when it was not. POST /files takes files up to 32 MB; a
+#   VirusTotal's analysis or "known", why it was not sent when it was not, and "new" when the lookup answered that
+#   VirusTotal has never seen the file (404), whether it was then sent or not. POST /files takes files up to 32 MB; a
 #   larger one goes to the one-time URL that GET /files/upload_url gives, which is one request more. The free API
 #   allows 4 requests a minute and 500 a day:
 #   - a request starts VT_INTERVAL (15) seconds after the previous one ended;
@@ -20,7 +21,8 @@
 # virustotal.sh section <results> < notes > new-notes
 #   Prints the notes with a "VirusTotal" section between <!-- virustotal:start --> and <!-- virustotal:end -->: a
 #   link to https://www.virustotal.com/gui/file/<sha256> for each package, which needs only its SHA-256, and for one
-#   this run did not send, why.
+#   this run did not send, why, and that the link shows "File not found" while VirusTotal does not have the file: it
+#   does when the lookup said so, and may when the run did not learn it.
 #   The section replaces the one an earlier run wrote, where it is, or else goes at the end. When nothing was sent
 #   and the notes have a section already, they are printed unchanged: the reports it links are still there.
 set -euo pipefail
@@ -114,7 +116,8 @@ send() {
 }
 
 # Sends one package unless VirusTotal has it already: GET /files/<sha256> answers 200 for a file it knows and 404 for
-# one it has never seen. Sets $id to the analysis id, or to "known" when nothing had to be sent, or else $why.
+# one it has never seen. Sets $id to the analysis id, or to "known" when nothing had to be sent, or else $why; and
+# $seen to "new" after a 404.
 check() {
   local path=$1 sha=$2
   if ! request 60 "$api/files/$sha"; then
@@ -123,13 +126,16 @@ check() {
   fi
   case $code in
     200) id=known ;;
-    404) send "$path" ;;
+    404)
+      seen=new
+      send "$path"
+      ;;
     *) why=$(reason) ;;
   esac
 }
 
 upload() {
-  local dir=$1 results=$2 path name sha id why stop="" sent=0 known=0 total=0
+  local dir=$1 results=$2 path name sha id why seen stop="" sent=0 known=0 total=0
   [ -d "$dir" ] || die "$dir is not a folder"
   [ -n "${VIRUSTOTAL_API_KEY:-}" ] || die "VIRUSTOTAL_API_KEY is empty"
   interval=${VT_INTERVAL:-15} retry_wait=${VT_RETRY_WAIT:-60} retries=${VT_RETRIES:-3} deadline=${VT_DEADLINE:-1200}
@@ -148,7 +154,7 @@ upload() {
     [ -f "$path" ] || continue
     sha=$(sha256sum < "$path" | cut -d' ' -f1)
     total=$((total + 1))
-    id="" why=$stop
+    id="" why=$stop seen=""
     if [ -z "$stop" ]; then
       check "$path" "$sha"
       # The quota, the key and the time limit would fail every later package the same way.
@@ -163,7 +169,7 @@ upload() {
     else
       echo "::warning::$name was not sent to VirusTotal: $why."
     fi
-    printf '%s\t%s\t%s\t%s\n' "$name" "$sha" "$id" "$why" >> "$results"
+    printf '%s\t%s\t%s\t%s\t%s\n' "$name" "$sha" "$id" "$why" "$seen" >> "$results"
   done
   (( total > 0 )) || die "$dir has no packages (*.msi, *.zip, *.AppImage, *.tar.gz)"
   echo "Of $total packages, $sent sent to VirusTotal and $known it had already."
@@ -178,11 +184,17 @@ render() {
   echo
   echo "Dictum is a new app and its files are not signed yet. Some engines judge a file by its reputation rather than by what it does, so one or two of them may flag such a file while the rest find nothing."
   echo
-  # The link needs only the SHA-256, so a package this run did not send keeps it: an earlier run may have sent it.
+  # The link needs only the SHA-256, so a package this run did not send keeps it: its report is there once a run sends
+  # the file, or already when an earlier run did. Until then VirusTotal shows "File not found", which the line says:
+  # for certain when the lookup answered 404, as a possibility when the run did not learn whether VirusTotal has it.
   # awk, as read would merge the two tabs around an empty analysis id: a tab is white space to IFS.
   awk -F'\t' '{
     printf "- [`%s`](https://www.virustotal.com/gui/file/%s)", $1, $2
-    if ($3 == "") printf " (not sent in the last run: %s)", $4
+    if ($3 == "" && $5 == "new") {
+      printf " (not sent yet: %s; VirusTotal does not have it, so the link shows \"File not found\" until a run sends it)", $4
+    } else if ($3 == "") {
+      printf " (not sent in the last run: %s; unless an earlier run sent it, the link shows \"File not found\")", $4
+    }
     printf "\n"
   }' "$1"
   echo "$end_marker"

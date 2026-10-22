@@ -54,7 +54,7 @@ jobs:
             echo "::notice::VIRUSTOTAL_API_KEY is not set, so the packages of $TAG were not sent to VirusTotal."
           fi
 
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: steps.key.outputs.set == 'true'
         with:
           persist-credentials: false

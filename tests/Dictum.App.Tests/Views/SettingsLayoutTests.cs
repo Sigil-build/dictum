@@ -42,10 +42,10 @@ public sealed class SettingsLayoutTests(AvaloniaFixture fx)
     ];
 
     /// <summary>
-    /// The font the wider text is set in: DejaVu Sans, which a Linux desktop without Noto Sans draws the app in, or
-    /// Verdana, its twin in width, where it is missing, as on Windows.
+    /// The fonts the wider text may be set in, the first one installed: DejaVu Sans, which a Linux desktop without Noto
+    /// Sans draws the app in, or Verdana, its twin in width, where it is missing, as on Windows.
     /// </summary>
-    private const string WideFont = "DejaVu Sans, Verdana";
+    private static readonly string[] WideFonts = ["DejaVu Sans", "Verdana"];
 
     /// <summary>How much further apart the wider text sets its letters, in pixels.</summary>
     private const double WideLetterSpacing = 1;
@@ -55,18 +55,33 @@ public sealed class SettingsLayoutTests(AvaloniaFixture fx)
 
     /// <summary>
     /// The same in text a good deal wider than the platform's font, so that a layout that fits Segoe UI on Windows by
-    /// a few pixels fails on Windows too, not only on Linux, whose fonts are wider: <see cref="WideFont"/>, which is
-    /// about 15 % wider than Segoe UI, with its letters <see cref="WideLetterSpacing"/> further apart, which adds about
-    /// a tenth more. The application is the test's own, so the font goes with it.
+    /// a few pixels fails on Windows too, not only on Linux, whose fonts are wider: one of <see cref="WideFonts"/>,
+    /// which are about 15 % wider than Segoe UI, with its letters <see cref="WideLetterSpacing"/> further apart, which
+    /// adds about a tenth more. The application is the test's own, so the font goes with it.
     /// </summary>
     [Theory, MemberData(nameof(Windows))]
     public Task NothingIsCutOffInAWiderFont(string language, int width, int height) => fx.UiAsync(() =>
     {
         var app = Application.Current!;
-        app.Resources["ContentControlThemeFontFamily"] = new FontFamily(WideFont);
+        app.Resources["ContentControlThemeFontFamily"] = new FontFamily(InstalledWideFont());
         app.Styles.Add(new Style(x => x.OfType<Window>()) { Setters = { new Setter(TextBlock.LetterSpacingProperty, WideLetterSpacing) } });
         return AssertNothingCutOffAsync(language, width, height);
     });
+
+    /// <summary>
+    /// The first of <see cref="WideFonts"/> the system has. Avalonia sets a family it cannot find in its default font
+    /// without a word, which would leave the wider-font test green on a far narrower font, so the test fails instead,
+    /// naming the fonts it needs.
+    /// </summary>
+    private static string InstalledWideFont()
+    {
+        var installed = FontManager.Current.SystemFonts.Select(f => f.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var font = WideFonts.FirstOrDefault(installed.Contains);
+        Assert.True(font is not null,
+            $"The wider-font test needs {string.Join(" or ", WideFonts)}, and neither is installed, so it would run in the default font. " +
+            "Install DejaVu Sans: fonts-dejavu-core on Debian and Ubuntu, ttf-dejavu on Arch.");
+        return font;
+    }
 
     private static async Task AssertNothingCutOffAsync(string language, int width, int height)
     {
