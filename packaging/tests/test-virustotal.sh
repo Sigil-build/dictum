@@ -227,8 +227,11 @@ expect_results \
 echo "PASS: no request starts after the time limit, and the files left say so"
 
 files dictum-1.0.0-big-a.AppImage dictum-1.0.0-big-b.tar.gz dictum-1.0.0-win-x64.msi
+# VirusTotal has answered with a plain-http upload URL; the stand-in gets it by turning its own https base into http.
+plain_upload=${api/#https:/http:}
+plain_upload=${plain_upload%/api/v3}/_ah/upload/two/
 run_upload \
-  "$unknown" '200 {"data": "http://www.virustotal.com/_ah/upload/two/"}' '200 {"data": {"id": "id-a"}}' \
+  "$unknown" "200 {\"data\": \"$plain_upload\"}" '200 {"data": {"id": "id-a"}}' \
   "$unknown" '200 {"data": null}' \
   "$unknown" '200 {"data": {"type": "analysis"}}'
 expect_log \
