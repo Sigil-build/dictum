@@ -139,6 +139,28 @@ expect_log \
 expect_results "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "id-msi" "")"
 echo "PASS: a 429 is tried again after 60 s, a 5xx and no answer after 15 s"
 
+# An upload URL takes one upload, which a try that failed may have used: the next try asks for a new one.
+files dictum-1.0.0-big-linux-x64.tar.gz
+run_upload \
+  '200 {"data": "https://www.virustotal.com/_ah/upload/one/"}' none \
+  '200 {"data": "https://www.virustotal.com/_ah/upload/two/"}' '503 {}' \
+  '200 {"data": "https://www.virustotal.com/_ah/upload/three/"}' '429 {"error": {"code": "QuotaExceededError"}}' \
+  '200 {"data": "https://www.virustotal.com/_ah/upload/four/"}' '200 {"data": {"id": "id-big"}}'
+expect_log \
+  "GET $api/files/upload_url" "sleep 15" "POST https://www.virustotal.com/_ah/upload/one/ dictum-1.0.0-big-linux-x64.tar.gz" \
+  "sleep 15" "GET $api/files/upload_url" "sleep 15" "POST https://www.virustotal.com/_ah/upload/two/ dictum-1.0.0-big-linux-x64.tar.gz" \
+  "sleep 15" "GET $api/files/upload_url" "sleep 15" "POST https://www.virustotal.com/_ah/upload/three/ dictum-1.0.0-big-linux-x64.tar.gz" \
+  "sleep 60" "GET $api/files/upload_url" "sleep 15" "POST https://www.virustotal.com/_ah/upload/four/ dictum-1.0.0-big-linux-x64.tar.gz"
+expect_results "$(row dictum-1.0.0-big-linux-x64.tar.gz "$big_sha" "id-big" "")"
+VT_RETRIES=1 run_upload \
+  '200 {"data": "https://www.virustotal.com/_ah/upload/one/"}' none \
+  '200 {"data": "https://www.virustotal.com/_ah/upload/two/"}' '502 {}'
+expect_log \
+  "GET $api/files/upload_url" "sleep 15" "POST https://www.virustotal.com/_ah/upload/one/ dictum-1.0.0-big-linux-x64.tar.gz" \
+  "sleep 15" "GET $api/files/upload_url" "sleep 15" "POST https://www.virustotal.com/_ah/upload/two/ dictum-1.0.0-big-linux-x64.tar.gz"
+expect_results "$(row dictum-1.0.0-big-linux-x64.tar.gz "$big_sha" "" "VirusTotal answered HTTP 502")"
+echo "PASS: an upload to an upload URL that fails is tried again with a new URL, within the same number of tries"
+
 files dictum-1.0.0-linux-x64.AppImage dictum-1.0.0-win-x64.msi dictum-1.0.0-win-x64.zip
 appimage_sha=$(sha "$work/files/dictum-1.0.0-linux-x64.AppImage")
 VT_RETRIES=1 run_upload '429 {"error": {"code": "QuotaExceededError"}}' '429 {"error": {"code": "QuotaExceededError"}}'

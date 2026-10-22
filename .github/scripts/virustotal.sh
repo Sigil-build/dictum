@@ -11,6 +11,7 @@
 #   - a request starts VT_INTERVAL (15) seconds after the previous one ended;
 #   - a 429 is tried again after VT_RETRY_WAIT (60) seconds, and no answer or a 5xx after VT_INTERVAL, up to
 #     VT_RETRIES (3) times; a quota still used up after that, or a refused key, ends the uploads;
+#   - an upload URL takes one upload, so each try of a large file asks for a new one;
 #   - no request starts after VT_DEADLINE (1200) seconds, and none takes longer than 5 minutes.
 #   It exits 0 once every package has its line, sent or not, and 1 only without packages or a key.
 #
@@ -28,28 +29,36 @@ direct_limit=32000000
 
 die() { echo "virustotal.sh: $*" >&2; exit 1; }
 
-# One request to VirusTotal: it waits its turn, tries again after a 429, a 5xx or no answer, and leaves the answer in
-# $response and its HTTP status in $code (000 for no answer). Returns 1, with code=deadline, when the time is up first.
-request() {
-  local max_time=$1 tries=0
+# One try of a request to VirusTotal, once it is its turn: leaves the answer in $response and its HTTP status in $code
+# (000 for no answer), and sets the pause before the next request. Returns 1, with code=deadline, when the time is up
+# first.
+attempt() {
+  local max_time=$1
   shift
-  while :; do
-    if (( SECONDS + pause > deadline )); then
-      code=deadline
-      return 1
-    fi
-    if (( pause > 0 )); then sleep "$pause"; fi
-    : > "$response"
-    code=$(curl -sS --max-time "$max_time" -H "@$headers" -o "$response" -w '%{http_code}' "$@") || code=000
-    pause=$interval
-    case $code in
-      429) pause=$retry_wait ;;
-      000 | 5??) ;;
-      *) return 0 ;;
-    esac
-    if (( ++tries > retries )); then return 0; fi
+  if (( SECONDS + pause > deadline )); then
+    code=deadline
+    return 1
+  fi
+  if (( pause > 0 )); then sleep "$pause"; fi
+  : > "$response"
+  code=$(curl -sS --max-time "$max_time" -H "@$headers" -o "$response" -w '%{http_code}' "$@") || code=000
+  pause=$interval
+  [ "$code" != 429 ] || pause=$retry_wait
+}
+
+# Whether the last answer is worth another try: a 429, a 5xx or none.
+again() {
+  case $code in 429 | 000 | 5??) return 0 ;; *) return 1 ;; esac
+}
+
+# One request, tried again after a 429, a 5xx or no answer, up to VT_RETRIES times. Returns 1 when the time is up.
+request() {
+  local tries=0
+  while attempt "$@"; do
+    if ! again || (( tries++ >= retries )); then return 0; fi
     echo "  VirusTotal answered $code; trying again in ${pause}s." >&2
   done
+  return 1
 }
 
 # Why the last request failed, in words for the release notes.
@@ -65,21 +74,35 @@ reason() {
 
 # Sends one file. Sets $id, or $why when the file was not sent.
 send() {
-  local path=$1 url=$api/files
-  if (( $(wc -c < "$path") > direct_limit )); then
-    if ! request 60 "$api/files/upload_url" || [ "$code" != 200 ]; then
+  local path=$1 url tries=0
+  if (( $(wc -c < "$path") <= direct_limit )); then
+    if ! request 300 -F "file=@$path" "$api/files"; then
       why=$(reason)
       return
     fi
-    url=$(jq -r '.data | strings' "$response" 2> /dev/null) || url=""
-    # The key goes with the upload, so never over plain HTTP.
-    url=${url/#http:\/\//https://}
-    if [[ $url != https://* ]]; then
-      why="VirusTotal gave no upload URL"
-      return
-    fi
+  else
+    # Each upload URL takes one upload, and a try that failed may have used it: every try gets a new one.
+    while :; do
+      if ! request 60 "$api/files/upload_url" || [ "$code" != 200 ]; then
+        why=$(reason)
+        return
+      fi
+      url=$(jq -r '.data | strings' "$response" 2> /dev/null) || url=""
+      # The key goes with the upload, so never over plain HTTP.
+      url=${url/#http:\/\//https://}
+      if [[ $url != https://* ]]; then
+        why="VirusTotal gave no upload URL"
+        return
+      fi
+      if ! attempt 300 -F "file=@$path" "$url"; then
+        why=$(reason)
+        return
+      fi
+      if ! again || (( tries++ >= retries )); then break; fi
+      echo "  VirusTotal answered $code; trying again with a new upload URL in ${pause}s." >&2
+    done
   fi
-  if ! request 300 -F "file=@$path" "$url" || [ "$code" != 200 ]; then
+  if [ "$code" != 200 ]; then
     why=$(reason)
     return
   fi
