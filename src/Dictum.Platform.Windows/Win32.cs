@@ -71,6 +71,26 @@ internal static unsafe partial class Win32
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool SystemParametersInfo(uint action, uint parameter, out int value, uint update);
 
+    [LibraryImport("user32")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool EnumThreadWindows(uint threadId, delegate* unmanaged<nint, nint, int> callback, nint state);
+
+    [LibraryImport("user32", EntryPoint = "GetClassNameW", SetLastError = true)]
+    public static partial int GetClassName(nint window, char* name, int capacity);
+
+    [LibraryImport("user32", EntryPoint = "CallWindowProcW")]
+    public static partial nint CallWindowProc(nint previous, nint window, uint message, nint wParam, nint lParam);
+
+    [LibraryImport("user32", EntryPoint = "DefWindowProcW")]
+    public static partial nint DefWindowProc(nint window, uint message, nint wParam, nint lParam);
+
+    [LibraryImport("shell32", EntryPoint = "Shell_NotifyIconW")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool ShellNotifyIcon(uint message, NotifyIconData* data);
+
+    [LibraryImport("kernel32")]
+    public static partial uint GetCurrentThreadId();
+
     [LibraryImport("kernel32", SetLastError = true)]
     public static partial nint GlobalAlloc(uint flags, nuint bytes);
 
@@ -116,6 +136,31 @@ internal static unsafe partial class Win32
     {
         public int X;
         public int Y;
+    }
+
+    /// <summary>NOTIFYICONDATAW, as Windows Vista and later take it: 976 bytes on 64-bit Windows.</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct NotifyIconData
+    {
+        public const int TipLength = 128;
+        public const int InfoLength = 256;
+        public const int InfoTitleLength = 64;
+
+        public uint Size;
+        public nint Window;
+        public uint Id;
+        public uint Flags;
+        public uint CallbackMessage;
+        public nint Icon;
+        public fixed char Tip[TipLength];
+        public uint State;
+        public uint StateMask;
+        public fixed char Info[InfoLength];
+        public uint TimeoutOrVersion;
+        public fixed char InfoTitle[InfoTitleLength];
+        public uint InfoFlags;
+        public Guid Item;
+        public nint BalloonIcon;
     }
 
     /// <summary>CREDENTIALW.</summary>
