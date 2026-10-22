@@ -54,6 +54,7 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
         new("settings-models", SettingsPageKey.Models),
         new("settings-history", SettingsPageKey.History, page => ((HistoryPage)page).Selected = ((HistoryPage)page).Items[0]),
         new("settings-system", SettingsPageKey.System),
+        new("settings-about", SettingsPageKey.About),
     ];
 
     /// <summary>The shots, each the name of four files in <c>docs/images/</c>.</summary>

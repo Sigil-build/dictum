@@ -393,6 +393,9 @@ Puts the re-run result on the clipboard.
 
 ### About Dictum {#about}
 
+![The About Dictum page of Settings](../images/settings-about.png#gh-light-mode-only)
+![The About Dictum page of Settings](../images/settings-about-dark.png#gh-dark-mode-only)
+
 Which Dictum this is, and where to read more or ask for help. To open it, click the version at the foot of the column on the left, or choose **About Dictum** in the tray icon's menu.
 
 The page shows the version, as the foot of the column does, and the operating system with its architecture, such as "Windows 11 (10.0.26200), x64". On Linux it names the distribution and the desktop session. These links open in your browser:
