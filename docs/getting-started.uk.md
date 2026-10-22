@@ -44,18 +44,23 @@ sudo pacman -S wl-clipboard xclip
 | `PKGBUILD` | Arch Linux і CachyOS: збирає з архіву пакет для pacman. |
 | `SHA256SUMS` | Суми SHA-256 чотирьох пакетів `dictum-<version>`. |
 
-!!! note "Як перевірити завантажений файл"
-    У теці із завантаженнями порівняйте файл з його рядком у `SHA256SUMS`. У Linux ця команда пише `OK` після кожного знайденого файлу:
+## Перевірка завантаженого файлу {#check-download}
 
-    ```sh
-    sha256sum --check --ignore-missing SHA256SUMS
-    ```
+Перш ніж встановлювати, файл можна перевірити двома способами.
 
-    У Windows ця команда пише `True`, якщо MSI збігається:
+**Сума SHA-256.** У теці із завантаженнями порівняйте файл з його рядком у `SHA256SUMS`. У Linux ця команда пише `OK` після кожного знайденого файлу:
 
-    ```powershell
-    (Get-FileHash .\dictum-0.4.0-win-x64.msi).Hash -eq ((Select-String 'win-x64.msi' .\SHA256SUMS).Line -split ' ')[0]
-    ```
+```sh
+sha256sum --check --ignore-missing SHA256SUMS
+```
+
+У Windows ця команда пише `True`, якщо MSI збігається:
+
+```powershell
+(Get-FileHash .\dictum-0.4.0-win-x64.msi).Hash -eq ((Select-String 'win-x64.msi' .\SHA256SUMS).Line -split ' ')[0]
+```
+
+**Звіт VirusTotal.** В описі кожного випуску на [сторінці випусків](https://github.com/Sigil-build/dictum/releases) є розділ VirusTotal з посиланням для кожного файлу. [VirusTotal](https://www.virustotal.com/) перевіряє файл десятками антивірусів, а звіт показує, що знайшов кожен із них. Dictum поки не підписаний і ще мало відомий, тож один-два антивіруси можуть позначити його як підозрілий, хоча решта нічого не знаходить.
 
 ## Встановлення {#install}
 
