@@ -160,6 +160,11 @@ jobs:
     needs: publish
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    # The catalog's whisper-tiny-en (src/Dictum.Setup/catalog.json): the same pinned revision of
+    # ggerganov/whisper.cpp and the same SHA-256, Hugging Face's LFS sha256 of the file.
+    env:
+      WHISPER_MODEL_REVISION: 5359861c739e955e79d9a303bcbc70fb988958b1
+      WHISPER_MODEL_SHA256: 921e4cf8686fdd993dcd081a5da5b6c365bfde1162e72b08d75ac75289920b1f
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -172,13 +177,17 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: models
-          key: whisper-ggml-tiny.en
+          key: whisper-ggml-tiny.en-${{ env.WHISPER_MODEL_REVISION }}
 
+      # Checked whether it came from the cache or from Hugging Face; a file that fails the check fails the job, so it
+      # is never cached either.
       - name: Download Whisper test model
         run: |
+          set -euo pipefail
           mkdir -p models
           test -f models/ggml-tiny.en.bin || curl --proto '=https' --tlsv1.2 -fsSL -o models/ggml-tiny.en.bin \
-            https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin
+            "https://huggingface.co/ggerganov/whisper.cpp/resolve/$WHISPER_MODEL_REVISION/ggml-tiny.en.bin"
+          echo "$WHISPER_MODEL_SHA256  models/ggml-tiny.en.bin" | sha256sum -c -
 
       - name: Daemon smoke test (X11, Secret Service, hotkey)
         run: |
