@@ -2,7 +2,7 @@
 # Tests in tests/Dictum.Core.Tests/Docs check it against the pages and Directory.Build.props.
 title: Dictum
 # major.minor of VersionPrefix in Directory.Build.props, quoted so YAML keeps it a string.
-version: "0.4"
+version: "0.5"
 license: MIT License
 license_url: https://github.com/Sigil-build/dictum/blob/HEAD/LICENSE
 repo_url: https://github.com/Sigil-build/dictum

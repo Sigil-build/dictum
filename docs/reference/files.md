@@ -118,7 +118,7 @@ When Dictum saves the file, it writes every setting, with the defaults this exam
 The notes are here, below the file, because the example is plain JSON that you can copy as it is.
 
 `schemaVersion`
-:   The version of the file's layout. Dictum 0.4 writes `1`; leave it as it is.
+:   The version of the file's layout. Dictum 0.5 writes `1`; leave it as it is.
 
 `general`
 :   Settings for every profile.

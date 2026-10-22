@@ -33,7 +33,7 @@ sudo pacman -S wl-clipboard xclip
 
 ## Download {#download}
 
-Download Dictum from the [releases page](https://github.com/Sigil-build/dictum/releases/latest). Each release has these files, where `<version>` is the release's version, such as `0.4.0`:
+Download Dictum from the [releases page](https://github.com/Sigil-build/dictum/releases/latest). Each release has these files, where `<version>` is the release's version, such as `0.5.0`:
 
 | File | What it is |
 | --- | --- |
@@ -57,14 +57,14 @@ sha256sum --check --ignore-missing SHA256SUMS
 On Windows, this prints `True` when the MSI matches:
 
 ```powershell
-(Get-FileHash .\dictum-0.4.0-win-x64.msi).Hash -eq ((Select-String 'win-x64.msi' .\SHA256SUMS).Line -split ' ')[0]
+(Get-FileHash .\dictum-0.5.0-win-x64.msi).Hash -eq ((Select-String 'win-x64.msi' .\SHA256SUMS).Line -split ' ')[0]
 ```
 
 **Its VirusTotal report.** The notes of each release on the [releases page](https://github.com/Sigil-build/dictum/releases) have a VirusTotal section with a link for each package. [VirusTotal](https://www.virustotal.com/) scans a file with dozens of antivirus engines, and the report shows what each of them found. Dictum is not signed yet and is little known, so one or two engines may flag it as suspicious while the rest find nothing.
 
 ## Install {#install}
 
-The commands on this page use version 0.4.0. Put in the version you downloaded.
+The commands on this page use version 0.5.0. Put in the version you downloaded.
 
 === "Windows 11"
 
@@ -91,7 +91,7 @@ The commands on this page use version 0.4.0. Put in the version you downloaded.
 
         ```sh
         mkdir -p ~/Applications
-        mv ~/Downloads/dictum-0.4.0-linux-x64.AppImage ~/Applications/Dictum.AppImage
+        mv ~/Downloads/dictum-0.5.0-linux-x64.AppImage ~/Applications/Dictum.AppImage
         chmod +x ~/Applications/Dictum.AppImage
         ```
 
@@ -109,8 +109,8 @@ The commands on this page use version 0.4.0. Put in the version you downloaded.
 
         ```sh
         cd ~/Downloads
-        tar -xzf dictum-0.4.0-linux-x64.tar.gz
-        ./dictum-0.4.0-linux-x64/install.sh
+        tar -xzf dictum-0.5.0-linux-x64.tar.gz
+        ./dictum-0.5.0-linux-x64/install.sh
         ```
 
     2. `install.sh` copies Dictum to `~/.local/lib/dictum`, links `dictum` and `dictum-gui` into `~/.local/bin` and adds Dictum to the application menu. It needs no root. Afterwards you can delete the tarball and the unpacked folder.
