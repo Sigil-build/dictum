@@ -1,4 +1,5 @@
-# A tag v<version> builds the packages and opens a DRAFT release with them; publishing it is a person's call.
+# A tag v<version> builds the packages and opens a DRAFT release with them, their provenance attestations and the
+# SBOM; then virustotal.yml adds links to VirusTotal's reports to its notes. Publishing it is a person's call.
 name: Release
 
 on:
@@ -132,3 +133,15 @@ jobs:
           gh release create "$GITHUB_REF_NAME" --draft --title "Dictum $VERSION"
           --notes "Dictum $VERSION. Windows: the MSI (per user, no admin rights) or the portable zip. Linux: the AppImage, the tarball with install.sh, or the PKGBUILD (Arch, CachyOS). SHA-256 sums in SHA256SUMS. The SBOM of the source is dictum-$VERSION-sbom.spdx.json. gh attestation verify <file> -R $GITHUB_REPOSITORY checks that a file was built by this release's workflow."
           release/*
+
+  # After the draft exists, so that the release is published with the links. Without VIRUSTOTAL_API_KEY it only
+  # leaves a notice; when VirusTotal fails, the notes say which file has no report and why, and this job fails.
+  virustotal:
+    needs: release
+    permissions:
+      contents: write
+    uses: ./.github/workflows/virustotal.yml
+    with:
+      tag: ${{ github.ref_name }}
+    secrets:
+      VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
