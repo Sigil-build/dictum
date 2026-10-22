@@ -33,9 +33,10 @@ jobs:
       - name: Build
         run: dotnet build -c Release
 
+      # DejaVu Sans for the wider-font layout test (SettingsLayoutTests), which fails without it.
       - name: Test (inside a D-Bus session for the tray tests)
         run: |
-          sudo apt-get update && sudo apt-get install -y dbus libfontconfig1
+          sudo apt-get update && sudo apt-get install -y dbus libfontconfig1 fonts-dejavu-core
           dbus-run-session -- dotnet test -c Release --no-build
 
       - name: Check catalog URLs

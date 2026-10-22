@@ -81,9 +81,10 @@ jobs:
       - name: Install the SonarScanner for .NET
         run: dotnet tool install dotnet-sonarscanner --version "$SONAR_SCANNER_VERSION" --tool-path "$RUNNER_TEMP/sonar"
 
-      # As ci.yml: D-Bus for the tray tests, fontconfig for Avalonia's headless ones.
+      # As ci.yml: D-Bus for the tray tests, fontconfig for Avalonia's headless ones, DejaVu Sans for the wider-font
+      # layout test.
       - name: Install what the tests need
-        run: sudo apt-get update && sudo apt-get install -y dbus libfontconfig1
+        run: sudo apt-get update && sudo apt-get install -y dbus libfontconfig1 fonts-dejavu-core
 
       # The scanner's analyzers report as warnings, and its targets turn TreatWarningsAsErrors off; this build turns
       # Directory.Build.props' MSBuildTreatWarningsAsErrors off too, which would make them errors. ci.yml keeps both.
