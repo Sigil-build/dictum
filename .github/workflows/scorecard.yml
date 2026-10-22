@@ -1,0 +1,47 @@
+# OpenSSF Scorecard grades the repository's security practices, publishes the result to api.scorecard.dev (the
+# README's badge reads it there) and uploads it to code scanning. The Scorecard API accepts published results only
+# from a workflow with no top-level env or defaults and no top-level write permission, whose job runs on a hosted
+# Ubuntu runner and uses only checkout, upload-artifact, upload-sarif and Scorecard itself: no run steps here.
+name: Scorecard
+
+on:
+  push:
+    branches: [main]
+  # Branch-Protection grades the rules as they are; a change to them starts a new run.
+  branch_protection_rule:
+  schedule:
+    - cron: '17 5 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  analysis:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      security-events: write
+      # The OIDC token proves to the Scorecard API that this workflow produced the results it publishes.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: ossf/scorecard-action@fa7117db83c52d787ae5a89f350999701505d78e # v2.5.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+
+      # Anyone can check the published results against this file for five days.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: scorecard-results
+          path: results.sarif
+          retention-days: 5
+
+      - uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: results.sarif
