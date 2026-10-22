@@ -12,6 +12,7 @@ on:
   schedule:
     - cron: '17 5 * * 1'
   # A run that failed, or one wanted before the next Monday, started by hand.
+  # Run it from main: Scorecard publishes results only for the default branch.
   workflow_dispatch:
 
 permissions:
@@ -50,6 +51,6 @@ jobs:
           path: results.sarif
           retention-days: 5
 
-      - uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1upload-sarif
+      - uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           sarif_file: results.sarif

@@ -130,7 +130,7 @@ jobs:
           subject-checksums: release/SHA256SUMS
           sbom-path: release/dictum-${{ needs.check.outputs.version }}-sbom.spdx.json
 
-      # The attestations as files of the release, which verify offline: gh attestation verify <file> --bundle <bundle>.
+      # The attestations as files of the release, which verify without GitHub's attestation API: gh attestation verify <file> --bundle <bundle>.
       # Each is a Sigstore bundle, a JSON document; jq -c puts it on one line, as the .intoto.jsonl name says. They
       # come after the checksums and the attestations, so neither covers them.
       - name: The attestations as release files
@@ -149,7 +149,7 @@ jobs:
           VERSION: ${{ needs.check.outputs.version }}
         run: >
           gh release create "$GITHUB_REF_NAME" --draft --title "Dictum $VERSION"
-          --notes "Dictum $VERSION. Windows: the MSI (per user, no admin rights) or the portable zip. Linux: the AppImage, the tarball with install.sh, or the PKGBUILD (Arch, CachyOS). SHA-256 sums in SHA256SUMS. The SBOM of the source is dictum-$VERSION-sbom.spdx.json. gh attestation verify <file> -R $GITHUB_REPOSITORY checks that a file was built by this release's workflow; with --bundle dictum-$VERSION.intoto.jsonl in place of -R it checks offline (dictum-$VERSION-sbom.intoto.jsonl is the SBOM's attestation)."
+          --notes "Dictum $VERSION. Windows: the MSI (per user, no admin rights) or the portable zip. Linux: the AppImage, the tarball with install.sh, or the PKGBUILD (Arch, CachyOS). SHA-256 sums in SHA256SUMS. The SBOM of the source is dictum-$VERSION-sbom.spdx.json. gh attestation verify <file> -R $GITHUB_REPOSITORY checks that a file was built by this release's workflow; with --bundle dictum-$VERSION.intoto.jsonl and -R it checks without GitHub's attestation API (dictum-$VERSION-sbom.intoto.jsonl is the SBOM's attestation)."
           release/*
 
   # After the draft exists, so that the release is published with the links. Without VIRUSTOTAL_API_KEY it only

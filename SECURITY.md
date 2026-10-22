@@ -54,7 +54,7 @@ gh attestation verify dictum-0.5.1-linux-x64.AppImage -R Sigil-build/dictum
 
 It succeeds only for a file that a workflow of this repository built, and prints which workflow and which tag.
 
-To check offline, download the attestation files of the release too: `dictum-<version>.intoto.jsonl` holds the provenance of every release file, and `dictum-<version>-sbom.intoto.jsonl` the SBOM's attestation (Sigstore bundles, one line each). Then add `--bundle` and `--repo`:
+To check without asking GitHub's attestation API, download the attestation files of the release too (`gh` still needs Sigstore's trusted root, which it fetches once and caches, or which `gh attestation trusted-root` saves for a machine with no network): `dictum-<version>.intoto.jsonl` holds the provenance of every release file, and `dictum-<version>-sbom.intoto.jsonl` the SBOM's attestation (Sigstore bundles, one line each). Then add `--bundle` and `--repo`:
 
 ```sh
 gh attestation verify dictum-0.5.1-linux-x64.AppImage --bundle dictum-0.5.1.intoto.jsonl --repo Sigil-build/dictum
