@@ -17,7 +17,8 @@
 #
 # virustotal.sh section <results> < notes > new-notes
 #   Prints the notes with a "VirusTotal" section between <!-- virustotal:start --> and <!-- virustotal:end -->: a
-#   link to https://www.virustotal.com/gui/file/<sha256> for each package sent, and why for each one that was not.
+#   link to https://www.virustotal.com/gui/file/<sha256> for each package, which needs only its SHA-256, and for one
+#   this run did not send, why.
 #   The section replaces the one an earlier run wrote, where it is, or else goes at the end. When nothing was sent
 #   and the notes have a section already, they are printed unchanged: the reports it links are still there.
 set -euo pipefail
@@ -157,10 +158,12 @@ render() {
   echo
   echo "Dictum is a new app and its files are not signed yet. Some engines judge a file by its reputation rather than by what it does, so one or two of them may flag such a file while the rest find nothing."
   echo
+  # The link needs only the SHA-256, so a package this run did not send keeps it: an earlier run may have sent it.
   # awk, as read would merge the two tabs around an empty analysis id: a tab is white space to IFS.
   awk -F'\t' '{
-    if ($3 != "") printf "- [`%s`](https://www.virustotal.com/gui/file/%s)\n", $1, $2
-    else printf "- `%s`: not sent yet (%s)\n", $1, $4
+    printf "- [`%s`](https://www.virustotal.com/gui/file/%s)", $1, $2
+    if ($3 == "") printf " (not sent in the last run: %s)", $4
+    printf "\n"
   }' "$1"
   echo "$end_marker"
 }

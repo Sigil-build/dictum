@@ -238,10 +238,12 @@ case $first in
 $first" ;;
 esac
 grep -qxF -e "$(link dictum-1.0.0-win-x64.msi "$a")" <<< "$first" || fail "no link to the MSI's report: $first"
-grep -qxF -e "- \`PKGBUILD\`: not sent yet (VirusTotal did not answer)" <<< "$first" || fail "no reason for PKGBUILD: $first"
+# The link needs only the SHA-256, so a package not sent has one too, with why it was not sent this time.
+grep -qxF -e "$(link PKGBUILD "$b") (not sent in the last run: VirusTotal did not answer)" <<< "$first" \
+  || fail "no link and reason for PKGBUILD: $first"
 grep -q 'antivirus engines' <<< "$first" || fail "the section does not say what a report is"
 grep -q 'not signed' <<< "$first" || fail "the section does not say an unsigned app may be flagged"
-echo "PASS: notes without a section get one at the end: a link per file sent, and why for a file not sent"
+echo "PASS: notes without a section get one at the end: a link per file, and why for a file not sent"
 
 again=$(printf '%s\n' "$first" | section) || fail "section failed on its own output"
 [ "$again" = "$first" ] || fail "a second run changed the notes:
@@ -250,7 +252,7 @@ results "$(row "dictum-1.0.0-win-x64.msi" "$a" "id-a" "")" "$(row "PKGBUILD" "$b
 second=$(printf '%s\n' "$first" | section) || fail "section failed on a second run with new results"
 [ "$(grep -c 'virustotal:start' <<< "$second")" = 1 ] || fail "the section is there twice: $second"
 grep -qxF -e "$(link PKGBUILD "$b")" <<< "$second" || fail "the new run's link is missing: $second"
-if grep -q 'not sent yet' <<< "$second"; then fail "the old run's line is still there: $second"; fi
+if grep -q 'not sent' <<< "$second"; then fail "the old run's line is still there: $second"; fi
 echo "PASS: a second run replaces the section rather than adding one"
 
 middle=$'Intro.\n\n<!-- virustotal:start -->\nold\n<!-- virustotal:end -->\n\n## License\n\nMIT.'
@@ -281,9 +283,16 @@ out=$(printf '%s\n' "$first" | section 2> /dev/null) || fail "section failed whe
 [ "$out" = "$first" ] || fail "with no file sent, the section that was there changed:
 $out"
 out=$(printf '%s' "$notes" | section) || fail "section failed on new notes when no file was sent"
-grep -qxF -e "- \`dictum-1.0.0-win-x64.msi\`: not sent yet (VirusTotal's request quota was used up)" <<< "$out" \
-  || fail "new notes do not say why there are no reports: $out"
+grep -qxF -e "$(link dictum-1.0.0-win-x64.msi "$a") (not sent in the last run: VirusTotal's request quota was used up)" <<< "$out" \
+  || fail "new notes do not say why the report may not be there: $out"
 echo "PASS: with no file sent, a section that is there stays, and notes without one say why there are no reports"
+
+results "$(row "dictum-1.0.0-win-x64.msi" "$a" "id-a" "")" "$(row "dictum-1.0.0-win-x64.zip" "$b" "" "the time limit came first")"
+out=$(printf '%s\n' "$second" | section) || fail "section failed on a run that sent one package of two"
+grep -qxF -e "$(link dictum-1.0.0-win-x64.msi "$a")" <<< "$out" || fail "no link for the package sent: $out"
+grep -qxF -e "$(link dictum-1.0.0-win-x64.zip "$b") (not sent in the last run: the time limit came first)" <<< "$out" \
+  || fail "the package not sent this time lost its link: $out"
+echo "PASS: a run that sends some packages keeps the link of each one it did not send, and says why"
 
 out=$(printf '' | section) || fail "section failed on empty notes"
 case $out in '<!-- virustotal:start -->'*'<!-- virustotal:end -->') ;; *) fail "empty notes: $out" ;; esac
