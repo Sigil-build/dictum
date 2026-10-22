@@ -11,6 +11,8 @@ on:
   branch_protection_rule:
   schedule:
     - cron: '17 5 * * 1'
+  # A run that failed, or one wanted before the next Monday, started by hand.
+  workflow_dispatch:
 
 permissions:
   contents: read
