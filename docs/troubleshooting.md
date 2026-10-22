@@ -472,7 +472,7 @@ Both lines must show the same hash.
 
 **Settings → About Dictum** says "The last check failed:" and why, when the [update check](reference/settings.md#check-for-updates) got no answer from GitHub. Dictum tries again at the next daily check; **Check now** tries at once. Nothing else is affected.
 
-- "GitHub could not be reached." or "GitHub did not answer within 10 seconds.": there is no network, or a firewall or proxy blocks `api.github.com`. Dictum uses the system's proxy settings.
+- "GitHub could not be reached." or "GitHub did not answer within 10 seconds.": there is no network, or a firewall or proxy blocks `api.github.com`. On Windows, Dictum uses the system's proxy settings. On Linux it reads only the `https_proxy` (or `all_proxy`) and `no_proxy` environment variables it was started with, not the proxy set in GNOME's or KDE's settings.
 - "GitHub asks to wait before the next check.": GitHub answers 60 requests an hour from one address without a login, and other programs on your network used them up. Wait an hour.
 - "GitHub answered" with a number: GitHub had a problem of its own. Try later.
 
