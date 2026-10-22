@@ -159,10 +159,13 @@ public sealed class UpdateChecker : IDisposable
     /// <summary>The user was told of this version, or of a later one.</summary>
     private bool Told(ReleaseVersion version) => ReleaseVersion.Parse(_state.Notified) is { } told && told >= version;
 
-    /// <summary>The release, when it is newer than this app and its page can be opened.</summary>
+    /// <summary>
+    /// The release, when it is newer than this app and its page is Dictum's release page on GitHub: the page may come
+    /// from <c>update-check.json</c>, and a click opens it.
+    /// </summary>
     private AvailableUpdate? Newer(string? version, string? page) =>
         _current is { } current && ReleaseVersion.Parse(version) is { } latest && latest > current
-        && Uri.TryCreate(page, UriKind.Absolute, out var uri)
+        && GitHubReleases.IsReleasePage(page, out var uri)
             ? new AvailableUpdate(latest.ToString(), uri)
             : null;
 

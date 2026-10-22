@@ -141,6 +141,21 @@ public sealed class UpdateCheckerTests : IDisposable
         Assert.Equal([new AvailableUpdate("0.5.0", Page050), new AvailableUpdate("0.6.0", Page060)], _announced);
     }
 
+    // The page opens with a click in the tray or on About, so one edited into the file must be Dictum's release page too.
+    [Theory]
+    [InlineData(@"file:///C:/Windows/System32/calc.exe")]
+    [InlineData("http://github.com/Sigil-build/dictum/releases/tag/v0.5.0")]
+    [InlineData("https://example.com/Sigil-build/dictum/releases/tag/v0.5.0")]
+    [InlineData("https://github.com/someone/dictum/releases/tag/v0.5.0")]
+    public void APageInTheFileThatIsNotDictumsReleasePageIsNotOffered(string page)
+    {
+        new UpdateCheckFile(File, _log).Save(new UpdateCheckState { LastChecked = _clock.GetUtcNow(), Latest = "0.5.0", Page = page });
+
+        using var checker = Checker();
+
+        Assert.Null(checker.Status.Available);
+    }
+
     [Fact]
     public void AnUpdateInstalledSinceIsNotOffered()
     {

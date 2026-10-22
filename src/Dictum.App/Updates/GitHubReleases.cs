@@ -116,7 +116,8 @@ public sealed class GitHubReleases(HttpClient http, string version, TimeSpan? ti
         || (response.StatusCode == HttpStatusCode.Forbidden
             && response.Headers.TryGetValues(RateLimitRemaining, out var remaining) && remaining.FirstOrDefault() == "0");
 
-    private static bool IsReleasePage(string url, out Uri page) =>
+    /// <summary>An https page under Dictum's releases on github.com, the only kind the browser is asked to open.</summary>
+    internal static bool IsReleasePage(string? url, out Uri page) =>
         Uri.TryCreate(url, UriKind.Absolute, out page!) && page.Scheme == Uri.UriSchemeHttps
         && page.AbsoluteUri.StartsWith(PagePrefix, StringComparison.Ordinal);
 }
