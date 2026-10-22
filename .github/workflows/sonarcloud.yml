@@ -1,0 +1,106 @@
+# SonarQube Cloud (sonarcloud.io) analyses every push to main and each pull request from a branch of this repository,
+# with the SonarScanner for .NET around a dotnet build and the tests, whose coverage it imports (Visual Studio's XML
+# format, from Microsoft.Testing.Platform's code coverage extension). The analysis carries Dictum's version
+# (VersionPrefix), so new code, which the quality gate wants 80 % covered, starts again at each version, as long as
+# the project's new code definition is "Previous version", SonarQube Cloud's default. A fork's pull request is not
+# analysed, and a run without SONAR_TOKEN (a fork's, Dependabot's, or before the secret exists) skips with a notice.
+#
+# Set up once, in SonarQube Cloud:
+# - import the GitHub organization as sigil-build and the repository as the project Sigil-build_dictum (the two
+#   names are in env below);
+# - turn off Automatic Analysis (the project's Administration > Analysis Method): with it on, this analysis fails;
+# - create a token and store it in GitHub as the organization secret SONAR_TOKEN.
+name: SonarCloud
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+  SONAR_ORGANIZATION: sigil-build
+  SONAR_PROJECT_KEY: Sigil-build_dictum
+  SONAR_SCANNER_VERSION: 12.0.0
+
+jobs:
+  token:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - name: Analyse only with SONAR_TOKEN, and never a fork's code
+        id: check
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          FROM_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        run: |
+          if [ "$FROM_FORK" = true ]; then
+            echo "::notice::A pull request from a fork gets no SONAR_TOKEN, so SonarQube Cloud does not analyse it."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "$SONAR_TOKEN" ]; then
+            echo "::notice::SONAR_TOKEN is not set, so SonarQube Cloud did not analyse this change."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  analyze:
+    needs: token
+    if: needs.token.outputs.run == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    steps:
+      # The whole history, so that SonarQube Cloud can tell new code and blame each line.
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # The scanner runs on this Java (SonarQube Cloud needs 21 or later) instead of downloading a JRE.
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Install the SonarScanner for .NET
+        run: dotnet tool install dotnet-sonarscanner --version "$SONAR_SCANNER_VERSION" --tool-path "$RUNNER_TEMP/sonar"
+
+      # As ci.yml: D-Bus for the tray tests, fontconfig for Avalonia's headless ones.
+      - name: Install what the tests need
+        run: sudo apt-get update && sudo apt-get install -y dbus libfontconfig1
+
+      # The scanner's analyzers report as warnings, and its targets turn TreatWarningsAsErrors off; this build turns
+      # Directory.Build.props' MSBuildTreatWarningsAsErrors off too, which would make them errors. ci.yml keeps both.
+      # Each test project writes its coverage to a file of its own in $RUNNER_TEMP/coverage. A test that fails only
+      # lowers the coverage, so the analysis still goes up; ci.yml fails on it.
+      #
+      # This analysis runs on Linux, so code that only runs on Windows (the Win32 platform project and the Windows
+      # tray presenter) can never be covered here: it is left out of the coverage, and its tests run on Windows
+      # (ci.yml's Windows job, Integration.Tests). Cross-platform code is never listed.
+      - name: Build, test and analyse
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          set -euo pipefail
+          scanner="$RUNNER_TEMP/sonar/dotnet-sonarscanner"
+          coverage="$RUNNER_TEMP/coverage"
+          version=$(dotnet msbuild src/Dictum.Cli/Dictum.Cli.csproj -getProperty:VersionPrefix)
+          "$scanner" begin /k:"$SONAR_PROJECT_KEY" /o:"$SONAR_ORGANIZATION" /v:"$version" /d:sonar.token="$SONAR_TOKEN" \
+            /d:sonar.scanner.skipJreProvisioning=true /d:sonar.cs.vscoveragexml.reportsPaths="$coverage/*.xml" \
+            /d:sonar.coverage.exclusions="src/Dictum.Platform.Windows/**,src/Dictum.App/Tray/WindowsTrayPresenter.cs"
+          dotnet build Dictum.slnx -c Release -p:MSBuildTreatWarningsAsErrors=false
+          if ! dbus-run-session -- dotnet test -c Release --no-build --coverage --coverage-output-format xml --results-directory "$coverage"; then
+            echo "::warning::A test failed, so SonarQube Cloud gets less coverage than the tests give; ci.yml names the test."
+          fi
+          "$scanner" end /d:sonar.token="$SONAR_TOKEN"

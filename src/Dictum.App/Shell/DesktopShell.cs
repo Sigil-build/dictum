@@ -4,8 +4,10 @@ using Avalonia.Platform;
 using Avalonia.Threading;
 using Dictum.App.Daemon;
 using Dictum.App.Overlay;
+using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.App.Tray;
+using Dictum.App.Updates;
 using Dictum.App.ViewModels;
 using Dictum.App.ViewModels.Settings;
 using Dictum.App.Views.Settings;
@@ -46,6 +48,8 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     private readonly ShellServices _services;
     private readonly SetupCoordinator _setup;
     private readonly StartGate _start = new();
+    private readonly UpdateChecker? _updates;
+    private readonly IUpdatePopup _updatePopup;
     private SettingsViewModel? _settings;
     private SettingsWindow? _settingsWindow;
     private ConfigWatcher? _watcher;
@@ -62,6 +66,8 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     /// <param name="autostart">The OS login item for Settings → General; none when left out, so tests never reach the real one.</param>
     /// <param name="probeHardware">The GPU probe for Settings → Models; the real Vulkan one when left out.</param>
     /// <param name="desktop">The desktop, read once at start; this one when left out.</param>
+    /// <param name="updates">The update check, which the shell starts and disposes; none when left out, so tests never reach GitHub.</param>
+    /// <param name="updatePopup">The OS's notification of a new version; none when left out.</param>
     public DesktopShell(
         AppPaths paths,
         DictumLog log,
@@ -72,12 +78,16 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         IOverlayDesktop? overlayDesktop = null,
         IAutostart? autostart = null,
         Func<HardwareInfo>? probeHardware = null,
-        DesktopEnvironment? desktop = null)
+        DesktopEnvironment? desktop = null,
+        UpdateChecker? updates = null,
+        IUpdatePopup? updatePopup = null)
     {
         desktop ??= DesktopEnvironment.Detect();
         _paths = paths;
         _log = log;
         _store = store;
+        _updates = updates;
+        _updatePopup = updatePopup ?? UpdatePopup.None;
         var logFile = log.FilePath ?? Path.Combine(paths.LogsDirectory, AppPaths.GuiLogName);
         Supervisor = new DaemonSupervisor(daemonSocket, () => store.Exists, launcher, log, logFile);
         Status = new StatusViewModel(store.Path, logFile, Supervisor.Restart);
@@ -93,7 +103,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         _services = new ShellServices(
             paths, Catalog.BuiltIn, Supervisor, Status, Frames, UiTimers.Instance, autostart, OwnExecutable(), _sounds,
             () => _secrets.Value, () => _runner.Value, () => _modelDownloads ?? IModelDownloads.None, Hardware, FreeDiskBytes,
-            new SpeedMeasurements(), desktop, _integration, wait => Task.Delay(wait), OpenDocsPage, TimeProvider.System, log);
+            new SpeedMeasurements(), desktop, _integration, wait => Task.Delay(wait), OpenDocsPage, TimeProvider.System, log, updates);
         _setup = new SetupCoordinator(_services, store, Supervisor.Restart, Supervisor.ConfigSaved, () => _settings?.Session.Flush());
     }
 
@@ -142,6 +152,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         var config = TryLoadConfig();
         _tray.OnConfig(config);
         Overlay.OnConfig(config);
+        StartUpdates(config);
         WatchConfig();
         _tick = new DispatcherTimer { Interval = TrayTickInterval };
         _tick.Tick += (_, _) => _tray.Tick();
@@ -220,6 +231,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
                     {
                         _tray.OnConfig(changed);
                         Overlay.OnConfig(changed);
+                        _updates?.Enable(changed.General.CheckForUpdates);
                         _settings?.Session.OnFileChanged(changed);
                     });
                     return Task.CompletedTask;
@@ -251,6 +263,37 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     public void ShowHistory() => ShowSettings(SettingsPageKey.History);
 
     public void ShowDocumentation() => OpenDocsPage(DocsPage.Home, null);
+
+    public void ShowAbout() => ShowSettings(SettingsPageKey.About);
+
+    /// <summary>The tray's "Update available": the release page in the browser. Any thread.</summary>
+    public void OpenUpdate()
+    {
+        if (_updates?.Status.Available is { } update)
+        {
+            WebLinks.Open(update.Page, _log);
+        }
+    }
+
+    /// <summary>
+    /// Shows what an earlier run found at once, then checks on the schedule while <c>general.checkForUpdates</c> is on,
+    /// which it is without a config. A config that cannot be read may have turned it off, so it stays off until the file
+    /// reads again. A new version goes into the tray menu and, once, into the OS's notification.
+    /// </summary>
+    private void StartUpdates(DictumConfig? config)
+    {
+        if (_updates is not { } updates)
+        {
+            return;
+        }
+
+        updates.Changed += () => _tray.OnUpdate(updates.Status.Available);
+        updates.Announced += update => _updatePopup.Show(
+            _integration.Tray, UiText.Format(Strings.UpdateNotificationTitle, update.Version), Strings.UpdateNotificationText,
+            () => WebLinks.Open(update.Page, _log));
+        _tray.OnUpdate(updates.Status.Available);
+        updates.Enable(config?.General.CheckForUpdates ?? !_store.Exists);
+    }
 
     /// <summary>
     /// Opens the documentation in the language the windows are in, which <see cref="UiCulture.Apply"/> set from
@@ -332,6 +375,8 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         _tick?.Stop();
         _watcher?.Dispose();
         _settings?.Dispose();
+        _updates?.Dispose();
+        (_updatePopup as IDisposable)?.Dispose();
         (_overlayDesktop as IDisposable)?.Dispose();
         await _integration.DisposeAsync().ConfigureAwait(false);
         if (_downloads is not null)

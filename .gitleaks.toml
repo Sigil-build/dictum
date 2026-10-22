@@ -1,0 +1,16 @@
+# gitleaks' default rules (security.yml scans the whole history with them), less two kinds of false positive.
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "An Avalonia resource key (x:Key=\"...\") names a style or a brush, not a secret"
+targetRules = ["generic-api-key"]
+regexTarget = "line"
+regexes = ['''\bx:Key\s*=\s*"''']
+
+[[allowlists]]
+description = "The made-up API key that KeyRedactionTests checks the masking with"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^tests/Dictum\.Core\.Tests/Configuration/KeyRedactionTests\.cs$''']
+regexes = ['''^sk-live-4f9a2c$''']

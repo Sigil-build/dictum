@@ -37,6 +37,8 @@
     <PackageVersion Include="xunit.v3" Version="4.0.1" />
     <!-- Part of xunit.v3, at the version it pins; the shared test library references it alone. -->
     <PackageVersion Include="xunit.v3.extensibility.core" Version="4.0.1" />
+    <!-- Test coverage for SonarQube Cloud, on the Microsoft.Testing.Platform version xunit.v3 uses. -->
+    <PackageVersion Include="Microsoft.Testing.Extensions.CodeCoverage" Version="18.11.2" />
   </ItemGroup>
   <ItemGroup Label="Packaging">
     <PackageVersion Include="WixToolset.Util.wixext" Version="6.0.1" />

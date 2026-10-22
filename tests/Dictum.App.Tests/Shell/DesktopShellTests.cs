@@ -5,8 +5,11 @@ using Dictum.App.Daemon;
 using Dictum.App.Overlay;
 using Dictum.App.Shell;
 using Dictum.App.Tests.Daemon;
+using Dictum.App.Tests.Settings;
 using Dictum.App.Tests.Tray;
+using Dictum.App.Tests.Updates;
 using Dictum.App.Tray;
+using Dictum.App.Updates;
 using Dictum.App.ViewModels.Settings;
 using Dictum.App.ViewModels.Setup;
 using Dictum.App.Views.Settings;
@@ -59,7 +62,7 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
     });
 
     [Fact]
-    public Task TraySettingsAndHistoryOpenOneWindowAtTheirPage() => fx.UiAsync(async () =>
+    public Task TraySettingsHistoryAndAboutOpenOneWindowAtTheirPage() => fx.UiAsync(async () =>
     {
         var (shell, launcher, presenter) = Create();
         shell.Start(Application.Current!, _ => { });
@@ -72,6 +75,10 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
 
         presenter.Click(presenter.Shown[^1].Menu.First(i => i.Command == TrayCommand.Settings));
         await WaitAsync(() => model.Current is GeneralPage);
+        Assert.Single(SettingsWindow.Open);
+
+        presenter.Click(presenter.Shown[^1].Menu.First(i => i.Command == TrayCommand.About));
+        await WaitAsync(() => model.Current is AboutPage);
         Assert.Single(SettingsWindow.Open);
 
         CloseSettings();
@@ -411,7 +418,128 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         }
     }
 
-    private (DesktopShell Shell, FakeLauncher Launcher, TrayControllerTests.FakePresenter Presenter) Create(bool tray = true, bool config = true)
+    // The check runs on the shell's timers: found, the version is in the tray menu and in one notification.
+    [Fact]
+    public Task AFoundUpdateIsInTheTrayAndNotifiesOnce() => fx.UiAsync(async () =>
+    {
+        var (updates, timers) = Updates("v0.5.0");
+        var popup = new FakePopup();
+        var (shell, launcher, presenter) = Create(updates: updates, popup: popup);
+        shell.Start(Application.Current!, _ => { });
+        await WaitAsync(() => presenter.Shown.Count > 0);
+        Assert.True(updates.Enabled);
+
+        timers.Fire();
+        timers.Fire();
+
+        await WaitAsync(() => presenter.Shown[^1].Menu.Any(i => i.Label == "Update available: 0.5.0"));
+        var shown = Assert.Single(popup.Shown);
+        Assert.Equal(("Dictum 0.5.0 is available", "Click to open the release page and download it."), (shown.Title, shown.Text));
+        Assert.Same(presenter, shown.Tray);
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
+    [Fact]
+    public Task TurningTheCheckOffInTheConfigStopsItsTimers() => fx.UiAsync(async () =>
+    {
+        var (updates, timers) = Updates("v0.5.0");
+        var (shell, launcher, _) = Create(updates: updates, popup: new FakePopup());
+        shell.Start(Application.Current!, _ => { });
+        Assert.True(updates.Enabled);
+
+        new ConfigStore(Paths().ConfigFile, NullLog.Instance).Save(new DictumConfig { General = new GeneralSettings { CheckForUpdates = false } });
+
+        await WaitAsync(() => !updates.Enabled);
+        Assert.Equal(0, timers.Pending);
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
+    [Fact]
+    public Task AConfigWithTheCheckOffNeverStartsIt() => fx.UiAsync(async () =>
+    {
+        var (updates, timers) = Updates("v0.5.0");
+        var (shell, launcher, _) = Create(config: false, updates: updates, popup: new FakePopup());
+        new ConfigStore(Paths().ConfigFile, NullLog.Instance).Save(new DictumConfig { General = new GeneralSettings { CheckForUpdates = false } });
+
+        shell.Start(Application.Current!, _ => { });
+
+        Assert.Equal((false, 0), (updates.Enabled, timers.Pending));
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
+    // The file may say the check is off: one Dictum cannot read must not turn it on. Without a file it is on.
+    [Fact]
+    public Task AConfigThatCannotBeReadDoesNotStartTheCheck() => fx.UiAsync(async () =>
+    {
+        var (updates, timers) = Updates("v0.5.0");
+        var (shell, launcher, _) = Create(config: false, updates: updates, popup: new FakePopup());
+        Directory.CreateDirectory(Path.GetDirectoryName(Paths().ConfigFile)!);
+        File.WriteAllText(Paths().ConfigFile, """{ "general": { "checkForUpdates": false, """);
+
+        shell.Start(Application.Current!, _ => { });
+
+        Assert.Equal((false, 0), (updates.Enabled, timers.Pending));
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
+    [Fact]
+    public Task WithoutAConfigTheCheckIsOn() => fx.UiAsync(async () =>
+    {
+        var (updates, timers) = Updates("v0.5.0");
+        var (shell, launcher, _) = Create(config: false, updates: updates, popup: new FakePopup());
+
+        shell.Start(Application.Current!, _ => { });
+
+        Assert.Equal((true, 1), (updates.Enabled, timers.Pending));
+        CloseSetup();
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
+    // A version found in an earlier run is in the menu from the start, before any check of this run.
+    [Fact]
+    public Task AnUpdateFoundBeforeARestartIsInTheMenuAtOnce() => fx.UiAsync(async () =>
+    {
+        new UpdateCheckFile(Paths().UpdateCheckFile, NullLog.Instance).Save(new UpdateCheckState
+        {
+            LastChecked = DateTimeOffset.UtcNow,
+            Latest = "0.5.0",
+            Page = "https://github.com/Sigil-build/dictum/releases/tag/v0.5.0",
+            Notified = "0.5.0",
+        });
+        var (updates, _) = Updates("v0.5.0");
+        var (shell, launcher, presenter) = Create(updates: updates, popup: new FakePopup());
+
+        shell.Start(Application.Current!, _ => { });
+
+        await WaitAsync(() => presenter.Shown.Count > 0);
+        Assert.Contains(presenter.Shown[^1].Menu, i => i.Command == TrayCommand.OpenUpdate);
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
+    private (UpdateChecker Checker, ManualTimers Timers) Updates(string tag)
+    {
+        var timers = new ManualTimers();
+        var checker = new UpdateChecker(
+            new FakeReleases { Next = FakeReleases.Found(tag) }, new UpdateCheckFile(Paths().UpdateCheckFile, NullLog.Instance), timers,
+            TimeProvider.System, "0.4.0", NullLog.Instance);
+        return (checker, timers);
+    }
+
+    private sealed class FakePopup : IUpdatePopup
+    {
+        public List<(ITrayPresenter? Tray, string Title, string Text, Action Clicked)> Shown { get; } = [];
+
+        public void Show(ITrayPresenter? tray, string title, string text, Action clicked) => Shown.Add((tray, title, text, clicked));
+    }
+
+    private (DesktopShell Shell, FakeLauncher Launcher, TrayControllerTests.FakePresenter Presenter) Create(
+        bool tray = true, bool config = true, UpdateChecker? updates = null, IUpdatePopup? popup = null)
     {
         var paths = new AppPaths(_dir.File("config"), _dir.File("data"));
         var log = new DictumLog(LogLevel.Error, includeText: false, console: null, logsDirectory: null);
@@ -425,7 +553,7 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         var launcher = new FakeLauncher(socket);
         var presenter = new TrayControllerTests.FakePresenter();
         var shell = new DesktopShell(paths, log, store, socket, launcher, (_, _) => Task.FromResult<ITrayPresenter?>(tray ? presenter : null),
-            probeHardware: () => new HardwareInfo("Test GPU", 0, 4L * 1024 * 1024 * 1024));
+            probeHardware: () => new HardwareInfo("Test GPU", 0, 4L * 1024 * 1024 * 1024), updates: updates, updatePopup: popup);
         return (shell, launcher, presenter);
     }
 
@@ -458,7 +586,7 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         shell.ShowSettings(SettingsPageKey.Profiles);
         var model = (SettingsViewModel)SettingsWindow.Open[0].DataContext!;
 
-        Assert.Equal(["General", "Profiles", "Speech providers", "Processors", "Models", "System", "History"], model.Pages.Select(p => p.Title));
+        Assert.Equal(["General", "Profiles", "Speech providers", "Processors", "Models", "System", "History", "About Dictum"], model.Pages.Select(p => p.Title));
         Assert.IsType<ProfilesPage>(model.Current);
         CloseSettings();
         await shell.DisposeAsync();

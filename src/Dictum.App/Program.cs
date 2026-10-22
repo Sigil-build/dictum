@@ -3,7 +3,10 @@ using Avalonia;
 using Avalonia.Controls;
 using Dictum.App.Daemon;
 using Dictum.App.Overlay;
+using Dictum.App.Settings;
 using Dictum.App.Shell;
+using Dictum.App.Updates;
+using Dictum.App.ViewModels.Settings;
 using Dictum.Core;
 using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
@@ -53,9 +56,14 @@ internal static class Program
 
         var daemonSocket = IpcEndpoint.SocketPath(paths);
         var appSocket = SingleInstance.SocketPathFor(daemonSocket);
+        using var updateHttp = GitHubReleases.CreateHttpClient();
+        var version = SettingsViewModel.AppVersion();
+        var updates = new UpdateChecker(
+            new GitHubReleases(updateHttp, version), new UpdateCheckFile(paths.UpdateCheckFile, log), UiTimers.Instance, TimeProvider.System, version, log);
         var shell = new DesktopShell(paths, log, store, daemonSocket, DaemonProcessLauncher.NextToApp(log),
             (app, highContrast) => DesktopIntegration.CreateTrayAsync(desktop, app, highContrast, paths, log),
-            OverlayDesktop.ForThisDesktop(desktop, log), PlatformFactory.CreateAutostart(), desktop: desktop);
+            OverlayDesktop.ForThisDesktop(desktop, log), PlatformFactory.CreateAutostart(), desktop: desktop,
+            updates: updates, updatePopup: UpdatePopup.For(desktop, log));
 
         // No synchronisation context exists yet, so blocking here cannot deadlock.
         var instance = SingleInstance.AcquireAsync(appSocket, shell.OnCommand, log).GetAwaiter().GetResult();

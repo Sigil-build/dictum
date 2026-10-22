@@ -14,6 +14,9 @@ public enum DocsPage
 
     /// <summary><c>dictum/troubleshooting/</c>, from <c>docs/troubleshooting.md</c>.</summary>
     Troubleshooting,
+
+    /// <summary><c>dictum/privacy/</c>, from <c>docs/privacy.md</c>.</summary>
+    Privacy,
 }
 
 /// <summary>A page, and the id of a section on it, or null for the top of the page.</summary>
@@ -40,6 +43,7 @@ public static class DocsAnchors
         public const string Models = "models";
         public const string History = "history";
         public const string System = "system";
+        public const string About = "about";
     }
 
     /// <summary>On <see cref="DocsPage.Troubleshooting"/>: the sections that doctor's rows link to.</summary>
@@ -83,6 +87,7 @@ public static class DocsLinks
         new(DocsPage.Settings, DocsAnchors.Settings.Models),
         new(DocsPage.Settings, DocsAnchors.Settings.History),
         new(DocsPage.Settings, DocsAnchors.Settings.System),
+        new(DocsPage.Settings, DocsAnchors.Settings.About),
         new(DocsPage.Troubleshooting, DocsAnchors.Troubleshooting.Doctor),
         new(DocsPage.Troubleshooting, DocsAnchors.Troubleshooting.Config),
         new(DocsPage.Troubleshooting, DocsAnchors.Troubleshooting.ConfigWarnings),
@@ -96,6 +101,7 @@ public static class DocsLinks
         new(DocsPage.Troubleshooting, DocsAnchors.Troubleshooting.Daemon),
         new(DocsPage.Troubleshooting, DocsAnchors.Troubleshooting.SpeechRecognition),
         new(DocsPage.Troubleshooting, DocsAnchors.Troubleshooting.LlmCleanup),
+        new(DocsPage.Privacy, null),
     ];
 
     /// <summary>
@@ -125,6 +131,7 @@ public static class DocsLinks
             DocsPage.Home => "dictum/",
             DocsPage.Settings => "dictum/reference/settings/",
             DocsPage.Troubleshooting => "dictum/troubleshooting/",
+            DocsPage.Privacy => "dictum/privacy/",
             _ => throw new ArgumentOutOfRangeException(nameof(page), page, null),
         };
 

@@ -1,0 +1,96 @@
+# Sends the packages of a release (the MSI, the zip, the AppImage and the tarball) to VirusTotal and writes a
+# "VirusTotal" section with a link to each one's report into the release notes, between marker comments, so a run
+# for the same release replaces the section. SHA256SUMS, the PKGBUILD and the SBOM are text, and are not sent. A
+# package VirusTotal knows already is not sent again: a run for a release whose packages went up costs one request each.
+# release.yml calls it once the draft release exists. It runs again when the release is published, so that the section
+# is back if a person replaced the draft's notes, as the release notes prepared for 0.4.0 did. By hand, for an earlier
+# release or to check the files again:
+#   gh workflow run virustotal.yml -f tag=v0.4.0
+name: VirusTotal
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: The release's tag, such as v0.4.0
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+    secrets:
+      VIRUSTOTAL_API_KEY:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    # The script starts no request after 20 minutes, and an upload takes at most 5.
+    timeout-minutes: 30
+    permissions:
+      # To read a draft release and to write its notes.
+      contents: write
+    # A second run for the same release waits for the first, rather than sharing the quota and the notes with it.
+    concurrency:
+      group: virustotal-${{ inputs.tag || github.event.release.tag_name }}
+    env:
+      TAG: ${{ inputs.tag || github.event.release.tag_name }}
+    steps:
+      - name: The API key is set
+        id: key
+        env:
+          VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+        run: |
+          if [ -n "$VIRUSTOTAL_API_KEY" ]; then
+            echo "set=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::VIRUSTOTAL_API_KEY is not set, so the packages of $TAG were not sent to VirusTotal."
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.key.outputs.set == 'true'
+        with:
+          persist-credentials: false
+
+      - name: Download the release's files
+        if: steps.key.outputs.set == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir "$RUNNER_TEMP/files"
+
+      - name: Upload the packages to VirusTotal
+        if: steps.key.outputs.set == 'true'
+        env:
+          VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
+        run: bash .github/scripts/virustotal.sh upload "$RUNNER_TEMP/files" "$RUNNER_TEMP/virustotal.tsv"
+
+      # The notes are read just before they are written, so an edit made while the files uploaded is kept.
+      - name: Write the links into the release notes
+        if: steps.key.outputs.set == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body > "$RUNNER_TEMP/notes.md"
+          bash .github/scripts/virustotal.sh section "$RUNNER_TEMP/virustotal.tsv" < "$RUNNER_TEMP/notes.md" > "$RUNNER_TEMP/new-notes.md"
+          if cmp -s "$RUNNER_TEMP/notes.md" "$RUNNER_TEMP/new-notes.md"; then
+            echo "The notes of $TAG already say this."
+          else
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$RUNNER_TEMP/new-notes.md"
+          fi
+
+      # The notes say why a package was not sent; the run fails, so that someone runs it again.
+      - name: Every package was sent
+        if: steps.key.outputs.set == 'true'
+        run: |
+          missing=$(awk -F'\t' '$3 == "" { print $1 }' "$RUNNER_TEMP/virustotal.tsv" | paste -sd ' ' -)
+          if [ -n "$missing" ]; then
+            echo "::error::Not sent to VirusTotal: $missing. Try again later: gh workflow run virustotal.yml -f tag=$TAG"
+            exit 1
+          fi

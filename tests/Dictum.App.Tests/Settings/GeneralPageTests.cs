@@ -285,11 +285,25 @@ public sealed class GeneralPageTests : IDisposable
     {
         var (page, session, _) = Open(new GeneralSettings { HistorySize = 100 });
 
-        session.OnFileChanged(new DictumConfig { General = new GeneralSettings { HistorySize = 77, Sounds = false } });
+        session.OnFileChanged(new DictumConfig { General = new GeneralSettings { HistorySize = 77, Sounds = false, CheckForUpdates = false } });
 
         Assert.Equal(77, page.HistorySize);
         Assert.False(page.Sounds);
+        Assert.False(page.CheckForUpdates);
         Assert.Equal(0, _timers.Pending);
+    }
+
+    // The desktop app reads the file it is saved to, and stops or starts its check.
+    [Fact]
+    public void CheckForUpdatesShowsTheConfigAndIsSaved()
+    {
+        var (page, session, _) = Open(new GeneralSettings { CheckForUpdates = true });
+        Assert.True(page.CheckForUpdates);
+
+        page.CheckForUpdates = false;
+
+        Assert.False(session.Config.General.CheckForUpdates);
+        Assert.False(Open(new GeneralSettings { CheckForUpdates = false }).Page.CheckForUpdates);
     }
 
 

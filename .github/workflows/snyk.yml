@@ -1,0 +1,107 @@
+# Snyk tests the NuGet packages of every project (Snyk Open Source, which reads each obj/project.assets.json after
+# dotnet restore, where Central Package Management's versions are resolved) and the source itself (Snyk Code, SAST),
+# and uploads both to code scanning, where the alerts and a pull request's check live: a finding does not fail this
+# job, a scan that cannot run does. A push to main also records the packages in Snyk (snyk monitor), which then
+# reports new advisories for them. A fork's pull request is not scanned, and a run without SNYK_TOKEN (a fork's,
+# Dependabot's, or before the secret exists) skips with a notice.
+#
+# Set up once, in Snyk (snyk.io): pick the organization the scans belong to as your preferred organization (the CLI
+# uses the token's), turn on Snyk Code in its settings, and store an API token as the organization secret SNYK_TOKEN.
+name: Snyk
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_NOLOGO: 1
+
+jobs:
+  token:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - name: Scan only with SNYK_TOKEN, and never a fork's code
+        id: check
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          FROM_FORK: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository }}
+        run: |
+          if [ "$FROM_FORK" = true ]; then
+            echo "::notice::A pull request from a fork gets no SNYK_TOKEN, so Snyk does not scan it."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          elif [ -z "$SNYK_TOKEN" ]; then
+            echo "::notice::SNYK_TOKEN is not set, so Snyk did not scan this change."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  scan:
+    needs: token
+    if: needs.token.outputs.run == 'true'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      # Downloads the CLI and checks it against the SHA-256 that Snyk publishes beside it.
+      - uses: snyk/actions/setup@9adf32b1121593767fc3c057af55b55db032dc04 # v1.0.0
+        with:
+          snyk-version: v1.1308.2
+
+      # Without NuGetAudit here: with warnings as errors, an advisory would fail the restore before Snyk reports it.
+      - name: Restore
+        run: dotnet restore Dictum.slnx -p:NuGetAudit=false
+
+      # Exit status 1 means Snyk found issues: they go to code scanning and the job goes on; 2 and 3, it could not scan.
+      - name: Snyk Open Source
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          status=0
+          snyk test --all-projects --sarif-file-output="$RUNNER_TEMP/snyk-open-source.raw.sarif" || status=$?
+          [ "$status" -le 1 ] || exit "$status"
+          bash .github/scripts/sarif-one-run.sh "$RUNNER_TEMP/snyk-open-source.raw.sarif" "$RUNNER_TEMP/snyk-open-source.sarif"
+
+      - uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: ${{ runner.temp }}/snyk-open-source.sarif
+          category: snyk-open-source
+
+      - name: Snyk Code
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          status=0
+          snyk code test --sarif-file-output="$RUNNER_TEMP/snyk-code.raw.sarif" || status=$?
+          [ "$status" -le 1 ] || exit "$status"
+          bash .github/scripts/sarif-one-run.sh "$RUNNER_TEMP/snyk-code.raw.sarif" "$RUNNER_TEMP/snyk-code.sarif"
+
+      - uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: ${{ runner.temp }}/snyk-code.sarif
+          category: snyk-code
+
+      - name: Record the packages in Snyk
+        if: github.event_name == 'push'
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk monitor --all-projects

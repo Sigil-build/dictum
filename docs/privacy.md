@@ -10,10 +10,10 @@ Dictum works on your computer. This page says what it uses there, when, and what
 | The keyboard | Listens for your hotkeys while the daemon runs; presses Ctrl+V to paste | Nowhere: no key is stored or logged. |
 | The clipboard | While it pastes: saves the text that was there, and puts it back | Nowhere. |
 | The keyring | Only for API keys written as `secret:<name>` | Sent only to the server that key is for. |
-| The network | Only the servers you add, and model downloads from Dictum's catalog | The servers you chose, and Hugging Face for models. |
+| The network | The servers you add, model downloads from Dictum's catalog, and the desktop app's update check | The servers you chose, Hugging Face for models, and GitHub for the newest version's number. |
 | History and logs | After each dictation, and while Dictum runs | Files on your computer. |
 
-Dictum sends no telemetry: no usage statistics, no crash reports, no update checks.
+Dictum sends no telemetry: no usage statistics, no crash reports. Its update check asks GitHub for the newest version and sends nothing about you or your use of Dictum.
 
 ## Microphone {#microphone}
 
@@ -79,16 +79,17 @@ Dictum connects to these servers, and to no others:
 - **LLM servers of your processors.** For each dictation in a profile whose chain has an LLM prompt, Dictum sends the prompt to `<URL>/chat/completions`: the recognised text and its language, and, in prompts you write yourself, the focused app's name and your words if the prompt asks for them. Settings sends text there too: the **Preview** of an LLM prompt in **Settings → Processors** sends its **Sample sentence** 600 ms after each change, while the editor is on screen, and **History** sends an entry's recognised text when you run it through a chain again.
 - **Checks of those servers.** `dictum doctor`, **Settings → System** and the server test in the setup wizard ask `<URL>/models`. A speech server without that address gets half a second of silence instead. A provider's **Test** in **Settings → Speech providers** sends five seconds from the microphone, or Dictum's built-in sample.
 - **Model downloads.** Dictum downloads speech models only from the addresses in the catalog built into it, which are fixed versions of files on Hugging Face. It does so only when you choose a model in the setup wizard or in **Settings → Models**, or run `dictum init` or `dictum models pull`. Before Dictum uses a file, it checks the file's SHA-256 against the catalog, and deletes a download that does not match.
+- **The update check.** While **Check for updates** in **Settings → General** is on, which it is unless you turn it off, the desktop app asks GitHub for Dictum's newest release a minute after it starts and then once a day: `GET https://api.github.com/repos/Sigil-build/dictum/releases/latest`, without a login or a token. **Check now** on **Settings → About Dictum** asks the same when you click it, even with the setting off. The request names Dictum and its version, as `User-Agent: Dictum/0.4.0`; GitHub also sees your IP address, as for any connection. Nothing else goes with it: no ID, no settings, no text, no statistics. Of the answer, Dictum reads the newest version's number and the address of its page, and keeps them in `update-check.json` with the time of the check (see [Files](reference/files.md#data-folder)). It downloads and installs nothing. `dictum` and the daemon never check.
 
-A profile with a local Whisper provider and no LLM prompt sends nothing over the network.
+A profile with a local Whisper provider and no LLM prompt sends nothing over the network. Turn off **Check for updates** too, and the desktop app connects to nothing unless you click **Check now**.
 
 The desktop app and the daemon talk to each other through a local socket file, which is not open to the network.
 
 ## No telemetry {#telemetry}
 
-Dictum does not collect or send usage statistics, crash reports or analytics, and does not check for updates. The connections under [Network](#network) are the only ones in its code.
+Dictum does not collect or send usage statistics, crash reports or analytics. The update check is no telemetry: it asks which version is the newest and tells GitHub nothing but the version you run, and you can turn it off. The connections under [Network](#network) are the only ones in its code.
 
-**Documentation** in the tray menu, **Help** in Settings, **How does Dictum work?** in the setup wizard and **How to fix** in **Settings → System** open pages of docs.sigil.build in your browser, and `dictum doctor` prints links to them: that connection is made by your browser, not by Dictum.
+**Documentation** in the tray menu, **Help** in Settings, **How does Dictum work?** in the setup wizard and **How to fix** in **Settings → System** open pages of docs.sigil.build in your browser, and the links on **Settings → About Dictum** open docs.sigil.build and Dictum's pages on github.com. `dictum doctor` prints links to the documentation. Each of these connections is made by your browser, not by Dictum.
 
 ## History {#history}
 

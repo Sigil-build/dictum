@@ -1,5 +1,6 @@
 using Dictum.App.Daemon;
 using Dictum.App.Settings;
+using Dictum.App.Updates;
 using Dictum.App.ViewModels;
 using Dictum.Audio;
 using Dictum.Core;
@@ -20,6 +21,7 @@ namespace Dictum.App.Shell;
 /// <param name="FreeDiskBytes">Free space where the models go; <see cref="long.MaxValue"/> when unknown.</param>
 /// <param name="Delay">The waits for the daemon's reload before a test.</param>
 /// <param name="OpenDocs">Opens the documentation in the browser: Settings' Help, System's "How to fix", the wizard's step 1.</param>
+/// <param name="Updates">The update check that About Dictum shows; null where the shell has none (tests, the self-test).</param>
 internal sealed record ShellServices(
     AppPaths Paths,
     Catalog Catalog,
@@ -41,4 +43,5 @@ internal sealed record ShellServices(
     Func<TimeSpan, Task> Delay,
     OpenDocs OpenDocs,
     TimeProvider Time,
-    ILog Log);
+    ILog Log,
+    UpdateChecker? Updates = null);

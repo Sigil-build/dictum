@@ -44,18 +44,23 @@ Download Dictum from the [releases page](https://github.com/Sigil-build/dictum/r
 | `PKGBUILD` | Arch Linux and CachyOS: builds a pacman package from the tarball. |
 | `SHA256SUMS` | The SHA-256 sums of the four `dictum-<version>` packages. |
 
-!!! note "Check a download"
-    In the folder you downloaded to, compare the file with its line in `SHA256SUMS`. On Linux, this prints `OK` after each file it finds:
+## Check the download {#check-download}
 
-    ```sh
-    sha256sum --check --ignore-missing SHA256SUMS
-    ```
+Before you install, you can check the file in two ways.
 
-    On Windows, this prints `True` when the MSI matches:
+**Its SHA-256 sum.** In the folder you downloaded to, compare the file with its line in `SHA256SUMS`. On Linux, this prints `OK` after each file it finds:
 
-    ```powershell
-    (Get-FileHash .\dictum-0.4.0-win-x64.msi).Hash -eq ((Select-String 'win-x64.msi' .\SHA256SUMS).Line -split ' ')[0]
-    ```
+```sh
+sha256sum --check --ignore-missing SHA256SUMS
+```
+
+On Windows, this prints `True` when the MSI matches:
+
+```powershell
+(Get-FileHash .\dictum-0.4.0-win-x64.msi).Hash -eq ((Select-String 'win-x64.msi' .\SHA256SUMS).Line -split ' ')[0]
+```
+
+**Its VirusTotal report.** The notes of each release on the [releases page](https://github.com/Sigil-build/dictum/releases) have a VirusTotal section with a link for each package. [VirusTotal](https://www.virustotal.com/) scans a file with dozens of antivirus engines, and the report shows what each of them found. Dictum is not signed yet and is little known, so one or two engines may flag it as suspicious while the rest find nothing.
 
 ## Install {#install}
 

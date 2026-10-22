@@ -23,6 +23,7 @@ public sealed class ViewLocator : IDataTemplate
         SpeechProvidersPage model => new SpeechProvidersView { DataContext = model },
         SystemPage model => new SystemView { DataContext = model },
         HistoryPage model => new HistoryView { DataContext = model },
+        AboutPage model => new AboutView { DataContext = model },
         SetupViewModel model => new SetupView { DataContext = model },
         StatusViewModel model => new StatusView { DataContext = model },
         null => null,

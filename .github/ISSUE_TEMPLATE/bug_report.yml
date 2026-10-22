@@ -1,0 +1,57 @@
+name: Bug report
+description: Dictum does something wrong, or does not work at all.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. Before you start, see whether [Troubleshooting](https://docs.sigil.build/dictum/troubleshooting/) covers it: **Settings → System** in the desktop app, or `dictum doctor`, runs the checks it describes.
+
+        A security issue? Please do not report it here. [Report it privately](https://github.com/Sigil-build/dictum/security/advisories/new) instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, and what Dictum did. Error messages help, word for word.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The shortest way to make it happen again, from starting Dictum. Which profile, hotkey and app you dictated into, if it matters.
+      placeholder: |
+        1. Open Notepad.
+        2. Hold Ctrl+Alt+Space and say a sentence.
+        3. Release the keys.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: version
+    attributes:
+      label: Version and system
+      description: >-
+        In the desktop app, open **About Dictum** in the tray icon's menu, or **Settings → About Dictum**, click
+        **Copy version and system info** and paste the two lines here. Without the desktop app, paste what
+        `dictum --version` prints and name your operating system.
+      placeholder: |
+        Dictum 0.4.0 · Windows 11 (10.0.26200), x64 · win-x64
+        GPU: NVIDIA GeForce RTX 3060, 12.0 GB VRAM · .NET 10.0.0
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: >-
+        The lines of `dictum-gui.log` or `dictum.log` from around the time it happened.
+        [Troubleshooting → Logs](https://docs.sigil.build/dictum/troubleshooting/#logs) says where they are. The logs leave out
+        the text you dictate, except after `dictum daemon --verbose`, so check for anything private before you paste.
+      render: text

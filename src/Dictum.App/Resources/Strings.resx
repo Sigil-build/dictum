@@ -101,8 +101,14 @@
   <data name="MenuSettings" xml:space="preserve">
     <value>Settings</value>
   </data>
+  <data name="MenuUpdateAvailable" xml:space="preserve">
+    <value>Update available: {0}</value>
+  </data>
   <data name="MenuDocumentation" xml:space="preserve">
     <value>Documentation</value>
+  </data>
+  <data name="MenuAbout" xml:space="preserve">
+    <value>About Dictum</value>
   </data>
   <data name="MenuRestartDaemon" xml:space="preserve">
     <value>Restart daemon</value>
@@ -203,6 +209,96 @@
   <data name="SettingsHelp" xml:space="preserve">
     <value>Help</value>
   </data>
+  <data name="SettingsAbout" xml:space="preserve">
+    <value>About Dictum</value>
+  </data>
+  <data name="SettingsAboutSummary" xml:space="preserve">
+    <value>Voice to text for Windows and Linux, with speech recognition on your machine.</value>
+  </data>
+  <data name="SettingsAboutSystem" xml:space="preserve">
+    <value>Operating system</value>
+  </data>
+  <data name="SettingsAboutCopy" xml:space="preserve">
+    <value>Copy version and system info</value>
+  </data>
+  <data name="SettingsAboutCopied" xml:space="preserve">
+    <value>Copied. Paste it into your bug report.</value>
+  </data>
+  <data name="SettingsAboutCopyFailed" xml:space="preserve">
+    <value>The information could not be copied: {0}</value>
+  </data>
+  <data name="SettingsAboutUpdates" xml:space="preserve">
+    <value>Updates</value>
+  </data>
+  <data name="SettingsAboutUpToDate" xml:space="preserve">
+    <value>Dictum is up to date.</value>
+  </data>
+  <data name="SettingsAboutUpdateAvailable" xml:space="preserve">
+    <value>Version {0} is available.</value>
+  </data>
+  <data name="SettingsAboutNotChecked" xml:space="preserve">
+    <value>Not checked yet.</value>
+  </data>
+  <data name="SettingsAboutChecking" xml:space="preserve">
+    <value>Checking for updates…</value>
+  </data>
+  <data name="SettingsAboutLastChecked" xml:space="preserve">
+    <value>Last checked {0}</value>
+  </data>
+  <data name="SettingsAboutCheckFailed" xml:space="preserve">
+    <value>The last check failed: {0}</value>
+  </data>
+  <data name="SettingsAboutCheckUnreachable" xml:space="preserve">
+    <value>GitHub could not be reached.</value>
+  </data>
+  <data name="SettingsAboutCheckTimedOut" xml:space="preserve">
+    <value>GitHub did not answer within 10 seconds.</value>
+  </data>
+  <data name="SettingsAboutCheckRateLimited" xml:space="preserve">
+    <value>GitHub asks to wait before the next check.</value>
+  </data>
+  <data name="SettingsAboutCheckAnswered" xml:space="preserve">
+    <value>GitHub answered {0}.</value>
+  </data>
+  <data name="SettingsAboutCheckBadAnswer" xml:space="preserve">
+    <value>GitHub's answer names no release.</value>
+  </data>
+  <data name="SettingsAboutCheckNow" xml:space="preserve">
+    <value>Check now</value>
+  </data>
+  <data name="SettingsAboutOpenRelease" xml:space="preserve">
+    <value>Open the release page</value>
+  </data>
+  <data name="UpdateNotificationTitle" xml:space="preserve">
+    <value>Dictum {0} is available</value>
+  </data>
+  <data name="UpdateNotificationText" xml:space="preserve">
+    <value>Click to open the release page and download it.</value>
+  </data>
+  <data name="SettingsAboutDocumentation" xml:space="preserve">
+    <value>Documentation</value>
+  </data>
+  <data name="SettingsAboutPrivacy" xml:space="preserve">
+    <value>Privacy</value>
+  </data>
+  <data name="SettingsAboutGitHub" xml:space="preserve">
+    <value>GitHub</value>
+  </data>
+  <data name="SettingsAboutReleases" xml:space="preserve">
+    <value>Releases</value>
+  </data>
+  <data name="SettingsAboutReport" xml:space="preserve">
+    <value>Report a problem</value>
+  </data>
+  <data name="SettingsAboutLicenseText" xml:space="preserve">
+    <value>Dictum is free software under the MIT License. The third-party components it includes keep their own licenses.</value>
+  </data>
+  <data name="SettingsAboutLicense" xml:space="preserve">
+    <value>MIT License</value>
+  </data>
+  <data name="SettingsAboutNotices" xml:space="preserve">
+    <value>Third-party notices</value>
+  </data>
   <data name="CommonOn" xml:space="preserve">
     <value>On</value>
   </data>
@@ -289,6 +385,12 @@
   </data>
   <data name="SettingsUiLanguageUkrainian" xml:space="preserve">
     <value>Українська</value>
+  </data>
+  <data name="SettingsCheckForUpdates" xml:space="preserve">
+    <value>Check for updates</value>
+  </data>
+  <data name="SettingsCheckForUpdatesHint" xml:space="preserve">
+    <value>Once a day, asks GitHub for the newest version. GitHub sees your IP address and Dictum's version, nothing else.</value>
   </data>
   <data name="SettingsOverlay" xml:space="preserve">
     <value>Listening overlay</value>
@@ -1330,6 +1432,18 @@
   </data>
   <data name="SetupTrayKde" xml:space="preserve">
     <value>Plasma may keep new icons among the System Tray's hidden entries, so you would not see the recording state. System Tray settings → Entries → Dictum: Shown.</value>
+  </data>
+  <data name="CaptionMinimize" xml:space="preserve">
+    <value>Minimize</value>
+  </data>
+  <data name="CaptionMaximize" xml:space="preserve">
+    <value>Maximize</value>
+  </data>
+  <data name="CaptionRestore" xml:space="preserve">
+    <value>Restore</value>
+  </data>
+  <data name="CaptionClose" xml:space="preserve">
+    <value>Close</value>
   </data>
   <data name="SetupWindowTitle" xml:space="preserve">
     <value>Set up Dictum</value>

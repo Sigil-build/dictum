@@ -19,6 +19,7 @@ public sealed partial class DocsLinksTests
     [InlineData(DocsPage.Home, "uk", null, "https://docs.sigil.build/uk/dictum/")]
     [InlineData(DocsPage.Settings, "en", "pasting", "https://docs.sigil.build/dictum/reference/settings/#pasting")]
     [InlineData(DocsPage.Troubleshooting, "uk", "hotkeys", "https://docs.sigil.build/uk/dictum/troubleshooting/#hotkeys")]
+    [InlineData(DocsPage.Privacy, "uk", null, "https://docs.sigil.build/uk/dictum/privacy/")]
     public void TheUrlsFollowTheSiteScheme(DocsPage page, string language, string? anchor, string expected) =>
         Assert.Equal(expected, DocsLinks.For(page, language, anchor).AbsoluteUri);
 
@@ -40,7 +41,7 @@ public sealed partial class DocsLinksTests
 
     /// <summary>The Settings window's pages, each a section of the settings reference.</summary>
     private static readonly string[] SettingsSections =
-        ["general", "overlay", "pasting", "profiles", "speech-recognition", "processors", "models", "history", "system"];
+        ["general", "overlay", "pasting", "profiles", "speech-recognition", "processors", "models", "history", "system", "about"];
 
     /// <summary>The troubleshooting sections that doctor's rows link to.</summary>
     private static readonly string[] TroubleshootingSections =
@@ -59,6 +60,7 @@ public sealed partial class DocsLinksTests
             "dictum/#how-it-works",
             .. SettingsSections.Select(id => $"dictum/reference/settings/#{id}"),
             .. TroubleshootingSections.Select(id => $"dictum/troubleshooting/#{id}"),
+            "dictum/privacy/",
         ];
 
         Assert.Equal(expected, DocsLinks.Targets.Select(target => DocsLinks.For(target.Page, "en", target.Anchor).AbsoluteUri[DocsLinks.Root.Length..]));

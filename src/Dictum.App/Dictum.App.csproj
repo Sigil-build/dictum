@@ -4,6 +4,8 @@
     <ApplicationIcon>$(MSBuildThisFileDirectory)..\..\packaging\icons\dictum.ico</ApplicationIcon>
     <OutputType>WinExe</OutputType>
     <AssemblyName>dictum-gui</AssemblyName>
+    <!-- The file description: Windows heads the update balloon's toast with it, and Task Manager names the process by it. -->
+    <AssemblyTitle>Dictum</AssemblyTitle>
     <RootNamespace>Dictum.App</RootNamespace>
     <PublishAot>true</PublishAot>
     <!-- Culture data is needed for Ukrainian. -->

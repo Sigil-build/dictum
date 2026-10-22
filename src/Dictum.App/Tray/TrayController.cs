@@ -1,4 +1,5 @@
 using Dictum.App.Daemon;
+using Dictum.App.Updates;
 using Dictum.Core.Configuration;
 using Dictum.Host.Ipc;
 
@@ -19,6 +20,12 @@ public interface ITrayCommands
 
     /// <summary>Opens the documentation's overview in the browser.</summary>
     void ShowDocumentation();
+
+    /// <summary>Opens Settings at About Dictum.</summary>
+    void ShowAbout();
+
+    /// <summary>Opens the page of the newer release in the browser.</summary>
+    void OpenUpdate();
 
     void RestartDaemon();
 
@@ -74,6 +81,12 @@ public sealed class TrayController(TrayState state, ITrayCommands commands, Time
         Redraw();
     }
 
+    public void OnUpdate(AvailableUpdate? update)
+    {
+        state.OnUpdate(update);
+        Redraw();
+    }
+
     /// <summary>Called every second; redraws once when a held error has expired.</summary>
     public void Tick()
     {
@@ -111,6 +124,12 @@ public sealed class TrayController(TrayState state, ITrayCommands commands, Time
                 break;
             case TrayCommand.Documentation:
                 commands.ShowDocumentation();
+                break;
+            case TrayCommand.About:
+                commands.ShowAbout();
+                break;
+            case TrayCommand.OpenUpdate:
+                commands.OpenUpdate();
                 break;
             case TrayCommand.RestartDaemon:
                 commands.RestartDaemon();

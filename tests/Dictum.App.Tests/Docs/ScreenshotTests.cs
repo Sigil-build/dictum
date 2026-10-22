@@ -17,6 +17,8 @@ using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.App.Tests.Settings;
 using Dictum.App.Tests.Setup;
+using Dictum.App.Tests.Updates;
+using Dictum.App.Updates;
 using Dictum.App.ViewModels;
 using Dictum.App.ViewModels.Settings;
 using Dictum.App.ViewModels.Setup;
@@ -54,6 +56,7 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
         new("settings-models", SettingsPageKey.Models),
         new("settings-history", SettingsPageKey.History, page => ((HistoryPage)page).Selected = ((HistoryPage)page).Items[0]),
         new("settings-system", SettingsPageKey.System),
+        new("settings-about", SettingsPageKey.About),
     ];
 
     /// <summary>The shots, each the name of four files in <c>docs/images/</c>.</summary>
@@ -81,6 +84,9 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
     private const int DaemonPid = 4242;
 
     private const string Executable = @"C:\Program Files\Dictum\dictum-gui.exe";
+
+    /// <summary>The system About Dictum names: a Windows 11 release, whatever the machine that draws the shots runs.</summary>
+    private const string ShownSystem = "Windows 11 (10.0.26100), x64";
 
     private const string HotkeyBackend = "low-level keyboard hook (SharpHook)";
 
@@ -266,6 +272,7 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
         private readonly TempDirectory _dir = new();
         private readonly ManualClock _clock = new(Today(10, 2));
         private readonly FrameHub _frames;
+        private UpdateChecker? _updates;
 
         public SettingsWorld(string language, bool speechModel = true)
         {
@@ -344,6 +351,9 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
                 () => TrayVisibility.Row(TrayDesktop.Windows, available: true, hidden: false, openSettings: null),
                 timers, _clock, "Windows 11", (_, _) => { }));
             var history = new HistoryPage(session, Paths.HistoryFile, new NoClipboard(), Runner, NullLog.Instance);
+            var about = new AboutPage(new AboutServices(
+                SettingsViewModel.AppVersion(), ShownSystem, "win-x64", null, () => Task.FromResult(Hardware), new NoClipboard(), (_, _) => { }, _ => { },
+                NullLog.Instance, Updates()));
             return
             [
                 (SettingsPageKey.General, general),
@@ -353,6 +363,7 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
                 (SettingsPageKey.Models, models),
                 (SettingsPageKey.System, system),
                 (SettingsPageKey.History, history),
+                (SettingsPageKey.About, about),
             ];
         }
 
@@ -376,7 +387,28 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
 
         public string Display(string path) => DisplayPath(path, Root);
 
-        public void Dispose() => _dir.Dispose();
+        public void Dispose()
+        {
+            _updates?.Dispose();
+            _dir.Dispose();
+        }
+
+        /// <summary>The update check as About Dictum shows it: this version is the newest, checked this morning.</summary>
+        private UpdateChecker Updates()
+        {
+            if (_updates is null)
+            {
+                var version = SettingsViewModel.AppVersion();
+                var file = new UpdateCheckFile(Paths.UpdateCheckFile, NullLog.Instance);
+                file.Save(new UpdateCheckState
+                {
+                    LastChecked = Today(9, 30), Latest = version, Page = FakeReleases.Page("v" + version).AbsoluteUri,
+                });
+                _updates = new UpdateChecker(new FakeReleases(), file, new ManualTimers(), _clock, version, NullLog.Instance);
+            }
+
+            return _updates;
+        }
 
         private static DaemonLink Linked() => new(DaemonLinkState.Connected, new DaemonStatus(
             nameof(PipelineState.Idle), null,

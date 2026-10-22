@@ -59,10 +59,10 @@
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
-      <!-- The version, and Help: the shown page's section of the Settings reference, in the browser. -->
+      <!-- The version, which opens About Dictum, and Help: the shown page's section of the Settings reference, in the browser. -->
       <Grid Grid.Row="1" ColumnDefinitions="*,Auto" Margin="12,0">
-        <TextBlock Text="{Binding Version}" FontSize="11" VerticalAlignment="Center"
-                   Foreground="{DynamicResource color.text.secondary}" />
+        <Button Classes="link" Content="{Binding Version}" Command="{Binding AboutCommand}" FontSize="11" VerticalAlignment="Center"
+                HorizontalAlignment="Left" ToolTip.Tip="{x:Static res:Strings.SettingsAbout}" />
         <Button Grid.Column="1" Classes="link" Content="{x:Static res:Strings.SettingsHelp}" Command="{Binding HelpCommand}"
                 FontSize="11" VerticalAlignment="Center" />
       </Grid>

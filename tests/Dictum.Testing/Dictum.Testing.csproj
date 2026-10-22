@@ -9,6 +9,7 @@
   <ItemGroup>
     <!-- xunit.v3 makes a project a test executable; this package is the part of it that holds TestContext. -->
     <PackageReference Remove="xunit.v3" />
+    <PackageReference Remove="Microsoft.Testing.Extensions.CodeCoverage" />
     <PackageReference Include="xunit.v3.extensibility.core" />
   </ItemGroup>
 

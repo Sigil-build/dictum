@@ -1,6 +1,6 @@
 # Settings
 
-Settings is the desktop app's window for everything Dictum does. To open it, click the Dictum icon in the tray, or choose **Settings** in the icon's menu. **History** in the same menu opens it at the History page. Starting the desktop app while it already runs opens Settings too.
+Settings is the desktop app's window for everything Dictum does. To open it, click the Dictum icon in the tray, or choose **Settings** in the icon's menu. **History** in the same menu opens it at the History page, and **About Dictum** at the [About Dictum](#about) page. Starting the desktop app while it already runs opens Settings too.
 
 If Dictum is not set up yet, each of these opens the [setup wizard](setup-wizard.md) instead.
 
@@ -12,7 +12,7 @@ If Dictum is not set up yet, each of these opens the [setup wizard](setup-wizard
 - If `config.json` cannot be read, for example after a hand edit broke it, the pages are greyed out and the banner says what is wrong. See [Troubleshooting](../troubleshooting.md#config).
 - Two settings need a restart, and say so under the field: **UI language** and a local Whisper provider's **Runtime**.
 
-The column on the left lists the pages. At its bottom are the version of Dictum and **Help**, which opens this reference in your browser at the section for the page you are on, **Listening overlay** and **Pasting** included.
+The column on the left lists the pages. At its bottom are the version of Dictum, which opens [About Dictum](#about), and **Help**, which opens this reference in your browser at the section for the page you are on, **Listening overlay** and **Pasting** included.
 
 ## The pages {#pages}
 
@@ -40,6 +40,14 @@ How many recent dictations Dictum keeps on this computer, from 0 to 5000; 200 by
 #### UI language {#ui-language}
 
 The language of the desktop app: **Same as the system**, **English** or **Українська**. It applies the next time the desktop app starts: choose **Quit Dictum** in the tray menu, then start Dictum again. The command line is in English either way.
+
+#### Check for updates {#check-for-updates}
+
+A minute after the desktop app starts, and then once a day while it runs, Dictum asks GitHub which version of Dictum is the newest. When it is newer than yours, **Update available: 0.5.0**, with that version, shows in the tray icon's menu, the [About Dictum](#about) page says so, and a notification tells you once for each new version; click it to open the release's page. Dictum does not download or install anything: you update as you installed, see [Update and remove](../guides/update-and-remove.md).
+
+On Linux the notification comes only for an AppImage and for the tarball, which you update by hand. The [Arch package](../guides/update-and-remove.md#pkgbuild), which pacman installs in `/opt/dictum`, gets no notification: there the new version shows in the menu and on About Dictum only.
+
+GitHub sees your IP address and the version of Dictum; nothing else is sent. [Privacy](../privacy.md#network) has the details. On by default. Turn it off, and the check stops at once; **Check now** on [About Dictum](#about) still asks when you click it.
 
 #### Listening overlay {#overlay-settings}
 
@@ -390,3 +398,41 @@ Runs the recognised text through another profile's processing chain, for example
 #### Copy result {#copy-result}
 
 Puts the re-run result on the clipboard.
+
+### About Dictum {#about}
+
+![The About Dictum page of Settings](../images/settings-about.png#gh-light-mode-only)
+![The About Dictum page of Settings](../images/settings-about-dark.png#gh-dark-mode-only)
+
+Which Dictum this is, and where to read more or ask for help. To open it, click the version at the foot of the column on the left, or choose **About Dictum** in the tray icon's menu.
+
+The page shows the version, as the foot of the column does, and the operating system with its architecture, such as "Windows 11 (10.0.26200), x64". On Linux it names the distribution and the desktop session. These links open in your browser:
+
+- **Documentation**: the [overview](../index.md) of this documentation.
+- **Privacy**: [what Dictum uses on your computer, and what leaves it](../privacy.md).
+- **GitHub**: Dictum's source code.
+- **Releases**: every version of Dictum, with its downloads.
+- **Report a problem**: a new issue on GitHub. Choose a bug report, or a private report for a security issue.
+
+#### Check now {#check-now}
+
+**Updates**, under the version, says what the last [update check](#check-for-updates) found: "Dictum is up to date.", "Version 0.5.0 is available." with a link to **Open the release page**, or "Not checked yet." Under it is when Dictum last checked. **Check now** asks GitHub at once, whether **Check for updates** is on or off. If a check fails, for example without a network, the page says why, such as "The last check failed: GitHub could not be reached.", and the next check tries again. See [Troubleshooting](../troubleshooting.md#update-check).
+
+#### Copy version and system info {#copy-system-info}
+
+Puts two lines on the clipboard for a bug report, in English whatever the app's language:
+
+```text
+Dictum 0.4.0 · Windows 11 (10.0.26200), x64 · win-x64
+GPU: NVIDIA GeForce RTX 3060, 12.0 GB VRAM · .NET 10.0.0
+```
+
+The first line names the version, the operating system and the build. The second names the graphics card Whisper can use, or `none`, and the .NET runtime; if the graphics card cannot be read, it names only the runtime. The bug report form on GitHub asks for these lines.
+
+#### MIT License {#license}
+
+Dictum is free software under the MIT License. The link opens the license on GitHub.
+
+#### Third-party notices {#third-party-notices}
+
+The licenses of the third-party components that Dictum includes, such as Avalonia and whisper.cpp. Every package installs `THIRD-PARTY-NOTICES.txt` next to the programs, and the link opens that file in the app your system opens text files with. A build from source has no such file, and the link opens the newest one on GitHub.

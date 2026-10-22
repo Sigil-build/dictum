@@ -40,7 +40,7 @@ https://claude.ai/code/artifact/ba039eea-3640-41cc-898a-b1b024e07370
 - `tests/Dictum.Host.Tests`: Host on fakes and temp folders (daemon, IPC, doctor, config watcher), plus Stt.Whisper's pure parts.
 - `tests/Dictum.Cli.Tests`: the CLI's exit codes and init's checks, in-process, with its paths and socket in a temp folder.
 - `tests/Dictum.App.Tests`: the desktop app on fakes and Avalonia.Headless; the real-daemon test is gated by `DICTUM_INTEGRATION=1`.
-- `tests/Dictum.Integration.Tests`: real STT/LLM tests gated by `DICTUM_INTEGRATION=1`, the catalog check gated by `DICTUM_CHECK_CATALOG=1`, and tests against the current OS (clipboard, Credential Manager, registry, tray, D-Bus).
+- `tests/Dictum.Integration.Tests`: real STT/LLM tests gated by `DICTUM_INTEGRATION=1`, the catalog check gated by `DICTUM_CHECK_CATALOG=1`, and tests against the current OS (clipboard, Credential Manager, registry, tray, D-Bus). The real-desktop caption-button and tray-balloon tests, which briefly show real windows, are gated by `DICTUM_INTEGRATION=1` too.
 - `tests/Dictum.Testing`: the fakes and helpers the test projects share; a library, not a test project.
 - `docs/`: the user documentation, each page in English and in Ukrainian (`*.uk.md`), and `site.yml` with the nav and version for docs.sigil.build; `UserDocsTests` in Core.Tests checks its structure.
 

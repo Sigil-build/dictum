@@ -29,6 +29,7 @@ public sealed partial class ReferenceDocsTests
         new("models", nameof(Strings.SettingsModels), ["ModelsView.axaml"]),
         new("system", nameof(Strings.SettingsSystem), ["SystemView.axaml"]),
         new("history", nameof(Strings.SettingsHistory), ["HistoryView.axaml"]),
+        new("about", nameof(Strings.SettingsAbout), ["AboutView.axaml"]),
     ];
 
     /// <summary>The window around the pages; it has no fields of its own.</summary>

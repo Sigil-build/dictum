@@ -65,6 +65,14 @@
                     AutomationProperties.Name="{x:Static res:Strings.SettingsUiLanguage}" />
         </controls:SettingsRow>
 
+        <controls:SettingsRow Icon="{DynamicResource icon.update}"
+                              Label="{x:Static res:Strings.SettingsCheckForUpdates}"
+                              Description="{x:Static res:Strings.SettingsCheckForUpdatesHint}">
+          <ToggleSwitch IsChecked="{Binding CheckForUpdates}"
+                        OnContent="{x:Static res:Strings.CommonOn}" OffContent="{x:Static res:Strings.CommonOff}"
+                        AutomationProperties.Name="{x:Static res:Strings.SettingsCheckForUpdates}" />
+        </controls:SettingsRow>
+
         <controls:SettingsRow Icon="{DynamicResource icon.overlay}"
                               Label="{x:Static res:Strings.SettingsOverlay}"
                               Description="{x:Static res:Strings.SettingsOverlayHint}">

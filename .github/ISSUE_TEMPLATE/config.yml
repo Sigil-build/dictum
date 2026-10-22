@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://docs.sigil.build/dictum/
+    about: How to set Dictum up and use it, and Troubleshooting for the problems it can check.
+  - name: Report a security issue
+    url: https://github.com/Sigil-build/dictum/security/advisories/new
+    about: Report a vulnerability privately, so that it is not public before a fix is out.

@@ -64,7 +64,7 @@ jobs:
           DOCS_DEPLOY_HOOK: ${{ secrets.DOCS_DEPLOY_HOOK }}
         run: |
           if [ -n "$DOCS_DEPLOY_HOOK" ]; then
-            curl -fsS -X POST "$DOCS_DEPLOY_HOOK" > /dev/null
+            curl --proto '=https' --tlsv1.2 -fsS -X POST "$DOCS_DEPLOY_HOOK" > /dev/null
           else
             echo "::notice::DOCS_DEPLOY_HOOK is not set, so the site was not rebuilt."
           fi

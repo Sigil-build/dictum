@@ -10,20 +10,13 @@
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
         <ResourceInclude Source="/Resources/Tokens.axaml" />
+        <!-- The caption buttons over the windows' own 40 px title bar. -->
+        <ResourceInclude Source="/Resources/WindowDecorations.axaml" />
       </ResourceDictionary.MergedDictionaries>
-      <!-- Drawn caption buttons for windows with a custom 40 px title bar. -->
-      <SolidColorBrush x:Key="TitleBarBackgroundBrush" Color="Transparent" />
-      <x:Double x:Key="CaptionButtonHeight">40</x:Double>
     </ResourceDictionary>
   </Application.Resources>
   <Application.Styles>
     <FluentTheme />
     <StyleInclude Source="/Resources/Controls.axaml" />
-    <Style Selector="WindowDrawnDecorations:has-titlebar /template/ Panel#PART_TitleTextPanel">
-      <Setter Property="IsVisible" Value="False" />
-    </Style>
-    <Style Selector="WindowDrawnDecorations /template/ Button#PART_FullScreenButton">
-      <Setter Property="IsVisible" Value="False" />
-    </Style>
   </Application.Styles>
 </Application>

@@ -1,0 +1,73 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Dictum.App.ViewModels.Settings"
+             xmlns:res="using:Dictum.App.Resources"
+             x:Class="Dictum.App.Views.Settings.AboutView"
+             x:DataType="vm:AboutPage">
+  <ScrollViewer>
+    <StackPanel Margin="{StaticResource settings.page.margin}" Spacing="12">
+      <TextBlock Classes="title" Text="{Binding Title}" />
+
+      <!-- Dictum's mark, the version as the rail shows it, the system, and the copy for a bug report. -->
+      <Border Classes="card" Padding="20,16">
+        <Grid ColumnDefinitions="Auto,*">
+          <Viewbox Width="48" Height="48" VerticalAlignment="Top" Margin="0,2,20,0">
+            <Canvas Width="32" Height="32">
+              <Ellipse Canvas.Left="3" Canvas.Top="3" Width="26" Height="26" StrokeThickness="3" Stroke="{DynamicResource color.tray.brand}" />
+              <Path Data="M7 16 C 10 16 10.5 9 13 9 C 15.5 9 16.5 23 19 23 C 21.5 23 22 16 25 16"
+                    StrokeThickness="3" StrokeLineCap="Round" Stroke="{DynamicResource color.tray.brand}" />
+            </Canvas>
+          </Viewbox>
+          <StackPanel Grid.Column="1" Spacing="4">
+            <SelectableTextBlock Text="{Binding Version}" FontSize="20" FontWeight="SemiBold" Foreground="{DynamicResource color.text.primary}" />
+            <TextBlock Text="{x:Static res:Strings.SettingsAboutSummary}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.secondary}" />
+            <TextBlock Text="{x:Static res:Strings.SettingsAboutSystem}" FontSize="12" Margin="0,12,0,0"
+                       Foreground="{DynamicResource color.text.secondary}" />
+            <SelectableTextBlock Text="{Binding System}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
+            <Button Content="{x:Static res:Strings.SettingsAboutCopy}" Command="{Binding CopyInfoCommand}" Margin="0,12,0,0" />
+            <TextBlock Text="{Binding CopyStatus}" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource color.text.secondary}"
+                       IsVisible="{Binding CopyStatus, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          </StackPanel>
+        </Grid>
+      </Border>
+
+      <!-- What the update check found, when, why the last one failed, Check now, and the newer release's page. -->
+      <Border Classes="card" Padding="20,14" IsVisible="{Binding HasUpdates}">
+        <StackPanel Spacing="4">
+          <TextBlock Text="{x:Static res:Strings.SettingsAboutUpdates}" FontSize="12" Foreground="{DynamicResource color.text.secondary}" />
+          <SelectableTextBlock Text="{Binding UpdateState}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
+          <TextBlock Text="{Binding LastChecked}" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource color.text.secondary}"
+                     IsVisible="{Binding LastChecked, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          <TextBlock Text="{Binding UpdateFailure}" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource color.text.secondary}"
+                     IsVisible="{Binding UpdateFailure, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          <WrapPanel ItemSpacing="24" LineSpacing="8" Margin="0,8,0,0">
+            <Button Content="{x:Static res:Strings.SettingsAboutCheckNow}" Command="{Binding CheckNowCommand}" />
+            <Button Classes="link" Content="{x:Static res:Strings.SettingsAboutOpenRelease}" Command="{Binding OpenReleaseCommand}"
+                    IsVisible="{Binding IsUpdateAvailable}" VerticalAlignment="Center" />
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- The documentation, then the project's pages on GitHub, each in the browser. -->
+      <Border Classes="card" Padding="20,14">
+        <WrapPanel ItemSpacing="24" LineSpacing="8">
+          <Button Classes="link" Content="{x:Static res:Strings.SettingsAboutDocumentation}" Command="{Binding DocumentationCommand}" />
+          <Button Classes="link" Content="{x:Static res:Strings.SettingsAboutPrivacy}" Command="{Binding PrivacyCommand}" />
+          <Button Classes="link" Content="{x:Static res:Strings.SettingsAboutGitHub}" Command="{Binding GitHubCommand}" />
+          <Button Classes="link" Content="{x:Static res:Strings.SettingsAboutReleases}" Command="{Binding ReleasesCommand}" />
+          <Button Classes="link" Content="{x:Static res:Strings.SettingsAboutReport}" Command="{Binding ReportProblemCommand}" />
+        </WrapPanel>
+      </Border>
+
+      <Border Classes="card" Padding="20,14">
+        <StackPanel Spacing="10">
+          <TextBlock Text="{x:Static res:Strings.SettingsAboutLicenseText}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
+          <WrapPanel ItemSpacing="24" LineSpacing="8">
+            <Button Classes="link" Content="{x:Static res:Strings.SettingsAboutLicense}" Command="{Binding LicenseCommand}" />
+            <Button Classes="link" Content="{x:Static res:Strings.SettingsAboutNotices}" Command="{Binding NoticesCommand}" />
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

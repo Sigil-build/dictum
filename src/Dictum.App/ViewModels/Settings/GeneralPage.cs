@@ -135,6 +135,10 @@ public sealed partial class GeneralPage : SettingsPage
     [ObservableProperty]
     public partial Choice<string?>? UiLanguage { get; set; }
 
+    /// <summary><c>general.checkForUpdates</c>: the desktop app sees the saved file and starts or stops its check.</summary>
+    [ObservableProperty]
+    public partial bool CheckForUpdates { get; set; }
+
     /// <summary>General → "Run setup again": the shell opens the wizard with the current values.</summary>
     public event Action? SetupRequested;
 
@@ -241,6 +245,14 @@ public sealed partial class GeneralPage : SettingsPage
         }
     }
 
+    partial void OnCheckForUpdatesChanged(bool value)
+    {
+        if (!_loading)
+        {
+            _session.Edit(c => c with { General = c.General with { CheckForUpdates = value } });
+        }
+    }
+
     [RelayCommand]
     private void OpenOverlay() => Navigate(Overlay);
 
@@ -279,6 +291,7 @@ public sealed partial class GeneralPage : SettingsPage
                 HistoryError = _session.IssueAt(HistorySizePath);
             }
             UiLanguage = UiLanguages.FirstOrDefault(l => l.Value == general.UiLanguage) ?? UiLanguages[0];
+            CheckForUpdates = general.CheckForUpdates;
             var microphones = MicrophoneList(_devices, _devicesKnown, general.AudioDevice);
             if (!microphones.SequenceEqual(Microphones))
             {
