@@ -82,7 +82,7 @@ public sealed class SecretServiceStore(Portal portal, ILog log) : ISecretStore, 
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var connection = await portal.ConnectAsync(ct).ConfigureAwait(false);
+            var connection = await ConnectAsync(ct).ConfigureAwait(false);
             _session ??= await CallAsync(
                 connection,
                 BuildOpenSession,
@@ -97,6 +97,24 @@ public sealed class SecretServiceStore(Portal portal, ILog log) : ISecretStore, 
         finally
         {
             _gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// The session bus, the only way to a Secret Service. Without one (DBUS_SESSION_BUS_ADDRESS unset, or its socket
+    /// gone, as over SSH or in a container) there is no store at all, as with no Secret Service on the bus.
+    /// </summary>
+    private async Task<DBusConnection> ConnectAsync(CancellationToken ct)
+    {
+        try
+        {
+            return await portal.ConnectAsync(ct).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            throw new SecretStoreUnavailableException(
+                $"The Secret Service (KWallet or GNOME Keyring) cannot be reached over the D-Bus session bus: {ex.Message.TrimEnd('.')}; use 'env:VAR' for API keys instead.",
+                ex);
         }
     }
 
@@ -156,7 +174,8 @@ public sealed class SecretServiceStore(Portal portal, ILog log) : ISecretStore, 
         }
         catch (DBusErrorReplyException ex) when (ex.ErrorName == DBusNames.ServiceUnknownError)
         {
-            throw new SecretStoreUnavailableException("No Secret Service is running (KWallet or GNOME Keyring); use 'env:VAR' for API keys instead.");
+            throw new SecretStoreUnavailableException("No Secret Service is running (KWallet or GNOME Keyring); use 'env:VAR' for API keys instead.",
+                ex);
         }
         catch (DBusErrorReplyException ex)
         {

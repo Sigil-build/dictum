@@ -302,6 +302,9 @@ These texts mean:
 `No Secret Service is running (KWallet or GNOME Keyring); use 'env:VAR' for API keys instead.`
 :   Install and start GNOME Keyring or KWallet, or put the key in an environment variable and set the field to `env:<VAR>`.
 
+`The Secret Service (KWallet or GNOME Keyring) cannot be reached over the D-Bus session bus: …; use 'env:VAR' for API keys instead.`
+:   Dictum runs outside your desktop session, such as over SSH or as a service, where the keyring cannot be reached. Start Dictum from your desktop session (see [Desktop session](#desktop-session)), or put the key in an environment variable and set the field to `env:<VAR>`.
+
 `The keyring prompt was dismissed.`
 :   The keyring asked to be unlocked and the dialog was closed. Try again and unlock it.
 

@@ -302,6 +302,9 @@ API-ключ сервера може бути в конфігурації трь
 `No Secret Service is running (KWallet or GNOME Keyring); use 'env:VAR' for API keys instead.`
 :   Установіть і запустіть GNOME Keyring або KWallet, або покладіть ключ у змінну середовища й запишіть у поле `env:<VAR>`.
 
+`The Secret Service (KWallet or GNOME Keyring) cannot be reached over the D-Bus session bus: …; use 'env:VAR' for API keys instead.`
+:   Dictum працює поза сеансом вашого робочого столу, наприклад через SSH або як служба, де до сховища ключів не дістатися. Запустіть Dictum із сеансу робочого столу (див. [Сеанс робочого столу](#desktop-session)) або покладіть ключ у змінну середовища й запишіть у поле `env:<VAR>`.
+
 `The keyring prompt was dismissed.`
 :   Сховище попросило його розблокувати, а діалог закрили. Спробуйте ще раз і розблокуйте.
 
