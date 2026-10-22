@@ -25,6 +25,9 @@
       <SolidColorBrush x:Key="color.status.warn.fg" Color="#8A5A00" />
       <SolidColorBrush x:Key="color.status.error.bg" Color="#FDE3E1" />
       <SolidColorBrush x:Key="color.status.error.fg" Color="#B3261E" />
+      <!-- The caption buttons' hover and pressed fills, Windows 11's subtle fills. -->
+      <SolidColorBrush x:Key="color.caption.hover" Color="#0F000000" />
+      <SolidColorBrush x:Key="color.caption.pressed" Color="#0A000000" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
       <SolidColorBrush x:Key="color.bg.base" Color="#1C1C1F" />
@@ -52,6 +55,8 @@
       <SolidColorBrush x:Key="color.status.error.fg" Color="#FF8A80" />
       <!-- The design has no dark color.border.strong; the plain border stands in. -->
       <SolidColorBrush x:Key="color.border.strong" Color="#3A3A40" />
+      <SolidColorBrush x:Key="color.caption.hover" Color="#0FFFFFFF" />
+      <SolidColorBrush x:Key="color.caption.pressed" Color="#0AFFFFFF" />
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
 

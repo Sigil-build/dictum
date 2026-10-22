@@ -32,7 +32,7 @@ public class TokensTests(AvaloniaFixture fx)
         var dark = (ResourceDictionary)tokens.ThemeDictionaries[ThemeVariant.Dark];
 
         Assert.Equal(light.Keys.Select(k => (string)k).Order(), dark.Keys.Select(k => (string)k).Order());
-        Assert.Equal(24, light.Count);
+        Assert.Equal(26, light.Count);
     });
 
     [Fact]
