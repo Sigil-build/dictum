@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 
@@ -11,7 +12,7 @@ namespace Dictum.Platform.Windows;
 /// process; create, use and dispose it on the window's thread.
 /// </summary>
 [SupportedOSPlatform("windows")]
-public sealed unsafe class NotifyIconBalloon : IDisposable
+public sealed class NotifyIconBalloon : IDisposable
 {
     /// <summary>The click on the balloon, as the callback message's lParam.</summary>
     public const uint BalloonUserClick = 0x0405;
@@ -36,6 +37,11 @@ public sealed unsafe class NotifyIconBalloon : IDisposable
 
     private static NotifyIconBalloon? s_current;
 
+    /// <summary>Held for the process's life: Windows calls the window's procedure through this delegate's thunk.</summary>
+    private static readonly Win32.WindowProcedure s_procedure = WindowProcedure;
+
+    private static readonly nint s_procedureAddress = Marshal.GetFunctionPointerForDelegate(s_procedure);
+
     private bool _disposed;
 
     private NotifyIconBalloon(nint window, uint id, uint callbackMessage)
@@ -56,7 +62,7 @@ public sealed unsafe class NotifyIconBalloon : IDisposable
     public event Action? Clicked;
 
     /// <summary>The address of the procedure that subclasses the window.</summary>
-    public static nint Procedure => (nint)(delegate* unmanaged<nint, uint, nint, nint, nint>)&WindowProcedure;
+    public static nint Procedure => s_procedureAddress;
 
     /// <summary>
     /// The icon on this thread's window whose class name starts with <paramref name="classPrefix"/>: the highest id
@@ -149,57 +155,47 @@ public sealed unsafe class NotifyIconBalloon : IDisposable
     private static bool Modify(nint window, uint id, string title, string text)
     {
         var data = default(Win32.NotifyIconData);
-        data.Size = (uint)sizeof(Win32.NotifyIconData);
+        data.Size = (uint)Unsafe.SizeOf<Win32.NotifyIconData>();
         data.Window = window;
         data.Id = id;
         data.Flags = NifInfo;
         data.InfoFlags = NiifNone | NiifRespectQuietTime;
-        Copy(text, data.Info, Win32.NotifyIconData.InfoLength);
-        Copy(title, data.InfoTitle, Win32.NotifyIconData.InfoTitleLength);
-        return Win32.ShellNotifyIcon(NimModify, &data);
+        Copy(text, data.Info);
+        Copy(title, data.InfoTitle);
+        return Win32.ShellNotifyIcon(NimModify, ref data);
     }
 
     /// <summary>Copies as much of <paramref name="text"/> as fits before the terminating null, never half a surrogate pair.</summary>
-    private static void Copy(string text, char* target, int capacity)
+    private static void Copy(string text, Span<char> target)
     {
+        var capacity = target.Length;
         var length = Math.Min(text.Length, capacity - 1);
         if (length < text.Length && length > 0 && char.IsHighSurrogate(text[length - 1]))
         {
             length--;
         }
 
-        text.AsSpan(0, length).CopyTo(new Span<char>(target, capacity));
+        text.AsSpan(0, length).CopyTo(target);
         target[length] = '\0';
     }
 
     /// <summary>This thread's top-level windows whose class name starts with <paramref name="prefix"/>.</summary>
     private static List<nint> ThreadWindows(string prefix)
     {
-        var search = new WindowSearch(prefix);
-        var handle = GCHandle.Alloc(search);
-        try
-        {
-            Win32.EnumThreadWindows(Win32.GetCurrentThreadId(), &CollectWindow, GCHandle.ToIntPtr(handle));
-        }
-        finally
-        {
-            handle.Free();
-        }
-
-        return search.Found;
+        var found = new List<nint>();
+        Win32.EnumThreadWindows(Win32.GetCurrentThreadId(), (window, _) => CollectWindow(window, prefix, found), 0);
+        return found;
     }
 
-    [UnmanagedCallersOnly]
-    private static int CollectWindow(nint window, nint state)
+    private static int CollectWindow(nint window, string prefix, List<nint> found)
     {
         try
         {
-            var search = (WindowSearch)GCHandle.FromIntPtr(state).Target!;
-            var name = stackalloc char[ClassNameLength];
-            var length = Win32.GetClassName(window, name, ClassNameLength);
-            if (length > 0 && new ReadOnlySpan<char>(name, length).StartsWith(search.Prefix, StringComparison.Ordinal))
+            Span<char> name = stackalloc char[ClassNameLength];
+            var length = Win32.GetClassName(window, ref MemoryMarshal.GetReference(name), ClassNameLength);
+            if (length > 0 && name[..length].StartsWith(prefix, StringComparison.Ordinal))
             {
-                search.Found.Add(window);
+                found.Add(window);
             }
         }
         catch (Exception)
@@ -211,7 +207,6 @@ public sealed unsafe class NotifyIconBalloon : IDisposable
     }
 
     /// <summary>Sees the balloon's click, then hands every message to the window's own procedure.</summary>
-    [UnmanagedCallersOnly]
     private static nint WindowProcedure(nint window, uint message, nint wParam, nint lParam)
     {
         nint previous;
@@ -236,12 +231,5 @@ public sealed unsafe class NotifyIconBalloon : IDisposable
         }
 
         return previous != 0 ? Win32.CallWindowProc(previous, window, message, wParam, lParam) : Win32.DefWindowProc(window, message, wParam, lParam);
-    }
-
-    private sealed class WindowSearch(string prefix)
-    {
-        public string Prefix { get; } = prefix;
-
-        public List<nint> Found { get; } = [];
     }
 }

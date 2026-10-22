@@ -8,4 +8,8 @@
     <ProjectReference Include="../Dictum.Platform/Dictum.Platform.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Dictum.Integration.Tests" />
+  </ItemGroup>
+
 </Project>
