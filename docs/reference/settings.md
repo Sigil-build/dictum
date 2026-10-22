@@ -423,7 +423,7 @@ The page shows the version, as the foot of the column does, and the operating sy
 Puts two lines on the clipboard for a bug report, in English whatever the app's language:
 
 ```text
-Dictum 0.5.0 · Windows 11 (10.0.26200), x64 · win-x64
+Dictum 0.5.1 · Windows 11 (10.0.26200), x64 · win-x64
 GPU: NVIDIA GeForce RTX 3060, 12.0 GB VRAM · .NET 10.0.0
 ```
 

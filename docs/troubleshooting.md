@@ -27,7 +27,7 @@ When something does not work, start with `dictum doctor`, or with **Settings →
     In the AppImage, put `dictum` after the file name:
 
     ```sh
-    ./dictum-0.5.0-linux-x64.AppImage dictum doctor
+    ./dictum-0.5.1-linux-x64.AppImage dictum doctor
     ```
 
 Each row starts with `OK`, `WARN` or `ERR`, then the check's name and what it found. A row that is not OK has two more lines: after `→`, what to do; after `see:`, the link to its section on this page. The link opens the page in the language that **UI language** sets in **Settings → General**. With **Same as the system**, that is Ukrainian on a Ukrainian system and English on any other. The first line of the output names Dictum's version and your system. A part of the output on Windows:
@@ -203,7 +203,7 @@ On Wayland, an app cannot see the keys you press in other apps. Dictum asks the 
 
 - **KDE Plasma 6:** a dialog asks the first time Dictum starts. Accept it. To change or assign the key later, open System Settings → Shortcuts and find Dictum. If you closed the dialog, Dictum says `Binding the shortcuts was cancelled in the desktop dialog.` Quit Dictum and start it again to get the dialog back.
 - **GNOME 48 and later:** GNOME has the portal and asks the same way.
-- **Older GNOME** (such as GNOME 46 in Ubuntu 24.04) **and compositors without the portal:** the row says `org.freedesktop.portal.GlobalShortcuts is not available`. Bind a key in your desktop's shortcut settings to run `dictum toggle`: press once to start, once more to stop and paste. In GNOME, use Settings → Keyboard → View and Customize Shortcuts → Custom Shortcuts. Give the command with its full path, such as `/home/you/.local/bin/dictum toggle` for the tarball, or `/home/you/Apps/dictum-0.5.0-linux-x64.AppImage dictum toggle` for the AppImage.
+- **Older GNOME** (such as GNOME 46 in Ubuntu 24.04) **and compositors without the portal:** the row says `org.freedesktop.portal.GlobalShortcuts is not available`. Bind a key in your desktop's shortcut settings to run `dictum toggle`: press once to start, once more to stop and paste. In GNOME, use Settings → Keyboard → View and Customize Shortcuts → Custom Shortcuts. Give the command with its full path, such as `/home/you/.local/bin/dictum toggle` for the tarball, or `/home/you/Apps/dictum-0.5.1-linux-x64.AppImage dictum toggle` for the AppImage.
 - **Sway and other compositors with key bindings:** bind `dictum start` on press and `dictum stop` on release, so holding the key works:
 
     ```text
@@ -463,8 +463,8 @@ Dictum's installer is not signed yet. When you open it, Windows SmartScreen says
 Before you click **Run anyway**, check that the file is the one published. Each release on [GitHub](https://github.com/Sigil-build/dictum/releases) has a `SHA256SUMS` file. Download it next to the installer, then run in PowerShell, in that folder:
 
 ```powershell
-(Get-FileHash .\dictum-0.5.0-win-x64.msi -Algorithm SHA256).Hash.ToLower()
-Select-String -Path .\SHA256SUMS -Pattern "dictum-0.5.0-win-x64.msi"
+(Get-FileHash .\dictum-0.5.1-win-x64.msi -Algorithm SHA256).Hash.ToLower()
+Select-String -Path .\SHA256SUMS -Pattern "dictum-0.5.1-win-x64.msi"
 ```
 
 Both lines must show the same hash.
