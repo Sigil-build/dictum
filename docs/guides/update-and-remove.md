@@ -2,7 +2,7 @@
 
 How you update or remove Dictum depends on how you installed it. Whichever way you choose, your settings, your downloaded models, your history and the API keys in the keyring stay: an update or a reinstall picks up where you left off. [Start fresh](#start-fresh) says how to delete them as well.
 
-The desktop app tells you when a new version is out: **Update available: 0.5.0**, with that version, shows in the tray icon's menu and opens its page on GitHub. See [Check for updates](../reference/settings.md#check-for-updates).
+The desktop app tells you when a new version is out: **Update available: 0.6.0**, with that version, shows in the tray icon's menu and opens its page on GitHub. See [Check for updates](../reference/settings.md#check-for-updates).
 
 Package names are shown here with `<version>` in place of the version. The commands set it in a variable first, `version=0.5.1`: put in the version you downloaded.
 
