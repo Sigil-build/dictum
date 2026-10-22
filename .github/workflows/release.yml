@@ -1,5 +1,5 @@
-# A tag v<version> builds the packages and opens a DRAFT release with them, their provenance attestations and the
-# SBOM; then virustotal.yml adds links to VirusTotal's reports to its notes. Publishing it is a person's call, and
+# A tag v<version> builds the packages and opens a DRAFT release with them, their provenance attestations (also as
+# .intoto.jsonl files) and the SBOM; then virustotal.yml adds links to VirusTotal's reports to its notes. Publishing it is a person's call, and
 # publishing runs virustotal.yml again, which puts the section back if the draft's notes were replaced meanwhile.
 # The draft exists only once the packages, the SBOM and both attestations are done: if the sbom job or an attestation
 # fails, there is no draft, and "Re-run failed jobs" on this run makes it, from the packages this run built.
@@ -118,15 +118,30 @@ jobs:
 
       # Each file of the release, as built by this run of this workflow from this tag.
       - name: Provenance of every release file
+        id: provenance
         uses: actions/attest@v4
         with:
           subject-path: release/*
 
       - name: The SBOM, attested for the packages it describes
+        id: sbom-attestation
         uses: actions/attest@v4
         with:
           subject-checksums: release/SHA256SUMS
           sbom-path: release/dictum-${{ needs.check.outputs.version }}-sbom.spdx.json
+
+      # The attestations as files of the release, which verify offline: gh attestation verify <file> --bundle <bundle>.
+      # Each is a Sigstore bundle, a JSON document; jq -c puts it on one line, as the .intoto.jsonl name says. They
+      # come after the checksums and the attestations, so neither covers them.
+      - name: The attestations as release files
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+          PROVENANCE_BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+          SBOM_BUNDLE: ${{ steps.sbom-attestation.outputs.bundle-path }}
+        run: |
+          set -euo pipefail
+          jq -c . "$PROVENANCE_BUNDLE" > "release/dictum-$VERSION.intoto.jsonl"
+          jq -c . "$SBOM_BUNDLE" > "release/dictum-$VERSION-sbom.intoto.jsonl"
 
       - name: Draft release
         env:
@@ -134,7 +149,7 @@ jobs:
           VERSION: ${{ needs.check.outputs.version }}
         run: >
           gh release create "$GITHUB_REF_NAME" --draft --title "Dictum $VERSION"
-          --notes "Dictum $VERSION. Windows: the MSI (per user, no admin rights) or the portable zip. Linux: the AppImage, the tarball with install.sh, or the PKGBUILD (Arch, CachyOS). SHA-256 sums in SHA256SUMS. The SBOM of the source is dictum-$VERSION-sbom.spdx.json. gh attestation verify <file> -R $GITHUB_REPOSITORY checks that a file was built by this release's workflow."
+          --notes "Dictum $VERSION. Windows: the MSI (per user, no admin rights) or the portable zip. Linux: the AppImage, the tarball with install.sh, or the PKGBUILD (Arch, CachyOS). SHA-256 sums in SHA256SUMS. The SBOM of the source is dictum-$VERSION-sbom.spdx.json. gh attestation verify <file> -R $GITHUB_REPOSITORY checks that a file was built by this release's workflow; with --bundle dictum-$VERSION.intoto.jsonl in place of -R it checks offline (dictum-$VERSION-sbom.intoto.jsonl is the SBOM's attestation)."
           release/*
 
   # After the draft exists, so that the release is published with the links. Without VIRUSTOTAL_API_KEY it only
