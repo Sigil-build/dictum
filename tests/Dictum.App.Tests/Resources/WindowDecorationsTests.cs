@@ -132,4 +132,27 @@ public sealed class WindowDecorationsTests(AvaloniaFixture fx)
 
         Assert.All(buttons.Values, b => Assert.Equal(active, GlyphColor(b)));
     });
+
+    // A button that left its window no longer follows it, while the ones still in it do.
+    [Fact]
+    public Task ADetachedButtonStopsFollowingItsWindowsActivation() => fx.Ui(() =>
+    {
+        var (window, _, buttons) = Realise();
+        Dispatcher.UIThread.RunJobs();
+        var minimize = buttons["PART_MinimizeButton"];
+        var maximize = buttons["PART_MaximizeButton"];
+        Assert.DoesNotContain(CaptionButton.Inactive, minimize.Classes);
+
+        var row = (Panel)minimize.GetLogicalParent()!;
+        row.Children.Remove(minimize);
+        Deactivate(window);
+
+        Assert.False(window.IsActive);
+        Assert.Contains(CaptionButton.Inactive, maximize.Classes);
+        Assert.DoesNotContain(CaptionButton.Inactive, minimize.Classes);
+
+        Activate(window);
+
+        Assert.DoesNotContain(CaptionButton.Inactive, maximize.Classes);
+    });
 }
