@@ -37,6 +37,9 @@ public sealed class UpdateChecker : IDisposable
     private IDisposable? _daily;
     private Task? _running;
 
+    /// <summary>Check now asked for the running check, so its page shows what the check finds.</summary>
+    private bool _asked;
+
     /// <param name="appVersion">This app's informational version; one that does not parse is offered nothing.</param>
     public UpdateChecker(IReleaseSource releases, UpdateCheckFile file, ITimers timers, TimeProvider time, string appVersion, ILog log)
     {
@@ -57,7 +60,10 @@ public sealed class UpdateChecker : IDisposable
     /// <summary><see cref="Status"/> changed.</summary>
     public event Action? Changed;
 
-    /// <summary>A scheduled check found a version the user has not been told about yet.</summary>
+    /// <summary>
+    /// A scheduled check found a version the user has not been told about yet, and the check is still on and no Check
+    /// now joined it.
+    /// </summary>
     public event Action<AvailableUpdate>? Announced;
 
     /// <summary>On: the first check a minute from now, then one a day. Off: the timers stop at once.</summary>
@@ -106,13 +112,15 @@ public sealed class UpdateChecker : IDisposable
     {
         if (_running is { IsCompleted: false } running)
         {
+            _asked |= manual;
             return running;
         }
 
-        return _running = RunAsync(manual);
+        _asked = manual;
+        return _running = RunAsync();
     }
 
-    private async Task RunAsync(bool manual)
+    private async Task RunAsync()
     {
         ReleaseLookup lookup;
         Show(Status with { Checking = true });
@@ -140,7 +148,9 @@ public sealed class UpdateChecker : IDisposable
 
         var latest = ReleaseVersion.Parse(release.Tag);
         var available = Newer(latest?.ToString(), release.Page.AbsoluteUri);
-        var tell = available is not null && !Told(latest!.Value);
+        // The page that asked shows a new version; otherwise the notification tells of it, while the check is still on.
+        // Turned off meanwhile, the version stays news for when it is turned on again.
+        var tell = available is not null && !Told(latest!.Value) && (_asked || Enabled);
         _state = _state with
         {
             LastChecked = _time.GetUtcNow(),
@@ -150,7 +160,7 @@ public sealed class UpdateChecker : IDisposable
         };
         _file.Save(_state);
         Show(new UpdateStatus(available, _state.LastChecked, false, UpdateCheckFailure.None));
-        if (tell && !manual)
+        if (tell && !_asked)
         {
             Announced?.Invoke(available!);
         }

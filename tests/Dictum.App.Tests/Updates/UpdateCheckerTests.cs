@@ -248,6 +248,54 @@ public sealed class UpdateCheckerTests : IDisposable
         Assert.False(checker.Status.Checking);
     }
 
+    // Turned off while a check waits for GitHub: what it finds shows in the tray and on About, and nothing pops up; the
+    // version is still news when the check is turned on again.
+    [Fact]
+    public async Task ACheckThatEndsAfterTheSettingIsTurnedOffAnnouncesNothing()
+    {
+        var answer = new TaskCompletionSource<ReleaseLookup>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _releases.Pending = answer.Task;
+        using var checker = Checker();
+        checker.Enable(true);
+        _timers.Fire();
+
+        checker.Enable(false);
+        answer.SetResult(Found("v0.5.0", Page050));
+        await Eventually.WaitForAsync(() => !checker.Status.Checking, "the check to end");
+
+        Assert.Equal(new AvailableUpdate("0.5.0", Page050), checker.Status.Available);
+        Assert.Empty(_announced);
+
+        _releases.Pending = null;
+        _releases.Next = Found("v0.5.0", Page050);
+        checker.Enable(true);
+        _timers.Fire();
+        Assert.Equal([new AvailableUpdate("0.5.0", Page050)], _announced);
+    }
+
+    // Check now that joins a scheduled check shows the answer on the page that asked, as one of its own does.
+    [Fact]
+    public async Task CheckNowThatJoinsAScheduledCheckAnnouncesNothing()
+    {
+        var answer = new TaskCompletionSource<ReleaseLookup>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _releases.Pending = answer.Task;
+        using var checker = Checker();
+        checker.Enable(true);
+        _timers.Fire();
+
+        var now = checker.CheckNowAsync();
+        answer.SetResult(Found("v0.5.0", Page050));
+        await now;
+
+        Assert.Equal((new AvailableUpdate("0.5.0", Page050), 1), (checker.Status.Available, _releases.Requests));
+        Assert.Empty(_announced);
+
+        _releases.Pending = null;
+        _releases.Next = Found("v0.5.0", Page050);
+        _timers.Fire();
+        Assert.Empty(_announced);
+    }
+
     [Fact]
     public void AnAppVersionThatDoesNotParseOffersNothing()
     {
