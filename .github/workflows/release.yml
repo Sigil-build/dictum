@@ -1,5 +1,8 @@
 # A tag v<version> builds the packages and opens a DRAFT release with them, their provenance attestations and the
-# SBOM; then virustotal.yml adds links to VirusTotal's reports to its notes. Publishing it is a person's call.
+# SBOM; then virustotal.yml adds links to VirusTotal's reports to its notes. Publishing it is a person's call, and
+# publishing runs virustotal.yml again, which puts the section back if the draft's notes were replaced meanwhile.
+# The draft exists only once the packages, the SBOM and both attestations are done: if the sbom job or an attestation
+# fails, there is no draft, and "Re-run failed jobs" on this run makes it, from the packages this run built.
 name: Release
 
 on:
