@@ -28,6 +28,8 @@
       <!-- The caption buttons' hover and pressed fills, Windows 11's subtle fills. -->
       <SolidColorBrush x:Key="color.caption.hover" Color="#0F000000" />
       <SolidColorBrush x:Key="color.caption.pressed" Color="#0A000000" />
+      <!-- The caption glyphs while the window is inactive, Windows 11's disabled text. -->
+      <SolidColorBrush x:Key="color.caption.inactive" Color="#5C000000" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Dark">
       <SolidColorBrush x:Key="color.bg.base" Color="#1C1C1F" />
@@ -57,6 +59,7 @@
       <SolidColorBrush x:Key="color.border.strong" Color="#3A3A40" />
       <SolidColorBrush x:Key="color.caption.hover" Color="#0FFFFFFF" />
       <SolidColorBrush x:Key="color.caption.pressed" Color="#0AFFFFFF" />
+      <SolidColorBrush x:Key="color.caption.inactive" Color="#5DFFFFFF" />
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
 
