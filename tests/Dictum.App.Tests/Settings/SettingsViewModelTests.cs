@@ -160,6 +160,25 @@ public sealed class SettingsViewModelTests : IDisposable
     [Fact]
     public void TheVersionNamesTheApp() => Assert.StartsWith("Dictum ", Create().Model.Version);
 
+    // The version at the foot of the rail opens About Dictum, the rail's last page.
+    [Fact]
+    public void TheVersionOpensAboutDictum()
+    {
+        var store = new ConfigStore(_dir.File("config.json"), NullLog.Instance);
+        store.Save(new DictumConfig());
+        var session = new SettingsSession(store, _timers, NullLog.Instance);
+        session.Load();
+        var general = new Page("General");
+        var about = new Page("About Dictum", DocsAnchors.Settings.About);
+        var model = new SettingsViewModel(session, [(SettingsPageKey.General, general), (SettingsPageKey.About, about)], OpenDocs);
+        model.Open(SettingsPageKey.General);
+
+        model.AboutCommand.Execute(null);
+
+        Assert.Same(about, model.Selected);
+        Assert.Same(about, model.Current);
+    }
+
     [Fact]
     public void TheBannerShowsWhyPagesCannotEditAndClearsWhenTheyCan()
     {
@@ -303,6 +322,8 @@ public sealed class SettingsViewModelTests : IDisposable
             new SystemPage(new SystemServices(channel, new StatusViewModel("c", "l", () => { }), () => row, () => row, _timers, TimeProvider.System,
                 "Windows 11", OpenDocs)),
             history,
+            new AboutPage(new AboutServices("0.4.0", "Windows 11 (10.0.26200), x64", "win-x64", null, () => Task.FromResult(ModelsPageTests.IrisXe),
+                new WindowClipboard(() => null), OpenDocs, _ => { }, NullLog.Instance)),
         ];
         var sections = DocsLinks.Targets.Where(t => t is { Page: DocsPage.Settings, Anchor: not null }).Select(t => t.Anchor!);
 
@@ -310,7 +331,7 @@ public sealed class SettingsViewModelTests : IDisposable
             [
                 DocsAnchors.Settings.General, DocsAnchors.Settings.Overlay, DocsAnchors.Settings.Pasting, DocsAnchors.Settings.Profiles,
                 DocsAnchors.Settings.SpeechRecognition, DocsAnchors.Settings.Processors, DocsAnchors.Settings.Models,
-                DocsAnchors.Settings.System, DocsAnchors.Settings.History,
+                DocsAnchors.Settings.System, DocsAnchors.Settings.History, DocsAnchors.Settings.About,
             ],
             pages.Select(p => p.DocsAnchor));
         Assert.Equal(sections.Order(StringComparer.Ordinal), pages.Select(p => p.DocsAnchor).Order(StringComparer.Ordinal));

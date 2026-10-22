@@ -50,9 +50,32 @@ public sealed class SettingsWindowTests(AvaloniaFixture fx) : IDisposable
         window.Close();
     });
 
-    // Tab follows the reading order: the rail first, then Help at its foot.
+    // The version at the foot of the rail is a link to About Dictum, the rail's last page.
     [Fact]
-    public Task TabReachesTheRailBeforeHelp() => fx.Ui(() =>
+    public Task TheVersionOpensAboutDictum() => fx.Ui(() =>
+    {
+        var store = new ConfigStore(_dir.File("config.json"), NullLog.Instance);
+        store.Save(new DictumConfig());
+        var session = new SettingsSession(store, new ManualTimers(), NullLog.Instance);
+        session.Load();
+        var about = new SettingsViewModelTests.Page("About Dictum", DocsAnchors.Settings.About);
+        var model = new SettingsViewModel(session,
+            [(SettingsPageKey.General, new SettingsViewModelTests.Page("General")), (SettingsPageKey.About, about)], (_, _) => { });
+        var window = new SettingsWindow { DataContext = model };
+        window.Show();
+        model.Open(SettingsPageKey.General);
+
+        var version = window.GetVisualDescendants().OfType<Button>().Single(b => Equals(b.Content, model.Version));
+        Assert.True(version.IsEffectivelyVisible);
+        version.Command!.Execute(null);
+
+        Assert.Same(about, model.Current);
+        window.Close();
+    });
+
+    // Tab follows the reading order: the rail first, then the version and Help at its foot.
+    [Fact]
+    public Task TabReachesTheRailBeforeTheVersionAndHelp() => fx.Ui(() =>
     {
         var model = Model(out _, out _);
         var window = new SettingsWindow { DataContext = model };
@@ -62,7 +85,7 @@ public sealed class SettingsWindowTests(AvaloniaFixture fx) : IDisposable
 
         var focus = TopLevel.GetTopLevel(window)!.FocusManager!;
         var order = new List<string>();
-        for (var i = 0; i < 2; i++)
+        for (var i = 0; i < 3; i++)
         {
             window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
             Dispatcher.UIThread.RunJobs();
@@ -70,7 +93,7 @@ public sealed class SettingsWindowTests(AvaloniaFixture fx) : IDisposable
         }
 
         window.Close();
-        Assert.Equal(["rail General", Strings.SettingsHelp], order);
+        Assert.Equal(["rail General", model.Version, Strings.SettingsHelp], order);
     });
 
     private static string Describe(IInputElement? element) => element switch

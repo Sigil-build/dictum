@@ -41,18 +41,18 @@ public class TrayStateTests
         var view = Connected(Status()).View();
 
         Assert.Equal(
-            ["Profile", "uk", "en", "", "Pause all hotkeys", "History", "Settings", "Documentation", "", "Quit Dictum"],
+            ["Profile", "uk", "en", "", "Pause all hotkeys", "History", "Settings", "Documentation", "About Dictum", "", "Quit Dictum"],
             view.Menu.Select(i => i.Label));
         Assert.Equal(TrayMenuItemKind.Header, view.Menu[0].Kind);
     }
 
     [Fact]
-    public void DocumentationComesAfterSettings()
+    public void DocumentationAndAboutComeAfterSettingsBeforeQuit()
     {
         var menu = Connected(Status()).View().Menu;
 
-        Assert.Equal(["Settings", "Documentation", "", "Quit Dictum"], menu.TakeLast(4).Select(i => i.Label));
-        Assert.Equal(TrayCommand.Documentation, menu[^3].Command);
+        Assert.Equal(["Settings", "Documentation", "About Dictum", "", "Quit Dictum"], menu.TakeLast(5).Select(i => i.Label));
+        Assert.Equal([TrayCommand.Documentation, TrayCommand.About], menu.Skip(menu.Count - 4).Take(2).Select(i => i.Command));
         Assert.Equal(TrayMenuItemKind.Separator, menu[^2].Kind);
     }
 
@@ -159,7 +159,7 @@ public class TrayStateTests
         var view = tray.View();
 
         Assert.Equal((glyph, tooltip), (view.Glyph, view.Tooltip));
-        Assert.Equal(["History", "Settings", "Documentation", "", "Quit Dictum"], view.Menu.Select(i => i.Label));
+        Assert.Equal(["History", "Settings", "Documentation", "About Dictum", "", "Quit Dictum"], view.Menu.Select(i => i.Label));
     }
 
     [Fact]

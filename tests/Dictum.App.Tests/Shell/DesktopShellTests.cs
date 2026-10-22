@@ -59,7 +59,7 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
     });
 
     [Fact]
-    public Task TraySettingsAndHistoryOpenOneWindowAtTheirPage() => fx.UiAsync(async () =>
+    public Task TraySettingsHistoryAndAboutOpenOneWindowAtTheirPage() => fx.UiAsync(async () =>
     {
         var (shell, launcher, presenter) = Create();
         shell.Start(Application.Current!, _ => { });
@@ -72,6 +72,10 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
 
         presenter.Click(presenter.Shown[^1].Menu.First(i => i.Command == TrayCommand.Settings));
         await WaitAsync(() => model.Current is GeneralPage);
+        Assert.Single(SettingsWindow.Open);
+
+        presenter.Click(presenter.Shown[^1].Menu.First(i => i.Command == TrayCommand.About));
+        await WaitAsync(() => model.Current is AboutPage);
         Assert.Single(SettingsWindow.Open);
 
         CloseSettings();
@@ -458,7 +462,7 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         shell.ShowSettings(SettingsPageKey.Profiles);
         var model = (SettingsViewModel)SettingsWindow.Open[0].DataContext!;
 
-        Assert.Equal(["General", "Profiles", "Speech providers", "Processors", "Models", "System", "History"], model.Pages.Select(p => p.Title));
+        Assert.Equal(["General", "Profiles", "Speech providers", "Processors", "Models", "System", "History", "About Dictum"], model.Pages.Select(p => p.Title));
         Assert.IsType<ProfilesPage>(model.Current);
         CloseSettings();
         await shell.DisposeAsync();

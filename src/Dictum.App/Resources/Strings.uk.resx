@@ -104,6 +104,9 @@
   <data name="MenuDocumentation" xml:space="preserve">
     <value>Документація</value>
   </data>
+  <data name="MenuAbout" xml:space="preserve">
+    <value>Про Dictum</value>
+  </data>
   <data name="MenuRestartDaemon" xml:space="preserve">
     <value>Перезапустити демон</value>
   </data>
@@ -202,6 +205,48 @@
   </data>
   <data name="SettingsHelp" xml:space="preserve">
     <value>Довідка</value>
+  </data>
+  <data name="SettingsAbout" xml:space="preserve">
+    <value>Про Dictum</value>
+  </data>
+  <data name="SettingsAboutSummary" xml:space="preserve">
+    <value>Голосове введення тексту для Windows і Linux, з розпізнаванням мовлення на вашому комп'ютері.</value>
+  </data>
+  <data name="SettingsAboutSystem" xml:space="preserve">
+    <value>Операційна система</value>
+  </data>
+  <data name="SettingsAboutCopy" xml:space="preserve">
+    <value>Копіювати версію та відомості про систему</value>
+  </data>
+  <data name="SettingsAboutCopied" xml:space="preserve">
+    <value>Скопійовано. Вставте це у звіт про помилку.</value>
+  </data>
+  <data name="SettingsAboutCopyFailed" xml:space="preserve">
+    <value>Не вдалося скопіювати відомості: {0}</value>
+  </data>
+  <data name="SettingsAboutDocumentation" xml:space="preserve">
+    <value>Документація</value>
+  </data>
+  <data name="SettingsAboutPrivacy" xml:space="preserve">
+    <value>Приватність</value>
+  </data>
+  <data name="SettingsAboutGitHub" xml:space="preserve">
+    <value>GitHub</value>
+  </data>
+  <data name="SettingsAboutReleases" xml:space="preserve">
+    <value>Випуски</value>
+  </data>
+  <data name="SettingsAboutReport" xml:space="preserve">
+    <value>Повідомити про проблему</value>
+  </data>
+  <data name="SettingsAboutLicenseText" xml:space="preserve">
+    <value>Dictum — вільне програмне забезпечення за ліцензією MIT. Сторонні компоненти, що входять до нього, мають власні ліцензії.</value>
+  </data>
+  <data name="SettingsAboutLicense" xml:space="preserve">
+    <value>Ліцензія MIT</value>
+  </data>
+  <data name="SettingsAboutNotices" xml:space="preserve">
+    <value>Ліцензії сторонніх компонентів</value>
   </data>
   <data name="CommonOn" xml:space="preserve">
     <value>Увімк.</value>

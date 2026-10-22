@@ -75,6 +75,17 @@ public sealed class TrayControllerTests : IAsyncDisposable
     }
 
     [Fact]
+    public void AboutOpensAboutDictum()
+    {
+        var controller = Attached();
+        controller.OnLink(Connected());
+
+        _presenter.Click(_presenter.Shown[^1].Menu.Single(i => i.Command == TrayCommand.About));
+
+        Assert.Equal(["about"], _commands.Calls);
+    }
+
+    [Fact]
     public void FramesDoNotRedraw()
     {
         var controller = Attached();
@@ -160,6 +171,8 @@ public sealed class TrayControllerTests : IAsyncDisposable
         public void ShowHistory() => Calls.Add("history");
 
         public void ShowDocumentation() => Calls.Add("documentation");
+
+        public void ShowAbout() => Calls.Add("about");
 
         public void RestartDaemon() => Calls.Add("restart");
 

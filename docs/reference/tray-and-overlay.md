@@ -52,6 +52,9 @@ The menu has these items, from top to bottom. Some show only in certain states.
 **Documentation**
 :   Opens this documentation's [overview](../index.md) in your browser, in Ukrainian when the desktop app shows Ukrainian and in English otherwise. If no browser opens, as on a Linux desktop without `xdg-open`, the click does nothing else. `dictum-gui.log`, one of the [logs](../troubleshooting.md#logs), has the address of every page Dictum opens, so you can copy it from there.
 
+**About Dictum**
+:   Opens Settings at the [About Dictum](settings.md#about) page: the version, the system, and links to the documentation and to Dictum on GitHub.
+
 **Quit Dictum**
 :   Closes the desktop app and stops the daemon, so the hotkeys stop working until you start Dictum again.
 

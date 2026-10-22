@@ -20,6 +20,9 @@ public interface ITrayCommands
     /// <summary>Opens the documentation's overview in the browser.</summary>
     void ShowDocumentation();
 
+    /// <summary>Opens Settings at About Dictum.</summary>
+    void ShowAbout();
+
     void RestartDaemon();
 
     void Quit();
@@ -111,6 +114,9 @@ public sealed class TrayController(TrayState state, ITrayCommands commands, Time
                 break;
             case TrayCommand.Documentation:
                 commands.ShowDocumentation();
+                break;
+            case TrayCommand.About:
+                commands.ShowAbout();
                 break;
             case TrayCommand.RestartDaemon:
                 commands.RestartDaemon();

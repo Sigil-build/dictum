@@ -18,12 +18,13 @@ public enum SettingsPageKey
     Models,
     System,
     History,
+    About,
 }
 
 /// <summary>
 /// The Settings window: the rail's pages and the page on screen (a sub-page keeps its parent selected in the rail),
-/// and a banner when the pages cannot edit or a save failed. Help, beside the version, opens the shown page's section
-/// of the Settings reference. Closing hides the page and saves pending edits; disposing ends the pages' timers and runs.
+/// and a banner when the pages cannot edit or a save failed. The version at the rail's foot opens About Dictum; Help,
+/// beside it, opens the shown page's section of the Settings reference. Closing hides the page and saves pending edits; disposing ends the pages' timers and runs.
 /// </summary>
 public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
 {
@@ -107,6 +108,15 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void Help() => _openDocs(DocsPage.Settings, Current?.DocsAnchor);
 
+    [RelayCommand]
+    private void About()
+    {
+        if (_byKey.ContainsKey(SettingsPageKey.About))
+        {
+            Open(SettingsPageKey.About);
+        }
+    }
+
     partial void OnSelectedChanged(SettingsPage? value) => Show(value);
 
     private void Show(SettingsPage? page)
@@ -139,6 +149,7 @@ public sealed partial class SettingsViewModel : ViewModelBase, IDisposable
     private static string? BannerFor(SettingsSession session) =>
         session.Problem ?? session.SaveError ?? (session.HasErrors ? Strings.SettingsNotSaved : null);
 
-    private static string AppVersion() =>
+    /// <summary>The version the window shows, such as "0.4.0".</summary>
+    public static string AppVersion() =>
         (typeof(SettingsViewModel).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "?").Split(BuildMetadataSeparator)[0];
 }

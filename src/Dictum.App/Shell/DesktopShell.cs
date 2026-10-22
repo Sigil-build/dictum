@@ -252,6 +252,8 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
 
     public void ShowDocumentation() => OpenDocsPage(DocsPage.Home, null);
 
+    public void ShowAbout() => ShowSettings(SettingsPageKey.About);
+
     /// <summary>
     /// Opens the documentation in the language the windows are in, which <see cref="UiCulture.Apply"/> set from
     /// <c>general.uiLanguage</c>, or the system's. Any thread: the tray's clicks may come off the UI thread.

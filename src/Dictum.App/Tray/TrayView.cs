@@ -19,6 +19,7 @@ public enum TrayCommand
     History,
     Settings,
     Documentation,
+    About,
     RestartDaemon,
     Quit,
 }

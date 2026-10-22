@@ -82,6 +82,9 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
 
     private const string Executable = @"C:\Program Files\Dictum\dictum-gui.exe";
 
+    /// <summary>The system About Dictum names: a Windows 11 release, whatever the machine that draws the shots runs.</summary>
+    private const string ShownSystem = "Windows 11 (10.0.26100), x64";
+
     private const string HotkeyBackend = "low-level keyboard hook (SharpHook)";
 
     private const string PasteBackend = "Win32 clipboard + SendInput";
@@ -344,6 +347,9 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
                 () => TrayVisibility.Row(TrayDesktop.Windows, available: true, hidden: false, openSettings: null),
                 timers, _clock, "Windows 11", (_, _) => { }));
             var history = new HistoryPage(session, Paths.HistoryFile, new NoClipboard(), Runner, NullLog.Instance);
+            var about = new AboutPage(new AboutServices(
+                SettingsViewModel.AppVersion(), ShownSystem, "win-x64", null, () => Task.FromResult(Hardware), new NoClipboard(), (_, _) => { }, _ => { },
+                NullLog.Instance));
             return
             [
                 (SettingsPageKey.General, general),
@@ -353,6 +359,7 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
                 (SettingsPageKey.Models, models),
                 (SettingsPageKey.System, system),
                 (SettingsPageKey.History, history),
+                (SettingsPageKey.About, about),
             ];
         }
 
