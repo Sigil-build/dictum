@@ -1,9 +1,11 @@
+using System.Globalization;
 using System.Runtime.InteropServices;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.App.Shell;
+using Dictum.App.Updates;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Docs;
 using Dictum.Setup;
@@ -19,6 +21,7 @@ namespace Dictum.App.ViewModels.Settings;
 /// <param name="Clipboard">The window's clipboard, for "Copy version and system info".</param>
 /// <param name="OpenDocs">Documentation and Privacy.</param>
 /// <param name="OpenUrl">GitHub's pages, and the notices file in the app that opens text files.</param>
+/// <param name="Updates">The app's update check, whose state the page shows; null where there is none.</param>
 public sealed record AboutServices(
     string Version,
     string System,
@@ -28,28 +31,68 @@ public sealed record AboutServices(
     ITextClipboard Clipboard,
     OpenDocs OpenDocs,
     Action<Uri> OpenUrl,
-    ILog Log);
+    ILog Log,
+    UpdateChecker? Updates = null);
 
 /// <summary>
 /// Settings → About Dictum, the rail's last page; the version at the rail's foot and the tray's "About Dictum" open it.
-/// It names the version and the system, links the documentation and the project's pages, the license and the
-/// third-party notices, and copies the version and system lines that a bug report asks for.
+/// It names the version and the system, says what the update check found and checks on demand, links the
+/// documentation and the project's pages, the license and the third-party notices, and copies the version and system
+/// lines that a bug report asks for.
 /// </summary>
-public sealed partial class AboutPage(AboutServices services) : SettingsPage
+public sealed partial class AboutPage : SettingsPage, IDisposable
 {
     public const string NoticesFileName = "THIRD-PARTY-NOTICES.txt";
 
     /// <summary>Windows 11 reports itself as Windows 10.0; its builds start here.</summary>
     private const int Windows11Build = 22000;
 
+    private readonly AboutServices _services;
+
+    public AboutPage(AboutServices services)
+    {
+        _services = services;
+        if (services.Updates is { } updates)
+        {
+            updates.Changed += ShowUpdates;
+            ShowUpdates();
+        }
+    }
+
     public override string Title => Strings.SettingsAbout;
+
+    /// <summary>The app checks for updates, so the page has an Updates part.</summary>
+    public bool HasUpdates => _services.Updates is not null;
+
+    /// <summary>"Dictum is up to date.", "Version 0.5.0 is available.", "Checking for updates…" or "Not checked yet.".</summary>
+    [ObservableProperty]
+    public partial string? UpdateState { get; private set; }
+
+    /// <summary>"Last checked 22/10/2026 09:30", in the UI's culture and the computer's time zone; null before any check.</summary>
+    [ObservableProperty]
+    public partial string? LastChecked { get; private set; }
+
+    /// <summary>Why the last check of this run failed; null after one that worked.</summary>
+    [ObservableProperty]
+    public partial string? UpdateFailure { get; private set; }
+
+    [ObservableProperty]
+    public partial bool IsUpdateAvailable { get; private set; }
+
+    public void Dispose()
+    {
+        if (_services.Updates is { } updates)
+        {
+            updates.Changed -= ShowUpdates;
+        }
+    }
 
     public override string DocsAnchor => DocsAnchors.Settings.About;
 
     /// <summary>"Dictum 0.4.0", as the rail's foot shows it.</summary>
-    public string Version => UiText.Format(Strings.SettingsVersion, services.Version);
+    public string Version => UiText.Format(Strings.SettingsVersion, _services.Version);
 
-    public string System => services.System;
+    public string System => _services.System;
 
     /// <summary>What the last copy did: copied, or why not.</summary>
     [ObservableProperty]
@@ -115,27 +158,67 @@ public sealed partial class AboutPage(AboutServices services) : SettingsPage
         return null;
     }
 
+    /// <summary>Asks GitHub now, whether the daily check is on or not; disabled while a check runs.</summary>
     [RelayCommand]
-    private void Documentation() => services.OpenDocs(DocsPage.Home);
+    private Task CheckNowAsync() => _services.Updates?.CheckNowAsync() ?? Task.CompletedTask;
 
     [RelayCommand]
-    private void Privacy() => services.OpenDocs(DocsPage.Privacy);
+    private void OpenRelease()
+    {
+        if (_services.Updates?.Status.Available is { } update)
+        {
+            _services.OpenUrl(update.Page);
+        }
+    }
+
+    private void ShowUpdates()
+    {
+        var status = _services.Updates!.Status;
+        UpdateState = status switch
+        {
+            { Checking: true } => Strings.SettingsAboutChecking,
+            { Available: { } update } => UiText.Format(Strings.SettingsAboutUpdateAvailable, update.Version),
+            { LastChecked: not null } => Strings.SettingsAboutUpToDate,
+            _ => Strings.SettingsAboutNotChecked,
+        };
+        LastChecked = status.LastChecked is { } at
+            ? UiText.Format(Strings.SettingsAboutLastChecked, at.ToLocalTime().ToString("g", CultureInfo.CurrentCulture))
+            : null;
+        UpdateFailure = Reason(status.Failure, status.StatusCode) is { } reason ? UiText.Format(Strings.SettingsAboutCheckFailed, reason) : null;
+        IsUpdateAvailable = status.Available is not null;
+    }
+
+    private static string? Reason(UpdateCheckFailure failure, int statusCode) => failure switch
+    {
+        UpdateCheckFailure.Unreachable => Strings.SettingsAboutCheckUnreachable,
+        UpdateCheckFailure.TimedOut => Strings.SettingsAboutCheckTimedOut,
+        UpdateCheckFailure.RateLimited => Strings.SettingsAboutCheckRateLimited,
+        UpdateCheckFailure.Answered => UiText.Format(Strings.SettingsAboutCheckAnswered, statusCode),
+        UpdateCheckFailure.BadAnswer => Strings.SettingsAboutCheckBadAnswer,
+        _ => null,
+    };
 
     [RelayCommand]
-    private void GitHub() => services.OpenUrl(ProjectLinks.Repository);
+    private void Documentation() => _services.OpenDocs(DocsPage.Home);
 
     [RelayCommand]
-    private void Releases() => services.OpenUrl(ProjectLinks.Releases);
+    private void Privacy() => _services.OpenDocs(DocsPage.Privacy);
 
     [RelayCommand]
-    private void ReportProblem() => services.OpenUrl(ProjectLinks.NewIssue);
+    private void GitHub() => _services.OpenUrl(ProjectLinks.Repository);
 
     [RelayCommand]
-    private void License() => services.OpenUrl(ProjectLinks.License);
+    private void Releases() => _services.OpenUrl(ProjectLinks.Releases);
+
+    [RelayCommand]
+    private void ReportProblem() => _services.OpenUrl(ProjectLinks.NewIssue);
+
+    [RelayCommand]
+    private void License() => _services.OpenUrl(ProjectLinks.License);
 
     /// <summary>The notices of exactly this build when they are next to it, as in every package; GitHub's otherwise.</summary>
     [RelayCommand]
-    private void Notices() => services.OpenUrl(services.Notices is { } file ? new Uri(file) : ProjectLinks.Notices);
+    private void Notices() => _services.OpenUrl(_services.Notices is { } file ? new Uri(file) : ProjectLinks.Notices);
 
     [RelayCommand]
     private async Task CopyInfoAsync()
@@ -143,14 +226,14 @@ public sealed partial class AboutPage(AboutServices services) : SettingsPage
         var text = await InfoAsync();
         try
         {
-            await services.Clipboard.SetTextAsync(text);
+            await _services.Clipboard.SetTextAsync(text);
             CopyStatus = Strings.SettingsAboutCopied;
         }
         catch (Exception ex)
         {
             // A busy clipboard throws; a command that throws would take dictum-gui down.
             CopyStatus = UiText.Format(Strings.SettingsAboutCopyFailed, ex.Message);
-            services.Log.Warn($"Version and system info not copied: {ex.Message}");
+            _services.Log.Warn($"Version and system info not copied: {ex.Message}");
         }
     }
 
@@ -163,16 +246,16 @@ public sealed partial class AboutPage(AboutServices services) : SettingsPage
         string? gpu;
         try
         {
-            gpu = "GPU: " + (HardwareText.Gpu(await services.Hardware()) ?? "none");
+            gpu = "GPU: " + (HardwareText.Gpu(await _services.Hardware()) ?? "none");
         }
         catch (Exception ex)
         {
             // A broken Vulkan driver must not stop the copy; the line leaves the GPU out.
-            services.Log.Warn($"GPU probe failed: {ex.Message}", ex);
+            _services.Log.Warn($"GPU probe failed: {ex.Message}", ex);
             gpu = null;
         }
 
         var runtime = RuntimeInformation.FrameworkDescription;
-        return $"Dictum {services.Version} · {services.System} · {services.RuntimeId}\n{(gpu is null ? runtime : $"{gpu} · {runtime}")}";
+        return $"Dictum {_services.Version} · {_services.System} · {_services.RuntimeId}\n{(gpu is null ? runtime : $"{gpu} · {runtime}")}";
     }
 }

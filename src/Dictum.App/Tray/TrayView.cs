@@ -20,6 +20,9 @@ public enum TrayCommand
     Settings,
     Documentation,
     About,
+
+    /// <summary>Opens the page of the newer release that the update check found.</summary>
+    OpenUpdate,
     RestartDaemon,
     Quit,
 }

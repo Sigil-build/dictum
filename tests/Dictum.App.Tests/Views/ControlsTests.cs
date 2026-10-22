@@ -15,7 +15,7 @@ namespace Dictum.App.Tests.Views;
 public class ControlsTests(AvaloniaFixture fx)
 {
     private static readonly string[] Sizes = ["Small", "Medium", "Large"];
-    private static readonly string[] RowIcons = ["icon.login", "icon.microphone", "icon.sounds", "icon.history", "icon.language", "icon.overlay"];
+    private static readonly string[] RowIcons = ["icon.login", "icon.microphone", "icon.sounds", "icon.history", "icon.language", "icon.update", "icon.overlay"];
 
     [Fact]
     public Task ASettingsRowShowsItsTextsControlAndError() => fx.Ui(() =>

@@ -468,6 +468,16 @@ Both lines must show the same hash.
 
 **Smart App Control** blocks unsigned apps outright, with no **Run anyway**. Dictum cannot be installed while it is on. You find it in Windows Security → App & browser control → Smart App Control settings.
 
+## Update check {#update-check}
+
+**Settings → About Dictum** says "The last check failed:" and why, when the [update check](reference/settings.md#check-for-updates) got no answer from GitHub. Dictum tries again at the next daily check; **Check now** tries at once. Nothing else is affected.
+
+- "GitHub could not be reached." or "GitHub did not answer within 10 seconds.": there is no network, or a firewall or proxy blocks `api.github.com`. Dictum uses the system's proxy settings.
+- "GitHub asks to wait before the next check.": GitHub answers 60 requests an hour from one address without a login, and other programs on your network used them up. Wait an hour.
+- "GitHub answered" with a number: GitHub had a problem of its own. Try later.
+
+You can always see the releases yourself: **Releases** on the same page opens them on GitHub.
+
 ## Logs {#logs}
 
 Dictum writes what it does to log files:

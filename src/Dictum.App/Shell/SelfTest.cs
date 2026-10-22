@@ -1,5 +1,7 @@
 using System.Globalization;
+using System.Net;
 using System.Runtime.InteropServices;
+using System.Text;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -10,6 +12,7 @@ using Dictum.App.Overlay;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.App.Tray;
+using Dictum.App.Updates;
 using Dictum.App.ViewModels;
 using Dictum.App.ViewModels.Settings;
 using Dictum.Core;
@@ -57,6 +60,7 @@ public static class SelfTest
         var ukrainian = CheckStrings(checks);
         CheckSvgIcons(checks);
         CheckOverlayModel(checks);
+        CheckUpdates(checks);
         if (avalonia)
         {
             Program.BuildAvaloniaApp().SetupWithoutStarting();
@@ -112,6 +116,35 @@ public static class SelfTest
 
         checks.Add("overlay model", Math.Abs(speaking - ExpectedLevel) < LevelTolerance && meter.Quiet,
             string.Create(CultureInfo.InvariantCulture, $"level {speaking:0.00} at -40 dBFS, then silence"));
+    }
+
+    /// <summary>
+    /// The update check's JSON, which a trimmed build could break: a canned GitHub answer through the client, compared
+    /// with a version, and <c>update-check.json</c> written and read back. Nothing goes to the network.
+    /// </summary>
+    private static void CheckUpdates(Checks checks)
+    {
+        const string Own = "0.0.1";
+        const string Notified = "9.8.7";
+        var folder = Path.Combine(Path.GetTempPath(), $"dictum-self-test-updates-{Environment.ProcessId}");
+        try
+        {
+            using var http = new HttpClient(new CannedRelease());
+            var lookup = new GitHubReleases(http, Own).LatestAsync(CancellationToken.None).GetAwaiter().GetResult();
+            var file = new UpdateCheckFile(Path.Combine(folder, "update-check.json"), NullLog.Instance);
+            file.Save(new UpdateCheckState { LastChecked = DateTimeOffset.UnixEpoch, Notified = Notified });
+            var kept = file.Load();
+            var newer = ReleaseVersion.Parse(lookup.Release?.Tag) > ReleaseVersion.Parse(Own);
+            checks.Add("update check", newer && kept.Notified == Notified && kept.LastChecked == DateTimeOffset.UnixEpoch,
+                newer ? $"{lookup.Release!.Tag} is newer than {Own}, kept in update-check.json" : $"{lookup.Failure}: {lookup.Detail}");
+        }
+        finally
+        {
+            if (Directory.Exists(folder))
+            {
+                Directory.Delete(folder, recursive: true);
+            }
+        }
     }
 
     private static void CheckTokens(Checks checks, Application app)
@@ -228,6 +261,16 @@ public static class SelfTest
             output.WriteLine($"{(ok ? "ok  " : "FAIL")} {name}: {detail}");
             Failures += ok ? 0 : 1;
         }
+    }
+
+    /// <summary>GitHub's latest release as the API answers it, with a field Dictum skips.</summary>
+    private sealed class CannedRelease : HttpMessageHandler
+    {
+        private const string Release =
+            """{ "tag_name": "v9.8.7", "html_url": "https://github.com/Sigil-build/dictum/releases/tag/v9.8.7", "draft": false }""";
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(Release, Encoding.UTF8, "application/json") });
     }
 
     private sealed class Offline : IDaemonChannel

@@ -37,6 +37,7 @@ On Windows, run `dictum` by its full path: see [The command line](../getting-sta
 | `logs/` | The log files: see [Logs](#logs). |
 | `downloads.json` | Downloads that have not finished, so that they continue after a restart. |
 | `setup.json` | The setup wizard's answers while its files download, so that a restart returns to the wizard. |
+| `update-check.json` | When the desktop app last asked GitHub for the newest version, what it found, and the last version it told you about, so that a restart does not tell you again. See [Check for updates](settings.md#check-for-updates). |
 | `remote-desktop.token` | Linux on Wayland: the desktop's permission for Dictum to press Ctrl+V. Delete it, and the desktop asks again. |
 | `tray-icons/` | Linux: the images of the tray icon. |
 | `dictum.sock` | Windows: the socket through which the desktop app and `dictum` commands talk to the daemon while it runs. On Linux it is `$XDG_RUNTIME_DIR/dictum.sock`. |
@@ -126,7 +127,7 @@ The notes are here, below the file, because the example is plain JSON that you c
     - `sounds`: a short tick when recording starts and stops.
     - `pasteDelayMs`: how long Dictum waits after it presses Ctrl+V before it puts back what the clipboard held, from 0 to 5000 milliseconds.
     - `overlay`: the listening overlay that the desktop app draws: `enabled`, `position` (`bottom` or `top`), `size` (`small`, `medium` or `large`), `opacity` (0.3 to 1.0) and `palette` (`aurora`, `ember` or `mist`).
-    - Not in the example: `audioDevice`, the microphone's name, where none means the system's default microphone; `uiLanguage`, `"en"` or `"uk"`, where none follows the system; `injector`, how Dictum presses Ctrl+V on Wayland: `auto` tries, on Sway and Hyprland, `wtype`, then `ydotool`, then the RemoteDesktop portal, and elsewhere the portal, then `ydotool`; `terminalApps`, the apps that get Ctrl+Shift+V, by process or window class name, on Windows and X11.
+    - Not in the example: `audioDevice`, the microphone's name, where none means the system's default microphone; `uiLanguage`, `"en"` or `"uk"`, where none follows the system; `injector`, how Dictum presses Ctrl+V on Wayland: `auto` tries, on Sway and Hyprland, `wtype`, then `ydotool`, then the RemoteDesktop portal, and elsewhere the portal, then `ydotool`; `terminalApps`, the apps that get Ctrl+Shift+V, by process or window class name, on Windows and X11. And `checkForUpdates`: `true`, the default, lets the desktop app ask GitHub for the newest version once a day; `false` turns that off.
 
 `stt`
 :   The speech recognition providers. Each has an id of your choice, here `local`, which profiles name.

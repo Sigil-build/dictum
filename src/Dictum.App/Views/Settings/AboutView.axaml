@@ -31,6 +31,23 @@
         </Grid>
       </Border>
 
+      <!-- What the update check found, when, why the last one failed, Check now, and the newer release's page. -->
+      <Border Classes="card" Padding="20,14" IsVisible="{Binding HasUpdates}">
+        <StackPanel Spacing="4">
+          <TextBlock Text="{x:Static res:Strings.SettingsAboutUpdates}" FontSize="12" Foreground="{DynamicResource color.text.secondary}" />
+          <SelectableTextBlock Text="{Binding UpdateState}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
+          <TextBlock Text="{Binding LastChecked}" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource color.text.secondary}"
+                     IsVisible="{Binding LastChecked, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          <TextBlock Text="{Binding UpdateFailure}" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource color.text.secondary}"
+                     IsVisible="{Binding UpdateFailure, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          <WrapPanel ItemSpacing="24" LineSpacing="8" Margin="0,8,0,0">
+            <Button Content="{x:Static res:Strings.SettingsAboutCheckNow}" Command="{Binding CheckNowCommand}" />
+            <Button Classes="link" Content="{x:Static res:Strings.SettingsAboutOpenRelease}" Command="{Binding OpenReleaseCommand}"
+                    IsVisible="{Binding IsUpdateAvailable}" VerticalAlignment="Center" />
+          </WrapPanel>
+        </StackPanel>
+      </Border>
+
       <!-- The documentation, then the project's pages on GitHub, each in the browser. -->
       <Border Classes="card" Padding="20,14">
         <WrapPanel ItemSpacing="24" LineSpacing="8">

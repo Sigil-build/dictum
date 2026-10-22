@@ -1,5 +1,6 @@
 using Dictum.App.Daemon;
 using Dictum.App.Tray;
+using Dictum.App.Updates;
 using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 
@@ -83,6 +84,20 @@ public sealed class TrayControllerTests : IAsyncDisposable
         _presenter.Click(_presenter.Shown[^1].Menu.Single(i => i.Command == TrayCommand.About));
 
         Assert.Equal(["about"], _commands.Calls);
+    }
+
+    [Fact]
+    public void AnUpdateRedrawsAndItsItemOpensTheReleasePage()
+    {
+        var controller = Attached();
+        controller.OnLink(Connected());
+        var before = _presenter.Shown.Count;
+
+        controller.OnUpdate(new AvailableUpdate("0.5.0", new Uri("https://github.com/Sigil-build/dictum/releases/tag/v0.5.0")));
+        _presenter.Click(_presenter.Shown[^1].Menu.Single(i => i.Command == TrayCommand.OpenUpdate));
+
+        Assert.Equal(before + 1, _presenter.Shown.Count);
+        Assert.Equal(["update"], _commands.Calls);
     }
 
     [Fact]
@@ -173,6 +188,8 @@ public sealed class TrayControllerTests : IAsyncDisposable
         public void ShowDocumentation() => Calls.Add("documentation");
 
         public void ShowAbout() => Calls.Add("about");
+
+        public void OpenUpdate() => Calls.Add("update");
 
         public void RestartDaemon() => Calls.Add("restart");
 

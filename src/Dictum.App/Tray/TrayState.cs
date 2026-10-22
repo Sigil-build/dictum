@@ -1,5 +1,6 @@
 using Dictum.App.Daemon;
 using Dictum.App.Resources;
+using Dictum.App.Updates;
 using Dictum.Core.Configuration;
 using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
@@ -23,6 +24,7 @@ public sealed class TrayState(TimeProvider time)
     private (string Message, DateTimeOffset At)? _error;
     private Dictionary<string, string> _languages = [];
     private double? _downloads;
+    private AvailableUpdate? _update;
 
     /// <summary>When the view changes without an event (a held error expires), so the presenter knows when to redraw.</summary>
     public DateTimeOffset? NextChange => _error is { } error ? error.At + ErrorHold : null;
@@ -65,6 +67,9 @@ public sealed class TrayState(TimeProvider time)
 
     /// <param name="progress">0–1 while models download, null otherwise.</param>
     public void OnDownloads(double? progress) => _downloads = progress;
+
+    /// <summary>A newer release the update check found; null when there is none.</summary>
+    public void OnUpdate(AvailableUpdate? update) => _update = update;
 
     public TrayView View()
     {
@@ -149,6 +154,11 @@ public sealed class TrayState(TimeProvider time)
 
         items.Add(TrayMenuItem.Action(Strings.MenuHistory, TrayCommand.History));
         items.Add(TrayMenuItem.Action(Strings.MenuSettings, TrayCommand.Settings));
+        if (_update is { } update)
+        {
+            items.Add(TrayMenuItem.Action(UiText.Format(Strings.MenuUpdateAvailable, update.Version), TrayCommand.OpenUpdate));
+        }
+
         items.Add(TrayMenuItem.Action(Strings.MenuDocumentation, TrayCommand.Documentation));
         items.Add(TrayMenuItem.Action(Strings.MenuAbout, TrayCommand.About));
         items.Add(TrayMenuItem.Separator);

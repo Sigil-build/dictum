@@ -1,5 +1,6 @@
 using Dictum.App.Daemon;
 using Dictum.App.Tray;
+using Dictum.App.Updates;
 using Dictum.Core.Configuration;
 using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
@@ -54,6 +55,42 @@ public class TrayStateTests
         Assert.Equal(["Settings", "Documentation", "About Dictum", "", "Quit Dictum"], menu.TakeLast(5).Select(i => i.Label));
         Assert.Equal([TrayCommand.Documentation, TrayCommand.About], menu.Skip(menu.Count - 4).Take(2).Select(i => i.Command));
         Assert.Equal(TrayMenuItemKind.Separator, menu[^2].Kind);
+    }
+
+    // A newer release is an item above Documentation, which opens its page; the version is in the label.
+    [Fact]
+    public void AnAvailableUpdateIsAnItemAboveDocumentation()
+    {
+        var tray = Connected(Status());
+
+        tray.OnUpdate(new AvailableUpdate("0.5.0", new Uri("https://github.com/Sigil-build/dictum/releases/tag/v0.5.0")));
+        var menu = tray.View().Menu;
+
+        Assert.Equal(["Settings", "Update available: 0.5.0", "Documentation", "About Dictum", "", "Quit Dictum"], menu.TakeLast(6).Select(i => i.Label));
+        Assert.Equal(TrayCommand.OpenUpdate, menu.Single(i => i.Label == "Update available: 0.5.0").Command);
+    }
+
+    [Fact]
+    public void WithoutAnUpdateTheItemGoes()
+    {
+        var tray = Connected(Status());
+        tray.OnUpdate(new AvailableUpdate("0.5.0", new Uri("https://github.com/Sigil-build/dictum/releases/tag/v0.5.0")));
+
+        tray.OnUpdate(null);
+
+        Assert.DoesNotContain(tray.View().Menu, i => i.Command == TrayCommand.OpenUpdate);
+    }
+
+    // The item is there whatever the daemon does: an update can be what fixes it.
+    [Fact]
+    public void TheUpdateItemShowsWithoutADaemonToo()
+    {
+        var tray = new TrayState(_clock);
+        tray.OnLink(new DaemonLink(DaemonLinkState.Failed));
+
+        tray.OnUpdate(new AvailableUpdate("0.5.0", new Uri("https://github.com/Sigil-build/dictum/releases/tag/v0.5.0")));
+
+        Assert.Contains(tray.View().Menu, i => i.Command == TrayCommand.OpenUpdate);
     }
 
     [Theory]

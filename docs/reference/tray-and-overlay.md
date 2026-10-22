@@ -49,6 +49,9 @@ The menu has these items, from top to bottom. Some show only in certain states.
 **Settings**
 :   Opens [Settings](settings.md) at the General page, or the setup wizard while Dictum is not set up.
 
+**Update available: 0.5.0**
+:   Only when the [update check](settings.md#check-for-updates) found a version of Dictum newer than yours; the item names that version. Opens the release's page on GitHub in your browser, with its downloads.
+
 **Documentation**
 :   Opens this documentation's [overview](../index.md) in your browser, in Ukrainian when the desktop app shows Ukrainian and in English otherwise. If no browser opens, as on a Linux desktop without `xdg-open`, the click does nothing else. `dictum-gui.log`, one of the [logs](../troubleshooting.md#logs), has the address of every page Dictum opens, so you can copy it from there.
 

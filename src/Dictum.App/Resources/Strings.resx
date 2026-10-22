@@ -101,6 +101,9 @@
   <data name="MenuSettings" xml:space="preserve">
     <value>Settings</value>
   </data>
+  <data name="MenuUpdateAvailable" xml:space="preserve">
+    <value>Update available: {0}</value>
+  </data>
   <data name="MenuDocumentation" xml:space="preserve">
     <value>Documentation</value>
   </data>
@@ -224,6 +227,54 @@
   <data name="SettingsAboutCopyFailed" xml:space="preserve">
     <value>The information could not be copied: {0}</value>
   </data>
+  <data name="SettingsAboutUpdates" xml:space="preserve">
+    <value>Updates</value>
+  </data>
+  <data name="SettingsAboutUpToDate" xml:space="preserve">
+    <value>Dictum is up to date.</value>
+  </data>
+  <data name="SettingsAboutUpdateAvailable" xml:space="preserve">
+    <value>Version {0} is available.</value>
+  </data>
+  <data name="SettingsAboutNotChecked" xml:space="preserve">
+    <value>Not checked yet.</value>
+  </data>
+  <data name="SettingsAboutChecking" xml:space="preserve">
+    <value>Checking for updates…</value>
+  </data>
+  <data name="SettingsAboutLastChecked" xml:space="preserve">
+    <value>Last checked {0}</value>
+  </data>
+  <data name="SettingsAboutCheckFailed" xml:space="preserve">
+    <value>The last check failed: {0}</value>
+  </data>
+  <data name="SettingsAboutCheckUnreachable" xml:space="preserve">
+    <value>GitHub could not be reached.</value>
+  </data>
+  <data name="SettingsAboutCheckTimedOut" xml:space="preserve">
+    <value>GitHub did not answer within 10 seconds.</value>
+  </data>
+  <data name="SettingsAboutCheckRateLimited" xml:space="preserve">
+    <value>GitHub asks to wait before the next check.</value>
+  </data>
+  <data name="SettingsAboutCheckAnswered" xml:space="preserve">
+    <value>GitHub answered {0}.</value>
+  </data>
+  <data name="SettingsAboutCheckBadAnswer" xml:space="preserve">
+    <value>GitHub's answer names no release.</value>
+  </data>
+  <data name="SettingsAboutCheckNow" xml:space="preserve">
+    <value>Check now</value>
+  </data>
+  <data name="SettingsAboutOpenRelease" xml:space="preserve">
+    <value>Open the release page</value>
+  </data>
+  <data name="UpdateNotificationTitle" xml:space="preserve">
+    <value>Dictum {0} is available</value>
+  </data>
+  <data name="UpdateNotificationText" xml:space="preserve">
+    <value>Click to open the release page and download it.</value>
+  </data>
   <data name="SettingsAboutDocumentation" xml:space="preserve">
     <value>Documentation</value>
   </data>
@@ -334,6 +385,12 @@
   </data>
   <data name="SettingsUiLanguageUkrainian" xml:space="preserve">
     <value>Українська</value>
+  </data>
+  <data name="SettingsCheckForUpdates" xml:space="preserve">
+    <value>Check for updates</value>
+  </data>
+  <data name="SettingsCheckForUpdatesHint" xml:space="preserve">
+    <value>Once a day, asks GitHub for the newest version. GitHub sees your IP address and Dictum's version, nothing else.</value>
   </data>
   <data name="SettingsOverlay" xml:space="preserve">
     <value>Listening overlay</value>

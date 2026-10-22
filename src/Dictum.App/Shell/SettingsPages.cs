@@ -37,7 +37,7 @@ internal static class SettingsPages
         var about = new AboutPage(new AboutServices(
             SettingsViewModel.AppVersion(), AboutPage.ThisSystem(services.Desktop), RuntimeInformation.RuntimeIdentifier,
             AboutPage.Notices(AppContext.BaseDirectory), services.Hardware, clipboard, services.OpenDocs, url => WebLinks.Open(url, services.Log),
-            services.Log));
+            services.Log, services.Updates));
         return
         [
             (SettingsPageKey.General, general),

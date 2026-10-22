@@ -14,12 +14,23 @@ namespace Dictum.App.Tray;
 [SupportedOSPlatform("windows")]
 public sealed class WindowsTrayPresenter : ITrayPresenter
 {
+    /// <summary>
+    /// Avalonia 12's Win32 platform adds its tray icons on its message window, whose class is this and a GUID, and
+    /// sends their events as WM_USER + 1024 (<c>TrayIconImpl.CustomWindowsMessage.WM_TRAYMOUSE</c>), with the icon's
+    /// id in wParam. TrayBalloonTests checks both against the real platform.
+    /// </summary>
+    public const string MessageWindowClass = "AvaloniaMessageWindow ";
+
+    public const uint TrayCallbackMessage = 0x0400 + 1024;
+
     private readonly TrayIcon _icon = new() { ToolTipText = AppNames.Product };
     private readonly DispatcherTimer _animation = new() { Interval = TrayGeometry.FrameStep };
     private readonly Application _app;
     private readonly Func<bool> _highContrast;
     private TrayView? _view;
     private IReadOnlyList<TrayMenuItem>? _menu;
+    private NotifyIconBalloon? _balloon;
+    private Action? _balloonClicked;
     private Color _mono;
     private int _size;
     private int _frame;
@@ -80,9 +91,31 @@ public sealed class WindowsTrayPresenter : ITrayPresenter
         Render();
     }
 
+    /// <summary>
+    /// A notification on this icon: a balloon, which Windows 10 and 11 show as a toast. <paramref name="clicked"/> runs on
+    /// the UI thread when the user clicks it. False when the icon cannot be reached. UI thread.
+    /// </summary>
+    public bool Notify(string title, string text, Action clicked)
+    {
+        if (_balloon is null)
+        {
+            _balloon = NotifyIconBalloon.Find(MessageWindowClass, TrayCallbackMessage);
+            if (_balloon is null)
+            {
+                return false;
+            }
+
+            _balloon.Clicked += () => Dispatcher.UIThread.Post(() => _balloonClicked?.Invoke());
+        }
+
+        _balloonClicked = clicked;
+        return _balloon.Show(title, text);
+    }
+
     public ValueTask DisposeAsync()
     {
         _animation.Stop();
+        _balloon?.Dispose();
         _icon.Dispose();
         return ValueTask.CompletedTask;
     }

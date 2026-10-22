@@ -41,6 +41,14 @@ How many recent dictations Dictum keeps on this computer, from 0 to 5000; 200 by
 
 The language of the desktop app: **Same as the system**, **English** or **Українська**. It applies the next time the desktop app starts: choose **Quit Dictum** in the tray menu, then start Dictum again. The command line is in English either way.
 
+#### Check for updates {#check-for-updates}
+
+A minute after the desktop app starts, and then once a day while it runs, Dictum asks GitHub which version of Dictum is the newest. When it is newer than yours, **Update available: 0.5.0**, with that version, shows in the tray icon's menu, the [About Dictum](#about) page says so, and a notification tells you once for each new version; click it to open the release's page. Dictum does not download or install anything: you update as you installed, see [Update and remove](../guides/update-and-remove.md).
+
+On Linux the notification comes only for an AppImage and for the tarball, which you update by hand. The [Arch package](../guides/update-and-remove.md#pkgbuild), which pacman installs in `/opt/dictum`, gets no notification: there the new version shows in the menu and on About Dictum only.
+
+GitHub sees your IP address and the version of Dictum; nothing else is sent. [Privacy](../privacy.md#network) has the details. On by default. Turn it off, and the check stops at once; **Check now** on [About Dictum](#about) still asks when you click it.
+
 #### Listening overlay {#overlay-settings}
 
 **Overlay settings ›** opens the overlay's own page: whether it shows, where, how big, how opaque and in which colours. See [Listening overlay](#overlay) below.
@@ -405,6 +413,10 @@ The page shows the version, as the foot of the column does, and the operating sy
 - **GitHub**: Dictum's source code.
 - **Releases**: every version of Dictum, with its downloads.
 - **Report a problem**: a new issue on GitHub. Choose a bug report, or a private report for a security issue.
+
+#### Check now {#check-now}
+
+**Updates**, under the version, says what the last [update check](#check-for-updates) found: "Dictum is up to date.", "Version 0.5.0 is available." with a link to **Open the release page**, or "Not checked yet." Under it is when Dictum last checked. **Check now** asks GitHub at once, whether **Check for updates** is on or off. If a check fails, for example without a network, the page says why, such as "The last check failed: GitHub could not be reached.", and the next check tries again. See [Troubleshooting](../troubleshooting.md#update-check).
 
 #### Copy version and system info {#copy-system-info}
 

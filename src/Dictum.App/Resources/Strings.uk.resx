@@ -101,6 +101,9 @@
   <data name="MenuSettings" xml:space="preserve">
     <value>Налаштування</value>
   </data>
+  <data name="MenuUpdateAvailable" xml:space="preserve">
+    <value>Доступне оновлення: {0}</value>
+  </data>
   <data name="MenuDocumentation" xml:space="preserve">
     <value>Документація</value>
   </data>
@@ -224,6 +227,54 @@
   <data name="SettingsAboutCopyFailed" xml:space="preserve">
     <value>Не вдалося скопіювати відомості: {0}</value>
   </data>
+  <data name="SettingsAboutUpdates" xml:space="preserve">
+    <value>Оновлення</value>
+  </data>
+  <data name="SettingsAboutUpToDate" xml:space="preserve">
+    <value>У вас найновіша версія Dictum.</value>
+  </data>
+  <data name="SettingsAboutUpdateAvailable" xml:space="preserve">
+    <value>Доступна версія {0}.</value>
+  </data>
+  <data name="SettingsAboutNotChecked" xml:space="preserve">
+    <value>Ще не перевірено.</value>
+  </data>
+  <data name="SettingsAboutChecking" xml:space="preserve">
+    <value>Перевірка оновлень…</value>
+  </data>
+  <data name="SettingsAboutLastChecked" xml:space="preserve">
+    <value>Остання перевірка: {0}</value>
+  </data>
+  <data name="SettingsAboutCheckFailed" xml:space="preserve">
+    <value>Остання перевірка не вдалася: {0}</value>
+  </data>
+  <data name="SettingsAboutCheckUnreachable" xml:space="preserve">
+    <value>GitHub недоступний.</value>
+  </data>
+  <data name="SettingsAboutCheckTimedOut" xml:space="preserve">
+    <value>GitHub не відповів за 10 секунд.</value>
+  </data>
+  <data name="SettingsAboutCheckRateLimited" xml:space="preserve">
+    <value>GitHub просить зачекати з наступною перевіркою.</value>
+  </data>
+  <data name="SettingsAboutCheckAnswered" xml:space="preserve">
+    <value>GitHub відповів {0}.</value>
+  </data>
+  <data name="SettingsAboutCheckBadAnswer" xml:space="preserve">
+    <value>GitHub не назвав жодного випуску.</value>
+  </data>
+  <data name="SettingsAboutCheckNow" xml:space="preserve">
+    <value>Перевірити зараз</value>
+  </data>
+  <data name="SettingsAboutOpenRelease" xml:space="preserve">
+    <value>Відкрити сторінку випуску</value>
+  </data>
+  <data name="UpdateNotificationTitle" xml:space="preserve">
+    <value>Доступний Dictum {0}</value>
+  </data>
+  <data name="UpdateNotificationText" xml:space="preserve">
+    <value>Клацніть, щоб відкрити сторінку випуску й завантажити його.</value>
+  </data>
   <data name="SettingsAboutDocumentation" xml:space="preserve">
     <value>Документація</value>
   </data>
@@ -334,6 +385,12 @@
   </data>
   <data name="SettingsUiLanguageUkrainian" xml:space="preserve">
     <value>Українська</value>
+  </data>
+  <data name="SettingsCheckForUpdates" xml:space="preserve">
+    <value>Перевіряти оновлення</value>
+  </data>
+  <data name="SettingsCheckForUpdatesHint" xml:space="preserve">
+    <value>Раз на день питає GitHub про найновішу версію. GitHub бачить вашу IP-адресу й версію Dictum, більше нічого.</value>
   </data>
   <data name="SettingsOverlay" xml:space="preserve">
     <value>Індикатор диктування</value>
