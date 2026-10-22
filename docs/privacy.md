@@ -1,6 +1,6 @@
 # Privacy
 
-Dictum works on your computer. This page says what it uses there, when, and what leaves your computer. Every statement here comes from what the code of Dictum 0.4 does.
+Dictum works on your computer. This page says what it uses there, when, and what leaves your computer. Every statement here comes from what the code of Dictum 0.5 does.
 
 ## In short {#summary}
 

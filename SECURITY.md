@@ -39,7 +39,7 @@ sha256sum --check --ignore-missing SHA256SUMS
 On Windows, in PowerShell, this prints `True` when the MSI matches:
 
 ```powershell
-(Get-FileHash .\dictum-0.4.0-win-x64.msi).Hash -eq ((Select-String 'win-x64.msi' .\SHA256SUMS).Line -split ' ')[0]
+(Get-FileHash .\dictum-0.5.0-win-x64.msi).Hash -eq ((Select-String 'win-x64.msi' .\SHA256SUMS).Line -split ' ')[0]
 ```
 
 The sums come from the same release as the files: they show that a download is complete and unchanged, not who built it. The attestation does that.
