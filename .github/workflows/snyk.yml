@@ -54,11 +54,11 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
 
@@ -81,7 +81,7 @@ jobs:
           [ "$status" -le 1 ] || exit "$status"
           bash .github/scripts/sarif-one-run.sh "$RUNNER_TEMP/snyk-open-source.raw.sarif" "$RUNNER_TEMP/snyk-open-source.sarif"
 
-      - uses: github/codeql-action/upload-sarif@v4
+      - uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1upload-sarif
         with:
           sarif_file: ${{ runner.temp }}/snyk-open-source.sarif
           category: snyk-open-source
@@ -95,7 +95,7 @@ jobs:
           [ "$status" -le 1 ] || exit "$status"
           bash .github/scripts/sarif-one-run.sh "$RUNNER_TEMP/snyk-code.raw.sarif" "$RUNNER_TEMP/snyk-code.sarif"
 
-      - uses: github/codeql-action/upload-sarif@v4
+      - uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1upload-sarif
         with:
           sarif_file: ${{ runner.temp }}/snyk-code.sarif
           category: snyk-code

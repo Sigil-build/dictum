@@ -54,6 +54,12 @@ gh attestation verify dictum-0.5.0-linux-x64.AppImage -R Sigil-build/dictum
 
 It succeeds only for a file that a workflow of this repository built, and prints which workflow and which tag.
 
+To check offline, download the attestation files of the release too: `dictum-<version>.intoto.jsonl` holds the provenance of every release file, and `dictum-<version>-sbom.intoto.jsonl` the SBOM's attestation (Sigstore bundles, one line each). Then add `--bundle` and `--repo`:
+
+```sh
+gh attestation verify dictum-0.5.0-linux-x64.AppImage --bundle dictum-0.5.0.intoto.jsonl --repo Sigil-build/dictum
+```
+
 Each release also has `dictum-<version>-sbom.spdx.json`: the NuGet packages Dictum is built from, with their versions, in SPDX. It is attested for the packages, and `--predicate-type https://spdx.dev/Document/v2.3` added to the command above checks it.
 
 ### VirusTotal

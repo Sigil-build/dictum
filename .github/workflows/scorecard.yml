@@ -11,6 +11,8 @@ on:
   branch_protection_rule:
   schedule:
     - cron: '17 5 * * 1'
+  # A run that failed, or one wanted before the next Monday, started by hand.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -25,7 +27,7 @@ jobs:
       # The OIDC token proves to the Scorecard API that this workflow produced the results it publishes.
       id-token: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
@@ -36,12 +38,12 @@ jobs:
           publish_results: true
 
       # Anyone can check the published results against this file for five days.
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: scorecard-results
           path: results.sarif
           retention-days: 5
 
-      - uses: github/codeql-action/upload-sarif@v4
+      - uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1upload-sarif
         with:
           sarif_file: results.sarif
