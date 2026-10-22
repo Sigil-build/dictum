@@ -60,7 +60,7 @@ On Windows, this prints `True` when the MSI matches:
 (Get-FileHash .\dictum-0.4.0-win-x64.msi).Hash -eq ((Select-String 'win-x64.msi' .\SHA256SUMS).Line -split ' ')[0]
 ```
 
-**Its VirusTotal report.** The notes of each release on the [releases page](https://github.com/Sigil-build/dictum/releases) have a VirusTotal section with a link for each file. [VirusTotal](https://www.virustotal.com/) scans a file with dozens of antivirus engines, and the report shows what each of them found. Dictum is not signed yet and is little known, so one or two engines may flag it as suspicious while the rest find nothing.
+**Its VirusTotal report.** The notes of each release on the [releases page](https://github.com/Sigil-build/dictum/releases) have a VirusTotal section with a link for each package. [VirusTotal](https://www.virustotal.com/) scans a file with dozens of antivirus engines, and the report shows what each of them found. Dictum is not signed yet and is little known, so one or two engines may flag it as suspicious while the rest find nothing.
 
 ## Install {#install}
 

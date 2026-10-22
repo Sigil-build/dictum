@@ -1,5 +1,6 @@
-# Sends every file of a release to VirusTotal and writes a "VirusTotal" section with a link to each file's report
-# into the release notes, between marker comments, so a run for the same release replaces the section.
+# Sends the packages of a release (the MSI, the zip, the AppImage and the tarball) to VirusTotal and writes a
+# "VirusTotal" section with a link to each one's report into the release notes, between marker comments, so a run
+# for the same release replaces the section. SHA256SUMS, the PKGBUILD and the SBOM are text, and are not sent.
 # release.yml calls it once the draft release exists. By hand, for an earlier release or to check the files again:
 #   gh workflow run virustotal.yml -f tag=v0.4.0
 name: VirusTotal
@@ -45,7 +46,7 @@ jobs:
           if [ -n "$VIRUSTOTAL_API_KEY" ]; then
             echo "set=true" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::VIRUSTOTAL_API_KEY is not set, so the files of $TAG were not sent to VirusTotal."
+            echo "::notice::VIRUSTOTAL_API_KEY is not set, so the packages of $TAG were not sent to VirusTotal."
           fi
 
       - uses: actions/checkout@v7
@@ -59,7 +60,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir "$RUNNER_TEMP/files"
 
-      - name: Upload them to VirusTotal
+      - name: Upload the packages to VirusTotal
         if: steps.key.outputs.set == 'true'
         env:
           VIRUSTOTAL_API_KEY: ${{ secrets.VIRUSTOTAL_API_KEY }}
@@ -79,12 +80,12 @@ jobs:
             gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --notes-file "$RUNNER_TEMP/new-notes.md"
           fi
 
-      # The notes say why a file has no report; the run fails, so that someone runs it again.
-      - name: Every file has a report
+      # The notes say why a package was not sent; the run fails, so that someone runs it again.
+      - name: Every package was sent
         if: steps.key.outputs.set == 'true'
         run: |
           missing=$(awk -F'\t' '$3 == "" { print $1 }' "$RUNNER_TEMP/virustotal.tsv" | paste -sd ' ' -)
           if [ -n "$missing" ]; then
-            echo "::error::No VirusTotal report for $missing. Try again later: gh workflow run virustotal.yml -f tag=$TAG"
+            echo "::error::Not sent to VirusTotal: $missing. Try again later: gh workflow run virustotal.yml -f tag=$TAG"
             exit 1
           fi

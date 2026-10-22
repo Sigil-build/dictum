@@ -33,7 +33,7 @@ The steps for each package, the requirements and the first run are in [Getting s
 
 ## Verify your download
 
-The packages are not code-signed yet. Each release has `SHA256SUMS` and, in its notes, a link to a VirusTotal report on each file ([how to check](https://docs.sigil.build/dictum/getting-started/#check-download)). Releases after 0.4.0 also have a build attestation for each file, which `gh attestation verify <file> -R Sigil-build/dictum` checks. [SECURITY.md](SECURITY.md#verify-a-download) has the details, and how to report a vulnerability.
+The packages are not code-signed yet. Each release has `SHA256SUMS` and, in its notes, a link to a VirusTotal report on each package ([how to check](https://docs.sigil.build/dictum/getting-started/#check-download)). Releases after 0.4.0 also have a build attestation for each file, which `gh attestation verify <file> -R Sigil-build/dictum` checks. [SECURITY.md](SECURITY.md#verify-a-download) has the details, and how to report a vulnerability.
 
 ## Building from source
 

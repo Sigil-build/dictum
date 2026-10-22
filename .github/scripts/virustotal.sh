@@ -1,22 +1,23 @@
 #!/usr/bin/env bash
-# Sends a release's files to VirusTotal and writes links to their reports into the release notes.
+# Sends a release's packages to VirusTotal and writes links to their reports into the release notes.
 # virustotal.yml runs it; packaging/tests/test-virustotal.sh tests it with stand-ins for curl and sleep.
 #
 # virustotal.sh upload <dir> <results>
-#   Uploads every file in <dir>, the dictum-* packages first, with the API key in VIRUSTOTAL_API_KEY, and writes a
-#   line per file to <results>, in tabs: its name, its SHA-256, the id of VirusTotal's analysis, and why the file was
-#   not sent when it was not. POST /files takes files up to 32 MB; a larger one goes to the one-time URL that
+#   Uploads the packages in <dir>, *.msi, *.zip, *.AppImage and *.tar.gz, with the API key in VIRUSTOTAL_API_KEY. The
+#   other release files (SHA256SUMS, the PKGBUILD, the SBOM) are text a person can read, and would only spend quota.
+#   Writes a line per package to <results>, in tabs: its name, its SHA-256, the id of VirusTotal's analysis, and why
+#   it was not sent when it was not. POST /files takes files up to 32 MB; a larger one goes to the one-time URL that
 #   GET /files/upload_url gives, which is one request more. The free API allows 4 requests a minute and 500 a day:
 #   - a request starts VT_INTERVAL (15) seconds after the previous one ended;
 #   - a 429 is tried again after VT_RETRY_WAIT (60) seconds, and no answer or a 5xx after VT_INTERVAL, up to
 #     VT_RETRIES (3) times; a quota still used up after that, or a refused key, ends the uploads;
 #   - no request starts after VT_DEADLINE (1200) seconds, and none takes longer than 5 minutes.
-#   It exits 0 once every file has its line, sent or not, and 1 only without files or a key.
+#   It exits 0 once every package has its line, sent or not, and 1 only without packages or a key.
 #
 # virustotal.sh section <results> < notes > new-notes
 #   Prints the notes with a "VirusTotal" section between <!-- virustotal:start --> and <!-- virustotal:end -->: a
-#   link to https://www.virustotal.com/gui/file/<sha256> for each file sent, and why for each file that was not.
-#   The section replaces the one an earlier run wrote, where it is, or else goes at the end. When no file was sent
+#   link to https://www.virustotal.com/gui/file/<sha256> for each package sent, and why for each one that was not.
+#   The section replaces the one an earlier run wrote, where it is, or else goes at the end. When nothing was sent
 #   and the notes have a section already, they are printed unchanged: the reports it links are still there.
 set -euo pipefail
 
@@ -87,7 +88,7 @@ send() {
 }
 
 upload() {
-  local dir=$1 results=$2 path name sha id why stop="" sent=0 total=0 files
+  local dir=$1 results=$2 path name sha id why stop="" sent=0 total=0
   [ -d "$dir" ] || die "$dir is not a folder"
   [ -n "${VIRUSTOTAL_API_KEY:-}" ] || die "VIRUSTOTAL_API_KEY is empty"
   interval=${VT_INTERVAL:-15} retry_wait=${VT_RETRY_WAIT:-60} retries=${VT_RETRIES:-3} deadline=${VT_DEADLINE:-1200}
@@ -99,22 +100,17 @@ upload() {
   # In a file, so that the key is not on curl's command line, where other processes could read it.
   (umask 077 && printf 'x-apikey: %s\n' "$VIRUSTOTAL_API_KEY" > "$headers")
 
-  # The packages first: when the quota or the time runs out, they are the files that matter.
-  files=("$dir"/dictum-*)
-  for path in "$dir"/*; do
-    [[ ${path##*/} == dictum-* ]] || files+=("$path")
-  done
-
   : > "$results"
-  for path in "${files[@]}"; do
-    [ -f "$path" ] || continue
+  for path in "$dir"/*; do
     name=${path##*/}
+    case $name in *.msi | *.zip | *.AppImage | *.tar.gz) ;; *) continue ;; esac
+    [ -f "$path" ] || continue
     sha=$(sha256sum < "$path" | cut -d' ' -f1)
     total=$((total + 1))
     id="" why=$stop
     if [ -z "$stop" ]; then
       send "$path"
-      # The quota, the key and the time limit would fail every later file the same way.
+      # The quota, the key and the time limit would fail every later package the same way.
       case $code in 429 | 401 | 403 | deadline) stop=$why ;; esac
     fi
     if [ -n "$id" ]; then
@@ -125,8 +121,8 @@ upload() {
     fi
     printf '%s\t%s\t%s\t%s\n' "$name" "$sha" "$id" "$why" >> "$results"
   done
-  (( total > 0 )) || die "$dir has no files"
-  echo "$sent of $total files sent to VirusTotal."
+  (( total > 0 )) || die "$dir has no packages (*.msi, *.zip, *.AppImage, *.tar.gz)"
+  echo "$sent of $total packages sent to VirusTotal."
 }
 
 # The section, markers included, for the files in <results>.
@@ -134,7 +130,7 @@ render() {
   echo "$start_marker"
   echo "## VirusTotal"
   echo
-  echo "[VirusTotal](https://www.virustotal.com/) scans a file with dozens of antivirus engines and publishes what each of them found. Each link below opens the report on one file of this release; a new report takes a few minutes to appear."
+  echo "[VirusTotal](https://www.virustotal.com/) scans a file with dozens of antivirus engines and publishes what each of them found. Each link below opens the report on one package of this release; a new report takes a few minutes to appear."
   echo
   echo "Dictum is a new app and its files are not signed yet. Some engines judge a file by its reputation rather than by what it does, so one or two of them may flag such a file while the rest find nothing."
   echo

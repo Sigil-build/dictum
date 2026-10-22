@@ -58,4 +58,4 @@ Each release also has `dictum-<version>-sbom.spdx.json`: the NuGet packages Dict
 
 ### VirusTotal
 
-The notes of each release have a VirusTotal section with a link for each file. [VirusTotal](https://www.virustotal.com/) scans a file with dozens of antivirus engines, and the report shows what each of them found. Dictum is not signed yet and is little known, so one or two engines may flag it as suspicious while the rest find nothing. If more of them flag a file, please report it as above.
+The notes of each release have a VirusTotal section with a link for each package. [VirusTotal](https://www.virustotal.com/) scans a file with dozens of antivirus engines, and the report shows what each of them found. Dictum is not signed yet and is little known, so one or two engines may flag it as suspicious while the rest find nothing. If more of them flag a file, please report it as above.

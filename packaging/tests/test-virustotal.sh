@@ -106,16 +106,15 @@ expected
 $want"
 }
 
-files dictum-1.0.0-big-linux-x64.tar.gz dictum-1.0.0-win-x64.msi SHA256SUMS
+files dictum-1.0.0-big-linux-x64.tar.gz dictum-1.0.0-win-x64.msi dictum-1.0.0-win-x64.zip
 big_sha=$(sha "$work/files/dictum-1.0.0-big-linux-x64.tar.gz")
 msi_sha=$(sha "$work/files/dictum-1.0.0-win-x64.msi")
-sums_sha=$(sha "$work/files/SHA256SUMS")
-zip_sha=$(echo dictum-1.0.0-win-x64.zip | sha256sum | cut -d' ' -f1)
+zip_sha=$(sha "$work/files/dictum-1.0.0-win-x64.zip")
 run_upload \
   '200 {"data": "https://www.virustotal.com/_ah/upload/one/"}' \
   '200 {"data": {"type": "analysis", "id": "id-big"}}' \
   '200 {"data": {"type": "analysis", "id": "id-msi"}}' \
-  '200 {"data": {"type": "analysis", "id": "id-sums"}}'
+  '200 {"data": {"type": "analysis", "id": "id-zip"}}'
 expect_log \
   "GET $api/files/upload_url" \
   "sleep 15" \
@@ -123,12 +122,12 @@ expect_log \
   "sleep 15" \
   "POST $api/files dictum-1.0.0-win-x64.msi" \
   "sleep 15" \
-  "POST $api/files SHA256SUMS"
+  "POST $api/files dictum-1.0.0-win-x64.zip"
 expect_results \
   "$(row "dictum-1.0.0-big-linux-x64.tar.gz" "$big_sha" "id-big" "")" \
   "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "id-msi" "")" \
-  "$(row "SHA256SUMS" "$sums_sha" "id-sums" "")"
-echo "PASS: a file over 32 MB goes to an upload URL, the rest to /files, packages first, 15 s apart, the key in a header file"
+  "$(row "dictum-1.0.0-win-x64.zip" "$zip_sha" "id-zip" "")"
+echo "PASS: a file over 32 MB goes to an upload URL, the rest to /files, 15 s apart, the key in a header file"
 
 files dictum-1.0.0-win-x64.msi
 run_upload '429 {"error": {"code": "QuotaExceededError"}}' '503 {}' none '200 {"data": {"id": "id-msi"}}'
@@ -140,16 +139,17 @@ expect_log \
 expect_results "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "id-msi" "")"
 echo "PASS: a 429 is tried again after 60 s, a 5xx and no answer after 15 s"
 
-files dictum-1.0.0-win-x64.msi dictum-1.0.0-win-x64.zip PKGBUILD
+files dictum-1.0.0-linux-x64.AppImage dictum-1.0.0-win-x64.msi dictum-1.0.0-win-x64.zip
+appimage_sha=$(sha "$work/files/dictum-1.0.0-linux-x64.AppImage")
 VT_RETRIES=1 run_upload '429 {"error": {"code": "QuotaExceededError"}}' '429 {"error": {"code": "QuotaExceededError"}}'
-expect_log "POST $api/files dictum-1.0.0-win-x64.msi" "sleep 60" "POST $api/files dictum-1.0.0-win-x64.msi"
+expect_log "POST $api/files dictum-1.0.0-linux-x64.AppImage" "sleep 60" "POST $api/files dictum-1.0.0-linux-x64.AppImage"
 expect_results \
-  "$(row "dictum-1.0.0-win-x64.msi" "$msi_sha" "" "VirusTotal's request quota was used up")" \
-  "$(row dictum-1.0.0-win-x64.zip "$zip_sha" "" "VirusTotal's request quota was used up")" \
-  "$(row PKGBUILD "$(sha "$work/files/PKGBUILD")" "" "VirusTotal's request quota was used up")"
-grep -q "::warning::PKGBUILD was not sent to VirusTotal: VirusTotal's request quota was used up." "$work/out" \
-  || fail "no warning for a file not sent: $(cat "$work/out")"
-echo "PASS: a quota still used up after the retries ends the uploads, and every file left says why"
+  "$(row dictum-1.0.0-linux-x64.AppImage "$appimage_sha" "" "VirusTotal's request quota was used up")" \
+  "$(row dictum-1.0.0-win-x64.msi "$msi_sha" "" "VirusTotal's request quota was used up")" \
+  "$(row dictum-1.0.0-win-x64.zip "$zip_sha" "" "VirusTotal's request quota was used up")"
+grep -q "::warning::dictum-1.0.0-win-x64.zip was not sent to VirusTotal: VirusTotal's request quota was used up." "$work/out" \
+  || fail "no warning for a package not sent: $(cat "$work/out")"
+echo "PASS: a quota still used up after the retries ends the uploads, and every package left says why"
 
 files dictum-1.0.0-win-x64.msi dictum-1.0.0-win-x64.zip
 run_upload '401 {"error": {"code": "WrongCredentialsError"}}'
@@ -191,12 +191,14 @@ rm -rf "$STUB" && mkdir "$STUB" && : > "$STUB/answers"
 if PATH="$work/bin:$PATH" VIRUSTOTAL_API_KEY="" bash "$script" upload "$work/files" "$work/results" > /dev/null 2>&1; then
   fail "the upload ran without a key"
 fi
-mkdir "$work/empty"
-if PATH="$work/bin:$PATH" VIRUSTOTAL_API_KEY=test-key bash "$script" upload "$work/empty" "$work/results" > /dev/null 2>&1; then
-  fail "the upload passed on a folder without files"
+mkdir "$work/texts"
+echo sums > "$work/texts/SHA256SUMS"
+echo build > "$work/texts/PKGBUILD"
+if PATH="$work/bin:$PATH" VIRUSTOTAL_API_KEY=test-key bash "$script" upload "$work/texts" "$work/results" > /dev/null 2>&1; then
+  fail "the upload passed on a folder without packages"
 fi
-[ ! -s "$STUB/log" ] || fail "requests were made without a key or files: $(cat "$STUB/log")"
-echo "PASS: without a key or without files the upload fails before any request"
+[ ! -s "$STUB/log" ] || fail "requests were made without a key or packages: $(cat "$STUB/log")"
+echo "PASS: without a key or without packages the upload fails before any request"
 
 # The section.
 section() { bash "$script" section "$work/section-results"; }
@@ -264,6 +266,23 @@ echo "PASS: with no file sent, a section that is there stays, and notes without 
 out=$(printf '' | section) || fail "section failed on empty notes"
 case $out in '<!-- virustotal:start -->'*'<!-- virustotal:end -->') ;; *) fail "empty notes: $out" ;; esac
 echo "PASS: empty notes become the section alone"
+
+# A whole release: the four packages go to VirusTotal; SHA256SUMS, the PKGBUILD and the SBOM are text, and stay out.
+files dictum-1.0.0-linux-x64.AppImage dictum-1.0.0-linux-x64.tar.gz dictum-1.0.0-win-x64.msi dictum-1.0.0-win-x64.zip \
+  PKGBUILD SHA256SUMS dictum-1.0.0-sbom.spdx.json
+run_upload '200 {"data": {"id": "1"}}' '200 {"data": {"id": "2"}}' '200 {"data": {"id": "3"}}' '200 {"data": {"id": "4"}}'
+sent=$(awk '$1 == "POST" { print $3 }' "$STUB/log" | sort)
+packages=$(printf '%s\n' dictum-1.0.0-linux-x64.AppImage dictum-1.0.0-linux-x64.tar.gz dictum-1.0.0-win-x64.msi \
+  dictum-1.0.0-win-x64.zip | sort)
+[ "$sent" = "$packages" ] || fail "a release sent other files than its four packages: $sent"
+cp "$work/results" "$work/section-results"
+out=$(printf 'Dictum 1.0.0.\n' | section) || fail "section failed on a whole release"
+links=$(grep '^- ' <<< "$out")
+[ "$(wc -l <<< "$links")" -eq 4 ] || fail "a release of seven files did not get four links: $out"
+for package in $packages; do
+  grep -qxF -e "$(link "$package" "$(sha "$work/files/$package")")" <<< "$links" || fail "no link for $package: $out"
+done
+echo "PASS: of a release's seven files, the four packages are sent and linked; SHA256SUMS, the PKGBUILD and the SBOM are not"
 
 for broken in $'A\n<!-- virustotal:start -->\nB' $'A\n<!-- virustotal:end -->\nB' \
   $'<!-- virustotal:start -->\n<!-- virustotal:start -->\n<!-- virustotal:end -->'; do

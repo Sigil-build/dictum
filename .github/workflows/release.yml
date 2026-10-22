@@ -135,7 +135,7 @@ jobs:
           release/*
 
   # After the draft exists, so that the release is published with the links. Without VIRUSTOTAL_API_KEY it only
-  # leaves a notice; when VirusTotal fails, the notes say which file has no report and why, and this job fails.
+  # leaves a notice; when VirusTotal fails, the notes say which package has no report and why, and this job fails.
   virustotal:
     needs: release
     permissions:
