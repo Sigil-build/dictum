@@ -17,6 +17,8 @@ using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.App.Tests.Settings;
 using Dictum.App.Tests.Setup;
+using Dictum.App.Tests.Updates;
+using Dictum.App.Updates;
 using Dictum.App.ViewModels;
 using Dictum.App.ViewModels.Settings;
 using Dictum.App.ViewModels.Setup;
@@ -270,6 +272,7 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
         private readonly TempDirectory _dir = new();
         private readonly ManualClock _clock = new(Today(10, 2));
         private readonly FrameHub _frames;
+        private UpdateChecker? _updates;
 
         public SettingsWorld(string language, bool speechModel = true)
         {
@@ -350,7 +353,7 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
             var history = new HistoryPage(session, Paths.HistoryFile, new NoClipboard(), Runner, NullLog.Instance);
             var about = new AboutPage(new AboutServices(
                 SettingsViewModel.AppVersion(), ShownSystem, "win-x64", null, () => Task.FromResult(Hardware), new NoClipboard(), (_, _) => { }, _ => { },
-                NullLog.Instance));
+                NullLog.Instance, Updates()));
             return
             [
                 (SettingsPageKey.General, general),
@@ -384,7 +387,28 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
 
         public string Display(string path) => DisplayPath(path, Root);
 
-        public void Dispose() => _dir.Dispose();
+        public void Dispose()
+        {
+            _updates?.Dispose();
+            _dir.Dispose();
+        }
+
+        /// <summary>The update check as About Dictum shows it: this version is the newest, checked this morning.</summary>
+        private UpdateChecker Updates()
+        {
+            if (_updates is null)
+            {
+                var version = SettingsViewModel.AppVersion();
+                var file = new UpdateCheckFile(Paths.UpdateCheckFile, NullLog.Instance);
+                file.Save(new UpdateCheckState
+                {
+                    LastChecked = Today(9, 30), Latest = version, Page = FakeReleases.Page("v" + version).AbsoluteUri,
+                });
+                _updates = new UpdateChecker(new FakeReleases(), file, new ManualTimers(), _clock, version, NullLog.Instance);
+            }
+
+            return _updates;
+        }
 
         private static DaemonLink Linked() => new(DaemonLinkState.Connected, new DaemonStatus(
             nameof(PipelineState.Idle), null,
