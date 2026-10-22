@@ -35,6 +35,36 @@ jobs:
           DICTUM_CHECK_CATALOG: 1
         run: dotnet test -c Release --no-build --project tests/Dictum.Integration.Tests/Dictum.Integration.Tests.csproj --filter-class Dictum.Integration.Tests.CatalogUrlTests
 
+  # The bash tests of the scripts that the release and the other workflows run (packaging/tests/test-*.sh but
+  # test-package.sh, which packages.yml runs), on both runner images those workflows use, so a release is not the first
+  # time a script meets the runner's bash, jq or git. They make no network request; check-version.sh asks MSBuild for
+  # the version, hence the SDK.
+  scripts:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      - name: Test the scripts
+        run: |
+          set -euo pipefail
+          for test in packaging/tests/test-*.sh; do
+            [ "$test" != packaging/tests/test-package.sh ] || continue
+            echo "::group::$test"
+            bash "$test"
+            echo "::endgroup::"
+          done
+
   packages:
     needs: build-test
     uses: ./.github/workflows/packages.yml
