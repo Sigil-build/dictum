@@ -87,10 +87,10 @@
     <Style Selector="^ /template/ Path">
       <Setter Property="Fill" Value="{DynamicResource color.text.primary}" />
     </Style>
-    <Style Selector="^ /template/ Button#PART_CloseButton:pointerover Path">
+    <Style Selector="^ /template/ controls|CaptionButton#PART_CloseButton:pointerover Path">
       <Setter Property="Fill" Value="White" />
     </Style>
-    <Style Selector="^ /template/ Button:disabled">
+    <Style Selector="^ /template/ controls|CaptionButton:disabled">
       <Setter Property="Opacity" Value="0.2" />
     </Style>
     <!-- Maximize is named Restore then. -->
@@ -120,10 +120,10 @@
     </Style>
 
     <!-- Where a platform does not allow an action. Windows allows them all, so no button is hidden during layout there. -->
-    <Style Selector="^:not(:has-minimize) /template/ Button#PART_MinimizeButton">
+    <Style Selector="^:not(:has-minimize) /template/ controls|CaptionButton#PART_MinimizeButton">
       <Setter Property="IsVisible" Value="False" />
     </Style>
-    <Style Selector="^:not(:has-maximize) /template/ Button#PART_MaximizeButton">
+    <Style Selector="^:not(:has-maximize) /template/ controls|CaptionButton#PART_MaximizeButton">
       <Setter Property="IsVisible" Value="False" />
     </Style>
   </ControlTheme>
