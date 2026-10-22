@@ -3,10 +3,10 @@
 [![CI](https://github.com/Sigil-build/dictum/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Sigil-build/dictum/actions/workflows/ci.yml?query=branch%3Amain)
 [![Latest release](https://img.shields.io/github/v/release/Sigil-build/dictum)](https://github.com/Sigil-build/dictum/releases/latest)
 [![License: MIT](https://img.shields.io/github/license/Sigil-build/dictum)](LICENSE)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Sigil-build/dictum/badge)](https://scorecard.dev/viewer/?uri=github.com/Sigil-build/dictum)
+[![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/Sigil-build/dictum/badge)](https://scorecard.dev/viewer/?uri=github.com/Sigil-build/dictum)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Sigil-build_dictum&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=Sigil-build_dictum)
 
-Voice to text for Windows and Linux: hold a hotkey, speak, and the text lands in the app you are typing in. Speech recognition runs on your machine with Whisper (on the GPU through Vulkan when it can); nothing is sent anywhere unless you add a cloud provider yourself.
+Voice to text for Windows and Linux: hold a hotkey, speak, and the text lands in the app you are typing in. Speech recognition runs on your machine with Whisper (on the GPU through Vulkan when it can); your speech and text are not sent anywhere unless you add a cloud provider yourself.
 
 ![Dictum's Settings window: a profile with its hotkey, two languages and its own words](docs/images/settings-profiles.png#gh-light-mode-only)
 ![Dictum's Settings window: a profile with its hotkey, two languages and its own words](docs/images/settings-profiles-dark.png#gh-dark-mode-only)
