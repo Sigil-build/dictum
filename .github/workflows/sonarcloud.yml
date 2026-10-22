@@ -84,6 +84,10 @@ jobs:
       # Directory.Build.props' MSBuildTreatWarningsAsErrors off too, which would make them errors. ci.yml keeps both.
       # Each test project writes its coverage to a file of its own in $RUNNER_TEMP/coverage. A test that fails only
       # lowers the coverage, so the analysis still goes up; ci.yml fails on it.
+      #
+      # This analysis runs on Linux, so code that only runs on Windows (the Win32 platform project and the Windows
+      # tray presenter) can never be covered here: it is left out of the coverage, and its tests run on Windows
+      # (ci.yml's Windows job, Integration.Tests). Cross-platform code is never listed.
       - name: Build, test and analyse
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -93,7 +97,8 @@ jobs:
           coverage="$RUNNER_TEMP/coverage"
           version=$(dotnet msbuild src/Dictum.Cli/Dictum.Cli.csproj -getProperty:VersionPrefix)
           "$scanner" begin /k:"$SONAR_PROJECT_KEY" /o:"$SONAR_ORGANIZATION" /v:"$version" /d:sonar.token="$SONAR_TOKEN" \
-            /d:sonar.scanner.skipJreProvisioning=true /d:sonar.cs.vscoveragexml.reportsPaths="$coverage/*.xml"
+            /d:sonar.scanner.skipJreProvisioning=true /d:sonar.cs.vscoveragexml.reportsPaths="$coverage/*.xml" \
+            /d:sonar.coverage.exclusions="src/Dictum.Platform.Windows/**,src/Dictum.App/Tray/WindowsTrayPresenter.cs"
           dotnet build Dictum.slnx -c Release -p:MSBuildTreatWarningsAsErrors=false
           if ! dbus-run-session -- dotnet test -c Release --no-build --coverage --coverage-output-format xml --results-directory "$coverage"; then
             echo "::warning::A test failed, so SonarQube Cloud gets less coverage than the tests give; ci.yml names the test."
