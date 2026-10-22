@@ -1433,6 +1433,18 @@
   <data name="SetupTrayKde" xml:space="preserve">
     <value>Plasma може ховати нові значки серед прихованих записів системного лотка, тож ви не бачитимете стану запису. Параметри системного лотка → Записи → Dictum: Показано.</value>
   </data>
+  <data name="CaptionMinimize" xml:space="preserve">
+    <value>Згорнути</value>
+  </data>
+  <data name="CaptionMaximize" xml:space="preserve">
+    <value>Розгорнути</value>
+  </data>
+  <data name="CaptionRestore" xml:space="preserve">
+    <value>Відновити</value>
+  </data>
+  <data name="CaptionClose" xml:space="preserve">
+    <value>Закрити</value>
+  </data>
   <data name="SetupWindowTitle" xml:space="preserve">
     <value>Майстер налаштування Dictum</value>
   </data>

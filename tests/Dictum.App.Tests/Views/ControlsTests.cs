@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Automation;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -139,6 +140,21 @@ public class ControlsTests(AvaloniaFixture fx)
 
         badge.Level = HealthLevel.Error;
         Assert.Equal(Strings.StatusError, AutomationProperties.GetName(badge));
+    });
+
+    // Avalonia names the caption buttons in English; a screen reader hears Dictum's names, Restore while maximised.
+    [Fact]
+    public Task ACaptionButtonIsNamedByItsCaption() => fx.Ui(() =>
+    {
+        var maximize = new CaptionButton { Caption = "Maximize", MaximizedCaption = "Restore" };
+        var close = new CaptionButton { Caption = "Close" };
+        AutomationProperties.SetName(maximize, "Avalonia's name");
+        string? Spoken(Control button) => ControlAutomationPeer.CreatePeerForElement(button).GetName();
+
+        Assert.Equal(("Maximize", "Close"), (Spoken(maximize), Spoken(close)));
+
+        maximize.IsWindowMaximized = close.IsWindowMaximized = true;
+        Assert.Equal(("Restore", "Close"), (Spoken(maximize), Spoken(close)));
     });
 
     [Fact]

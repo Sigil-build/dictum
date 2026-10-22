@@ -1433,6 +1433,18 @@
   <data name="SetupTrayKde" xml:space="preserve">
     <value>Plasma may keep new icons among the System Tray's hidden entries, so you would not see the recording state. System Tray settings → Entries → Dictum: Shown.</value>
   </data>
+  <data name="CaptionMinimize" xml:space="preserve">
+    <value>Minimize</value>
+  </data>
+  <data name="CaptionMaximize" xml:space="preserve">
+    <value>Maximize</value>
+  </data>
+  <data name="CaptionRestore" xml:space="preserve">
+    <value>Restore</value>
+  </data>
+  <data name="CaptionClose" xml:space="preserve">
+    <value>Close</value>
+  </data>
   <data name="SetupWindowTitle" xml:space="preserve">
     <value>Set up Dictum</value>
   </data>
