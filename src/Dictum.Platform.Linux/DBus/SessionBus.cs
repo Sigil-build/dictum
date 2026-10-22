@@ -6,7 +6,8 @@ namespace Dictum.Platform.Linux.DBus;
 /// A session-bus connection of our own, opened on first use and kept open. Not the shared DBusConnection.Session: that
 /// one auto-connects and does not allow UniqueName, which the portal Request paths are built from.
 /// </summary>
-internal sealed class SessionBus : IDisposable
+/// <param name="address">The session bus; the one <c>DBUS_SESSION_BUS_ADDRESS</c> names when left out.</param>
+internal sealed class SessionBus(string? address = null) : IDisposable
 {
     private readonly SemaphoreSlim _connect = new(1, 1);
     private DBusConnection? _connection;
@@ -18,8 +19,8 @@ internal sealed class SessionBus : IDisposable
         {
             if (_connection is null)
             {
-                var address = DBusAddress.Session ?? throw new InvalidOperationException("No D-Bus session bus (DBUS_SESSION_BUS_ADDRESS is not set).");
-                var connection = new DBusConnection(address);
+                var bus = address ?? DBusAddress.Session ?? throw new InvalidOperationException("No D-Bus session bus (DBUS_SESSION_BUS_ADDRESS is not set).");
+                var connection = new DBusConnection(bus);
                 try
                 {
                     await connection.ConnectAsync().ConfigureAwait(false);

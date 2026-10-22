@@ -2,9 +2,9 @@
 
 How you update or remove Dictum depends on how you installed it. Whichever way you choose, your settings, your downloaded models, your history and the API keys in the keyring stay: an update or a reinstall picks up where you left off. [Start fresh](#start-fresh) says how to delete them as well.
 
-The desktop app tells you when a new version is out: **Update available: 0.5.0**, with that version, shows in the tray icon's menu and opens its page on GitHub. See [Check for updates](../reference/settings.md#check-for-updates).
+The desktop app tells you when a new version is out: **Update available: 0.6.0**, with that version, shows in the tray icon's menu and opens its page on GitHub. See [Check for updates](../reference/settings.md#check-for-updates).
 
-Package names are shown here with `<version>` in place of the version. The commands set it in a variable first, `version=0.5.0`: put in the version you downloaded.
+Package names are shown here with `<version>` in place of the version. The commands set it in a variable first, `version=0.5.1`: put in the version you downloaded.
 
 ## Windows installer {#msi}
 
@@ -45,7 +45,7 @@ These steps assume the AppImage lives at `~/Applications/Dictum.AppImage`, as [G
 2. Put the new file in place of the old one, under the same name, and make it executable:
 
     ```sh
-    version=0.5.0
+    version=0.5.1
     mv ~/Downloads/dictum-$version-linux-x64.AppImage ~/Applications/Dictum.AppImage
     chmod +x ~/Applications/Dictum.AppImage
     ```
@@ -75,7 +75,7 @@ Under the same name, start at login keeps working. If you keep each version unde
 **To update**, unpack the newer tarball and run its `install.sh`, as for the first install:
 
 ```sh
-version=0.5.0
+version=0.5.1
 cd ~/Downloads
 tar -xzf dictum-$version-linux-x64.tar.gz
 ./dictum-$version-linux-x64/install.sh

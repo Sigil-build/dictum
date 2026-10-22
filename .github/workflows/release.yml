@@ -1,5 +1,5 @@
-# A tag v<version> builds the packages and opens a DRAFT release with them, their provenance attestations and the
-# SBOM; then virustotal.yml adds links to VirusTotal's reports to its notes. Publishing it is a person's call, and
+# A tag v<version> builds the packages and opens a DRAFT release with them, their provenance attestations (also as
+# .intoto.jsonl files) and the SBOM; then virustotal.yml adds links to VirusTotal's reports to its notes. Publishing it is a person's call, and
 # publishing runs virustotal.yml again, which puts the section back if the draft's notes were replaced meanwhile.
 # The draft exists only once the packages, the SBOM and both attestations are done: if the sbom job or an attestation
 # fails, there is no draft, and "Re-run failed jobs" on this run makes it, from the packages this run built.
@@ -20,9 +20,9 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
 
@@ -46,11 +46,11 @@ jobs:
       DOTNET_CLI_TELEMETRY_OPTOUT: 1
       DOTNET_NOLOGO: 1
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
 
@@ -73,7 +73,7 @@ jobs:
           upload-artifact: false
           upload-release-assets: false
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sbom
           path: dictum-${{ needs.check.outputs.version }}-sbom.spdx.json
@@ -89,10 +89,10 @@ jobs:
       id-token: write
       attestations: write
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # The packages this run built: an attestation never covers files from an earlier run or release.
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: packages-*
           merge-multiple: true
@@ -111,22 +111,37 @@ jobs:
           cat SHA256SUMS
 
       # After the checksums, which cover the four packages only.
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: sbom
           path: release
 
       # Each file of the release, as built by this run of this workflow from this tag.
       - name: Provenance of every release file
-        uses: actions/attest@v4
+        id: provenance
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: release/*
 
       - name: The SBOM, attested for the packages it describes
-        uses: actions/attest@v4
+        id: sbom-attestation
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-checksums: release/SHA256SUMS
           sbom-path: release/dictum-${{ needs.check.outputs.version }}-sbom.spdx.json
+
+      # The attestations as files of the release, which verify without GitHub's attestation API: gh attestation verify <file> --bundle <bundle>.
+      # Each is a Sigstore bundle, a JSON document; jq -c puts it on one line, as the .intoto.jsonl name says. They
+      # come after the checksums and the attestations, so neither covers them.
+      - name: The attestations as release files
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+          PROVENANCE_BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
+          SBOM_BUNDLE: ${{ steps.sbom-attestation.outputs.bundle-path }}
+        run: |
+          set -euo pipefail
+          jq -c . "$PROVENANCE_BUNDLE" > "release/dictum-$VERSION.intoto.jsonl"
+          jq -c . "$SBOM_BUNDLE" > "release/dictum-$VERSION-sbom.intoto.jsonl"
 
       - name: Draft release
         env:
@@ -134,7 +149,7 @@ jobs:
           VERSION: ${{ needs.check.outputs.version }}
         run: >
           gh release create "$GITHUB_REF_NAME" --draft --title "Dictum $VERSION"
-          --notes "Dictum $VERSION. Windows: the MSI (per user, no admin rights) or the portable zip. Linux: the AppImage, the tarball with install.sh, or the PKGBUILD (Arch, CachyOS). SHA-256 sums in SHA256SUMS. The SBOM of the source is dictum-$VERSION-sbom.spdx.json. gh attestation verify <file> -R $GITHUB_REPOSITORY checks that a file was built by this release's workflow."
+          --notes "Dictum $VERSION. Windows: the MSI (per user, no admin rights) or the portable zip. Linux: the AppImage, the tarball with install.sh, or the PKGBUILD (Arch, CachyOS). SHA-256 sums in SHA256SUMS. The SBOM of the source is dictum-$VERSION-sbom.spdx.json. gh attestation verify <file> -R $GITHUB_REPOSITORY checks that a file was built by this release's workflow; with --bundle dictum-$VERSION.intoto.jsonl and -R it checks without GitHub's attestation API (dictum-$VERSION-sbom.intoto.jsonl is the SBOM's attestation)."
           release/*
 
   # After the draft exists, so that the release is published with the links. Without VIRUSTOTAL_API_KEY it only

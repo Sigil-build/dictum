@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using Dictum.App.Resources;
 using Dictum.App.Views.Settings;
@@ -87,6 +88,30 @@ public class CaptionButtonTests
             $"{Text(nameof(Strings.CaptionMinimize))} not focusable, {middle} not focusable, {Text(nameof(Strings.CaptionClose))} not focusable",
             buttons);
         Assert.Equal(0, tabbedTo);
+    }
+
+    // A window shown without activation is inactive, as when another window has the focus: Windows 11 dims its caption
+    // glyphs then, and so do Dictum's.
+    [Fact]
+    public async Task AnInactiveWindowsCaptionGlyphsAreDimmed()
+    {
+        SkipUnlessEnabled();
+
+        var (active, glyphs, dimmed) = await RealAvalonia.RunAsync(async () =>
+        {
+            var window = new SettingsWindow { ShowActivated = false };
+            window.Show();
+            await RealAvalonia.SettleAsync();
+            var seen = (
+                window.IsActive,
+                CaptionButtons(window).Select(b => ((ISolidColorBrush)b.GetVisualDescendants().OfType<Avalonia.Controls.Shapes.Path>().Single().Fill!).Color).ToList(),
+                ((ISolidColorBrush)window.FindResource(window.ActualThemeVariant, "color.caption.inactive")!).Color);
+            window.Close();
+            return seen;
+        });
+
+        Assert.False(active);
+        Assert.Equal([dimmed, dimmed, dimmed], glyphs);
     }
 
     private static void SkipUnlessEnabled()

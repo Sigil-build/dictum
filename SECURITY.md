@@ -39,7 +39,7 @@ sha256sum --check --ignore-missing SHA256SUMS
 On Windows, in PowerShell, this prints `True` when the MSI matches:
 
 ```powershell
-(Get-FileHash .\dictum-0.5.0-win-x64.msi).Hash -eq ((Select-String 'win-x64.msi' .\SHA256SUMS).Line -split ' ')[0]
+(Get-FileHash .\dictum-0.5.1-win-x64.msi).Hash -eq ((Select-String 'win-x64.msi' .\SHA256SUMS).Line -split ' ')[0]
 ```
 
 The sums come from the same release as the files: they show that a download is complete and unchanged, not who built it. The attestation does that.
@@ -49,10 +49,16 @@ The sums come from the same release as the files: they show that a download is c
 For releases after 0.4.0. The release workflow signs an attestation for each file it builds, with a [Sigstore](https://www.sigstore.dev/) certificate that names the repository, the workflow, the tag and the commit. With the [GitHub CLI](https://cli.github.com/), signed in, in the folder with the file, for example:
 
 ```sh
-gh attestation verify dictum-0.5.0-linux-x64.AppImage -R Sigil-build/dictum
+gh attestation verify dictum-0.5.1-linux-x64.AppImage -R Sigil-build/dictum
 ```
 
 It succeeds only for a file that a workflow of this repository built, and prints which workflow and which tag.
+
+To check without asking GitHub's attestation API, download the attestation files of the release too (`gh` still needs Sigstore's trusted root, which it fetches once and caches, or which `gh attestation trusted-root` saves for a machine with no network): `dictum-<version>.intoto.jsonl` holds the provenance of every release file, and `dictum-<version>-sbom.intoto.jsonl` the SBOM's attestation (Sigstore bundles, one line each). Then add `--bundle` and `--repo`:
+
+```sh
+gh attestation verify dictum-0.5.1-linux-x64.AppImage --bundle dictum-0.5.1.intoto.jsonl --repo Sigil-build/dictum
+```
 
 Each release also has `dictum-<version>-sbom.spdx.json`: the NuGet packages Dictum is built from, with their versions, in SPDX. It is attested for the packages, and `--predicate-type https://spdx.dev/Document/v2.3` added to the command above checks it.
 

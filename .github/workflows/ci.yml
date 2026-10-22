@@ -1,11 +1,19 @@
 name: CI
 
+# Once per change: a pull request's commits run as the pull request (whatever its base), main's after the merge. A push
+# to any other branch or a tag runs nothing here; release.yml checks and builds a tag itself.
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:
   contents: read
+
+# A newer commit on the same pull request, or on main, cancels the run it has made stale.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
@@ -16,18 +24,19 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
 
       - name: Build
         run: dotnet build -c Release
 
+      # DejaVu Sans for the wider-font layout test (SettingsLayoutTests), which fails without it.
       - name: Test (inside a D-Bus session for the tray tests)
         run: |
-          sudo apt-get update && sudo apt-get install -y dbus libfontconfig1
+          sudo apt-get update && sudo apt-get install -y dbus libfontconfig1 fonts-dejavu-core
           dbus-run-session -- dotnet test -c Release --no-build
 
       - name: Check catalog URLs
@@ -47,11 +56,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
 
@@ -84,9 +93,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
 
@@ -138,7 +147,7 @@ jobs:
           echo "transcript: $text"
           grep -qi "country" <<< "$text"
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dictum-${{ matrix.rid }}
           path: |
@@ -152,25 +161,34 @@ jobs:
     needs: publish
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    # The catalog's whisper-tiny-en (src/Dictum.Setup/catalog.json): the same pinned revision of
+    # ggerganov/whisper.cpp and the same SHA-256, Hugging Face's LFS sha256 of the file.
+    env:
+      WHISPER_MODEL_REVISION: 5359861c739e955e79d9a303bcbc70fb988958b1
+      WHISPER_MODEL_SHA256: 921e4cf8686fdd993dcd081a5da5b6c365bfde1162e72b08d75ac75289920b1f
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: dictum-linux-x64
           path: out
 
       - name: Cache Whisper test model
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: models
-          key: whisper-ggml-tiny.en
+          key: whisper-ggml-tiny.en-${{ env.WHISPER_MODEL_REVISION }}
 
+      # Checked whether it came from the cache or from Hugging Face; a file that fails the check fails the job, so it
+      # is never cached either.
       - name: Download Whisper test model
         run: |
+          set -euo pipefail
           mkdir -p models
           test -f models/ggml-tiny.en.bin || curl --proto '=https' --tlsv1.2 -fsSL -o models/ggml-tiny.en.bin \
-            https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin
+            "https://huggingface.co/ggerganov/whisper.cpp/resolve/$WHISPER_MODEL_REVISION/ggml-tiny.en.bin"
+          echo "$WHISPER_MODEL_SHA256  models/ggml-tiny.en.bin" | sha256sum -c -
 
       - name: Daemon smoke test (X11, Secret Service, hotkey)
         run: |

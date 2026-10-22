@@ -1,5 +1,6 @@
 # Builds and checks Dictum's packages, each on its own OS: Native AOT cannot cross-compile.
-# Called by ci.yml on every push and by release.yml on a tag.
+# Called by ci.yml on each pull request and push to main, and by release.yml on a tag. No concurrency of its own: a
+# called workflow's github.workflow is its caller's, so a group here would collide with the caller's.
 name: Packages
 
 on:
@@ -17,9 +18,9 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
 
@@ -37,7 +38,7 @@ jobs:
         shell: pwsh
         run: ./packaging/windows/test-msi-smoke.ps1
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: packages-windows
           path: |
@@ -48,9 +49,9 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-dotnet@v6
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
 
@@ -69,7 +70,7 @@ jobs:
       - name: Build and install the PKGBUILD in an Arch container
         run: bash packaging/linux/aur/test-pkgbuild.sh "$RUNNER_TEMP"/packages/dictum-*-linux-x64.tar.gz
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: packages-linux
           path: |

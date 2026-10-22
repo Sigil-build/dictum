@@ -11,10 +11,11 @@ public interface ISecretStore
 }
 
 /// <summary>
-/// There is no secret store to keep keys in: no Secret Service runs, or the OS has none Dictum supports. A key then
-/// has to come from <c>env:VAR</c>, so hints name that instead of storing the key.
+/// There is no secret store to keep keys in: no session bus to reach a Secret Service through, no Secret Service on it,
+/// or no store on the OS that Dictum supports. A key then has to come from <c>env:VAR</c>, so hints name that instead of
+/// storing the key.
 /// </summary>
-public sealed class SecretStoreUnavailableException(string message) : ConfigException(message);
+public sealed class SecretStoreUnavailableException(string message, Exception? inner = null) : ConfigException(message, [], inner);
 
 /// <summary>Stands in where the OS has no supported secret store: every call fails and points at <c>env:VAR</c>.</summary>
 public sealed class UnavailableSecretStore : ISecretStore

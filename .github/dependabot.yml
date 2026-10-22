@@ -11,6 +11,11 @@ updates:
     commit-message:
       prefix: build
       include: scope
+    # WiX Toolset 7 refuses to build until its Open Source Maintenance Fee EULA is accepted (WIX7015). Dictum stays
+    # on WiX 6, so Dependabot offers WiX's minor and patch updates only.
+    ignore:
+      - dependency-name: 'WixToolset.*'
+        update-types: ['version-update:semver-major']
     # A package goes to the first group it matches: Avalonia.Headless stays with Avalonia, not with the tests.
     groups:
       avalonia:
