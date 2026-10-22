@@ -13,7 +13,8 @@ namespace Dictum.Integration.Tests;
 /// <summary>
 /// The caption buttons Avalonia draws for Dictum's windows on Windows, whose client area extends into the title bar. Windows
 /// 11 draws its own 46 px wide and touching, with Close in the window's top-right corner. Avalonia's headless platform
-/// draws no window decorations, so these are real windows, shown without activation.
+/// draws no window decorations, so these are real windows, shown without activation, one of them maximised over the
+/// desktop. Enabled with DICTUM_INTEGRATION=1, so that a run of this project does not put windows over the user's work.
 /// </summary>
 public class CaptionButtonTests
 {
@@ -25,11 +26,7 @@ public class CaptionButtonTests
     [InlineData("setup", WindowState.Normal)]
     public async Task TheCaptionButtonsSitInTheTopRightCornerAsWindowsDrawsThem(string name, WindowState state)
     {
-        if (!OperatingSystem.IsWindows())
-        {
-            Assert.Skip("Windows only: elsewhere the window manager draws the title bar");
-            return;
-        }
+        SkipUnlessEnabled();
 
         var (width, buttons) = await RealAvalonia.RunAsync(async () =>
         {
@@ -58,11 +55,7 @@ public class CaptionButtonTests
     [InlineData(WindowState.Maximized, "uk")]
     public async Task TheCaptionButtonsHaveNamesAndTakeNoFocus(WindowState state, string language)
     {
-        if (!OperatingSystem.IsWindows())
-        {
-            Assert.Skip("Windows only: elsewhere the window manager draws the title bar");
-            return;
-        }
+        SkipUnlessEnabled();
 
         var culture = CultureInfo.GetCultureInfo(language);
         var (buttons, tabbedTo) = await RealAvalonia.RunAsync(async () =>
@@ -94,6 +87,12 @@ public class CaptionButtonTests
             $"{Text(nameof(Strings.CaptionMinimize))} not focusable, {middle} not focusable, {Text(nameof(Strings.CaptionClose))} not focusable",
             buttons);
         Assert.Equal(0, tabbedTo);
+    }
+
+    private static void SkipUnlessEnabled()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Windows only: elsewhere the window manager draws the title bar");
+        Assert.SkipUnless(Environment.GetEnvironmentVariable("DICTUM_INTEGRATION") == "1", "Set DICTUM_INTEGRATION=1 to run: it shows real windows");
     }
 
     /// <summary>The caption buttons Avalonia shows, left to right, with their edges in the window's coordinates.</summary>

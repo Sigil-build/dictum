@@ -10,7 +10,8 @@ namespace Dictum.Integration.Tests;
 /// The update notification's way to Dictum's tray icon on Avalonia's real Win32 platform: the balloon finds the icon that
 /// <see cref="WindowsTrayPresenter"/> added, Windows takes a balloon request for it, a click on the balloon comes back,
 /// and Avalonia's own icon events still arrive. No notification is shown: the request only takes a balloon away.
-/// The icon shows in the tray, or its overflow, for a moment. Windows only.
+/// The icon shows in the tray, or its overflow, for a moment, and Windows then lists the test host in its taskbar
+/// settings (Other system tray icons) for good, so it is enabled with DICTUM_INTEGRATION=1. Windows only.
 /// </summary>
 public sealed partial class TrayBalloonTests
 {
@@ -24,6 +25,9 @@ public sealed partial class TrayBalloonTests
             Assert.Skip("Windows only");
             return;
         }
+
+        Assert.SkipUnless(Environment.GetEnvironmentVariable("DICTUM_INTEGRATION") == "1",
+            "Set DICTUM_INTEGRATION=1 to run: Windows keeps a tray icon it has seen in its taskbar settings");
 
         var (found, hidden, clicks, activations, restored) = await RealAvalonia.RunAsync(Probe);
 
