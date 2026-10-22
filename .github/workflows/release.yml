@@ -33,15 +33,61 @@ jobs:
     needs: check
     uses: ./.github/workflows/packages.yml
 
+  # The SBOM lists the NuGet packages the two programs are built from, with their versions, in SPDX.
+  sbom:
+    needs: check
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_NOLOGO: 1
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+
+      # Syft finds .NET packages in packages.lock.json, which the repository does not keep: the restore writes one
+      # per project, with every package the project takes in, transitive ones too.
+      - name: Restore the programs with lock files
+        run: |
+          dotnet restore src/Dictum.App/Dictum.App.csproj -p:RestorePackagesWithLockFile=true
+          dotnet restore src/Dictum.Cli/Dictum.Cli.csproj -p:RestorePackagesWithLockFile=true
+
+      - name: The SBOM of the source
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        env:
+          SYFT_SOURCE_NAME: dictum
+          SYFT_SOURCE_VERSION: ${{ needs.check.outputs.version }}
+        with:
+          path: src
+          format: spdx-json
+          output-file: dictum-${{ needs.check.outputs.version }}-sbom.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sbom
+          path: dictum-${{ needs.check.outputs.version }}-sbom.spdx.json
+          if-no-files-found: error
+
   release:
-    needs: [check, packages]
+    needs: [check, packages, sbom]
     runs-on: ubuntu-22.04
     timeout-minutes: 15
     permissions:
       contents: write
+      # The attestations: a Sigstore certificate for this run, and GitHub's store that gh attestation verify reads.
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v7
 
+      # The packages this run built: an attestation never covers files from an earlier run or release.
       - uses: actions/download-artifact@v8
         with:
           pattern: packages-*
@@ -60,11 +106,29 @@ jobs:
           sed -e "s/^pkgver=.*/pkgver=$VERSION/" -e "s/^sha256sums=.*/sha256sums=('$sum')/" ../packaging/linux/aur/PKGBUILD > PKGBUILD
           cat SHA256SUMS
 
+      # After the checksums, which cover the four packages only.
+      - uses: actions/download-artifact@v8
+        with:
+          name: sbom
+          path: release
+
+      # Each file of the release, as built by this run of this workflow from this tag.
+      - name: Provenance of every release file
+        uses: actions/attest@v4
+        with:
+          subject-path: release/*
+
+      - name: The SBOM, attested for the packages it describes
+        uses: actions/attest@v4
+        with:
+          subject-checksums: release/SHA256SUMS
+          sbom-path: release/dictum-${{ needs.check.outputs.version }}-sbom.spdx.json
+
       - name: Draft release
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.check.outputs.version }}
         run: >
           gh release create "$GITHUB_REF_NAME" --draft --title "Dictum $VERSION"
-          --notes "Dictum $VERSION. Windows: the MSI (per user, no admin rights) or the portable zip. Linux: the AppImage, the tarball with install.sh, or the PKGBUILD (Arch, CachyOS). SHA-256 sums in SHA256SUMS."
+          --notes "Dictum $VERSION. Windows: the MSI (per user, no admin rights) or the portable zip. Linux: the AppImage, the tarball with install.sh, or the PKGBUILD (Arch, CachyOS). SHA-256 sums in SHA256SUMS. The SBOM of the source is dictum-$VERSION-sbom.spdx.json. gh attestation verify <file> -R $GITHUB_REPOSITORY checks that a file was built by this release's workflow."
           release/*
