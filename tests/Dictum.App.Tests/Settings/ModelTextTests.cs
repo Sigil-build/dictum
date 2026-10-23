@@ -16,8 +16,8 @@ public sealed class ModelTextTests
     {
         Assert.Equal("Whisper large-v3-turbo, 8-bit", ModelText.Name(Turbo));
         Assert.Equal("best quality, needs a GPU", ModelText.Note(Turbo));
-        Assert.Equal("huggingface.co/ggerganov/whisper.cpp", ModelText.Source(Turbo));
-        Assert.Equal("874 MB · MIT licence · huggingface.co/ggerganov/whisper.cpp · 99 languages", ModelText.Meta(Turbo));
+        Assert.Equal("huggingface.co/sigil-build/whisper-ggml", ModelText.Source(Turbo));
+        Assert.Equal("874 MB · MIT licence · huggingface.co/sigil-build/whisper-ggml · 99 languages", ModelText.Meta(Turbo));
         Assert.Equal("English", ModelText.Languages(Catalog.BuiltIn.Get(Catalog.TinyEnglishModel)));
     }
 
