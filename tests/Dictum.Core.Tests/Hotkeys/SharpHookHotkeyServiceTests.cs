@@ -216,15 +216,21 @@ public sealed class SharpHookHotkeyServiceTests
         Assert.Equal(new HotkeyEvent("dictate", HotkeyPhase.Pressed), await pressed.Task.WaitAsync(DeliveryTimeout, TestContext.Current.CancellationToken));
     }
 
+    // A shutdown while a hook is still starting cancels the wait for it. SharpHook passes a dispose on to the native hook
+    // only once the run's thread has marked the run as running, so the start is cancelled after the native run has begun;
+    // a token cancelled up front would race that thread.
     [Fact(Timeout = TestTimeout.Default)]
     public async Task ACancelledStartIsReportedAsCancelledAndStopsTheHook()
     {
         var hook = new FakeHookProvider(enables: false);
         await using var service = new SharpHookHotkeyService(NullLog.Instance, "test", () => hook, LongStart);
         using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        await cancelled.CancelAsync();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.SetBindingsAsync(Bindings, cancelled.Token));
+        var starting = service.SetBindingsAsync(Bindings, cancelled.Token);
+        await Eventually.WaitForAsync(() => hook.Running, "the hook's native run to begin");
+        await cancelled.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => starting);
+        await Eventually.WaitForAsync(() => hook.Ended, "the cancelled hook's run to end", StopPatience);
 
         Assert.True(hook.StopRequested);
     }
