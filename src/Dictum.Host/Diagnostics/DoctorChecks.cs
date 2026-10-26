@@ -150,6 +150,11 @@ public static class DoctorChecks
 
     private static HealthStatus CheckModels(DictumConfig? config, AppPaths paths)
     {
+        if (paths.IsDownloadsDirectoryMissing)
+        {
+            return HealthStatus.Error(DownloadsFolder.MissingError(paths.DownloadsDirectory), DownloadsFolder.MissingHint);
+        }
+
         var needed = (config is null ? [] : config.Stt.Values.OfType<WhisperLocalSttConfig>())
             .SelectMany(w => w.Vad ? new[] { w.Model, w.VadModel } : [w.Model])
             .Distinct(StringComparer.OrdinalIgnoreCase)

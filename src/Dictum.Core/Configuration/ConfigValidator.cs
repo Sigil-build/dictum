@@ -79,6 +79,11 @@ public static class ConfigValidator
             Error(issues, ConfigPaths.General(nameof(GeneralSettings.UiLanguage)),
                 $"'{general.UiLanguage}' is not a UI language; use \"{UiLanguages.English}\" or \"{UiLanguages.Ukrainian}\", or leave it out to follow the system");
         }
+
+        if (general.DownloadsDirectory is { } downloads && !string.IsNullOrWhiteSpace(downloads) && !Path.IsPathFullyQualified(downloads))
+        {
+            Error(issues, ConfigPaths.General(nameof(GeneralSettings.DownloadsDirectory)), "must be an absolute path, or left out to use the data folder");
+        }
     }
 
     private static void ValidateProfile(

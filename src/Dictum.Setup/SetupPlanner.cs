@@ -24,6 +24,7 @@ public sealed record ExistingLlmServer(string BaseUrl, string Model, string? Api
 /// <param name="Vocabulary">Words to add to the first profile's list.</param>
 /// <param name="ForceCpu">Use the CPU runtime even when a GPU is present.</param>
 /// <param name="ReplaceVocabulary">The words replace the first profile's list (the wizard shows the list); otherwise they are added (init).</param>
+/// <param name="DownloadsDirectory">The downloads folder the config is to name, an absolute path; null means the data folder.</param>
 public sealed record SetupAnswers(
     string Language,
     string? SpeechModel,
@@ -31,12 +32,14 @@ public sealed record SetupAnswers(
     ExistingLlmServer? Server,
     IReadOnlyList<string> Vocabulary,
     bool ForceCpu = false,
-    bool ReplaceVocabulary = false);
+    bool ReplaceVocabulary = false,
+    string? DownloadsDirectory = null);
 
 /// <summary>What <c>dictum init</c> offers first: the current config's choices, or recommendations on a fresh machine.</summary>
 /// <param name="SpeechModel">Catalog id to offer first, or null to keep <paramref name="KeptModelFile"/>.</param>
 /// <param name="KeptModelFile">A model file outside the catalog that the config already uses and that exists.</param>
-public sealed record SetupDefaults(string Language, string? SpeechModel, string? KeptModelFile, ExistingLlmServer? Server);
+/// <param name="DownloadsDirectory">The downloads folder the current config names, or null for the data folder.</param>
+public sealed record SetupDefaults(string Language, string? SpeechModel, string? KeptModelFile, ExistingLlmServer? Server, string? DownloadsDirectory = null);
 
 /// <param name="Downloads">Catalog files that are not installed yet.</param>
 public sealed record SetupPlan(DictumConfig Config, IReadOnlyList<CatalogEntry> Downloads)
@@ -93,14 +96,15 @@ public static class SetupPlanner
         }
 
         var whisper = current.Stt.TryGetValue(SpeechProviderId(current), out var stt) ? stt as WhisperLocalSttConfig : null;
+        var downloads = current.General.DownloadsDirectory;
         if (whisper is not null && catalog.ForFile(whisper.Model) is { Kind: CatalogKind.Whisper } entry)
         {
-            return new SetupDefaults(language, entry.Id, null, CurrentServer(current));
+            return new SetupDefaults(language, entry.Id, null, CurrentServer(current), downloads);
         }
 
         return whisper is not null && modelFileExists(whisper.Model)
-            ? new SetupDefaults(language, null, whisper.Model, CurrentServer(current))
-            : new SetupDefaults(language, recommended, null, CurrentServer(current));
+            ? new SetupDefaults(language, null, whisper.Model, CurrentServer(current), downloads)
+            : new SetupDefaults(language, recommended, null, CurrentServer(current), downloads);
     }
 
     /// <summary>
@@ -153,6 +157,7 @@ public static class SetupPlanner
             Runtime = answers.ForceCpu ? WhisperRuntime.Cpu : whisper?.Runtime ?? WhisperRuntime.Auto,
         };
 
+        config.General = config.General with { DownloadsDirectory = answers.DownloadsDirectory };
         if (config.Profiles.Count == 0)
         {
             config.Profiles.Add(DefaultConfig.Create().Profiles[0]);

@@ -9,15 +9,33 @@ namespace Dictum.App.ViewModels.Setup;
 public sealed record DownloadRow(string File, string Size, string Licence, string Source);
 
 /// <summary>
-/// Step 6: the files the plan still needs, with size, licence and source; what is already in place; a privacy
-/// line that is true for the chosen server; and the consent. Next ("Download") needs the consent and enough space for
-/// the whole set; with nothing to fetch, Next ("Continue") goes straight to the save.
+/// Step 6: the files the plan still needs, with size, licence and source; what is already in place; the folder they
+/// go to with the free space there; a privacy line that is true for the chosen server; and the consent. Next
+/// ("Download") needs the consent and enough space for the whole set; with nothing to fetch, Next ("Continue") goes
+/// straight to the save. A first setup may choose another folder; over a config, Settings → Models changes it, since
+/// that moves the models already there.
 /// </summary>
 public sealed partial class SetupDownloadsStep(SetupServices services) : SetupStep
 {
     public override string Name => Strings.SetupStepDownloads;
 
-    public string FolderText { get; } = UiText.Format(Strings.SetupDownloadsLead, services.Paths.ModelsDirectory);
+    /// <summary>The folder chose another one: the wizard makes the plan again, since files there need no download.</summary>
+    public event Action? FolderChanged;
+
+    [ObservableProperty]
+    public partial string FolderText { get; private set; } = "";
+
+    /// <summary>"412 GB free on this drive."; null when the free space is unknown.</summary>
+    [ObservableProperty]
+    public partial string? FreeText { get; private set; }
+
+    /// <summary>Only on a first setup, with no download in the queue.</summary>
+    [ObservableProperty]
+    public partial bool CanChangeFolder { get; private set; }
+
+    /// <summary>Where to change the folder over a config; null on a first setup.</summary>
+    [ObservableProperty]
+    public partial string? ChangeLaterText { get; private set; }
 
     [ObservableProperty]
     public partial IReadOnlyList<DownloadRow> Rows { get; private set; } = [];
@@ -68,9 +86,29 @@ public sealed partial class SetupDownloadsStep(SetupServices services) : SetupSt
             : Strings.SetupPrivacyLocal;
         var needed = SetupRunner.NeededBytes(services.Paths, Files);
         var free = services.FreeDiskBytes();
-        SpaceError = needed > 0 && free < needed ? UiText.Format(Strings.SetupDownloadsNoSpace, Units.Size(needed), Units.Size(free)) : null;
+        SpaceError = services.Paths.IsDownloadsDirectoryMissing && Files.Count > 0
+            ? UiText.Format(Strings.SettingsModelsFolderMissing, services.Paths.DownloadsDirectory)
+            : needed > 0 && free < needed ? UiText.Format(Strings.SetupDownloadsNoSpace, Units.Size(needed), Units.Size(free)) : null;
+        FolderText = UiText.Format(Strings.SetupDownloadsLead, services.Paths.ModelsDirectory);
+        FreeText = free == long.MaxValue ? null : UiText.Format(Strings.SetupDownloadsFreeSpace, Units.Size(free));
+        var firstSetup = !services.Store.Exists;
+        CanChangeFolder = firstSetup && services.Location is not null
+            && !services.Downloads.Items.Any(i => i.State is DownloadState.Queued or DownloadState.Downloading or DownloadState.Paused);
+        ChangeLaterText = firstSetup ? null : Strings.SetupDownloadsChangeLater;
         ConfigNote = replacesInvalid ? Strings.SetupDownloadsReplacesConfig : null;
         Update();
+    }
+
+    /// <summary>The folder picker chose <paramref name="folder"/>; the downloads go there until the setup saves it in the config.</summary>
+    public void ChooseFolder(string folder)
+    {
+        if (!CanChangeFolder)
+        {
+            return;
+        }
+
+        services.Location?.Choose(folder);
+        FolderChanged?.Invoke();
     }
 
     partial void OnConsentChanged(bool value) => Update();

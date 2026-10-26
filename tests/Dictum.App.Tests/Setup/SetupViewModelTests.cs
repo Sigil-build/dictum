@@ -527,6 +527,82 @@ public sealed class SetupViewModelTests : IDisposable
         Assert.True(_fx.Downloads.IsPaused);
     }
 
+    // Another drive: its free space decides, and files already there are not fetched again.
+    [Fact]
+    public async Task ChoosingAFolderRecomputesTheSpace()
+    {
+        var small = _fx.Folder("small");
+        var ready = _fx.Folder("ready");
+        Directory.CreateDirectory(Path.Combine(ready, "models"));
+        File.WriteAllBytes(Path.Combine(ready, "models", ModelsPageTests.TurboFile), ModelsPageTests.TurboData);
+        File.WriteAllBytes(Path.Combine(ready, "models", "ggml-silero-v6.2.0.bin"), [1, 2, 3]);
+        _fx.FreeDiskAt = folder => folder == small ? 1_000_000 : 48_000_000_000;
+        var wizard = Open();
+        await WalkTo(wizard, 5);
+        Assert.Null(wizard.Downloads.SpaceError);
+
+        wizard.Downloads.ChooseFolder(small);
+
+        Assert.Equal(small, _fx.Location.Pending);
+        Assert.Equal("Not enough free space: 203 MB needed, 1 MB free.", wizard.Downloads.SpaceError);
+        Assert.Contains(Path.Combine(small, "models"), wizard.Downloads.FolderText, StringComparison.Ordinal);
+        Assert.False(wizard.CanNext);
+
+        wizard.Downloads.ChooseFolder(ready);
+
+        Assert.False(wizard.Downloads.HasFiles);
+        Assert.True(wizard.CanNext);
+    }
+
+    [Fact]
+    public async Task TheChosenFolderIsSavedInTheConfigAndClearedFromPending()
+    {
+        var folder = _fx.Folder("dl");
+        var wizard = Open();
+        await WalkTo(wizard, 5);
+        wizard.Downloads.ChooseFolder(folder);
+
+        await wizard.NextCommand.ExecuteAsync(null);
+        Assert.Equal(folder, Kept()?.DownloadsDirectory);
+        _fx.InstallAll();
+        Finish(ModelsPageTests.Turbo);
+        await wizard.NextCommand.ExecuteAsync(null);
+
+        Assert.Equal(7, wizard.Index);
+        Assert.True(File.Exists(Path.Combine(folder, "models", ModelsPageTests.TurboFile)));
+        Assert.Equal(folder, _fx.Store.Load().General.DownloadsDirectory);
+        Assert.Equal((folder, (string?)null), (_fx.Location.Configured, _fx.Location.Pending));
+    }
+
+    // A restart in the middle of step 7: the new process learns the folder from setup.json.
+    [Fact]
+    public async Task AKeptWalkResumesWithItsFolder()
+    {
+        var folder = _fx.Folder("dl");
+        var wizard = Open();
+        await WalkTo(wizard, 5);
+        wizard.Downloads.ChooseFolder(folder);
+        await wizard.NextCommand.ExecuteAsync(null);
+        _fx.Location.Choose(null);
+
+        var resumed = new SetupViewModel(_fx.Services(), Kept());
+
+        Assert.Equal(6, resumed.Index);
+        Assert.Equal(folder, _fx.Location.Pending);
+    }
+
+    [Fact]
+    public async Task ANewWalkForgetsAFolderThatWasNeverSaved()
+    {
+        var wizard = Open();
+        await WalkTo(wizard, 5);
+        wizard.Downloads.ChooseFolder(_fx.Folder("dl"));
+
+        _ = Open();
+
+        Assert.Null(_fx.Location.Pending);
+    }
+
     // Back from step 7 drops the kept walk; a restart starts over instead of resuming downloads left behind.
     [Fact]
     public async Task BackFromStepSevenDropsTheKeptWalk()

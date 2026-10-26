@@ -249,6 +249,28 @@ public class SetupPlannerTests
     }
 
     [Fact]
+    public void ThePlanCarriesTheDownloadsFolder()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "dictum-downloads");
+        var current = DefaultConfig.Create() with { General = new GeneralSettings { DownloadsDirectory = Path.GetTempPath(), HistorySize = 7 } };
+
+        var plan = SetupPlanner.Plan(current, Answers() with { DownloadsDirectory = folder }, Catalog, _ => false);
+
+        Assert.Equal((folder, 7), (plan.Config.General.DownloadsDirectory, plan.Config.General.HistorySize));
+        Assert.Null(SetupPlanner.Plan(null, Answers(), Catalog, _ => false).Config.General.DownloadsDirectory);
+    }
+
+    [Fact]
+    public void DefaultsKeepTheCurrentFolder()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "dictum-downloads");
+        var current = DefaultConfig.Create() with { General = new GeneralSettings { DownloadsDirectory = folder } };
+
+        Assert.Equal(folder, SetupPlanner.Defaults(current, new HardwareInfo(null, 1), Catalog, _ => false).DownloadsDirectory);
+        Assert.Null(SetupPlanner.Defaults(null, new HardwareInfo(null, 1), Catalog, _ => false).DownloadsDirectory);
+    }
+
+    [Fact]
     public void DefaultsRecommendAModelWhenTheCurrentFileIsGone() =>
         Assert.Equal("whisper-small-q8", SetupPlanner.Defaults(WithModel(HandPlaced), new HardwareInfo(null, 1), Catalog, _ => false).SpeechModel);
 

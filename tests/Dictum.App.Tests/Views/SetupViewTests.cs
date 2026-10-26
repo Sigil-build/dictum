@@ -174,6 +174,24 @@ public sealed class SetupViewTests(AvaloniaFixture fx) : IDisposable
 
     // Step 3 offers only what this version can do: no clean-up, or a server the user runs; no row that cannot be picked.
     [Fact]
+    public Task TheDownloadsStepHasChange() => fx.UiAsync(async () =>
+    {
+        var wizard = new SetupViewModel(_setup.Services());
+        var window = Show(wizard);
+        while (wizard.Index < 5)
+        {
+            await wizard.NextCommand.ExecuteAsync(null);
+        }
+
+        Dispatcher.UIThread.RunJobs();
+
+        var change = window.GetVisualDescendants().OfType<Button>().Single(b => b.Content as string == Strings.SetupDownloadsChange);
+        Assert.True(change.IsEffectivelyVisible);
+        Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == "48 GB free on this drive." && t.IsEffectivelyVisible);
+        window.Close();
+    });
+
+    [Fact]
     public Task TheCleanupStepOffersOffOrAServer() => fx.UiAsync(async () =>
     {
         var wizard = new SetupViewModel(_setup.Services());

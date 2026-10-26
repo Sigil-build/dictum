@@ -32,7 +32,7 @@ internal static class SettingsPages
         var models = new ModelsPage(session, new ModelsServices(
             services.Paths, services.Catalog, services.Downloads(), services.Hardware, services.FreeDiskBytes,
             GC.GetGCMemoryInfo().TotalAvailableMemoryBytes, Environment.ProcessorCount, services.Measurements, services.Daemon, services.Timers,
-            services.Delay, services.Time, services.Log));
+            services.Delay, services.Time, services.Log, services.Location));
         var history = new HistoryPage(session, services.Paths.HistoryFile, clipboard, runner, services.Log);
         var about = new AboutPage(new AboutServices(
             SettingsViewModel.AppVersion(), AboutPage.ThisSystem(services.Desktop), RuntimeInformation.RuntimeIdentifier,

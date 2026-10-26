@@ -6,14 +6,40 @@
              x:DataType="vm:ModelsPage">
   <ScrollViewer>
     <StackPanel Margin="{StaticResource settings.page.margin}" Spacing="8">
+      <TextBlock Classes="title" Text="{Binding Title}" />
       <Grid ColumnDefinitions="*,16,Auto">
-        <TextBlock Classes="title" Text="{Binding Title}" VerticalAlignment="Bottom" />
-        <StackPanel Grid.Column="2" Spacing="4" VerticalAlignment="Bottom">
-          <TextBlock Text="{Binding DiskText}" Classes="hint" HorizontalAlignment="Right" />
-          <ProgressBar Classes="disk" Minimum="0" Maximum="100" Value="{Binding DiskShare}" HorizontalAlignment="Right"
-                       AutomationProperties.Name="{Binding DiskText}" />
+        <StackPanel Spacing="4" VerticalAlignment="Center">
+          <TextBlock Text="{Binding FolderText}" Classes="hint" TextWrapping="Wrap" />
+          <ProgressBar Classes="disk" Minimum="0" Maximum="100" Value="{Binding DiskShare}" HorizontalAlignment="Left"
+                       AutomationProperties.Name="{Binding FolderText}" />
         </StackPanel>
+        <Button Grid.Column="2" x:Name="ChangeFolderButton" Content="{x:Static res:Strings.SettingsModelsFolderChange}"
+                IsEnabled="{Binding CanChangeFolder}" ToolTip.Tip="{Binding ChangeFolderHint}" VerticalAlignment="Center"
+                ToolTip.ShowOnDisabled="True" AutomationProperties.HelpText="{Binding ChangeFolderHint}" />
       </Grid>
+      <TextBlock Text="{Binding FolderBusyText}" Classes="hint" TextWrapping="Wrap"
+                 IsVisible="{Binding FolderBusyText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+      <TextBlock Text="{Binding FolderMissingText}" Classes="error" TextWrapping="Wrap"
+                 IsVisible="{Binding FolderMissingText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+      <Border Classes="card" Padding="16,12" IsVisible="{Binding MoveAsk}">
+        <StackPanel Spacing="8">
+          <TextBlock Text="{Binding MoveText}" FontWeight="SemiBold" Foreground="{DynamicResource color.text.primary}" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding DontMoveNote}" Classes="hint" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Classes="primary" Content="{x:Static res:Strings.SettingsModelsMove}" Command="{Binding MoveCommand}" />
+            <Button Content="{x:Static res:Strings.SettingsModelsDontMove}" Command="{Binding DontMoveCommand}" />
+            <Button Content="{x:Static res:Strings.SettingsModelsMoveCancel}" Command="{Binding CancelMoveCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+      <Grid ColumnDefinitions="*,12,Auto,12,Auto" IsVisible="{Binding Moving}">
+        <ProgressBar Classes="download" Minimum="0" Maximum="100" Value="{Binding MoveShare}" VerticalAlignment="Center"
+                     AutomationProperties.Name="{Binding MovingText}" />
+        <TextBlock Grid.Column="2" Text="{Binding MovingText}" Classes="hint" VerticalAlignment="Center" />
+        <Button Grid.Column="4" Content="{x:Static res:Strings.SettingsModelsMoveCancel}" Command="{Binding CancelMoveCommand}" />
+      </Grid>
+      <TextBlock Text="{Binding MoveError}" Classes="error" TextWrapping="Wrap"
+                 IsVisible="{Binding MoveError, Converter={x:Static ObjectConverters.IsNotNull}}" />
       <TextBlock Text="{Binding HardwareText}" Classes="hint" Margin="0,0,0,12" />
 
       <ItemsControl ItemsSource="{Binding Cards}">

@@ -138,7 +138,10 @@ WARN config warnings        1 warning(s)
 
 ## Файли моделей {#models}
 
-Рядок `models` (**Файли моделей**) перевіряє, чи файли моделей мовлення, які використовують ваші постачальники, лежать у теці моделей: у Windows це `%LOCALAPPDATA%\Dictum\models`, у Linux — `~/.local/share/dictum/models`.
+Рядок `models` (**Файли моделей**) перевіряє, чи файли моделей мовлення, які використовують ваші постачальники, лежать у теці `models` [теки завантажень](reference/files.md#downloads-folder): якщо ви не обрали іншу, у Windows це `%LOCALAPPDATA%\Dictum\models`, у Linux — `~/.local/share/dictum/models`. **Налаштування → Моделі** показують теку вгорі, а `dictum models folder` її друкує.
+
+`The downloads folder … is not available.` → `Connect the drive, or choose another folder: …`
+:   Обрана тека на диску, який не під'єднано, або її видалено. Dictum не створює її знову й нічого не завантажує деінде. Під'єднайте диск або оберіть іншу теку кнопкою **Змінити…** в **Налаштування → Моделі** чи командою `dictum models folder <шлях>`.
 
 `Missing in …: ggml-large-v3-turbo-q8_0.bin` → `Run 'dictum models pull whisper-large-v3-turbo-q8'.`
 :   Файла немає: завантаження не завершилося або файл видалили. Завантажте його в **Налаштування → Моделі** або виконайте команду з рядка. `dictum models list` показує, які моделі встановлено.

@@ -289,4 +289,18 @@ public class ConfigValidatorTests
     [Fact]
     public void TheLargestHistorySizeSettingsOffersIsValid() =>
         Assert.Empty(ConfigValidator.Validate(DefaultConfig.Create() with { General = new GeneralSettings { HistorySize = ConfigValidator.MaxHistorySize } }));
+
+    [Fact]
+    public void ARelativeDownloadsFolderIsAnError()
+    {
+        var relative = DefaultConfig.Create() with { General = new GeneralSettings { DownloadsDirectory = "models" } };
+        var absolute = DefaultConfig.Create() with { General = new GeneralSettings { DownloadsDirectory = Path.GetTempPath() } };
+
+        var issue = Assert.Single(ConfigValidator.Validate(relative));
+
+        Assert.Equal(
+            (ConfigIssueSeverity.Error, "general.downloadsDirectory", "must be an absolute path, or left out to use the data folder"),
+            (issue.Severity, issue.Path, issue.Message));
+        Assert.Empty(ConfigValidator.Validate(absolute));
+    }
 }

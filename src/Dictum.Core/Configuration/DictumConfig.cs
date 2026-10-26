@@ -57,6 +57,9 @@ public sealed record GeneralSettings
 
     /// <summary>dictum-gui asks GitHub for the newest release a minute after it starts, then once a day; the daemon ignores it.</summary>
     public bool CheckForUpdates { get; set; } = true;
+
+    /// <summary>The folder that holds the models and everything else Dictum downloads, an absolute path; null keeps them in the data folder.</summary>
+    public string? DownloadsDirectory { get; init; }
 }
 
 public enum InjectorBackend

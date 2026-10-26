@@ -12,15 +12,16 @@ public static class HardwareProbe
         var gpu = VulkanProbe.Devices.FirstOrDefault(d => d.IsHardware);
         return new HardwareInfo(
             gpu?.Name,
-            FreeBytes(paths.DataDirectory),
+            FreeDiskBytesAt(paths.DownloadsDirectory),
             gpu is { MemoryBytes: > 0 } ? gpu.MemoryBytes : null,
             gpu?.Type == VulkanDeviceType.IntegratedGpu);
     }
 
-    /// <summary>Free space where models are stored; unknown counts as plenty.</summary>
-    public static long FreeDiskBytes(AppPaths paths) => FreeBytes(paths.DataDirectory);
+    /// <summary>Free space in the downloads folder, where the models go; unknown counts as plenty.</summary>
+    public static long FreeDiskBytes(AppPaths paths) => FreeDiskBytesAt(paths.DownloadsDirectory);
 
-    private static long FreeBytes(string directory)
+    /// <summary>Free space on the drive of <paramref name="directory"/>, or of its nearest existing parent; unknown counts as plenty.</summary>
+    public static long FreeDiskBytesAt(string directory)
     {
         try
         {

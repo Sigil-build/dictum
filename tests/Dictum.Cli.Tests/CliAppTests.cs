@@ -6,6 +6,7 @@ using Dictum.Core.Configuration;
 using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 using Dictum.Setup;
+using Dictum.Testing;
 
 namespace Dictum.Cli.Tests;
 
@@ -187,6 +188,119 @@ public sealed class CliAppTests(CliSandbox sandbox)
         var config = ConfigStore.Parse(await File.ReadAllTextAsync(file, _ct));
         var model = Assert.IsType<WhisperLocalSttConfig>(config.Stt[DefaultConfig.LocalSttId]).Model;
         Assert.Equal(Catalog.BuiltIn.Get(pull.Groups[1].Value).File, model);
+    }
+
+    [Fact]
+    public async Task ModelsFolderPrintsTheDefault()
+    {
+        using var console = new ConsoleCapture();
+
+        Assert.Equal(0, await console.RunAsync("models", "folder", "--config", sandbox.File("none.json")));
+        Assert.Equal(sandbox.File("data"), console.Out.ToString().Trim());
+    }
+
+    [Fact]
+    public async Task ModelsFolderWithoutAConfigPointsAtInit()
+    {
+        using var dir = new TempDirectory();
+        using var console = new ConsoleCapture();
+
+        Assert.Equal(ExitCodes.InvalidConfig, await console.RunAsync("models", "folder", dir.File("new"), "--config", dir.File("config.json")));
+        Assert.Contains("dictum init --downloads-dir", console.Error.ToString(), StringComparison.Ordinal);
+        Assert.False(Directory.Exists(dir.File("new")));
+    }
+
+    [Fact]
+    public async Task ModelsFolderMovesWithMove()
+    {
+        using var dir = new TempDirectory();
+        var file = await ConfigWithDownloadsAsync(dir, dir.File("old"));
+        var model = await ModelAsync(dir.File("old"), "m.bin");
+        var target = dir.File("new");
+        using var console = new ConsoleCapture();
+
+        var code = await console.RunAsync("models", "folder", target, "--move", "--config", file);
+
+        Assert.True(code == 0, console.Error.ToString());
+        Assert.Equal("model", await File.ReadAllTextAsync(Path.Combine(target, "models", "m.bin"), _ct));
+        Assert.False(File.Exists(model));
+        Assert.Equal(target, ConfigStore.Parse(await File.ReadAllTextAsync(file, _ct)).General.DownloadsDirectory);
+    }
+
+    [Fact]
+    public async Task ModelsFolderWithoutMoveLeavesTheFilesAndSaysSo()
+    {
+        using var dir = new TempDirectory();
+        var file = await ConfigWithDownloadsAsync(dir, dir.File("old"));
+        var model = await ModelAsync(dir.File("old"), "m.bin");
+        using var console = new ConsoleCapture();
+
+        Assert.Equal(0, await console.RunAsync("models", "folder", dir.File("new"), "--config", file));
+
+        Assert.True(File.Exists(model));
+        Assert.Contains("stay in", console.Error.ToString(), StringComparison.Ordinal);
+        Assert.Equal(dir.File("new"), ConfigStore.Parse(await File.ReadAllTextAsync(file, _ct)).General.DownloadsDirectory);
+    }
+
+    [Fact]
+    public async Task ModelsFolderResetMovesTheModelsBackToTheDataFolder()
+    {
+        using var dir = new TempDirectory();
+        var file = await ConfigWithDownloadsAsync(dir, dir.File("old"));
+        await ModelAsync(dir.File("old"), "reset.bin");
+        using var console = new ConsoleCapture();
+
+        var code = await console.RunAsync("models", "folder", "--reset", "--move", "--config", file);
+
+        Assert.True(code == 0, console.Error.ToString());
+        Assert.True(File.Exists(Path.Combine(sandbox.File("data"), "models", "reset.bin")));
+        Assert.Null(ConfigStore.Parse(await File.ReadAllTextAsync(file, _ct)).General.DownloadsDirectory);
+        File.Delete(Path.Combine(sandbox.File("data"), "models", "reset.bin"));
+    }
+
+    [Fact]
+    public async Task ModelsDeleteRefusesAModelInUse()
+    {
+        using var dir = new TempDirectory();
+        var file = await ConfigWithDownloadsAsync(dir, dir.Path);
+        var model = await ModelAsync(dir.Path, DefaultConfig.DefaultModel);
+        using var console = new ConsoleCapture();
+
+        Assert.Equal(ExitCodes.InvalidConfig, await console.RunAsync("models", "delete", Catalog.BuiltIn.ForFile(DefaultConfig.DefaultModel)!.Id, "--config", file));
+
+        Assert.True(File.Exists(model));
+        Assert.Contains("is used by profile(s) dictate", console.Error.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ModelsDeleteRemovesAnUnusedModel()
+    {
+        using var dir = new TempDirectory();
+        var file = await ConfigWithDownloadsAsync(dir, dir.Path);
+        var model = await ModelAsync(dir.Path, Catalog.BuiltIn.Get("whisper-medium-q8").File);
+        using var console = new ConsoleCapture();
+
+        Assert.Equal(0, await console.RunAsync("models", "delete", "whisper-medium-q8", "whisper-tiny-en", "--config", file));
+
+        Assert.False(File.Exists(model));
+        Assert.Contains("whisper-tiny-en is not installed", console.Error.ToString(), StringComparison.Ordinal);
+    }
+
+    /// <summary>The starter config with <paramref name="downloads"/> as its downloads folder, in <paramref name="dir"/>.</summary>
+    private async Task<string> ConfigWithDownloadsAsync(TempDirectory dir, string downloads)
+    {
+        var file = dir.File("config.json");
+        var config = DefaultConfig.Create() with { General = new GeneralSettings { DownloadsDirectory = downloads } };
+        await File.WriteAllTextAsync(file, ConfigStore.Serialize(config), _ct);
+        return file;
+    }
+
+    private async Task<string> ModelAsync(string downloads, string name)
+    {
+        var path = Path.Combine(downloads, "models", name);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        await File.WriteAllTextAsync(path, "model", _ct);
+        return path;
     }
 
     private static ParseResult Parse(params string[] args) => CliApp.BuildRoot().Parse(args);

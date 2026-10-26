@@ -19,6 +19,7 @@ namespace Dictum.App.ViewModels.Setup;
 /// <param name="Daemon">The daemon link, for step 8's live line.</param>
 /// <param name="RestartDaemon">Step 8's Restart: the supervisor's, as on the System page.</param>
 /// <param name="OpenDocs">Step 1's "How does Dictum work?".</param>
+/// <param name="Location">The downloads folder <paramref name="Paths"/> follows; a first setup may choose another. Null in tests that leave it alone.</param>
 public sealed record SetupServices(
     AppPaths Paths,
     ConfigStore Store,
@@ -39,7 +40,8 @@ public sealed record SetupServices(
     OpenDocs OpenDocs,
     ITimers Timers,
     TimeProvider Time,
-    ILog Log);
+    ILog Log,
+    DownloadsLocation? Location = null);
 
 /// <summary>What step 8 says about the tray icon.</summary>
 /// <param name="Hidden">Whether the icon is hidden: true, false, or null when unknown.</param>

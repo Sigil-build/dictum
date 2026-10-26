@@ -134,6 +134,24 @@ public sealed class ModelDownloadsTests : IDisposable
         Assert.Empty(http.Requests);
     }
 
+    // An unplugged drive: the download must neither create the folder nor fall back to the data folder.
+    [Fact]
+    public async Task AQueuedDownloadIntoAMissingFolderFailsWithoutCreatingIt()
+    {
+        var gone = _dir.File("gone");
+        var http = new FakeHttpHandler().Respond(_ => Ok(DataA));
+        await using var queue = new ModelDownloads(
+            new FileDownloader(http.Client(), [TimeSpan.Zero]), Paths.WithDownloads(gone), TestCatalog(), () => long.MaxValue);
+
+        queue.Enqueue([TestCatalog().Get("a")]);
+        await queue.WhenIdleAsync(_ct);
+
+        Assert.Equal(DownloadState.Failed, queue.Items[0].State);
+        Assert.Equal(DownloadsFolder.MissingMessage(gone), queue.Items[0].Error);
+        Assert.False(Directory.Exists(gone));
+        Assert.Empty(http.Requests);
+    }
+
     [Fact(Timeout = TestTimeout.Default)]
     public async Task CancelRemovesTheEntryAndItsPartialFile()
     {

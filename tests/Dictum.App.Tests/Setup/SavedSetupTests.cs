@@ -40,6 +40,22 @@ public sealed class SavedSetupTests : IDisposable
         Assert.False(File.Exists(_fx.Paths.SetupFile));
     }
 
+    // A walk kept before the folder could be chosen reads as the data folder; the version stays 1.
+    [Fact]
+    public void TheDownloadsFolderRoundTripsAndAnOldFileReadsAsNone()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "dictum-downloads");
+        SavedSetupFile.Save(_fx.Paths, Sample() with { DownloadsDirectory = folder }, NullLog.Instance);
+
+        Assert.Equal(folder, SavedSetupFile.Load(_fx.Paths, NullLog.Instance)?.DownloadsDirectory);
+
+        File.WriteAllText(_fx.Paths.SetupFile, """{ "version": 1, "language": "uk", "url": "", "model": "", "words": [], "files": [] }""");
+
+        var old = SavedSetupFile.Load(_fx.Paths, NullLog.Instance);
+        Assert.NotNull(old);
+        Assert.Null(old.DownloadsDirectory);
+    }
+
     [Fact]
     public void NoFileIsNoWalk() => Assert.Null(SavedSetupFile.Load(_fx.Paths, NullLog.Instance));
 }

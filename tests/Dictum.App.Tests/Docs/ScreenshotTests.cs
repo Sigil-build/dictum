@@ -479,7 +479,7 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
             paths, new ConfigStore(paths.ConfigFile, NullLog.Instance), Catalog.BuiltIn, downloads,
             () => Task.FromResult(Hardware), () => Hardware.FreeDiskBytes, MemoryBytes, CpuCores, new SpeedMeasurements(), probe, new FakeSecrets(),
             new FakeAutostart(), Executable, new TrayHint(TrayDesktop.Windows, () => true, () => { }),
-            daemon, () => { }, (_, _) => { }, timers, clock, NullLog.Instance);
+            daemon, () => { }, (_, _) => { }, timers, clock, NullLog.Instance, new DownloadsLocation());
         var wizard = new SetupViewModel(services);
 
         var window = new SetupWindow { DataContext = wizard };

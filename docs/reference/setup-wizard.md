@@ -76,7 +76,9 @@ Writes: after `config.json` is saved, the login item: the value `Dictum` under `
 ![Step 6 of the setup wizard: Downloads](../images/setup-downloads.png#gh-light-mode-only)
 ![Step 6 of the setup wizard: Downloads](../images/setup-downloads-dark.png#gh-dark-mode-only)
 
-Shows **What will be downloaded**: each file with its size, licence and source, and the total. The files are the speech model from step 2 and the small Silero voice activity model. Files already on this computer are named and not downloaded again. The step also says where the files go, and whether anything leaves your computer: nothing, unless the clean-up server from step 3 is on another machine, which then gets the text.
+Shows **What will be downloaded**: each file with its size, licence and source, and the total. The files are the speech model from step 2 and the small Silero voice activity model. Files already on this computer are named and not downloaded again. The step also says where the files go and how much space is free on that drive, and whether anything leaves your computer: nothing, unless the clean-up server from step 3 is on another machine, which then gets the text.
+
+On a first setup, **Change…** next to the free space chooses another folder for the downloads, such as one on a larger drive; the list and the space check follow it, and the folder is saved with the rest of the setup. When you run the wizard again, the step shows the folder and points to **Settings → Models**, where [Change…](settings.md#downloads-folder) also moves the models already downloaded.
 
 Leave **Download these files now** ticked and click **Download**. It needs enough free disk space for all the files. With nothing to download, the button is **Continue**, and the wizard saves at once.
 

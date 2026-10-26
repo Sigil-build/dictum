@@ -7,9 +7,11 @@ Dictum keeps two folders for each user: one for your settings and one for its da
 | Folder | Windows | Linux |
 | --- | --- | --- |
 | Settings: `config.json` and your prompts | `%APPDATA%\Dictum` | `~/.config/dictum` |
-| Data: models, history and logs | `%LOCALAPPDATA%\Dictum` | `~/.local/share/dictum` |
+| Data: history, logs and the models | `%LOCALAPPDATA%\Dictum` | `~/.local/share/dictum` |
 
 On Linux, Dictum follows `XDG_CONFIG_HOME` and `XDG_DATA_HOME` when they are set: the folders are then `$XDG_CONFIG_HOME/dictum` and `$XDG_DATA_HOME/dictum`.
+
+The models can live elsewhere, such as on a larger drive: see [The downloads folder](#downloads-folder).
 
 To open a folder on Windows, paste its path, such as `%APPDATA%\Dictum`, into the address bar of File Explorer. On Linux, run `xdg-open ~/.config/dictum`. To print where the settings file is:
 
@@ -32,7 +34,7 @@ On Windows, run `dictum` by its full path: see [The command line](../getting-sta
 
 | File | What it holds |
 | --- | --- |
-| `models/` | The speech models, `ggml-*.bin`, and the voice activity detector. A speech model takes 265 MB to 875 MB. |
+| `models/` | The speech models, unless you chose another [downloads folder](#downloads-folder). |
 | `history.jsonl` | Your recent dictations, one per line: the text as Whisper heard it and as it was pasted. Never the audio. The **History** field in Settings → **General** sets how many it keeps: 200 at first, and 0 turns history off. |
 | `logs/` | The log files: see [Logs](#logs). |
 | `downloads.json` | Downloads that have not finished, so that they continue after a restart. |
@@ -41,6 +43,16 @@ On Windows, run `dictum` by its full path: see [The command line](../getting-sta
 | `remote-desktop.token` | Linux on Wayland: the desktop's permission for Dictum to press Ctrl+V. Delete it, and the desktop asks again. |
 | `tray-icons/` | Linux: the images of the tray icon. |
 | `dictum.sock` | Windows: the socket through which the desktop app and `dictum` commands talk to the daemon while it runs. On Linux it is `$XDG_RUNTIME_DIR/dictum.sock`. |
+
+### The downloads folder {#downloads-folder}
+
+Everything Dictum downloads goes into one folder: the data folder, unless you choose another with **Change…** in **Settings → Models**, on the first setup's **Downloads** step, or with `dictum init --downloads-dir <path>` or `dictum models folder <path>`. `dictum models folder` prints it. The choice is `general.downloadsDirectory` in `config.json`.
+
+| File | What it holds |
+| --- | --- |
+| `models/` | The speech models, `ggml-*.bin`, and the voice activity detector. A speech model takes 265 MB to 875 MB. |
+
+The history, the logs and the files above stay in the data folder. One Dictum uses one downloads folder: a folder shared by two systems on one computer, or by two users, is not supported. If the folder is on a drive that is not connected, Dictum says so and downloads nothing until you connect the drive or choose another folder.
 
 ## config.json {#config-json}
 
@@ -127,7 +139,7 @@ The notes are here, below the file, because the example is plain JSON that you c
     - `sounds`: a short tick when recording starts and stops.
     - `pasteDelayMs`: how long Dictum waits after it presses Ctrl+V before it puts back what the clipboard held, from 0 to 5000 milliseconds.
     - `overlay`: the listening overlay that the desktop app draws: `enabled`, `position` (`bottom` or `top`), `size` (`small`, `medium` or `large`), `opacity` (0.3 to 1.0) and `palette` (`aurora`, `ember` or `mist`).
-    - Not in the example: `audioDevice`, the microphone's name, where none means the system's default microphone; `uiLanguage`, `"en"` or `"uk"`, where none follows the system; `injector`, how Dictum presses Ctrl+V on Wayland: `auto` tries, on Sway and Hyprland, `wtype`, then `ydotool`, then the RemoteDesktop portal, and elsewhere the portal, then `ydotool`; `terminalApps`, the apps that get Ctrl+Shift+V, by process or window class name, on Windows and X11. And `checkForUpdates`: `true`, the default, lets the desktop app ask GitHub for the newest version once a day; `false` turns that off.
+    - Not in the example: `audioDevice`, the microphone's name, where none means the system's default microphone; `uiLanguage`, `"en"` or `"uk"`, where none follows the system; `injector`, how Dictum presses Ctrl+V on Wayland: `auto` tries, on Sway and Hyprland, `wtype`, then `ydotool`, then the RemoteDesktop portal, and elsewhere the portal, then `ydotool`; `terminalApps`, the apps that get Ctrl+Shift+V, by process or window class name, on Windows and X11. And `checkForUpdates`: `true`, the default, lets the desktop app ask GitHub for the newest version once a day; `false` turns that off. And `downloadsDirectory`: the full path of the [downloads folder](#downloads-folder), where none means the data folder.
 
 `stt`
 :   The speech recognition providers. Each has an id of your choice, here `local`, which profiles name.

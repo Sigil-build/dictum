@@ -36,8 +36,11 @@ public sealed class ModelsPageTests : IDisposable
     private HardwareInfo _hardware = IrisXe;
     private TaskCompletionSource<HardwareInfo>? _probe;
     private bool _probeFails;
+    private readonly DownloadsLocation _location = new();
+    private Func<string, long> _freeAt = _ => 48_000_000_000;
 
-    private AppPaths Paths => new(_dir.File("config"), _dir.File("data"));
+    /// <summary>Follows <see cref="_location"/>, as the shell's paths do.</summary>
+    private AppPaths Paths => new AppPaths(_dir.File("config"), _dir.File("data")).WithDownloads(() => _location.Current);
 
     public void Dispose() => _dir.Dispose();
 
@@ -81,7 +84,7 @@ public sealed class ModelsPageTests : IDisposable
                 _waits.Add(wait);
                 return Task.CompletedTask;
             },
-            _clock, NullLog.Instance);
+            _clock, NullLog.Instance, _location, folder => _freeAt(folder));
         var page = new ModelsPage(session, services);
         page.OnShown();
         return (page, session);
@@ -89,7 +92,7 @@ public sealed class ModelsPageTests : IDisposable
 
     private void Install(string file, byte[] data)
     {
-        Directory.CreateDirectory(Paths.ModelsDirectory);
+        Directory.CreateDirectory(Path.GetDirectoryName(ModelPath(file))!);
         File.WriteAllBytes(ModelPath(file), data);
     }
 
@@ -136,7 +139,7 @@ public sealed class ModelsPageTests : IDisposable
 
         var (page, _) = Open();
 
-        Assert.Equal("Models use 3 MB · 48 GB free", page.DiskText);
+        Assert.Equal($"Folder: {_dir.File("data")} · 48 GB free · models use 3 MB", page.FolderText);
         Assert.Equal(100.0 * 3_000_003 / (3_000_003 + 48_000_000_000), page.DiskShare, 9);
         Assert.Equal("GPU found: Intel(R) Iris(R) Xe Graphics · 15.8 GB shared · 31.6 GB RAM. Recommendations are based on it.", page.HardwareText);
     }
@@ -328,7 +331,7 @@ public sealed class ModelsPageTests : IDisposable
 
         Assert.False(File.Exists(ModelPath(SmallFile)));
         Assert.Equal("Not installed", Card(page, Small).StateText);
-        Assert.Equal("Models use 0 MB · 48 GB free", page.DiskText);
+        Assert.EndsWith(" · 48 GB free · models use 0 MB", page.FolderText, StringComparison.Ordinal);
     }
 
     // The button is off, and a command sent anyway is refused too.
@@ -548,5 +551,225 @@ public sealed class ModelsPageTests : IDisposable
         Assert.Equal("1 MB of 2 MB", medium.ProgressText);
         _downloads.Set(new QueuedDownload(medium.Entry, DownloadState.Done, 2_000_000));
         Assert.Equal(0, _timers.Pending);
+    }
+
+    // Models that come as several files live in subfolders; they take space too.
+    [Fact]
+    public void TheFolderLineNamesTheFolderAndCountsSubfolders()
+    {
+        Install(TurboFile, TurboData);
+        Install(Path.Combine("parakeet", "encoder.onnx"), MediumData);
+
+        var (page, _) = Open();
+
+        Assert.Equal($"Folder: {_dir.File("data")} · 48 GB free · models use 5 MB", page.FolderText);
+        Assert.Null(page.FolderMissingText);
+        Assert.True(page.CanChangeFolder);
+    }
+
+    [Fact]
+    public void ChangeIsOffWhileTheQueueHasItems()
+    {
+        var (page, _) = Open();
+
+        _downloads.Set(new QueuedDownload(Card(page, Small).Entry, DownloadState.Paused, 10));
+
+        Assert.False(page.CanChangeFolder);
+        Assert.Equal(Strings.SettingsModelsFolderBusy, page.ChangeFolderHint);
+
+        _downloads.Set(new QueuedDownload(Card(page, Small).Entry, DownloadState.Done, SmallData.Length));
+
+        Assert.True(page.CanChangeFolder);
+        Assert.Equal(Strings.SettingsModelsFolderChangeHint, page.ChangeFolderHint);
+    }
+
+    [Fact]
+    public void ChoosingAnEmptyFolderAppliesItAtOnce()
+    {
+        var (page, session) = Open();
+        var folder = NewFolder();
+
+        page.ChooseFolder(folder);
+
+        Assert.False(page.MoveAsk);
+        Assert.Equal(folder, _location.Configured);
+        Assert.Equal(folder, session.OnDisk.General.DownloadsDirectory);
+        Assert.StartsWith($"Folder: {folder} · ", page.FolderText, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ChoosingAFolderWithModelsAsksToMove()
+    {
+        Install(TurboFile, TurboData);
+        var (page, session) = Open();
+        var folder = NewFolder();
+
+        page.ChooseFolder(folder);
+
+        Assert.True(page.MoveAsk);
+        Assert.Equal($"Move 3 MB of models to {folder}?", page.MoveText);
+        Assert.Equal($"If you don't move them, they stay in {Path.Combine(_dir.File("data"), "models")} and Dictum no longer sees them.", page.DontMoveNote);
+        Assert.Null(session.OnDisk.General.DownloadsDirectory);
+        Assert.Null(_location.Current);
+        Assert.False(page.CanChangeFolder);
+    }
+
+    [Fact]
+    public async Task MoveCopiesSwitchesThenDeletes()
+    {
+        Install(TurboFile, TurboData);
+        var old = ModelPath(TurboFile);
+        var (page, session) = Open();
+        var folder = NewFolder();
+        page.ChooseFolder(folder);
+
+        await page.MoveCommand.ExecuteAsync(null);
+
+        Assert.Equal(TurboData, await File.ReadAllBytesAsync(Path.Combine(folder, "models", TurboFile), TestContext.Current.CancellationToken));
+        Assert.False(File.Exists(old));
+        Assert.Equal(folder, session.OnDisk.General.DownloadsDirectory);
+        Assert.Equal(folder, _location.Configured);
+        Assert.True(Card(page, Turbo).IsInstalled);
+        Assert.Equal((false, false, null), (page.MoveAsk, page.Moving, page.MoveError));
+    }
+
+    [Fact]
+    public void DontMoveSwitchesAndLeavesTheFiles()
+    {
+        Install(TurboFile, TurboData);
+        var old = ModelPath(TurboFile);
+        var (page, session) = Open();
+        var folder = NewFolder();
+        page.ChooseFolder(folder);
+
+        page.DontMoveCommand.Execute(null);
+
+        Assert.True(File.Exists(old));
+        Assert.Equal(folder, session.OnDisk.General.DownloadsDirectory);
+        Assert.False(Card(page, Turbo).IsInstalled);
+        Assert.False(page.MoveAsk);
+    }
+
+    // The free space is read as the copy starts; a Cancel at that point stops it before a byte is copied.
+    [Fact]
+    public async Task CancelDuringTheMoveKeepsTheOldFolder()
+    {
+        Install(TurboFile, TurboData);
+        var (page, session) = Open();
+        var folder = NewFolder();
+        page.ChooseFolder(folder);
+        _freeAt = _ =>
+        {
+            Assert.True(page.Moving);
+            page.CancelMoveCommand.Execute(null);
+            return 48_000_000_000;
+        };
+
+        await page.MoveCommand.ExecuteAsync(null);
+
+        Assert.True(File.Exists(ModelPath(TurboFile)));
+        Assert.Empty(Directory.GetFiles(folder, "*", SearchOption.AllDirectories));
+        Assert.Null(session.OnDisk.General.DownloadsDirectory);
+        Assert.Null(_location.Current);
+        Assert.Equal((false, false, null), (page.MoveAsk, page.Moving, page.MoveError));
+    }
+
+    [Fact]
+    public async Task TooLittleSpaceAtTheTargetSaysSoAndKeepsTheOldFolder()
+    {
+        Install(TurboFile, TurboData);
+        var (page, session) = Open();
+        var folder = NewFolder();
+        page.ChooseFolder(folder);
+        _freeAt = _ => 1;
+
+        await page.MoveCommand.ExecuteAsync(null);
+
+        Assert.StartsWith("The models were not moved: Not enough disk space in ", page.MoveError, StringComparison.Ordinal);
+        Assert.EndsWith($"They stay in {Path.Combine(_dir.File("data"), "models")}.", page.MoveError, StringComparison.Ordinal);
+        Assert.True(File.Exists(ModelPath(TurboFile)));
+        Assert.Null(session.OnDisk.General.DownloadsDirectory);
+    }
+
+    [Fact]
+    public void TheCurrentFolderOrOneInsideItIsRefused()
+    {
+        Install(TurboFile, TurboData);
+        var (page, _) = Open();
+
+        page.ChooseFolder(Path.Combine(_dir.File("data"), "models", "inner"));
+
+        Assert.NotNull(page.MoveError);
+        Assert.False(page.MoveAsk);
+        Assert.Null(_location.Current);
+    }
+
+    // The lock works both ways: while the page asks or moves, nothing starts a download in the folder it is leaving.
+    [Fact]
+    public void NoDownloadStartsWhileAMoveIsAsked()
+    {
+        Install(TurboFile, TurboData);
+        var (page, _) = Open();
+        page.ChooseFolder(NewFolder());
+        var small = Card(page, Small);
+
+        small.DownloadCommand.Execute(null);
+
+        Assert.False(small.ShowDownload || small.ShowDownloadAnyway);
+        Assert.Empty(_downloads.Calls);
+    }
+
+    // A download started elsewhere (the wizard) while the question was open: Move and Don't move wait for it.
+    [Fact]
+    public async Task AMoveWaitsForADownloadThatStartedMeanwhile()
+    {
+        Install(TurboFile, TurboData);
+        var (page, session) = Open();
+        var folder = NewFolder();
+        page.ChooseFolder(folder);
+        _downloads.Set(new QueuedDownload(Card(page, Small).Entry, DownloadState.Downloading, 10));
+
+        await page.MoveCommand.ExecuteAsync(null);
+        page.DontMoveCommand.Execute(null);
+
+        Assert.Equal(Strings.SettingsModelsFolderBusy, page.MoveError);
+        Assert.True(page.MoveAsk);
+        Assert.Empty(Directory.GetFiles(folder, "*", SearchOption.AllDirectories));
+        Assert.Null(session.OnDisk.General.DownloadsDirectory);
+    }
+
+    // An unplugged drive: the line says why the cards show nothing installed.
+    [Fact]
+    public void AMissingFolderShowsItsWarning()
+    {
+        var gone = _dir.File("gone");
+        _location.Use(gone);
+
+        var (page, _) = Open();
+
+        Assert.Equal($"The downloads folder {gone} is not available. Connect the drive, or choose another folder.", page.FolderMissingText);
+        Assert.False(Card(page, Turbo).IsInstalled);
+    }
+
+    // 'dictum models folder' while Settings is open: the watcher moves the location, and the page follows.
+    [Fact]
+    public void AFolderChangedElsewhereShowsAtOnce()
+    {
+        var (page, _) = Open();
+        var folder = NewFolder();
+        Directory.CreateDirectory(Path.Combine(folder, "models"));
+        File.WriteAllBytes(Path.Combine(folder, "models", TurboFile), TurboData);
+
+        _location.OnConfig(new DictumConfig { General = new GeneralSettings { DownloadsDirectory = folder } });
+
+        Assert.StartsWith($"Folder: {folder} · ", page.FolderText, StringComparison.Ordinal);
+        Assert.True(Card(page, Turbo).IsInstalled);
+    }
+
+    private string NewFolder()
+    {
+        var folder = _dir.File("elsewhere");
+        Directory.CreateDirectory(folder);
+        return folder;
     }
 }

@@ -1,8 +1,10 @@
 namespace Dictum.Core;
 
-/// <summary>Per-OS locations for config, data, models, history and logs.</summary>
+/// <summary>Per-OS locations for config, data, downloads, history and logs.</summary>
 /// <remarks>
 /// Environment overrides: <see cref="DictumEnvironment.ConfigDirectory"/>, <see cref="DictumEnvironment.DataDirectory"/>.
+/// The downloads folder, which holds the models, is <c>general.downloadsDirectory</c> from config.json, read on every use
+/// so that a long-lived holder follows a change; without one it is the data folder.
 /// </remarks>
 public sealed class AppPaths
 {
@@ -19,10 +21,14 @@ public sealed class AppPaths
     /// <summary>The desktop app's log, which also takes the output of a daemon the app started.</summary>
     public const string GuiLogName = "dictum-gui.log";
 
-    public AppPaths(string configDirectory, string dataDirectory)
+    private readonly Func<string?>? _downloadsDirectory;
+
+    /// <param name="downloadsDirectory">The configured downloads folder, asked on every use; null or blank means the data folder.</param>
+    public AppPaths(string configDirectory, string dataDirectory, Func<string?>? downloadsDirectory = null)
     {
         ConfigDirectory = configDirectory;
         DataDirectory = dataDirectory;
+        _downloadsDirectory = downloadsDirectory;
     }
 
     public string ConfigDirectory { get; }
@@ -33,7 +39,16 @@ public sealed class AppPaths
 
     public string PromptsDirectory => Path.Combine(ConfigDirectory, "prompts");
 
-    public string ModelsDirectory => Path.Combine(DataDirectory, "models");
+    /// <summary>The downloads folder the config names, or null when it names none and the data folder is used.</summary>
+    public string? ConfiguredDownloadsDirectory => _downloadsDirectory?.Invoke() is { } folder && !string.IsNullOrWhiteSpace(folder) ? folder : null;
+
+    /// <summary>Where everything Dictum downloads goes: <see cref="ConfiguredDownloadsDirectory"/>, else the data folder.</summary>
+    public string DownloadsDirectory => ConfiguredDownloadsDirectory ?? DataDirectory;
+
+    /// <summary>A configured downloads folder that does not exist, e.g. on an unplugged drive; the data folder is never missing.</summary>
+    public bool IsDownloadsDirectoryMissing => ConfiguredDownloadsDirectory is { } folder && !Directory.Exists(folder);
+
+    public string ModelsDirectory => Path.Combine(DownloadsDirectory, "models");
 
     public string HistoryFile => Path.Combine(DataDirectory, "history.jsonl");
 
@@ -58,6 +73,12 @@ public sealed class AppPaths
     /// <summary>Resolves a model reference: absolute paths are kept, bare names live in <see cref="ModelsDirectory"/>.</summary>
     public string ResolveModel(string model) =>
         Path.IsPathFullyQualified(model) ? model : Path.Combine(ModelsDirectory, model);
+
+    /// <summary>The same config and data folders with <paramref name="directory"/> as the downloads folder.</summary>
+    public AppPaths WithDownloads(string? directory) => new(ConfigDirectory, DataDirectory, () => directory);
+
+    /// <summary>The same config and data folders with a downloads folder asked of <paramref name="directory"/> on every use.</summary>
+    public AppPaths WithDownloads(Func<string?> directory) => new(ConfigDirectory, DataDirectory, directory);
 
     public static AppPaths FromEnvironment() =>
         new(

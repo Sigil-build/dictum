@@ -76,7 +76,7 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
         string.Equals(await HashAsync(path, ct).ConfigureAwait(false), entry.Sha256, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Where the download of <paramref name="target"/> collects its bytes until the hash is checked.</summary>
-    internal static string PartialPath(string target) => target + PartialSuffix;
+    public static string PartialPath(string target) => target + PartialSuffix;
 
     private static bool IsTransient(Exception ex) => ex is HttpRequestException or IOException;
 

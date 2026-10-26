@@ -33,8 +33,10 @@ public sealed class SetupRunner(FileDownloader downloader, AppPaths paths)
     /// <summary>Space a download of <paramref name="bytes"/> needs: a tenth more, with <see cref="SpareBytes"/> left over.</summary>
     internal static long NeededFor(long bytes) => (long)(bytes * SizeMargin) + SpareBytes;
 
+    /// <exception cref="DownloadException">The configured downloads folder is missing, there is not enough space, or a download failed.</exception>
     public async Task DownloadAsync(IReadOnlyList<CatalogEntry> entries, long freeDiskBytes, IProgress<SetupEvent>? progress, CancellationToken ct)
     {
+        DownloadsFolder.EnsureAvailable(paths);
         var missing = entries.Where(e => !ModelFiles.IsInstalled(paths, e)).ToList();
         var needed = NeededBytes(paths, missing);
         if (missing.Count > 0 && freeDiskBytes < needed)

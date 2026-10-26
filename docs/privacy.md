@@ -115,4 +115,4 @@ Dictum writes what it does to log files in the `logs` folder: `%LOCALAPPDATA%\Di
 
 ## Other files {#files}
 
-Your settings are in `config.json` in `%APPDATA%\Dictum` on Windows and `~/.config/dictum` on Linux, with your own prompts in its `prompts` folder. They hold your words, your replace rules and the addresses of your servers. The models, the history and the logs are in `%LOCALAPPDATA%\Dictum` or `~/.local/share/dictum`. Uninstalling Dictum keeps both folders; delete them to remove everything. [The files Dictum keeps](reference/files.md) lists each file.
+Your settings are in `config.json` in `%APPDATA%\Dictum` on Windows and `~/.config/dictum` on Linux, with your own prompts in its `prompts` folder. They hold your words, your replace rules and the addresses of your servers. The models, the history and the logs are in `%LOCALAPPDATA%\Dictum` or `~/.local/share/dictum`; the models are elsewhere if you chose another [downloads folder](reference/files.md#downloads-folder). Uninstalling Dictum keeps both folders; delete them to remove everything. [The files Dictum keeps](reference/files.md) lists each file.
