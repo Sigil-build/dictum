@@ -70,6 +70,31 @@ public sealed class ModelsViewTests(AvaloniaFixture fx) : IDisposable
     });
 
     [Fact]
+    public Task TheFolderRowAndChangeAreShown() => fx.Ui(() =>
+    {
+        Install(ModelsPageTests.TurboFile, ModelsPageTests.TurboData);
+        var (window, page, _) = Show();
+        var change = window.GetVisualDescendants().OfType<Button>().Single(b => b.Content as string == "Change…");
+
+        Assert.True(change.IsEffectivelyVisible && change.IsEffectivelyEnabled);
+        Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == page.FolderText && t.IsEffectivelyVisible);
+        Assert.DoesNotContain(VisibleButtons(window), b => b.Content as string == "Don't move");
+
+        var folder = _dir.File("elsewhere");
+        Directory.CreateDirectory(folder);
+        page.ChooseFolder(folder);
+        Dispatcher.UIThread.RunJobs();
+
+        Assert.Equal(["Move", "Don't move", "Cancel"], VisibleButtons(window).Where(b => b.Content as string is "Move" or "Don't move" or "Cancel").Select(b => b.Content as string));
+        Assert.Contains(window.GetVisualDescendants().OfType<TextBlock>(), t => t.Text == page.MoveText && t.IsEffectivelyVisible);
+        Assert.False(change.IsEffectivelyEnabled);
+        window.Close();
+    });
+
+    private static List<Button> VisibleButtons(Window window) =>
+        [.. window.GetVisualDescendants().OfType<Button>().Where(b => b.IsEffectivelyVisible && !Cards(window).Any(c => c.IsVisualAncestorOf(b)))];
+
+    [Fact]
     public Task PickingAProfileUsesTheModelAndClearsThePicker() => fx.Ui(() =>
     {
         Install(ModelsPageTests.SmallFile, ModelsPageTests.SmallData);

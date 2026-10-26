@@ -325,6 +325,36 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         await launcher.DisposeAsync();
     });
 
+    // A first setup chose another folder and the GUI restarted in its downloads: they go on into that folder.
+    [Fact]
+    public Task StartTakesTheKeptWizardFolder() => fx.UiAsync(async () =>
+    {
+        var (shell, launcher, _) = Create(config: false);
+        SavedSetupFile.Save(Paths(), KeptWalk() with { DownloadsDirectory = _dir.File("dl") }, NullLog.Instance);
+
+        shell.Start(Application.Current!, _ => { });
+
+        Assert.Equal(_dir.File("dl"), shell.Downloads.Current);
+        CloseSetup();
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
+    // 'dictum models folder' or a hand edit: the shell follows the file.
+    [Fact]
+    public Task AConfigChangedOnDiskMovesTheFolder() => fx.UiAsync(async () =>
+    {
+        var (shell, launcher, _) = Create();
+        shell.Start(Application.Current!, _ => { });
+        Assert.Null(shell.Downloads.Current);
+
+        new ConfigStore(Paths().ConfigFile, NullLog.Instance).Save(new DictumConfig { General = new GeneralSettings { DownloadsDirectory = _dir.File("dl") } });
+
+        await WaitAsync(() => shell.Downloads.Current == _dir.File("dl"));
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
     private AppPaths Paths() => new(_dir.File("config"), _dir.File("data"));
 
     private static SavedSetup KeptWalk() =>

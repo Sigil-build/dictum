@@ -50,6 +50,8 @@ public sealed partial class SetupViewModel : ViewModelBase
             resume = null;
         }
 
+        // A first setup's folder lives as long as its walk: a new walk starts from the config's, a kept one from its own.
+        services.Location?.Choose(resume?.DownloadsDirectory);
         _loaded = Snapshot(current);
         var defaults = SetupPlanner.Defaults(current, new HardwareInfo(null, 0), services.Catalog, m => File.Exists(services.Paths.ResolveModel(m)));
         var currentModel = current is not null && current.Stt.GetValueOrDefault(SetupPlanner.SpeechProviderId(current)) is WhisperLocalSttConfig whisper
@@ -66,6 +68,7 @@ public sealed partial class SetupViewModel : ViewModelBase
             services.Autostart is not null && services.Executable is not null,
             resume?.StartAtLogin ?? (current is null || services.Autostart?.Installed is not null));
         Downloads = new SetupDownloadsStep(services);
+        Downloads.FolderChanged += LoadDownloads;
         Downloading = new SetupDownloadingStep(services);
         Ready = new SetupReadyStep(services.Tray, services.Daemon, services.RestartDaemon);
         _steps = [Languages, Model, Cleanup, Words, Login, Downloads, Downloading, Ready];
@@ -273,7 +276,8 @@ public sealed partial class SetupViewModel : ViewModelBase
         SavedSetupFile.Save(_services.Paths, new SavedSetup(
             Languages.Setting, Model.SpeechModel, Cleanup.UseServer, Cleanup.Url.Trim(), Cleanup.Model.Trim(),
             reference ? key : null, key.Length > 0 && !reference, Words.Words, Login.StartAtLogin, [.. files.Select(f => f.Id)],
-            SavedSetupFile.Fingerprint(LoadConfig(_services, out _))),
+            SavedSetupFile.Fingerprint(LoadConfig(_services, out _)),
+            DownloadsDirectory: _services.Location?.Pending),
             _services.Log);
     }
 
@@ -357,7 +361,9 @@ public sealed partial class SetupViewModel : ViewModelBase
     private SetupAnswers Answers(DictumConfig? current)
     {
         var (choice, server, _) = Cleanup.Answer(SecretReference(current));
-        return new SetupAnswers(Languages.Setting, Model.SpeechModel, choice, server, Words.Words, ReplaceVocabulary: true);
+        return new SetupAnswers(
+            Languages.Setting, Model.SpeechModel, choice, server, Words.Words, ReplaceVocabulary: true,
+            DownloadsDirectory: _services.Location?.Pending ?? current?.General.DownloadsDirectory);
     }
 
     /// <summary>Key, then config, then login item; only with every file in place.</summary>
@@ -389,6 +395,8 @@ public sealed partial class SetupViewModel : ViewModelBase
             }
 
             _services.Store.Save(plan.Config);
+            _services.Location?.Use(plan.Config.General.DownloadsDirectory);
+            _services.Location?.Choose(null);
             if (current is not null)
             {
                 await CleanupKey.DeleteLegacyAsync(_services.Secrets, current, plan.Config, _services.Log, CancellationToken.None);

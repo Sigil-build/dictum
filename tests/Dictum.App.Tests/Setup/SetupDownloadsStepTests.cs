@@ -39,6 +39,41 @@ public sealed class SetupDownloadsStepTests : IDisposable
         Assert.Equal("No audio or text ever leaves your computer.", step.PrivacyText);
     }
 
+    // Over a config the folder is changed in Settings → Models, which moves the models already there.
+    [Fact]
+    public void ChangeShowsOnlyOnAFirstSetup()
+    {
+        var first = Load([Turbo, Vad]);
+
+        Assert.Equal((true, (string?)null, "48 GB free on this drive."), (first.CanChangeFolder, first.ChangeLaterText, first.FreeText));
+
+        _fx.Store.Save(DefaultConfig.Create());
+        var rerun = Load([Turbo, Vad]);
+
+        Assert.Equal((false, "To change the folder, use Settings → Models."), (rerun.CanChangeFolder, rerun.ChangeLaterText));
+    }
+
+    [Fact]
+    public void ChangeIsOffWhileFilesDownload()
+    {
+        _fx.Downloads.Set(new QueuedDownload(Turbo, DownloadState.Downloading, 10));
+
+        Assert.False(Load([Turbo, Vad]).CanChangeFolder);
+    }
+
+    // A configured folder on an unplugged drive: the queue would refuse every file, so Download is off and says why.
+    [Fact]
+    public void AMissingFolderBlocksTheDownload()
+    {
+        var gone = Path.Combine(_fx.Folder("parent"), "gone");
+        _fx.Location.Use(gone);
+
+        var step = Load([Turbo, Vad]);
+
+        Assert.Equal($"The downloads folder {gone} is not available. Connect the drive, or choose another folder.", step.SpaceError);
+        Assert.False(step.CanContinue);
+    }
+
     [Fact]
     public void NextNeedsTheConsent()
     {

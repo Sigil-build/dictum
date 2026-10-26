@@ -79,9 +79,9 @@ public sealed class ModelTextTests
     }
 
     [Fact]
-    public void TheDiskLineSaysWhatModelsUseAndWhatIsFree()
+    public void TheFolderLineSaysWhereWhatIsFreeAndWhatModelsUse()
     {
-        Assert.Equal("Models use 1.9 GB · 48 GB free", ModelText.Disk(1_900_000_000, 48_000_000_000));
-        Assert.Equal("Models use 1.9 GB", ModelText.Disk(1_900_000_000, long.MaxValue));
+        Assert.Equal(@"Folder: D:\Dictum · 48 GB free · models use 1.9 GB", ModelText.Folder(@"D:\Dictum", 1_900_000_000, 48_000_000_000));
+        Assert.Equal(@"Folder: D:\Dictum · models use 1.9 GB", ModelText.Folder(@"D:\Dictum", 1_900_000_000, long.MaxValue));
     }
 }

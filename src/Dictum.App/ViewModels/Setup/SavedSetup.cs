@@ -18,6 +18,8 @@ namespace Dictum.App.ViewModels.Setup;
 /// <param name="Files">The catalog ids step 7 downloads.</param>
 /// <param name="BasedOn">The <see cref="SavedSetupFile.Fingerprint"/> of the config the walk was kept over; a walk that is
 /// not downloading resumes only over the same config.</param>
+/// <param name="DownloadsDirectory">The folder a first setup chose for its downloads; null for the data folder. An older
+/// file without it reads as null, so <see cref="SavedSetupFile.CurrentVersion"/> stays.</param>
 public sealed record SavedSetup(
     string Language,
     string? SpeechModel,
@@ -30,7 +32,8 @@ public sealed record SavedSetup(
     bool StartAtLogin,
     IReadOnlyList<string> Files,
     string? BasedOn = null,
-    int Version = SavedSetupFile.CurrentVersion);
+    int Version = SavedSetupFile.CurrentVersion,
+    string? DownloadsDirectory = null);
 
 /// <summary>Reads, writes and removes <c>setup.json</c>; a disk or format problem is logged, never thrown.</summary>
 public static class SavedSetupFile

@@ -34,6 +34,18 @@ public sealed class DoctorChecksTests : IDisposable
         Assert.Contains("dictum models pull whisper-large-v3-turbo-q8", models.Hint);
     }
 
+    // An unplugged drive: the row names the folder and what to do, not a list of every file it no longer finds.
+    [Fact]
+    public async Task AMissingDownloadsFolderIsAnErrorBeforeTheFileList()
+    {
+        var gone = _dir.File("gone");
+        var inputs = Inputs(Config("ggml-large-v3-turbo-q8_0.bin")) with { Paths = new AppPaths(_dir.Path, _dir.Path).WithDownloads(gone) };
+
+        var checks = await DoctorChecks.RunAsync(inputs, _ct);
+
+        Assert.Equal(HealthStatus.Error(DownloadsFolder.MissingError(gone), DownloadsFolder.MissingHint), checks.Single(c => c.Name == "models").Status);
+    }
+
     [Fact]
     public async Task ConfigWarningsAndTheGpuGetTheirOwnRows()
     {

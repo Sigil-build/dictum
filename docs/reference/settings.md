@@ -298,7 +298,7 @@ Replace rules. Adds rules from a CSV file to the end of the list. The columns ar
 ![The Models page of Settings](../images/settings-models.png#gh-light-mode-only)
 ![The Models page of Settings](../images/settings-models-dark.png#gh-dark-mode-only)
 
-The speech models in Dictum's catalog, with the space they use on disk and the free space at the top. The line under the title names your graphics card and memory; the recommendation follows from it. Each card shows:
+The speech models in Dictum's catalog. At the top is the folder they download to, with the free space on its drive and the space the models use, and **Change…** to choose another. The next line names your graphics card and memory; the recommendation follows from it. Each card shows:
 
 - badges: a recommendation for your graphics card or computer; the state, such as "Installed", "Downloading" or "Not installed"; and a speed class, **Fast**, **Usable** or **Too slow here**;
 - the size, the licence, where the file comes from and the languages;
@@ -306,6 +306,18 @@ The speech models in Dictum's catalog, with the space they use on disk and the f
 - which profiles use the model.
 
 A model that is not installed has a **Download** button with its size, such as **Download · 264 MB**, or **Download anyway** when it would be too slow on this computer. Downloads go on in the background when you close Settings, continue after a restart, and are checked against the catalog's SHA-256. A failed download offers **Try again**. **Delete**, with the space it frees, removes an installed file; it is off while a profile uses the model.
+
+#### Change… {#downloads-folder}
+
+Chooses another folder for everything Dictum downloads, such as one on a larger drive. If the current folder has models, Dictum asks what to do with them:
+
+- **Move** checks the free space, copies the models to the new folder, switches to it, then deletes the old copies. If the copy fails or you click **Cancel** while it runs, the models stay where they were and Dictum keeps using them.
+- **Don't move** switches to the new folder and leaves the models where they are. Dictum no longer sees them there, so download them again or move them yourself into the new folder's `models` folder.
+- **Cancel** keeps the current folder.
+
+**Change…** is off while a download is queued, running or paused: let it finish or cancel it first. If the folder is on a drive that is not connected, the page says so, and the models show as not installed until you connect the drive or choose another folder. Dictum never downloads anywhere else in the meantime.
+
+From a terminal, `dictum models folder` prints the folder and `dictum models folder <path> --move` changes it: see the [command reference](cli.md#models-folder).
 
 #### Use in profile… {#use-in-profile}
 

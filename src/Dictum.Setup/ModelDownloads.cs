@@ -268,6 +268,7 @@ public sealed class ModelDownloads(FileDownloader downloader, AppPaths paths, Ca
     {
         try
         {
+            DownloadsFolder.EnsureAvailable(paths);
             var needed = SetupRunner.NeededFor(entry.Size) - PartialBytes(entry);
             var free = freeDiskBytes();
             if (free < needed)

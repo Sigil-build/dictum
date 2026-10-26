@@ -10,6 +10,7 @@ using Dictum.App.Tray;
 using Dictum.App.Updates;
 using Dictum.App.ViewModels;
 using Dictum.App.ViewModels.Settings;
+using Dictum.App.ViewModels.Setup;
 using Dictum.App.Views.Settings;
 using Dictum.Audio;
 using Dictum.Core;
@@ -83,6 +84,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         IUpdatePopup? updatePopup = null)
     {
         desktop ??= DesktopEnvironment.Detect();
+        paths = paths.WithDownloads(() => Downloads.Current);
         _paths = paths;
         _log = log;
         _store = store;
@@ -103,11 +105,14 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         _services = new ShellServices(
             paths, Catalog.BuiltIn, Supervisor, Status, Frames, UiTimers.Instance, autostart, OwnExecutable(), _sounds,
             () => _secrets.Value, () => _runner.Value, () => _modelDownloads ?? IModelDownloads.None, Hardware, FreeDiskBytes,
-            new SpeedMeasurements(), desktop, _integration, wait => Task.Delay(wait), OpenDocsPage, TimeProvider.System, log, updates);
+            new SpeedMeasurements(), desktop, _integration, wait => Task.Delay(wait), OpenDocsPage, TimeProvider.System, log, updates, Downloads);
         _setup = new SetupCoordinator(_services, store, Supervisor.Restart, Supervisor.ConfigSaved, () => _settings?.Session.Flush());
     }
 
     public DaemonSupervisor Supervisor { get; }
+
+    /// <summary>Where downloads go; the shell's paths, the queue and the pages all follow it.</summary>
+    public DownloadsLocation Downloads { get; } = new();
 
     public OverlayController Overlay { get; }
 
@@ -150,6 +155,9 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         FollowContrast(app);
         ListenToSupervisor();
         var config = TryLoadConfig();
+
+        // Before StartDownloads: a queue a first setup left running continues into the folder that setup chose.
+        Downloads.Restore(config, SavedSetupFile.Load(_paths, _log)?.DownloadsDirectory);
         _tray.OnConfig(config);
         Overlay.OnConfig(config);
         StartUpdates(config);
@@ -229,6 +237,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
                 {
                     Dispatcher.UIThread.Post(() =>
                     {
+                        Downloads.OnConfig(changed);
                         _tray.OnConfig(changed);
                         Overlay.OnConfig(changed);
                         _updates?.Enable(changed.General.CheckForUpdates);

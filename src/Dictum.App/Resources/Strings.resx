@@ -1130,11 +1130,50 @@
   <data name="SettingsModelsNoGpu" xml:space="preserve">
     <value>No GPU for Whisper found · {0} RAM. Recommendations are for the CPU.</value>
   </data>
-  <data name="SettingsModelsDisk" xml:space="preserve">
-    <value>Models use {0} · {1} free</value>
+  <data name="SettingsModelsFolder" xml:space="preserve">
+    <value>Folder: {0} · {1} free · models use {2}</value>
   </data>
-  <data name="SettingsModelsDiskUsed" xml:space="preserve">
-    <value>Models use {0}</value>
+  <data name="SettingsModelsFolderNoFree" xml:space="preserve">
+    <value>Folder: {0} · models use {1}</value>
+  </data>
+  <data name="SettingsModelsFolderChange" xml:space="preserve">
+    <value>Change…</value>
+  </data>
+  <data name="SettingsModelsFolderChangeHint" xml:space="preserve">
+    <value>Choose another folder for downloads. Dictum offers to move the models that are already there.</value>
+  </data>
+  <data name="SettingsModelsFolderPick" xml:space="preserve">
+    <value>Choose the downloads folder</value>
+  </data>
+  <data name="SettingsModelsFolderBusy" xml:space="preserve">
+    <value>Finish or cancel the downloads before you change the folder.</value>
+  </data>
+  <data name="SettingsModelsFolderMissing" xml:space="preserve">
+    <value>The downloads folder {0} is not available. Connect the drive, or choose another folder.</value>
+  </data>
+  <data name="SettingsModelsMoveAsk" xml:space="preserve">
+    <value>Move {0} of models to {1}?</value>
+  </data>
+  <data name="SettingsModelsDontMoveNote" xml:space="preserve">
+    <value>If you don't move them, they stay in {0} and Dictum no longer sees them.</value>
+  </data>
+  <data name="SettingsModelsMove" xml:space="preserve">
+    <value>Move</value>
+  </data>
+  <data name="SettingsModelsDontMove" xml:space="preserve">
+    <value>Don't move</value>
+  </data>
+  <data name="SettingsModelsMoveCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="SettingsModelsMoving" xml:space="preserve">
+    <value>Moving: {0} of {1}</value>
+  </data>
+  <data name="SettingsModelsMoveFailed" xml:space="preserve">
+    <value>The models were not moved: {0} They stay in {1}.</value>
+  </data>
+  <data name="SettingsModelsMoveLeftover" xml:space="preserve">
+    <value>The models were moved, but these could not be deleted from {0}: {1}</value>
   </data>
   <data name="ModelNoteTurbo" xml:space="preserve">
     <value>best quality, needs a GPU</value>
@@ -1321,6 +1360,15 @@
   </data>
   <data name="SetupDownloadsLead" xml:space="preserve">
     <value>Files are fetched once, verified by SHA-256, and stored in {0}.</value>
+  </data>
+  <data name="SetupDownloadsChange" xml:space="preserve">
+    <value>Change…</value>
+  </data>
+  <data name="SetupDownloadsFreeSpace" xml:space="preserve">
+    <value>{0} free on this drive.</value>
+  </data>
+  <data name="SetupDownloadsChangeLater" xml:space="preserve">
+    <value>To change the folder, use Settings → Models.</value>
   </data>
   <data name="SetupDownloadsPresentItem" xml:space="preserve">
     <value>{0} ({1})</value>

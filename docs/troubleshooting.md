@@ -138,7 +138,10 @@ If you do not need it, select it and click **Remove processor**.
 
 ## Model files {#models}
 
-The `models` row (**Model files**) checks that the speech model files your providers use are in the models folder: `%LOCALAPPDATA%\Dictum\models` on Windows, `~/.local/share/dictum/models` on Linux.
+The `models` row (**Model files**) checks that the speech model files your providers use are in the `models` folder of the [downloads folder](reference/files.md#downloads-folder): unless you chose another, `%LOCALAPPDATA%\Dictum\models` on Windows and `~/.local/share/dictum/models` on Linux. **Settings → Models** shows the folder at the top, and `dictum models folder` prints it.
+
+`The downloads folder … is not available.` → `Connect the drive, or choose another folder: …`
+:   The folder you chose is on a drive that is not connected, or it was removed. Dictum does not create it again or download anywhere else. Connect the drive, or choose another folder with **Change…** in **Settings → Models** or with `dictum models folder <path>`.
 
 `Missing in …: ggml-large-v3-turbo-q8_0.bin` → `Run 'dictum models pull whisper-large-v3-turbo-q8'.`
 :   The file is not there: the download did not finish, or the file was deleted. Download it in **Settings → Models**, or run the command the row gives. `dictum models list` shows which models are installed.

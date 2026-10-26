@@ -18,15 +18,24 @@ internal sealed class SetupProgressView(TextWriter output, bool redraw) : IProgr
             case DownloadStarted started:
                 output.WriteLine($"Downloading {started.Entry.Title} ({SetupRunner.Format(started.Entry.Size)})");
                 break;
-            case DownloadProgressed { Progress: var p } when redraw && p.Total > 0:
-                var filled = (int)(BarWidth * p.Bytes / p.Total);
-                output.Write($"\r  [{new string('#', filled)}{new string(' ', BarWidth - filled)}] {100 * p.Bytes / p.Total,3}%  {SetupRunner.Format(p.Bytes)} of {SetupRunner.Format(p.Total)}   ");
-                _lineOpen = true;
+            case DownloadProgressed { Progress: var p }:
+                Bar(p.Bytes, p.Total);
                 break;
             case DownloadFinished finished:
                 EndLine();
                 output.WriteLine($"  saved to {finished.Path}");
                 break;
+        }
+    }
+
+    /// <summary>The bar alone, redrawn in place, for work that is not a download, such as moving the models.</summary>
+    public void Bar(long bytes, long total)
+    {
+        if (redraw && total > 0)
+        {
+            var filled = (int)(BarWidth * bytes / total);
+            output.Write($"\r  [{new string('#', filled)}{new string(' ', BarWidth - filled)}] {100 * bytes / total,3}%  {SetupRunner.Format(bytes)} of {SetupRunner.Format(total)}   ");
+            _lineOpen = true;
         }
     }
 

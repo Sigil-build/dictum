@@ -19,6 +19,7 @@ public sealed record LocalProfile(string Id, string Name, string Provider, strin
 /// <param name="UsedOnDisk">The same in the saved config, which the daemon runs until the next save.</param>
 /// <param name="Profiles">Every profile with a local Whisper provider, for "Use in profile…".</param>
 /// <param name="CanEdit">The config was read, so "Used by" can be trusted.</param>
+/// <param name="FolderChanging">The page asks about a move or runs one: no download starts and nothing is deleted meanwhile.</param>
 public sealed record ModelCardState(
     bool Installed,
     QueuedDownload? Download,
@@ -29,7 +30,8 @@ public sealed record ModelCardState(
     IReadOnlyList<LocalProfile> UsedBy,
     IReadOnlyList<LocalProfile> UsedOnDisk,
     IReadOnlyList<LocalProfile> Profiles,
-    bool CanEdit);
+    bool CanEdit,
+    bool FolderChanging = false);
 
 /// <summary>
 /// One model on Settings → Models: its badges, the size · licence · source · languages line,
@@ -241,7 +243,7 @@ public sealed partial class ModelCard : ObservableObject
         // Used in the copy or on disk: an edit not saved yet, or one that cannot be saved, never frees the file.
         var users = state.UsedBy.Concat(state.UsedOnDisk).DistinctBy(p => p.Id).Select(p => p.Name).ToList();
         var used = users.Count > 0;
-        var offered = (!state.Installed && download is null) || IsFailed;
+        var offered = ((!state.Installed && download is null) || IsFailed) && !state.FolderChanging;
         ShowDownload = offered && !IsTooSlow;
         ShowDownloadAnyway = offered && IsTooSlow;
         DownloadText = UiText.Format(
@@ -250,7 +252,7 @@ public sealed partial class ModelCard : ObservableObject
         var names = string.Join(", ", users);
         UsedByText = used ? UiText.Format(Strings.SettingsProvidersUsedBy, names) : Strings.SettingsModelsUnused;
         DeleteNote = IsInstalled && used ? UiText.Format(Strings.SettingsModelsDeleteRefused, names) : null;
-        CanDelete = IsInstalled && !used && state.CanEdit && !Busy;
+        CanDelete = IsInstalled && !used && state.CanEdit && !Busy && !state.FolderChanging;
         CanVerify = IsInstalled && !Busy;
         ShowMeasure = IsInstalled && used && state.CanEdit && state.Estimate?.Source != SpeedSource.Dictations;
         CanMeasure = ShowMeasure && !Busy;

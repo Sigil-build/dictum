@@ -22,7 +22,7 @@ internal sealed class CliContext : IAsyncDisposable
     {
         Out = Console.Out;
         Error = Console.Error;
-        Paths = AppPaths.FromEnvironment();
+        Paths = AppPaths.FromEnvironment().WithDownloads(ConfiguredDownloads);
         Verbose = parse.GetValue(CliApp.VerboseOption);
         ConfigPath = Paths.ConfigFileFrom(parse.GetValue(CliApp.ConfigOption));
         Log = new DictumLog(Verbose ? LogLevel.Debug : consoleLevel ?? LogLevel.Warning, includeText: Verbose, Error, Paths.LogsDirectory);
@@ -30,6 +30,7 @@ internal sealed class CliContext : IAsyncDisposable
         Store = new ConfigStore(ConfigPath, Log);
     }
 
+    /// <summary>The OS paths, with the downloads folder of the config as loaded (and as the daemon reloads it).</summary>
     public AppPaths Paths { get; }
 
     public bool Verbose { get; }
@@ -79,6 +80,19 @@ internal sealed class CliContext : IAsyncDisposable
     }
 
     public DictumConfig LoadConfig() => TryLoadConfig() ?? Store.Load();
+
+    /// <summary>An invalid config names no folder here; the command that loads it reports why.</summary>
+    private string? ConfiguredDownloads()
+    {
+        try
+        {
+            return TryLoadConfig()?.General.DownloadsDirectory;
+        }
+        catch (ConfigException)
+        {
+            return null;
+        }
+    }
 
     /// <summary>Saves an edited config, refusing an edit that makes it invalid.</summary>
     public void SaveValidated(DictumConfig config)

@@ -1130,11 +1130,50 @@
   <data name="SettingsModelsNoGpu" xml:space="preserve">
     <value>GPU для Whisper не знайдено · {0} оперативної пам'яті. Рекомендації — для процесора.</value>
   </data>
-  <data name="SettingsModelsDisk" xml:space="preserve">
-    <value>Моделі займають {0} · вільно {1}</value>
+  <data name="SettingsModelsFolder" xml:space="preserve">
+    <value>Тека: {0} · вільно {1} · моделі займають {2}</value>
   </data>
-  <data name="SettingsModelsDiskUsed" xml:space="preserve">
-    <value>Моделі займають {0}</value>
+  <data name="SettingsModelsFolderNoFree" xml:space="preserve">
+    <value>Тека: {0} · моделі займають {1}</value>
+  </data>
+  <data name="SettingsModelsFolderChange" xml:space="preserve">
+    <value>Змінити…</value>
+  </data>
+  <data name="SettingsModelsFolderChangeHint" xml:space="preserve">
+    <value>Обрати іншу теку для завантажень. Dictum запропонує перенести моделі, що вже є.</value>
+  </data>
+  <data name="SettingsModelsFolderPick" xml:space="preserve">
+    <value>Оберіть теку для завантажень</value>
+  </data>
+  <data name="SettingsModelsFolderBusy" xml:space="preserve">
+    <value>Завершіть або скасуйте завантаження, перш ніж змінювати теку.</value>
+  </data>
+  <data name="SettingsModelsFolderMissing" xml:space="preserve">
+    <value>Тека завантажень {0} недоступна. Під'єднайте диск або оберіть іншу теку.</value>
+  </data>
+  <data name="SettingsModelsMoveAsk" xml:space="preserve">
+    <value>Перенести моделі ({0}) у {1}?</value>
+  </data>
+  <data name="SettingsModelsDontMoveNote" xml:space="preserve">
+    <value>Якщо не переносити, вони лишаться в {0}, і Dictum їх більше не бачитиме.</value>
+  </data>
+  <data name="SettingsModelsMove" xml:space="preserve">
+    <value>Перенести</value>
+  </data>
+  <data name="SettingsModelsDontMove" xml:space="preserve">
+    <value>Не переносити</value>
+  </data>
+  <data name="SettingsModelsMoveCancel" xml:space="preserve">
+    <value>Скасувати</value>
+  </data>
+  <data name="SettingsModelsMoving" xml:space="preserve">
+    <value>Переноситься: {0} з {1}</value>
+  </data>
+  <data name="SettingsModelsMoveFailed" xml:space="preserve">
+    <value>Моделі не перенесено: {0} Вони лишаються в {1}.</value>
+  </data>
+  <data name="SettingsModelsMoveLeftover" xml:space="preserve">
+    <value>Моделі перенесено, але з {0} не вдалося видалити: {1}</value>
   </data>
   <data name="ModelNoteTurbo" xml:space="preserve">
     <value>найкраща якість, потрібен GPU</value>
@@ -1321,6 +1360,15 @@
   </data>
   <data name="SetupDownloadsLead" xml:space="preserve">
     <value>Файли завантажуються один раз, перевіряються за SHA-256 і зберігаються в {0}.</value>
+  </data>
+  <data name="SetupDownloadsChange" xml:space="preserve">
+    <value>Змінити…</value>
+  </data>
+  <data name="SetupDownloadsFreeSpace" xml:space="preserve">
+    <value>На цьому диску вільно {0}.</value>
+  </data>
+  <data name="SetupDownloadsChangeLater" xml:space="preserve">
+    <value>Змінити теку можна в Налаштуваннях → Моделі.</value>
   </data>
   <data name="SetupDownloadsPresentItem" xml:space="preserve">
     <value>{0} ({1})</value>

@@ -47,6 +47,24 @@ public sealed class SetupRunnerTests : IDisposable
         Assert.False(Store.Exists);
     }
 
+    // An unplugged drive: the download must neither create the folder nor fall back to the data folder.
+    [Fact]
+    public async Task DownloadAsyncRefusesAMissingFolder()
+    {
+        var gone = _dir.File("gone");
+        var http = new FakeHttpHandler().Respond(_ => new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(Data) });
+        var runner = new SetupRunner(new FileDownloader(http.Client(), [TimeSpan.Zero]), Paths.WithDownloads(gone));
+
+        var ex = await Assert.ThrowsAsync<DownloadException>(() => runner.DownloadAsync([Entry()], long.MaxValue, null, _ct));
+
+        Assert.Equal(DownloadsFolder.MissingMessage(gone), ex.Message);
+        Assert.Equal(
+            $"The downloads folder {gone} is not available. Connect the drive, or choose another folder: Settings → Models → Change…, or 'dictum models folder <path>'.",
+            ex.Message);
+        Assert.False(Directory.Exists(gone));
+        Assert.Empty(http.Requests);
+    }
+
     [Fact]
     public async Task FailedDownloadLeavesTheConfigUntouched()
     {

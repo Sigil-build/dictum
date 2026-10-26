@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Dictum.App.Daemon;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
@@ -7,6 +8,7 @@ using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Docs;
 using Dictum.Core.History;
+using Dictum.Host;
 using Dictum.Host.Ipc;
 using Dictum.Setup;
 
@@ -19,6 +21,8 @@ namespace Dictum.App.ViewModels.Settings;
 /// <param name="CpuCores">For the CPU speed anchors.</param>
 /// <param name="Timers">A one-second tick while a file downloads, so a stall shows.</param>
 /// <param name="Delay">Waits for the daemon's reload before a measurement, as the provider test does.</param>
+/// <param name="Location">The downloads folder <paramref name="Paths"/> follows; null where the page cannot change it (tests).</param>
+/// <param name="FreeBytesAt">Free space on the drive of another folder, before a move; <see cref="HardwareProbe.FreeDiskBytesAt"/> when null.</param>
 public sealed record ModelsServices(
     AppPaths Paths,
     Catalog Catalog,
@@ -32,11 +36,13 @@ public sealed record ModelsServices(
     ITimers Timers,
     Func<TimeSpan, Task> Delay,
     TimeProvider Time,
-    ILog Log);
+    ILog Log,
+    DownloadsLocation? Location = null,
+    Func<string, long>? FreeBytesAt = null);
 
 /// <summary>
-/// Settings → Models: the disk line, the GPU and memory line, and a card per speech model of the catalog. The cards act
-/// on the shared download queue. The card list is fixed, so a card keeps its controls while it changes. Queue changes
+/// Settings → Models: the downloads folder line with Change…, the GPU and memory line, and a card per speech model of the
+/// catalog. The cards act on the shared download queue. The card list is fixed, so a card keeps its controls while it changes. Queue changes
 /// arrive only while the page is shown.
 /// </summary>
 public sealed partial class ModelsPage : SettingsPage
@@ -57,6 +63,12 @@ public sealed partial class ModelsPage : SettingsPage
     private IDisposable? _tick;
     private bool _listening;
     private DateTimeOffset? _lastSave;
+
+    /// <summary>The folder chosen and what moving there takes, while the page asks or moves.</summary>
+    private (string Folder, DownloadsMove Plan)? _move;
+
+    /// <summary>Cancels the running move; null when none runs.</summary>
+    private Action? _cancelMove;
 
     public ModelsPage(SettingsSession session, ModelsServices services)
     {
@@ -86,12 +98,51 @@ public sealed partial class ModelsPage : SettingsPage
 
     public IReadOnlyList<ModelCard> Cards { get; }
 
+    /// <summary>"Folder: D:\Dictum · 412 GB free · models use 1.6 GB".</summary>
     [ObservableProperty]
-    public partial string DiskText { get; private set; } = "";
+    public partial string FolderText { get; private set; } = "";
 
     /// <summary>The models' share of their used and free space, 0–100, for the header's bar.</summary>
     [ObservableProperty]
     public partial double DiskShare { get; private set; }
+
+    /// <summary>Why nothing is installed when the configured folder is on a drive that is not connected.</summary>
+    [ObservableProperty]
+    public partial string? FolderMissingText { get; private set; }
+
+    /// <summary>Off while the queue has work, a move asks or runs, or the config cannot be saved.</summary>
+    [ObservableProperty]
+    public partial bool CanChangeFolder { get; private set; }
+
+    [ObservableProperty]
+    public partial string ChangeFolderHint { get; private set; } = "";
+
+    /// <summary>What to do first while downloads keep Change… off; null otherwise.</summary>
+    [ObservableProperty]
+    public partial string? FolderBusyText { get; private set; }
+
+    /// <summary>The chosen folder is another one and the current one has models: Move, Don't move or Cancel.</summary>
+    [ObservableProperty]
+    public partial bool MoveAsk { get; private set; }
+
+    [ObservableProperty]
+    public partial string? MoveText { get; private set; }
+
+    [ObservableProperty]
+    public partial string? DontMoveNote { get; private set; }
+
+    [ObservableProperty]
+    public partial bool Moving { get; private set; }
+
+    /// <summary>0–100 while the models are copied.</summary>
+    [ObservableProperty]
+    public partial double MoveShare { get; private set; }
+
+    [ObservableProperty]
+    public partial string? MovingText { get; private set; }
+
+    [ObservableProperty]
+    public partial string? MoveError { get; private set; }
 
     [ObservableProperty]
     public partial string HardwareText { get; private set; } = "";
@@ -102,6 +153,10 @@ public sealed partial class ModelsPage : SettingsPage
         {
             _listening = true;
             _services.Downloads.Changed += OnDownloads;
+            if (_services.Location is { } location)
+            {
+                location.Changed += OnFolder;
+            }
         }
 
         _dictated = ReadDictations();
@@ -115,6 +170,10 @@ public sealed partial class ModelsPage : SettingsPage
         {
             _listening = false;
             _services.Downloads.Changed -= OnDownloads;
+            if (_services.Location is { } location)
+            {
+                location.Changed -= OnFolder;
+            }
         }
 
         _tick?.Dispose();
@@ -124,7 +183,138 @@ public sealed partial class ModelsPage : SettingsPage
     /// <summary>Finds the GPU once; the line, the recommendation and the estimates follow. A failed probe counts as no GPU.</summary>
     public Task ProbeAsync() => _probe ??= ProbeOnceAsync();
 
-    internal void Download(ModelCard card) => Queue(card, () => _services.Downloads.Download(card.Entry));
+    /// <summary>
+    /// The folder picker chose <paramref name="folder"/>: with no models in the current folder it is used at once,
+    /// otherwise the page asks whether to move them. The current folder, or one inside the other, is refused.
+    /// </summary>
+    public void ChooseFolder(string folder)
+    {
+        if (!CanChangeFolder)
+        {
+            return;
+        }
+
+        MoveError = null;
+        DownloadsMove plan;
+        try
+        {
+            plan = DownloadsMover.Plan(_services.Paths, folder);
+        }
+        catch (ArgumentException ex)
+        {
+            MoveError = ex.Message;
+            return;
+        }
+
+        if (plan.Files.Count == 0)
+        {
+            Apply(folder);
+            Refresh();
+            return;
+        }
+
+        _move = (folder, plan);
+        MoveText = UiText.Format(Strings.SettingsModelsMoveAsk, Units.Size(plan.Bytes), folder);
+        DontMoveNote = UiText.Format(Strings.SettingsModelsDontMoveNote, plan.From);
+        MoveAsk = true;
+        Refresh();
+    }
+
+    /// <summary>Copies the models, switches the config, then deletes the old files; any failure keeps the old folder.</summary>
+    [RelayCommand]
+    private async Task MoveAsync()
+    {
+        if (_move is not { } move || Moving || RefusedWhileBusy())
+        {
+            return;
+        }
+
+        MoveAsk = false;
+        Moving = true;
+        using var cancel = new CancellationTokenSource();
+        _cancelMove = cancel.Cancel;
+        var progress = new Progress<long>(copied =>
+        {
+            if (Moving)
+            {
+                MoveShare = 100.0 * copied / Math.Max(1, move.Plan.Bytes);
+                MovingText = UiText.Format(Strings.SettingsModelsMoving, Units.Size(copied), Units.Size(move.Plan.Bytes));
+            }
+        });
+        try
+        {
+            var free = (_services.FreeBytesAt ?? HardwareProbe.FreeDiskBytesAt)(move.Folder);
+            await DownloadsMover.CopyAsync(move.Plan, free, progress, cancel.Token);
+            if (!Apply(move.Folder))
+            {
+                MoveError = UiText.Format(Strings.SettingsModelsMoveFailed, _session.SaveError ?? "", move.Plan.From);
+                return;
+            }
+
+            if (DownloadsMover.DeleteSources(move.Plan) is { Count: > 0 } left)
+            {
+                _services.Log.Warn($"Moved the models, but could not delete from {move.Plan.From}: {string.Join(", ", left)}");
+                MoveError = UiText.Format(Strings.SettingsModelsMoveLeftover, move.Plan.From, string.Join(", ", left));
+            }
+        }
+        catch (OperationCanceledException) when (cancel.IsCancellationRequested)
+        {
+            // Cancel: what was copied is gone again, and the old folder is still the one in use.
+        }
+        catch (Exception ex) when (ex is DownloadException or IOException or UnauthorizedAccessException)
+        {
+            _services.Log.Warn($"Moving the models to {move.Plan.To} failed: {ex.Message}");
+            MoveError = UiText.Format(Strings.SettingsModelsMoveFailed, ex.Message, move.Plan.From);
+        }
+        finally
+        {
+            _cancelMove = null;
+            _move = null;
+            Moving = false;
+            MoveShare = 0;
+            MovingText = null;
+            Refresh();
+        }
+    }
+
+    /// <summary>Uses the new folder and leaves the models where they are, where Dictum no longer sees them.</summary>
+    [RelayCommand]
+    private void DontMove()
+    {
+        if (_move is not { } move || Moving || RefusedWhileBusy())
+        {
+            return;
+        }
+
+        _move = null;
+        MoveAsk = false;
+        Apply(move.Folder);
+        Refresh();
+    }
+
+    /// <summary>Stops a running move, or drops the choice while the page asks.</summary>
+    [RelayCommand]
+    private void CancelMove()
+    {
+        if (_cancelMove is { } cancel)
+        {
+            cancel();
+            return;
+        }
+
+        _move = null;
+        MoveAsk = false;
+        Refresh();
+    }
+
+    /// <summary>Queues the file; refused while a move is asked or runs, since the file would go to the folder being left.</summary>
+    internal void Download(ModelCard card)
+    {
+        if (_move is null)
+        {
+            Queue(card, () => _services.Downloads.Download(card.Entry));
+        }
+    }
 
     internal void Pause(ModelCard card) => Queue(card, _services.Downloads.Pause);
 
@@ -300,6 +490,9 @@ public sealed partial class ModelsPage : SettingsPage
 
     private void OnDownloads() => Refresh(sample: true);
 
+    /// <summary>The folder changed, here, in the wizard or in config.json from outside; the cards look in the new place.</summary>
+    private void OnFolder() => Refresh();
+
     /// <param name="sample">The queue reported progress: a sample for the download rate.</param>
     private void Refresh(bool sample = false)
     {
@@ -323,11 +516,12 @@ public sealed partial class ModelsPage : SettingsPage
                 [.. profiles.Where(p => SamePath(paths.ResolveModel(p.Model), file))],
                 [.. saved.Where(p => SamePath(paths.ResolveModel(p.Model), file))],
                 profiles,
-                _session.CanEdit));
+                _session.CanEdit,
+                FolderChanging: _move is not null));
         }
 
         Tick(items);
-        ShowDisk();
+        ShowFolder(items);
         HardwareText = _hardware is { } probed ? ModelText.Hardware(probed, _services.MemoryBytes) : Strings.SettingsModelsProbing;
     }
 
@@ -375,7 +569,7 @@ public sealed partial class ModelsPage : SettingsPage
         }
     }
 
-    private void ShowDisk()
+    private void ShowFolder(IReadOnlyList<QueuedDownload> items)
     {
         long used = 0;
         try
@@ -383,7 +577,7 @@ public sealed partial class ModelsPage : SettingsPage
             var folder = new DirectoryInfo(_services.Paths.ModelsDirectory);
             if (folder.Exists)
             {
-                used = folder.EnumerateFiles().Sum(f => f.Length);
+                used = folder.EnumerateFiles("*", SearchOption.AllDirectories).Sum(f => f.Length);
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -392,8 +586,54 @@ public sealed partial class ModelsPage : SettingsPage
         }
 
         var free = _services.FreeDiskBytes();
-        DiskText = ModelText.Disk(used, free);
+        var downloads = _services.Paths.DownloadsDirectory;
+        FolderText = ModelText.Folder(downloads, used, free);
         DiskShare = free == long.MaxValue || used + free <= 0 ? 0 : 100.0 * used / (used + free);
+        FolderMissingText = _services.Paths.IsDownloadsDirectoryMissing ? UiText.Format(Strings.SettingsModelsFolderMissing, downloads) : null;
+
+        // A download in flight would finish into the old folder, or start over in the new one.
+        var busy = QueueBusy(items);
+        CanChangeFolder = !busy && _move is null && _session.CanEdit && !_session.HasErrors;
+        ChangeFolderHint = busy ? Strings.SettingsModelsFolderBusy : Strings.SettingsModelsFolderChangeHint;
+        FolderBusyText = busy ? Strings.SettingsModelsFolderBusy : null;
+    }
+
+    private static bool QueueBusy(IReadOnlyList<QueuedDownload> items) =>
+        items.Any(i => i.State is DownloadState.Queued or DownloadState.Downloading or DownloadState.Paused);
+
+    /// <summary>A download started while the page asked, e.g. from the wizard: the answer waits until it is done or cancelled.</summary>
+    private bool RefusedWhileBusy()
+    {
+        if (!QueueBusy(_services.Downloads.Items))
+        {
+            return false;
+        }
+
+        MoveError = Strings.SettingsModelsFolderBusy;
+        return true;
+    }
+
+    /// <summary>
+    /// Switches to <paramref name="folder"/> and saves the config; true once the file names it. The location changes first,
+    /// so the daemon's reload and the cards see the new folder together; a save that fails puts it back.
+    /// </summary>
+    private bool Apply(string folder)
+    {
+        var before = _services.Location?.Configured;
+        _services.Location?.Use(folder);
+        _session.Edit(c =>
+        {
+            c.General = c.General with { DownloadsDirectory = folder };
+            return c;
+        });
+        _session.Flush();
+        if (string.Equals(_session.OnDisk.General.DownloadsDirectory, folder, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        _services.Location?.Use(before);
+        return false;
     }
 
     private IReadOnlyDictionary<string, double> ReadDictations()

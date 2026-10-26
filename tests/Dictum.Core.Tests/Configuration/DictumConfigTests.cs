@@ -20,4 +20,17 @@ public sealed class DictumConfigTests
         Assert.Null(config.FindProfile("Home"));
         Assert.Null(config.FindProfile(null));
     }
+
+    [Fact]
+    public void DownloadsFolderRoundTrips()
+    {
+        var folder = Path.Combine(Path.GetTempPath(), "dictum-downloads");
+        var config = DefaultConfig.Create() with { General = new GeneralSettings { DownloadsDirectory = folder } };
+
+        var json = ConfigStore.Serialize(config);
+
+        Assert.Contains("\"downloadsDirectory\"", json);
+        Assert.Equal(folder, ConfigStore.Parse(json).General.DownloadsDirectory);
+        Assert.DoesNotContain("downloadsDirectory", ConfigStore.Serialize(DefaultConfig.Create()));
+    }
 }

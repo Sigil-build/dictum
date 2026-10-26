@@ -33,12 +33,13 @@ internal static class InitCommand
         var vocabFile = new Option<string?>("--vocab-file") { Description = "Words to add to the profile, one per line" };
         var autostart = new Option<bool>("--autostart") { Description = "Start Dictum at login: the desktop app when dictum-gui sits next to dictum, otherwise the daemon" };
         var gpu = new Option<string?>("--gpu") { Description = "auto (default) or cpu" };
+        var downloadsDir = new Option<string?>("--downloads-dir") { Description = "Folder for models and other downloads (default: the data folder)" };
         gpu.AcceptOnlyFromAmong(GpuAuto, GpuCpu);
         var json = new Option<bool>("--json") { Description = "Print a JSON summary" };
 
         var command = new Command("init", "Set Dictum up: choose and download a speech model, cleanup and your words")
         {
-            yes, language, stt, llm, llmModel, llmApiKey, vocabFile, autostart, gpu, json,
+            yes, language, stt, llm, llmModel, llmApiKey, vocabFile, autostart, gpu, downloadsDir, json,
         };
 
         command.SetAction((parse, ct) => CliApp.RunAsync(parse, async (context, token) =>
@@ -51,9 +52,11 @@ internal static class InitCommand
 
             var prompt = new ConsolePrompt(context.Error);
             var current = context.TryLoadConfig();
-            var hardware = HardwareProbe.Detect(context.Paths);
+            var chosenDownloads = parse.GetValue(downloadsDir) is { } given ? ModelsCommand.ChosenFolder(given) : null;
+            var paths = chosenDownloads is null ? context.Paths : context.Paths.WithDownloads(chosenDownloads);
+            var hardware = HardwareProbe.Detect(paths);
             var catalog = Catalog.BuiltIn;
-            var defaults = SetupPlanner.Defaults(current, hardware, catalog, m => File.Exists(context.Paths.ResolveModel(m)));
+            var defaults = SetupPlanner.Defaults(current, hardware, catalog, m => File.Exists(paths.ResolveModel(m)));
             context.Error.WriteLine(hardware.GpuName is null
                 ? "No GPU that Whisper can use was found; recommending a model that is fast on a CPU."
                 : $"GPU: {HardwareText.Gpu(hardware)}.");
@@ -76,8 +79,9 @@ internal static class InitCommand
                 server is null ? CleanupChoice.None : CleanupChoice.ExistingServer,
                 server,
                 words,
-                ForceCpu: parse.GetValue(gpu) == GpuCpu);
-            var plan = SetupPlanner.Plan(current, answers, catalog, e => ModelFiles.IsInstalled(context.Paths, e));
+                ForceCpu: parse.GetValue(gpu) == GpuCpu,
+                DownloadsDirectory: chosenDownloads ?? defaults.DownloadsDirectory);
+            var plan = SetupPlanner.Plan(current, answers, catalog, e => ModelFiles.IsInstalled(paths, e));
             if (!ConfirmDownloads(context, prompt, interactive, plan))
             {
                 return ExitCodes.Success;
@@ -272,7 +276,10 @@ internal static class InitCommand
         return true;
     }
 
-    /// <summary>Downloads, stores the key, saves the config, then deletes the old clean-up entry that the saved config no longer uses.</summary>
+    /// <summary>
+    /// Downloads into the plan's downloads folder, stores the key, saves the config, then deletes the old clean-up entry that
+    /// the saved config no longer uses.
+    /// </summary>
     /// <param name="current">The config init started from.</param>
     internal static async Task RunSetupAsync(
         CliContext context,
@@ -285,7 +292,7 @@ internal static class InitCommand
     {
         using var http = FileDownloader.CreateHttpClient(CliApp.UserAgent);
         using var view = new SetupProgressView(context.Error, redraw: !Console.IsErrorRedirected);
-        await new SetupRunner(new FileDownloader(http), context.Paths)
+        await new SetupRunner(new FileDownloader(http), context.Paths.WithDownloads(plan.Config.General.DownloadsDirectory))
             .RunAsync(plan, context.Store, hardware.FreeDiskBytes, view, ct, beforeSave: pendingSecret is null
                 ? null
                 : c => pendingSecret.WriteAsync(secrets, c)).ConfigureAwait(false);

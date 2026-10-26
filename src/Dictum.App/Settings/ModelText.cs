@@ -65,9 +65,9 @@ public static class ModelText
         return UiText.Format(bytes < SetupPlanner.MinGpuMemoryBytes ? Strings.SettingsModelsSmallGpu : Strings.SettingsModelsGpu, gpu, memory, ram);
     }
 
-    /// <summary>The disk line; free space the probe could not read (<see cref="long.MaxValue"/>) is left out.</summary>
-    public static string Disk(long usedBytes, long freeBytes) => freeBytes == long.MaxValue
-        ? UiText.Format(Strings.SettingsModelsDiskUsed, Units.Size(usedBytes))
-        : UiText.Format(Strings.SettingsModelsDisk, Units.Size(usedBytes), Units.Size(freeBytes));
+    /// <summary>The downloads folder line; free space the probe could not read (<see cref="long.MaxValue"/>) is left out.</summary>
+    public static string Folder(string folder, long usedBytes, long freeBytes) => freeBytes == long.MaxValue
+        ? UiText.Format(Strings.SettingsModelsFolderNoFree, folder, Units.Size(usedBytes))
+        : UiText.Format(Strings.SettingsModelsFolder, folder, Units.Size(freeBytes), Units.Size(usedBytes));
 
 }

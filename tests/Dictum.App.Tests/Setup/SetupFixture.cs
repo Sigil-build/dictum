@@ -19,7 +19,10 @@ internal sealed class SetupFixture : IDisposable
 
     public SetupFixture() => Directory.CreateDirectory(Paths.ConfigDirectory);
 
-    public AppPaths Paths => new(_dir.File("config"), _dir.File("data"));
+    /// <summary>Follows <see cref="Location"/>, as the shell's paths do.</summary>
+    public AppPaths Paths => new AppPaths(_dir.File("config"), _dir.File("data")).WithDownloads(() => Location.Current);
+
+    public DownloadsLocation Location { get; } = new();
 
     public ConfigStore Store => new(Paths.ConfigFile, NullLog.Instance);
 
@@ -44,6 +47,9 @@ internal sealed class SetupFixture : IDisposable
 
     public long FreeDisk { get; set; } = 48_000_000_000;
 
+    /// <summary>Free space per downloads folder; null answers <see cref="FreeDisk"/> everywhere.</summary>
+    public Func<string, long>? FreeDiskAt { get; set; }
+
     public bool HasAutostart { get; set; } = true;
 
     public TrayDesktop Desktop { get; set; } = TrayDesktop.Windows;
@@ -62,11 +68,11 @@ internal sealed class SetupFixture : IDisposable
 
     public SetupServices Services() => new(
         Paths, Store, ModelsPageTests.TestCatalog(), Downloads,
-        () => Probing?.Task ?? Task.FromResult(Hardware), () => FreeDisk, ModelsPageTests.Memory, 8, Measurements, Probe, Secrets,
+        () => Probing?.Task ?? Task.FromResult(Hardware), () => FreeDiskAt?.Invoke(Paths.DownloadsDirectory) ?? FreeDisk, ModelsPageTests.Memory, 8, Measurements, Probe, Secrets,
         HasAutostart ? Autostart : null, HasAutostart ? Executable : null,
         new TrayHint(Desktop, () => TrayHidden, Desktop == TrayDesktop.Windows ? () => TraySettingsOpened++ : null),
         Daemon, () => Restarts++, (page, anchor) => Opened.Add((page, anchor)),
-        Timers, Clock, NullLog.Instance);
+        Timers, Clock, NullLog.Instance, Location);
 
     public void Install(string file, byte[] data)
     {
@@ -82,6 +88,9 @@ internal sealed class SetupFixture : IDisposable
     }
 
     public string ModelPath(string file) => Path.Combine(Paths.ModelsDirectory, file);
+
+    /// <summary>A new, empty folder in the test's temp folder, as the folder picker returns one.</summary>
+    public string Folder(string name) => Directory.CreateDirectory(_dir.File(name)).FullName;
 
     public void Dispose() => _dir.Dispose();
 }

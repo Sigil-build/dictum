@@ -32,6 +32,7 @@ Usage: `dictum init [options]`
 | `--vocab-file` | Words to add to the profile, one per line |
 | `--autostart` | Start Dictum at login: the desktop app when dictum-gui sits next to dictum, otherwise the daemon |
 | `--gpu` | auto (default) or cpu<br>Values: auto, cpu |
+| `--downloads-dir` | Folder for models and other downloads (default: the data folder) |
 | `--json` | Print a JSON summary |
 
 ## `dictum transcribe` {#transcribe}
@@ -236,6 +237,8 @@ Usage: `dictum models <command>`
 | --- | --- |
 | [`list`](#models-list) | Show catalog models, whether they are installed, and other model files in the models directory |
 | [`pull`](#models-pull) | Download models into the models directory (resumes after interruptions, checks SHA-256) |
+| [`folder`](#models-folder) | Print the folder that downloads go to, or choose another |
+| [`delete`](#models-delete) | Delete downloaded models that no profile uses |
 
 ## `dictum models list` {#models-list}
 
@@ -257,6 +260,31 @@ Usage: `dictum models pull <ids>...`
 | Argument | Description |
 | --- | --- |
 | `<ids>` | Catalog ids, e.g. whisper-small-q8 |
+
+## `dictum models folder` {#models-folder}
+
+Print the folder that downloads go to, or choose another
+
+Usage: `dictum models folder [<path>] [options]`
+
+| Argument | Description |
+| --- | --- |
+| `<path>` | The new downloads folder, an absolute path; created when its parent exists |
+
+| Option | Description |
+| --- | --- |
+| `--move` | Move the models already downloaded into the new folder |
+| `--reset` | Use the data folder again |
+
+## `dictum models delete` {#models-delete}
+
+Delete downloaded models that no profile uses
+
+Usage: `dictum models delete <ids>...`
+
+| Argument | Description |
+| --- | --- |
+| `<ids>` | Catalog ids of downloaded models |
 
 ## `dictum devices` {#devices}
 

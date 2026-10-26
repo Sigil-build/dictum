@@ -154,6 +154,42 @@ public sealed class InitCommandTests
         Assert.Equal("sk-old", secrets.Values[SecretNames.LegacyCleanup]);
     }
 
+    // The config names a folder that is gone, so a download or a check that ignored --downloads-dir would fail the run.
+    [Fact]
+    public async Task InitDownloadsIntoTheGivenFolderAndSavesIt()
+    {
+        using var dir = new TempDirectory();
+        var file = dir.File("config.json");
+        await File.WriteAllTextAsync(file, ConfigStore.Serialize(DefaultConfig.Create() with { General = new GeneralSettings { DownloadsDirectory = dir.File("gone") } }), TestContext.Current.CancellationToken);
+        var downloads = dir.File("dl");
+        foreach (var entry in new[] { Catalog.BuiltIn.Get("whisper-tiny-en"), Catalog.BuiltIn.Get(SetupPlanner.VadId) })
+        {
+            Directory.CreateDirectory(Path.Combine(downloads, "models"));
+            await using var model = File.Create(Path.Combine(downloads, "models", entry.File));
+            model.SetLength(entry.Size);
+        }
+
+        using var console = new ConsoleCapture();
+
+        var code = await console.RunAsync("init", "--yes", "--stt", "whisper-tiny-en", "--language", "en", "--llm", "none", "--downloads-dir", downloads, "--config", file);
+
+        Assert.True(code == 0, console.Error.ToString());
+        Assert.Contains("All model files are already in place.", console.Error.ToString(), StringComparison.Ordinal);
+        Assert.Equal(downloads, ConfigStore.Parse(await File.ReadAllTextAsync(file, TestContext.Current.CancellationToken)).General.DownloadsDirectory);
+    }
+
+    [Fact]
+    public async Task ARelativeDownloadsFolderIsRefused()
+    {
+        using var dir = new TempDirectory();
+        using var console = new ConsoleCapture();
+
+        var code = await console.RunAsync("init", "--yes", "--stt", "whisper-tiny-en", "--language", "en", "--llm", "none", "--downloads-dir", "models", "--config", dir.File("config.json"));
+
+        Assert.Equal(ExitCodes.InvalidConfig, code);
+        Assert.False(File.Exists(dir.File("config.json")));
+    }
+
     private static CliContext Context() => new(CliApp.BuildRoot().Parse(["init", "--yes"]));
 
     private static CliContext Context(string configFile) => new(CliApp.BuildRoot().Parse(["init", "--yes", "--config", configFile]));

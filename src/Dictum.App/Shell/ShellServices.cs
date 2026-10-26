@@ -22,6 +22,7 @@ namespace Dictum.App.Shell;
 /// <param name="Delay">The waits for the daemon's reload before a test.</param>
 /// <param name="OpenDocs">Opens the documentation in the browser: Settings' Help, System's "How to fix", the wizard's step 1.</param>
 /// <param name="Updates">The update check that About Dictum shows; null where the shell has none (tests, the self-test).</param>
+/// <param name="Location">The downloads folder that <paramref name="Paths"/> follows; null in tests that leave it alone.</param>
 internal sealed record ShellServices(
     AppPaths Paths,
     Catalog Catalog,
@@ -44,4 +45,5 @@ internal sealed record ShellServices(
     OpenDocs OpenDocs,
     TimeProvider Time,
     ILog Log,
-    UpdateChecker? Updates = null);
+    UpdateChecker? Updates = null,
+    DownloadsLocation? Location = null);

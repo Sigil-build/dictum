@@ -185,6 +185,14 @@
             <StackPanel Spacing="10">
               <TextBlock Classes="h1" Text="{x:Static res:Strings.SetupDownloadsTitle}" />
               <TextBlock Classes="lead" Text="{Binding FolderText}" />
+              <StackPanel Orientation="Horizontal" Spacing="12">
+                <TextBlock Classes="hint" Text="{Binding FreeText}" VerticalAlignment="Center"
+                           IsVisible="{Binding FreeText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+                <Button Classes="changeFolder" Content="{x:Static res:Strings.SetupDownloadsChange}" IsVisible="{Binding CanChangeFolder}"
+                        AutomationProperties.HelpText="{x:Static res:Strings.SettingsModelsFolderPick}" />
+                <TextBlock Classes="hint" Text="{Binding ChangeLaterText}" VerticalAlignment="Center" TextWrapping="Wrap"
+                           IsVisible="{Binding ChangeLaterText, Converter={x:Static ObjectConverters.IsNotNull}}" />
+              </StackPanel>
               <Border Classes="table" IsVisible="{Binding HasFiles}">
                 <StackPanel>
                   <Border Classes="tableHead">
