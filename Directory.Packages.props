@@ -14,7 +14,7 @@
 
   <ItemGroup Label="Host and CLI">
     <PackageVersion Include="System.CommandLine" Version="2.0.13" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14" />
   </ItemGroup>
 
   <ItemGroup Label="Audio">
