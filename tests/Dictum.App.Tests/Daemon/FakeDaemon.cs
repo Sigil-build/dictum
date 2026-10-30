@@ -35,6 +35,9 @@ internal sealed class FakeDaemon : IAsyncDisposable
 
     public bool Paused { get; set; }
 
+    /// <summary><see cref="ExitAsync"/> has begun; <see cref="Exited"/> completes once the socket and its lock are gone.</summary>
+    public bool Ending => Volatile.Read(ref _ended) == 1;
+
     public static FakeDaemon Start(string socketPath, FakeDaemonOptions? options = null)
     {
         var daemon = new FakeDaemon(socketPath, options ?? new FakeDaemonOptions());
@@ -99,6 +102,8 @@ internal enum LaunchOutcome
 /// <summary>Launches fake daemons on the test's socket; pids start at 1001.</summary>
 internal sealed class FakeLauncher(string socketPath) : IDaemonLauncher, IAsyncDisposable
 {
+    private static readonly TimeSpan EndingTimeout = TimeSpan.FromSeconds(5);
+
     private readonly ConcurrentDictionary<int, FakeDaemon> _daemons = new();
     private int _launches;
 
@@ -134,6 +139,13 @@ internal sealed class FakeLauncher(string socketPath) : IDaemonLauncher, IAsyncD
             case LaunchOutcome.NeverListens:
                 return new FakeProcess(pid, new TaskCompletionSource<int>().Task);
             default:
+                // A daemon process that goes away lets go of its socket and its lock at once. A fake one closes its
+                // connections before it releases the lock, and a supervisor quick to start the next one would meet it.
+                foreach (var ending in _daemons.Values.Where(d => d.Ending))
+                {
+                    ending.Exited.Wait(EndingTimeout);
+                }
+
                 var daemon = FakeDaemon.Start(socketPath, new FakeDaemonOptions(ProcessId: pid));
                 _daemons[pid] = daemon;
                 Current = daemon;
