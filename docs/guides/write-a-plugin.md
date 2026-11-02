@@ -17,7 +17,7 @@ When it runs:
 
 - The daemon starts the plugin when a profile uses it: when the daemon starts, and when you save settings that need it. It keeps the plugin running, with its model loaded, while a profile uses it. Saving settings that keep the same plugin, folder, version, model and threads keeps the same process.
 - A `dictum` command that needs the plugin, such as `dictum transcribe memo.wav --stt hello`, starts a copy of its own and stops it when the command ends.
-- If the plugin exits when nobody asked it to, Dictum starts it again a second later, up to three times within five minutes. After that, the plugin stays down until you save the settings, run `dictum reload`, or restart the daemon.
+- If the plugin exits when nobody asked it to, Dictum starts it again a second later, up to three times within five minutes; a start that fails counts as one of them. After that, the plugin stays down until you save the settings, run `dictum reload`, or restart the daemon.
 
 Whisper is built into Dictum and is not a plugin program. Dictum's own plugins arrive in a later version. This page is about the plugins you write or add yourself.
 
@@ -71,14 +71,14 @@ Whisper is built into Dictum and is not a plugin program. Dictum's own plugins a
 :   Optional. `dictum plugins add` names the publisher, or says "an unknown publisher".
 
 `executable`
-:   The program to run on each system, by its runtime identifier: `win-x64` for Windows and `linux-x64` for Linux. The value is a file in the plugin's folder, or in a folder inside it, such as `bin/hello.exe`. It may be a script: a `.cmd` file on Windows, or a shell script with its execute bit set on Linux.
+:   The program to run on each system, by its runtime identifier: `win-x64` for Windows and `linux-x64` for Linux. The value is a file in the plugin's folder, or in a folder inside it, such as `bin/hello.exe`. It may be a script: a `.cmd` file on Windows, or a shell script with its execute bit set on Linux. On Windows, a `.cmd` or `.bat` launcher cannot be given a path with some characters in it; [the example](#example) says which.
 
 `models`
 :   Optional: the models the plugin offers. Each has an `id` (lowercase letters, digits, `.`, `_` and `-`, at most 64 characters, starting with a letter or a digit), a `title`, the `languages` it knows, which must not be empty, and its `files`. Each file has a `file` name inside the model's folder (subfolders are fine, `..` is not), an `https` address in `url`, its `sha256` and its `size` in bytes. `setLanguage` and `prompt` say whether the model can be told the language and whether it uses a prompt: see [Languages and prompts](#language). Both are true unless you set them to false. `licence` is optional.
 
 A provider that names a model by its id gets the folder `models/<plugin id>/<model id>` in Dictum's [downloads folder](../reference/files.md#downloads-folder). This version of Dictum does not download a plugin's models yet: put the files in that folder yourself, or give the provider the model's full path instead (see [Use it in a profile](#use)).
 
-No text in `plugin.json` may contain control characters or invisible formatting characters. Dictum ignores fields it does not know, and accepts `//` comments and trailing commas. Write the field names as shown: they are case-sensitive.
+No text in these fields may contain control characters or invisible formatting characters, such as a zero-width space or a right-to-left override. Dictum ignores fields it does not know, and accepts `//` comments and trailing commas. Write the field names as shown: they are case-sensitive.
 
 `dictum plugins add` checks the file and lists every problem it finds, for example:
 
@@ -187,7 +187,7 @@ Answer the language you heard in `language` when you know it. When you leave it 
 
 ## Exiting {#exit}
 
-The plugin must exit when its stdin closes. Read stdin in a thread of its own, and exit as soon as it ends.
+The plugin must exit when its stdin closes. Read stdin in a thread of its own, and exit as soon as it ends. Start that thread first, before you load the model: if Dictum ends while a large model loads, the plugin then exits at once instead of after the load.
 
 When Dictum no longer needs the plugin, because the daemon stops, saved settings no longer use it, or a command ends, Dictum:
 
@@ -227,6 +227,16 @@ args, _ = parser.parse_known_args()  # accept options this script does not know
 KEY = os.environ.get("DICTUM_PLUGIN_KEY")
 if not KEY:
     sys.exit("DICTUM_PLUGIN_KEY is not set: only Dictum starts this plugin.")
+
+
+def exit_when_stdin_closes():
+    sys.stdin.buffer.read()  # returns once Dictum closes the pipe, or dies
+    os._exit(0)
+
+
+# First, before a model loads: a plugin that loads for a minute still exits at
+# once when Dictum goes.
+threading.Thread(target=exit_when_stdin_closes, daemon=True).start()
 
 
 def model_info():
@@ -294,15 +304,9 @@ class Handler(BaseHTTPRequestHandler):
         pass  # Dictum logs every line on stderr; one per request is too many
 
 
-def exit_when_stdin_closes():
-    sys.stdin.buffer.read()  # returns once Dictum closes the pipe, or dies
-    os._exit(0)
-
-
 server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
 port = server.server_address[1]
 print(json.dumps({"dictumPlugin": 1, "url": f"http://127.0.0.1:{port}"}), flush=True)
-threading.Thread(target=exit_when_stdin_closes, daemon=True).start()
 server.serve_forever()
 ```
 
@@ -311,17 +315,19 @@ What protocol 1 asks for, and where the script does it:
 - **UTF-8 output:** `sys.stdout.reconfigure(encoding="utf-8")`, before anything is printed.
 - **The key:** `authorized()` compares the header with `DICTUM_PLUGIN_KEY`, and answers 401 when it does not match.
 - **The ready line:** `print(…, flush=True)`, once the server listens on the port the system gave it.
-- **Exiting:** `exit_when_stdin_closes()` reads stdin to its end in a thread of its own, then exits with code 0.
+- **Exiting:** `exit_when_stdin_closes()` reads stdin to its end in a thread of its own, started before anything else, then exits with code 0.
 - **Without a model:** `model_info()` answers `null`.
 - **Unknown options and fields:** `parse_known_args()` skips options it does not know, and `read_form()` keeps every field while the handler reads only the ones it needs.
 
-`log_message()` keeps the standard handler from writing a line to stderr for every request, which would put a line in Dictum's log for every health check. To make it a real plugin, load the model given in `--model` before the server starts, and replace the canned text with your engine's.
+`log_message()` keeps the standard handler from writing a line to stderr for every request, which would put a line in Dictum's log for every health check. To make it a real plugin, load the model given in `--model` after the stdin thread starts and before the server starts, and replace the canned text with your engine's.
 
 `plugin.cmd`, which starts it on Windows:
 
 ```bat
 @python "%~dp0plugin.py" %*
 ```
+
+cmd.exe runs a `.cmd` or `.bat` file, and it reads the file's command line once more: `&` and `|` start another command, `%` expands a variable even in quotes, and `^ ! " < > ( )` change what it runs. So that a model path never runs anything, Dictum does not start a `.cmd` or `.bat` launcher with an option that holds `&`, `%`, `^`, `!`, `"`, `<`, `>`, `|`, `(` or `)`, such as the model folder `C:\Users\you\R&D\tiny`. It says `Plugin hello starts through plugin.cmd, which cannot be given …` instead. Keep such characters out of the model's path, or start the plugin with a program, such as an `.exe`, instead of a script.
 
 `plugin.sh`, which starts it on Linux:
 
@@ -375,11 +381,11 @@ see: https://docs.sigil.build/dictum/guides/write-a-plugin/#use
 
 `--yes` adds the plugin without asking, for a script. If the plugin does not start, Dictum adds nothing: it shows the plugin's last lines, if it printed any, each after a `|`, and why it failed. See [When it does not work](#problems).
 
-**After a change.** Before every start, Dictum compares the program's SHA-256 with the one it recorded. Once the program changes, whether you edited it or put in a new version, Dictum does not start it until you confirm it again: run `dictum plugins add` with the same folder. Dictum says `hello is already added; confirming it again.` and asks again. The next dictation starts the confirmed program, with no restart.
+**After a change.** Before every start, Dictum compares the program's SHA-256 with the one it recorded. Once the program changes, whether you edited it or put in a new version, Dictum does not start it until you confirm it again: run `dictum plugins add` with the same folder. Dictum says `hello is already added; confirming it again.` and asks again. If Dictum had refused to start the changed program, the next dictation starts it, with no restart. A daemon that still runs the old program keeps running it: confirming changes nothing in `config.json`, and saving the settings or `dictum reload` keep a plugin whose folder, version, model and threads stay the same. To run the new program, restart the daemon: quit Dictum from the tray menu and start it again, or run `dictum shutdown` and then `dictum daemon`.
 
 Dictum records the program that `executable` names, and only that file. With a launcher script, as in the example, that is `plugin.cmd` or `plugin.sh`, not `plugin.py`, so a change to `plugin.py` is not noticed. The record is kept in `plugin-trust.json` in Dictum's [data folder](../reference/files.md#data-folder), for this computer only: a `config.json` copied from another computer names plugins that are not confirmed here yet.
 
-`dictum plugins list` shows each plugin you added, with its folder and its state: `confirmed`, `changed since you added it`, `not confirmed on this computer`, `the folder is missing`, or `plugin.json is not valid: …` followed by the problems. `dictum plugins remove hello` forgets the plugin and leaves its folder alone. It refuses while a speech provider uses the plugin.
+`dictum plugins list` shows each plugin you added, with its folder and its state: `confirmed`, `changed since you added it`, `not confirmed on this computer`, `the folder is missing`, `plugin.json is not valid: …` followed by the problems, or `plugin.json cannot be read: …` followed by the reason. `dictum plugins remove hello` forgets the plugin and leaves its folder alone. It refuses while a speech provider uses the plugin.
 
 ## Use it in a profile {#use}
 

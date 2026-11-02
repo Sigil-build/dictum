@@ -94,6 +94,30 @@ public sealed partial class UserDocsTests
         Assert.Equal(majorMinor, versions[0].Groups["version"].Value);
     }
 
+    // A statement such as "what the code of Dictum 0.5 does" is one fact in two languages: a twin that names another
+    // version says something else.
+    [Fact]
+    public void EachTwinNamesTheSameVersionsOfDictum()
+    {
+        var problems = new List<string>();
+        foreach (var page in EnglishPages().Except(EnglishOnly))
+        {
+            var twin = page[..^".md".Length] + UkrainianSuffix;
+            if (!File.Exists(Full(twin)))
+            {
+                continue;
+            }
+
+            var (en, uk) = (Versions(page), Versions(twin));
+            if (!en.SequenceEqual(uk))
+            {
+                problems.Add($"{twin} names [{string.Join(", ", uk)}], but {page} names [{string.Join(", ", en)}]");
+            }
+        }
+
+        AssertNone(problems);
+    }
+
     // The site's build warns about a page outside the nav, and its strict build stops on the warning.
     [Fact]
     public void EveryPageIsInTheNav()
@@ -133,6 +157,10 @@ public sealed partial class UserDocsTests
 
     /// <summary>A page's lines outside fenced code blocks: there a <c>#</c> or a <c>](</c> is sample text, not Markdown.</summary>
     private static IEnumerable<string> ProseLines(string page) => MarkdownFences.ProseLines(Lines(Full(page)));
+
+    /// <summary>Each "Dictum 0.5" or "Dictum 0.5.1" the page names, in order.</summary>
+    private static List<string> Versions(string page) =>
+        [.. DictumVersion().Matches(File.ReadAllText(Full(page))).Select(match => match.Groups["version"].Value)];
 
     /// <summary>The ids of a page's headings, in order.</summary>
     private static List<string> Ids(string page) =>
@@ -252,6 +280,9 @@ public sealed partial class UserDocsTests
 
     [GeneratedRegex(@"^version:\s*""(?<version>[^""]*)""\s*(?:#.*)?$")]
     private static partial Regex SiteVersion();
+
+    [GeneratedRegex(@"\bDictum (?<version>\d+\.\d+(?:\.\d+)?)\b")]
+    private static partial Regex DictumVersion();
 
     /// <summary><c>- page.md</c>, or <c>- Title: page.md</c>, in the nav.</summary>
     [GeneratedRegex(@"^\s*-\s+(?:[^:#]+:\s+)?[""']?(?<path>[^\s""':#]+\.md)[""']?\s*(?:#.*)?$")]

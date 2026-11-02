@@ -411,7 +411,7 @@ A speech provider whose `type` is `plugin` has a row like the others, `stt:<id>`
   OK stt:hello              plugin Hello 1.0.0, model tiny, pid 4242
 ```
 
-When the plugin cannot start, the row says why, followed by the plugin's last lines after `last output:` when it printed any, and its second line says what to do. A dictation in a profile that uses the plugin fails with the same message, and `dictum transcribe` and `dictum stt test` print it. [Write a plugin](guides/write-a-plugin.md) describes what a plugin has to do.
+When the plugin cannot start, the row says why, followed by the plugin's last lines after `last output:` when it printed any, and its second line says what to do. A dictation in a profile that uses the plugin fails with the same message, and `dictum transcribe` and `dictum stt test` print it. **Test** on the provider's card in **Settings → Speech providers** shows it with what to do after it, and then the last lines after `last output:`. [Write a plugin](guides/write-a-plugin.md) describes what a plugin has to do.
 
 The provider and the plugin's folder:
 
@@ -426,6 +426,9 @@ The provider and the plugin's folder:
 
 `Model not found: …` → `Check stt.<id>.model in config.json.`
 :   The provider's `model` is a full path, and there is no file or folder there.
+
+`Plugin hello starts through plugin.cmd, which cannot be given …: it holds one of & % ^ ! " < > | ( ).` → `Use a path without those characters, or ask the plugin's author for a program (.exe) instead of a script.`
+:   On Windows, a plugin whose program is a `.cmd` or `.bat` file runs under cmd.exe, which would act on those characters in an option such as the provider's `model` path: it would run what follows a `&`, for one. Move or rename the model's folder, or use a plugin that starts with a program.
 
 `Plugin 'hello' has no model 'tiny'.` → `Its models: …; or set the model to an absolute path.`
 :   The provider's `model` is an id, but the plugin's `plugin.json` lists no model with it. The hint names the ids it lists, or says `It lists no models; set the model to an absolute path.` Use one of them, or the model's full path.
@@ -467,7 +470,7 @@ While the program starts. These messages come with the hint `See its output abov
 After it ran:
 
 `Plugin hello kept stopping; Dictum stopped restarting it after 3 restarts within 5 minutes.` → `Save the settings or restart the daemon to try again.`
-:   The plugin exited by itself again and again. Dictum starts it again up to three times within five minutes, then gives up. Its last lines and the log say why. Fix the cause, then save the settings, run `dictum reload`, or restart the daemon.
+:   The plugin exited by itself again and again, or could not start again after it exited. Dictum starts it again up to three times within five minutes, a start that fails counting as one of them, then gives up. Its last lines and the log say why. Fix the cause, then save the settings, run `dictum reload`, or restart the daemon.
 
 `Plugin hello could not start: …` → `Save the settings or restart the daemon to try again.`
 :   Another error stopped the start; the rest of the text says which.

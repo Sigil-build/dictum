@@ -80,6 +80,21 @@ public sealed partial class WritePluginGuideTests : IDisposable
         }
     }
 
+    /// <summary>
+    /// The guide says to start the stdin watcher first, before a model loads, so that a plugin notices a Dictum that
+    /// died even during a long load; its example does as it says, before the point where a model would load.
+    /// </summary>
+    [Fact]
+    public void TheExampleWatchesStdinBeforeAnythingElseStarts()
+    {
+        var program = Fence(ExampleFences(), "python");
+        var watcher = program.IndexOf("threading.Thread(target=exit_when_stdin_closes", StringComparison.Ordinal);
+        var server = program.IndexOf("ThreadingHTTPServer((", StringComparison.Ordinal);
+
+        Assert.True(watcher >= 0, $"{Guide}: the example starts no thread that watches stdin");
+        Assert.True(watcher < program.IndexOf("def model_info", StringComparison.Ordinal) && watcher < server, $"{Guide}: the example starts its stdin watcher after the rest");
+    }
+
     /// <summary>A polite plugin exits by itself, with code 0, once its stdin closes; one that does not is killed after the grace.</summary>
     private static async Task StopsWithinTheGraceAsync(PluginProcess plugin)
     {
