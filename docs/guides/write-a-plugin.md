@@ -16,7 +16,7 @@ Dictum runs the program as a child process, in the plugin's folder and with your
 When it runs:
 
 - The daemon starts the plugin when a profile uses it: when the daemon starts, and when you save settings that need it. It keeps the plugin running, with its model loaded, while a profile uses it. Saving settings that keep the same plugin, folder, version, model and threads keeps the same process.
-- A `dictum` command that needs the plugin, such as `dictum transcribe --stt hello`, starts a copy of its own and stops it when the command ends.
+- A `dictum` command that needs the plugin, such as `dictum transcribe memo.wav --stt hello`, starts a copy of its own and stops it when the command ends.
 - If the plugin exits when nobody asked it to, Dictum starts it again a second later, up to three times within five minutes. After that, the plugin stays down until you save the settings, run `dictum reload`, or restart the daemon.
 
 Whisper is built into Dictum and is not a plugin program. Dictum's own plugins arrive in a later version. This page is about the plugins you write or add yourself.
@@ -99,7 +99,7 @@ Dictum runs the program that `executable` names for your system, in the plugin's
 :   Listen on a free port that the system picks: bind port 0, then read which port you got.
 
 `--model <path>`
-:   The model to load: the full path of a file, or of a folder for a model of several files. Without it, the plugin only has to say who it is: see [What it must answer](#endpoints).
+:   The model to load, as a full path. For a model listed in the plugin's `plugin.json`, it is the folder `models/<plugin id>/<model id>` that holds the model's files, however many there are. When the provider names a full path instead, it is that file or folder. Without `--model`, the plugin only has to say who it is: see [What it must answer](#endpoints).
 
 `--threads <n>`
 :   How many threads to use, when the provider sets `threads`. Without it, the plugin decides.
@@ -120,7 +120,7 @@ Dictum then asks `GET /health` every 250 ms until it gets 200, and then `GET /di
 
 **Its output.** Every line on stdout except the ready line, and every line on stderr, goes to Dictum's log as `plugin <id>: <line>`. Dictum also keeps the last 20 lines, and shows the last of them when the plugin fails to start. A plugin that prints what it heard puts the dictated text in the log, so don't.
 
-Dictum reads both streams as UTF-8, so write UTF-8. On Windows, Python writes to a pipe in the system's ANSI code page instead, unless `PYTHONUTF8=1` or `PYTHONIOENCODING=utf-8` is set, or the script calls `sys.stdout.reconfigure(encoding="utf-8")`, as the example below does.
+Dictum reads both streams as UTF-8, so write UTF-8. On Windows, Python before 3.15 writes to a pipe in the system's ANSI code page instead, unless `PYTHONUTF8=1` or `PYTHONIOENCODING=utf-8` is set, or the script calls `sys.stdout.reconfigure(encoding="utf-8")`. Python 3.15 and later write UTF-8 by default. The example below calls `reconfigure`, which does no harm in either.
 
 **Its input.** The program's stdin is a pipe that only Dictum holds. Dictum writes nothing to it: it closes it when the plugin should exit. See [Exiting](#exit).
 
@@ -213,8 +213,8 @@ import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-# Dictum reads what a plugin prints as UTF-8. On Windows, Python writes to a pipe
-# in the ANSI code page unless told otherwise, so switch to UTF-8 first.
+# Dictum reads what a plugin prints as UTF-8. Before 3.15, Python on Windows writes
+# to a pipe in the ANSI code page unless told otherwise, so switch to UTF-8 first.
 sys.stdout.reconfigure(encoding="utf-8")
 sys.stderr.reconfigure(encoding="utf-8")
 
@@ -361,7 +361,7 @@ On Windows, run `dictum` by its full path: see [The command line](../getting-sta
 Dictum reads `plugin.json`, shows who the plugin says it is, and asks:
 
 ```text
-Hello 1.0.0 by Your name from C:\Users\you\plugins\hello
+Hello 1.0.0 by Your name from /home/you/plugins/hello
 This plugin is a program that runs on your computer. Dictum did not check it. Add it only if you trust where it came from.
 Add it? [y/N]:
 ```
@@ -373,13 +373,13 @@ Added Hello 1.0.0 (protocol 1).
 see: https://docs.sigil.build/dictum/guides/write-a-plugin/#use
 ```
 
-`--yes` adds the plugin without asking, for a script. If the plugin does not start, Dictum adds nothing: it shows the plugin's last lines, each after a `|`, and why it failed. See [When it does not work](#problems).
+`--yes` adds the plugin without asking, for a script. If the plugin does not start, Dictum adds nothing: it shows the plugin's last lines, if it printed any, each after a `|`, and why it failed. See [When it does not work](#problems).
 
 **After a change.** Before every start, Dictum compares the program's SHA-256 with the one it recorded. Once the program changes, whether you edited it or put in a new version, Dictum does not start it until you confirm it again: run `dictum plugins add` with the same folder. Dictum says `hello is already added; confirming it again.` and asks again. The next dictation starts the confirmed program, with no restart.
 
 Dictum records the program that `executable` names, and only that file. With a launcher script, as in the example, that is `plugin.cmd` or `plugin.sh`, not `plugin.py`, so a change to `plugin.py` is not noticed. The record is kept in `plugin-trust.json` in Dictum's [data folder](../reference/files.md#data-folder), for this computer only: a `config.json` copied from another computer names plugins that are not confirmed here yet.
 
-`dictum plugins list` shows each plugin you added, and whether it is `confirmed`, `changed since you added it` or `not confirmed on this computer`. `dictum plugins remove hello` forgets the plugin and leaves its folder alone. It refuses while a speech provider uses the plugin.
+`dictum plugins list` shows each plugin you added, with its folder and its state: `confirmed`, `changed since you added it`, `not confirmed on this computer`, `the folder is missing`, or `plugin.json is not valid: …` followed by the problems. `dictum plugins remove hello` forgets the plugin and leaves its folder alone. It refuses while a speech provider uses the plugin.
 
 ## Use it in a profile {#use}
 
@@ -423,4 +423,4 @@ The [settings reference](../reference/settings.md#provider-plugin) describes the
 
 ## When it does not work {#problems}
 
-`dictum doctor` and **Settings → System** say why a plugin does not start, with its last lines. [A plugin does not start](../troubleshooting.md#plugin) lists each message with its fix, and how to read the plugin's lines in `dictum.log`.
+`dictum doctor` and **Settings → System** say why a plugin does not start, with its last lines when it printed any. [A plugin does not start](../troubleshooting.md#plugin) lists each message with its fix, and how to read the plugin's lines in `dictum.log`.

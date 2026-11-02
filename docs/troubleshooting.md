@@ -411,7 +411,7 @@ A speech provider whose `type` is `plugin` has a row like the others, `stt:<id>`
   OK stt:hello              plugin Hello 1.0.0, model tiny, pid 4242
 ```
 
-When the plugin cannot start, the row says why, with the plugin's last lines after `last output:`, and its second line says what to do. A dictation in a profile that uses the plugin fails with the same message, and `dictum transcribe` and `dictum stt test` print it. [Write a plugin](guides/write-a-plugin.md) describes what a plugin has to do.
+When the plugin cannot start, the row says why, followed by the plugin's last lines after `last output:` when it printed any, and its second line says what to do. A dictation in a profile that uses the plugin fails with the same message, and `dictum transcribe` and `dictum stt test` print it. [Write a plugin](guides/write-a-plugin.md) describes what a plugin has to do.
 
 The provider and the plugin's folder:
 
@@ -441,7 +441,7 @@ The confirmation:
 `Plugin hello changed since you added it.` → `Confirm it with 'dictum plugins add "…"'.`
 :   The program's SHA-256 is not the one Dictum recorded when you confirmed it. If you updated or edited the plugin, run the command to confirm it again. If you did not, find out what changed it before you do. Once you have confirmed it, the next dictation starts it.
 
-While the program starts. These messages come with the hint `See its output above, and the plugin's own documentation.`, and with the plugin's last lines: after `last output:` in the row, or each after a `|` when `dictum plugins add` runs the plugin. When the daemon reports a start that failed earlier, the hint goes on: `Then save the settings or restart the daemon to try again.` The daemon does not try a plugin that failed to start again by itself; saving the settings, `dictum reload` or a restart of the daemon does.
+While the program starts. These messages come with the hint `See its output above, and the plugin's own documentation.` All of them but `Plugin … could not be started: …` also bring the lines the plugin printed last, if it printed any: after `last output:` in the row, or each after a `|` when `dictum plugins add` runs the plugin. That one has none, because the program never ran. When the daemon reports a start that failed earlier, the hint goes on: `Then save the settings or restart the daemon to try again.` The daemon does not try a plugin that failed to start again by itself; saving the settings, `dictum reload` or a restart of the daemon does.
 
 `Plugin hello could not be started: …`
 :   The system did not run the program that `plugin.json` names, and the rest of the text says why. On Linux, the file needs its execute bit: `chmod +x plugin.sh`. A script's first line must name an interpreter that exists.

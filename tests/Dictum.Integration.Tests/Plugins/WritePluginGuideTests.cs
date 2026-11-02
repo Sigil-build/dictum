@@ -23,6 +23,9 @@ public sealed partial class WritePluginGuideTests : IDisposable
     private const string Section = "example";
     private const string Text = "hello from python";
 
+    /// <summary>The systems Dictum is built for, which the guide's example must each have a program for.</summary>
+    private static readonly string[] ShippedRids = ["win-x64", "linux-x64"];
+
     private readonly TempDirectory _dir = new();
     private readonly ListLog _log = new();
     private readonly HttpClient _http = ProviderHttp.CreateClient();
@@ -137,7 +140,11 @@ public sealed partial class WritePluginGuideTests : IDisposable
         File.WriteAllText(Path.Combine(folder, PluginProtocol.ManifestFile), manifest);
         using var json = JsonDocument.Parse(manifest);
         var rid = PluginProtocol.CurrentRid;
-        Assert.SkipUnless(json.RootElement.GetProperty("executable").TryGetProperty(rid, out var program), $"The guide's manifest has no program for {rid}");
+        var listed = json.RootElement.GetProperty("executable").TryGetProperty(rid, out var program);
+
+        // The example serves the systems Dictum ships for; another system it may leave out.
+        Assert.SkipUnless(listed || ShippedRids.Contains(rid), $"The guide's manifest has no program for {rid}, which Dictum does not ship for");
+        Assert.True(listed, $"{Guide}: the example's plugin.json has no program for {rid}");
 
         var launcher = Path.Combine(folder, program.GetString()!);
         var text = Fence(fences, LauncherFence);
