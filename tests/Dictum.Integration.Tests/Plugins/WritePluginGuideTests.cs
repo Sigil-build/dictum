@@ -6,7 +6,6 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Dictum.Audio;
 using Dictum.Core.Audio;
-using Dictum.Core.Http;
 using Dictum.Plugins;
 using Dictum.Testing;
 
@@ -28,7 +27,7 @@ public sealed partial class WritePluginGuideTests : IDisposable
 
     private readonly TempDirectory _dir = new();
     private readonly ListLog _log = new();
-    private readonly HttpClient _http = ProviderHttp.CreateClient();
+    private readonly HttpClient _http = PluginHttp.CreateClient();
 
     /// <summary>The interpreter the guide's launchers call: <c>plugin.cmd</c> runs python, <c>plugin.sh</c> python3.</summary>
     private static string Python => OperatingSystem.IsWindows() ? "python" : "python3";

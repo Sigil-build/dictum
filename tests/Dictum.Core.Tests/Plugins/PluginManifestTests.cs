@@ -1,3 +1,4 @@
+using System.Globalization;
 using Dictum.Core.Configuration;
 using Dictum.Plugins;
 using Dictum.Testing;
@@ -88,10 +89,10 @@ public sealed class PluginManifestTests : IDisposable
     }
 
     [Theory]
-    [InlineData("name", "My\\u001b[2Jplugin", "name must not contain control characters")]
-    [InlineData("publisher", "Me\\r", "publisher must not contain control characters")]
-    [InlineData("title", "M\\u0085", "model m: title must not contain control characters")]
-    [InlineData("version", "1\\t0", "version must not contain control characters")]
+    [InlineData("name", "My\\u001b[2Jplugin", "name must not contain control or invisible formatting characters")]
+    [InlineData("publisher", "Me\\r", "publisher must not contain control or invisible formatting characters")]
+    [InlineData("title", "M\\u0085", "model m: title must not contain control or invisible formatting characters")]
+    [InlineData("version", "1\\t0", "version must not contain control or invisible formatting characters")]
     public void ControlCharactersAreRefusedAndNeverEchoed(string field, string value, string problem)
     {
         var title = field == "title" ? value : "M";
@@ -104,7 +105,52 @@ public sealed class PluginManifestTests : IDisposable
         var problems = Problems();
 
         Assert.Equal([problem], problems);
-        Assert.All(problems, p => Assert.DoesNotContain(p, char.IsControl));
+        Assert.All(problems, p => Assert.DoesNotContain(p, IsHidden));
+    }
+
+    /// <summary>
+    /// Characters a terminal draws as nothing, or as a line break: right-to-left override, zero-width space, zero-width
+    /// joiner, byte order mark, line and paragraph separators. Each can reorder or split the line shown before the
+    /// question whether to add the plugin.
+    /// </summary>
+    [Theory]
+    [InlineData("\\u202e")]
+    [InlineData("\\u200b")]
+    [InlineData("\\u200d")]
+    [InlineData("\\ufeff")]
+    [InlineData("\\u2028")]
+    [InlineData("\\u2029")]
+    public void InvisibleFormattingCharactersAreRefusedAndNeverEchoed(string character)
+    {
+        Write(Manifest(name: $"My{character}plugin", id: $"my{character}plugin"));
+
+        var problems = Problems();
+
+        Assert.Equal(
+            [$"id 'my{character}plugin' {PluginIds.Rule}", "id must not contain control or invisible formatting characters", "name must not contain control or invisible formatting characters"],
+            problems);
+        Assert.All(problems, p => Assert.DoesNotContain(p, IsHidden));
+    }
+
+    /// <summary>Every text the file holds, the languages, the licence and other systems' programs included.</summary>
+    [Fact]
+    public void TheLanguagesTheLicenceAndEveryProgramAreCheckedToo()
+    {
+        Write(Manifest(
+            executable: $$"""{"{{Rid}}":"plugin.exe","other\u200b":"x\u202e.sh"}""",
+            models: $$$"""[{"id":"m","title":"M","files":[{{{ModelFile()}}}],"languages":["en","uk\u2028"],"licence":{"name":"MIT\u202e","url":"https://example.com/\u200bLICENSE"}}]"""));
+
+        var problems = Problems();
+
+        Assert.Equal(
+            [
+                "system other\\u200b in executable must not contain control or invisible formatting characters",
+                "program for other\\u200b must not contain control or invisible formatting characters",
+                "model m: languages[1] must not contain control or invisible formatting characters",
+                "model m: licence name must not contain control or invisible formatting characters",
+                "model m: licence url must not contain control or invisible formatting characters",
+            ],
+            problems);
     }
 
     [Fact]
@@ -115,8 +161,30 @@ public sealed class PluginManifestTests : IDisposable
         var problems = Problems();
 
         Assert.Contains("id 'bad\\u001b[2J' ", problems[0], StringComparison.Ordinal);
-        Assert.Contains(problems, p => p.Contains("model m\\u0007: file name must not contain control characters", StringComparison.Ordinal));
-        Assert.All(problems, p => Assert.DoesNotContain(p, char.IsControl));
+        Assert.Contains(problems, p => p.Contains("model m\\u0007: file name must not contain control or invisible formatting characters", StringComparison.Ordinal));
+        Assert.All(problems, p => Assert.DoesNotContain(p, IsHidden));
+    }
+
+    /// <summary>A null in a list is a problem with the file, not a crash of whatever reads it, such as 'dictum plugins list'.</summary>
+    [Theory]
+    [InlineData("[null]", "models[0] is empty")]
+    [InlineData("""[{"id":"m","title":"M","files":[null],"languages":["en"]}]""", "model m: files[0] is empty")]
+    [InlineData("""[{"id":"m","title":"M","files":[],"languages":["en"]}]""", "model m lists no files")]
+    [InlineData("""[{"id":"m","title":"M","languages":["en"]}]""", "model m lists no files")]
+    [InlineData("""[{"id":"m","title":"M","files":[FILE],"languages":["en",null]}]""", "model m: languages[1] is empty")]
+    public void ANullEntryIsAProblem(string models, string problem)
+    {
+        Write(Manifest(models: models.Replace("FILE", ModelFile(), StringComparison.Ordinal)));
+
+        Assert.Equal([problem], Problems());
+    }
+
+    [Fact]
+    public void ANullProgramIsAProblem()
+    {
+        Write(Manifest(executable: $$"""{"{{Rid}}":null}"""));
+
+        Assert.Equal([$"it has no program for {Rid}"], Problems());
     }
 
     [Fact]
@@ -231,6 +299,9 @@ public sealed class PluginManifestTests : IDisposable
         var exception = Assert.Throws<PluginManifestException>(() => PluginManifest.Load(_folder.Path));
         Assert.Equal($"plugin.json in {_folder.Path} is not valid: {string.Join("; ", problems)}", exception.Message);
     }
+
+    private static bool IsHidden(char c) =>
+        char.IsControl(c) || char.GetUnicodeCategory(c) is UnicodeCategory.Format or UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator;
 
     private IReadOnlyList<string> Problems() =>
         Assert.Throws<PluginManifestException>(() => PluginManifest.Load(_folder.Path)).Problems;

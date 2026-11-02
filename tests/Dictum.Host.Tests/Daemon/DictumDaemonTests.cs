@@ -8,6 +8,7 @@ using Dictum.Host.Daemon;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
 using Dictum.Platform.Hotkeys;
+using Dictum.Plugins;
 using Dictum.Testing;
 
 namespace Dictum.Host.Tests.Daemon;
@@ -577,6 +578,37 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         Assert.True(response.Ok, response.Error);
         Assert.Equal((1, 1), (_engines[^1].Audio.Starts, _engines[^1].Audio.Stops));
         Assert.True(response.Test!.LatencyMs >= 0);
+    }
+
+    // Settings → Speech providers → Test shows only the failure's text, which has no field for a hint: the hint goes
+    // after the message, and a plugin's last lines after both, as in doctor's row.
+    [Fact]
+    public async Task AFailedTestCarriesTheHintAndThePluginsLastLines()
+    {
+        _stt.FailWith = new PluginUnavailableException(
+            "Plugin test exited with code 1 while starting.",
+            "See its output above, and the plugin's own documentation.",
+            ["one", "two", "three", "four", "five", "six"]);
+        await using var daemon = await StartAsync(Config());
+
+        var response = await daemon.HandleAsync(new IpcRequest(IpcCommand.TestStt, Stt: "s", Sample: true), _ct);
+
+        Assert.False(response.Ok);
+        Assert.Equal(
+            "Plugin test exited with code 1 while starting. See its output above, and the plugin's own documentation; last output: two | three | four | five | six",
+            response.Error);
+    }
+
+    [Fact]
+    public async Task AFailedTestWithoutOutputCarriesTheHint()
+    {
+        _stt.FailWith = new PluginUnavailableException(
+            "Plugin test has not been confirmed on this computer.", "Confirm it with 'dictum plugins add \"C:\\p\"'.");
+        await using var daemon = await StartAsync(Config());
+
+        var response = await daemon.HandleAsync(new IpcRequest(IpcCommand.TestStt, Stt: "s", Sample: true), _ct);
+
+        Assert.Equal("Plugin test has not been confirmed on this computer. Confirm it with 'dictum plugins add \"C:\\p\"'.", response.Error);
     }
 
     [Fact]

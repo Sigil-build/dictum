@@ -70,12 +70,13 @@ public sealed record PluginManifest(
             problems.Add($"id '{Show(Id)}' {PluginIds.Rule}");
         }
 
-        // These strings reach the terminal before the user is asked anything, so none may carry an escape sequence.
-        RefuseControl("id", Id, problems);
-        RefuseControl("name", Name, problems);
-        RefuseControl("version", Version, problems);
-        RefuseControl("publisher", Publisher, problems);
-        RefuseControl("homepage", Homepage, problems);
+        // These strings reach the terminal before the user is asked anything, so none may carry an escape sequence or
+        // a character that reorders or splits the line; nor may any other text in the file.
+        RefuseHidden("id", Id, problems);
+        RefuseHidden("name", Name, problems);
+        RefuseHidden("version", Version, problems);
+        RefuseHidden("publisher", Publisher, problems);
+        RefuseHidden("homepage", Homepage, problems);
 
         if (string.IsNullOrWhiteSpace(Name))
         {
@@ -92,20 +93,26 @@ public sealed record PluginManifest(
         return problems;
     }
 
-    private static void RefuseControl(string field, string? value, List<string> problems)
+    private static void RefuseHidden(string field, string? value, List<string> problems)
     {
-        if (value is not null && value.Any(char.IsControl))
+        if (value is not null && value.Any(PluginText.IsHidden))
         {
-            problems.Add($"{field} must not contain control characters");
+            problems.Add($"{field} must not contain control or invisible formatting characters");
         }
     }
 
-    /// <summary>A manifest value for a message: control characters spelt out, so a message never moves the cursor.</summary>
-    private static string Show(string? value) =>
-        string.Concat((value ?? "").Select(c => char.IsControl(c) ? $"\\u{(int)c:x4}" : c.ToString()));
+    /// <summary>A manifest value for a message, its hidden characters spelt out, so a message never moves the cursor.</summary>
+    private static string Show(string? value) => PluginText.Show(value);
 
     private void CheckProgram(string folder, List<string> problems)
     {
+        // Every system's entry is text in the file, though only this system's program runs here.
+        foreach (var (system, program) in Executable ?? new Dictionary<string, string>())
+        {
+            RefuseHidden($"system {Show(system)} in executable", system, problems);
+            RefuseHidden($"program for {Show(system)}", program, problems);
+        }
+
         var rid = PluginProtocol.CurrentRid;
         if (Executable is null || !Executable.TryGetValue(rid, out var file) || string.IsNullOrWhiteSpace(file))
         {
@@ -113,7 +120,6 @@ public sealed record PluginManifest(
             return;
         }
 
-        RefuseControl($"program for {rid}", file, problems);
         if (!IsInside(folder, file))
         {
             problems.Add($"the program for {rid} must be a file name inside the folder");
@@ -131,44 +137,94 @@ public sealed record PluginManifest(
             return false;
         }
 
-        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder)) + Path.DirectorySeparatorChar;
-        return Path.GetFullPath(Path.Combine(folder, file)).StartsWith(root, PathComparison.Current);
+        try
+        {
+            var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(folder)) + Path.DirectorySeparatorChar;
+            return Path.GetFullPath(Path.Combine(folder, file)).StartsWith(root, PathComparison.Current);
+        }
+        catch (ArgumentException)
+        {
+            // A character no path may hold, such as a null; a control character problem names it.
+            return false;
+        }
     }
 
     private void CheckModels(List<string> problems)
     {
         var seen = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var model in Models ?? [])
+        for (var i = 0; i < (Models?.Count ?? 0); i++)
         {
+            var model = Models![i];
+            if (model is null)
+            {
+                problems.Add($"models[{Index(i)}] is empty");
+                continue;
+            }
+
             if (string.IsNullOrWhiteSpace(model.Id))
             {
                 problems.Add("a model has no id");
                 continue;
             }
 
+            var shown = Show(model.Id);
             if (!PluginIds.IsValidModelId(model.Id))
             {
-                problems.Add($"model id '{Show(model.Id)}' {PluginIds.ModelRule}");
+                problems.Add($"model id '{shown}' {PluginIds.ModelRule}");
             }
 
             if (!seen.Add(model.Id))
             {
-                problems.Add($"model id '{Show(model.Id)}' appears twice");
+                problems.Add($"model id '{shown}' appears twice");
             }
 
-            RefuseControl($"model {Show(model.Id)}: id", model.Id, problems);
-            RefuseControl($"model {Show(model.Id)}: title", model.Title, problems);
-            if (model.Languages is null || model.Languages.Count == 0)
+            RefuseHidden($"model {shown}: id", model.Id, problems);
+            RefuseHidden($"model {shown}: title", model.Title, problems);
+            CheckLanguages(shown, model.Languages, problems);
+            RefuseHidden($"model {shown}: licence name", model.Licence?.Name, problems);
+            RefuseHidden($"model {shown}: licence url", model.Licence?.Url, problems);
+            if (model.Files is null || model.Files.Count == 0)
             {
-                problems.Add($"model {Show(model.Id)} must list its languages");
+                problems.Add($"model {shown} lists no files");
+                continue;
             }
 
-            foreach (var file in model.Files ?? [])
+            for (var f = 0; f < model.Files.Count; f++)
             {
-                CheckModelFile(model.Id, file, problems);
+                if (model.Files[f] is { } file)
+                {
+                    CheckModelFile(shown, file, problems);
+                }
+                else
+                {
+                    problems.Add($"model {shown}: files[{Index(f)}] is empty");
+                }
             }
         }
     }
+
+    private static void CheckLanguages(string modelId, IReadOnlyList<string>? languages, List<string> problems)
+    {
+        if (languages is null || languages.Count == 0)
+        {
+            problems.Add($"model {modelId} must list its languages");
+            return;
+        }
+
+        for (var i = 0; i < languages.Count; i++)
+        {
+            if (string.IsNullOrWhiteSpace(languages[i]))
+            {
+                problems.Add($"model {modelId}: languages[{Index(i)}] is empty");
+            }
+            else
+            {
+                RefuseHidden($"model {modelId}: languages[{Index(i)}]", languages[i], problems);
+            }
+        }
+    }
+
+    private static string Index(int i) => i.ToString(CultureInfo.InvariantCulture);
 
     /// <summary>Relative, with no empty, <c>.</c> or <c>..</c> segment on either kind of separator; subfolders are fine.</summary>
     private static bool IsInsideModelFolder(string? file) =>
@@ -176,12 +232,12 @@ public sealed record PluginManifest(
         && !Path.IsPathRooted(file)
         && file.Split('/', '\\').All(segment => segment is not ("" or "." or ".."));
 
+    /// <param name="modelId">Already shown: its hidden characters spelt out.</param>
     private static void CheckModelFile(string modelId, PluginManifestFile file, List<string> problems)
     {
-        modelId = Show(modelId);
         var shown = Show(file.File);
-        RefuseControl($"model {modelId}: file name", file.File, problems);
-        RefuseControl($"model {modelId}: url", file.Url, problems);
+        RefuseHidden($"model {modelId}: file name", file.File, problems);
+        RefuseHidden($"model {modelId}: url", file.Url, problems);
         if (!IsInsideModelFolder(file.File))
         {
             problems.Add($"model {modelId}: {shown} must be a file name inside the model's folder");

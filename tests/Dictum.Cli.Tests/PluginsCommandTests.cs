@@ -182,7 +182,7 @@ public sealed class PluginsCommandTests : IDisposable
         var (code, _, error) = await RunAsync("add", folder, "--yes");
 
         Assert.Equal(2, code);
-        Assert.Contains("name must not contain control characters", error, StringComparison.Ordinal);
+        Assert.Contains("name must not contain control or invisible formatting characters", error, StringComparison.Ordinal);
         Assert.DoesNotContain('\u001b', error);
         Assert.DoesNotContain(Trust, error, StringComparison.Ordinal);
         Assert.Empty(LoadConfig().Plugins);
@@ -288,6 +288,48 @@ public sealed class PluginsCommandTests : IDisposable
         Assert.Contains("not confirmed on this computer", text, StringComparison.Ordinal);
     }
 
+    /// <summary>A null in plugin.json, or a folder no path can name, is that row's state; the other rows still list.</summary>
+    [Fact]
+    public async Task ListNeverFailsBecauseOfOneRegistration()
+    {
+        var nulls = TestPlugins.Folder(_dir, "nulls");
+        WriteModels(nulls, "[null]");
+        var unreadable = _dir.File("bad\0name");
+        SaveConfig(new DictumConfig
+        {
+            Plugins =
+            {
+                ["nulls"] = new PluginRegistration { Path = nulls },
+                ["unreadable"] = new PluginRegistration { Path = unreadable },
+                ["fresh"] = new PluginRegistration { Path = TestPlugins.Folder(_dir, "fresh") },
+            },
+        });
+
+        var (code, text, error) = await RunAsync("list");
+
+        Assert.True(code == 0, error);
+        Assert.Contains("nulls  your own", text, StringComparison.Ordinal);
+        Assert.Contains("plugin.json is not valid: models[0] is empty", text, StringComparison.Ordinal);
+        Assert.Contains("unreadable  your own", text, StringComparison.Ordinal);
+        Assert.Contains("plugin.json cannot be read: ", text, StringComparison.Ordinal);
+        Assert.Contains("fresh  Test 1.0.0  your own", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AddReportsANullEntryAsAProblemOfTheManifest()
+    {
+        var folder = TestPlugins.Folder(_dir);
+        WriteModels(folder, """[{"id":"m","title":"M","files":[null],"languages":["en"]}]""");
+        SaveConfig(new DictumConfig());
+
+        var (code, _, error) = await RunAsync("add", folder, "--yes");
+
+        Assert.Equal(2, code);
+        Assert.Contains("model m: files[0] is empty", error, StringComparison.Ordinal);
+        Assert.DoesNotContain("Object reference", error, StringComparison.Ordinal);
+        Assert.Empty(LoadConfig().Plugins);
+    }
+
     [Fact]
     public async Task SttListDescribesAPluginProvider()
     {
@@ -304,6 +346,14 @@ public sealed class PluginsCommandTests : IDisposable
         Stt = { ["p"] = new PluginSttConfig { Plugin = "test", Model = "m1" } },
         Plugins = { ["test"] = new PluginRegistration { Path = folder } },
     };
+
+    /// <summary>Gives the test plugin's manifest in <paramref name="folder"/> these <c>models</c>.</summary>
+    private static void WriteModels(string folder, string models)
+    {
+        var manifest = Path.Combine(folder, PluginProtocol.ManifestFile);
+        var json = File.ReadAllText(manifest);
+        File.WriteAllText(manifest, json[..json.LastIndexOf('}')] + $",\"models\":{models}}}");
+    }
 
     private PluginTrust Check(string folder) =>
         _trust.Check("test", folder, PluginManifest.Load(folder).ExecutablePath(folder));

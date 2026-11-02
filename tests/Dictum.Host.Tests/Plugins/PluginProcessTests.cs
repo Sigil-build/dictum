@@ -1,9 +1,9 @@
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Dictum.Core;
 using Dictum.Core.Diagnostics;
-using Dictum.Core.Http;
 using Dictum.Plugins;
 using Dictum.Testing;
 using Dictum.TestPlugin;
@@ -15,6 +15,9 @@ public sealed class PluginProcessTests : IDisposable
 {
     private const string Hint = "See its output above, and the plugin's own documentation.";
 
+    /// <summary>The file a batch launcher writes when it runs.</summary>
+    private const string StartedMark = "started.txt";
+
     /// <summary>For waits on the plugin's output, which a busy runner may deliver late.</summary>
     private static readonly TimeSpan Patience = TimeSpan.FromSeconds(15);
 
@@ -23,7 +26,7 @@ public sealed class PluginProcessTests : IDisposable
 
     private readonly TempDirectory _dir = new();
     private readonly ListLog _log = new();
-    private readonly HttpClient _http = ProviderHttp.CreateClient();
+    private readonly HttpClient _http = PluginHttp.CreateClient();
 
     public void Dispose()
     {
@@ -221,6 +224,65 @@ public sealed class PluginProcessTests : IDisposable
         Assert.Equal("модель з пробілом", plugin.Endpoint.Info.Model?.Id);
         Assert.True(SamePath(folder, cwd), $"the plugin ran in {cwd}");
         Assert.Equal(PluginTrust.Confirmed, trust.Check(launch.PluginId, folder, launch.Executable));
+    }
+
+    /// <summary>
+    /// cmd.exe reads a batch file's command line again and acts on these characters, even in quotes for some: a model
+    /// path with <c>&amp;</c> would run what follows it. Dictum refuses such a launch before anything runs, so the
+    /// launcher leaves no mark.
+    /// </summary>
+    [Theory(Timeout = TestTimeout.Generous)]
+    [InlineData("plugin.cmd", "R&D")]
+    [InlineData("plugin.BAT", "50%PATH%")]
+    [InlineData("plugin.cmd", "x^y!")]
+    [InlineData("plugin.cmd.", "a(b)")]
+    public async Task ABatchLauncherIsNeverGivenAnArgumentThatCmdActsOn(string launcher, string modelFolder)
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Only Windows runs a batch file through cmd.exe");
+        var ct = TestContext.Current.CancellationToken;
+        var folder = BatchLauncherFolder(launcher);
+        var model = Directory.CreateDirectory(_dir.File(modelFolder)).FullName;
+        var launch = TestPlugins.Launch(folder, model);
+
+        var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => StartAsync(launch, ct));
+
+        Assert.Equal(
+            $"Plugin test starts through {Path.GetFileName(launch.Executable)}, which cannot be given {model}: it holds one of & % ^ ! \" < > | ( ).",
+            error.Message);
+        Assert.Equal("Use a path without those characters, or ask the plugin's author for a program (.exe) instead of a script.", error.Hint);
+        Assert.False(File.Exists(Path.Combine(folder, StartedMark)), "the launcher ran");
+        Assert.False(TestPlugins.RunsIn(_dir), "the plugin runs");
+    }
+
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task ABatchLauncherStartsWithAnOrdinaryPath()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Only Windows runs a batch file through cmd.exe");
+        var ct = TestContext.Current.CancellationToken;
+        var folder = BatchLauncherFolder("plugin.cmd");
+        var model = Directory.CreateDirectory(_dir.File("m1")).FullName;
+
+        await using var plugin = await StartAsync(TestPlugins.Launch(folder, model), ct);
+
+        Assert.Equal("m1", plugin.Endpoint.Info.Model?.Id);
+        Assert.True(File.Exists(Path.Combine(folder, StartedMark)), "the launcher did not run");
+    }
+
+    /// <summary>
+    /// The test plugin started through a batch file named <paramref name="launcher"/>, as a plugin in a scripting
+    /// language often is. The batch file writes <see cref="StartedMark"/> before it starts the program.
+    /// </summary>
+    private string BatchLauncherFolder(string launcher)
+    {
+        var folder = TestPlugins.Folder(_dir);
+        File.WriteAllText(
+            Path.Combine(folder, launcher),
+            $"@echo started> \"%~dp0{StartedMark}\"\r\n@\"%~dp0dictum-test-plugin.exe\" %*\r\n");
+        var manifestFile = Path.Combine(folder, PluginProtocol.ManifestFile);
+        var manifest = JsonNode.Parse(File.ReadAllText(manifestFile))!;
+        manifest["executable"]![PluginProtocol.CurrentRid] = launcher;
+        File.WriteAllText(manifestFile, manifest.ToJsonString());
+        return folder;
     }
 
     private Task<PluginProcess> StartAsync(PluginLaunch launch, CancellationToken ct, PluginTimings? timings = null) =>

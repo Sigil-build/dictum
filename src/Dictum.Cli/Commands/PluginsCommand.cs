@@ -193,17 +193,20 @@ internal static class PluginsCommand
         return rows;
     }
 
-    /// <summary>What the listing knows of one registered plugin; a plugin that cannot be read is named by its id.</summary>
+    /// <summary>
+    /// What the listing knows of one registered plugin; a plugin that cannot be read is named by its id, and why is its
+    /// state, so one registration never stops the listing of the others.
+    /// </summary>
     private static (string Name, string? Version, string State) Inspect(PluginTrustStore trust, string id, string path)
     {
-        var folder = Normalize(path);
-        if (!Directory.Exists(folder))
-        {
-            return (id, null, "the folder is missing");
-        }
-
         try
         {
+            var folder = Normalize(path);
+            if (!Directory.Exists(folder))
+            {
+                return (id, null, "the folder is missing");
+            }
+
             var manifest = PluginManifest.Load(folder);
             var state = trust.Check(id, folder, manifest.ExecutablePath(folder)) switch
             {
@@ -216,6 +219,11 @@ internal static class PluginsCommand
         catch (PluginManifestException ex)
         {
             return (id, null, $"plugin.json is not valid: {string.Join("; ", ex.Problems)}");
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException)
+        {
+            // A path no system can name, such as one with a null in it, or a folder the user may not read.
+            return (id, null, $"plugin.json cannot be read: {ex.Message}");
         }
     }
 

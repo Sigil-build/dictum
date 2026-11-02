@@ -198,6 +198,28 @@ public sealed class PluginSttTests : IAsyncDisposable
         Assert.Equal(HealthStatus.Error("Plugin 'absent' is not added.", "Add it with 'dictum plugins add <folder>'."), status);
     }
 
+    /// <summary>
+    /// Whatever else goes wrong is the provider's error row too, never an exception out of the check: a warm-up goes
+    /// on to the next provider. Here a registered folder that no path can name.
+    /// </summary>
+    [Fact]
+    public async Task CheckReportsAnUnexpectedFailureAsAnError()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var resolver = new PluginResolver(
+            new AppPaths(_dir.Path, _dir.Path),
+            new Dictionary<string, PluginRegistration> { ["test"] = new() { Path = _dir.File("bad\0name") } });
+        var provider = new PluginStt(
+            "p", new PluginSttConfig { Plugin = "test", Model = _dir.File("model.json") }, resolver, _host, new ConfigValueResolver(new FakeSecrets()), _log);
+        _providers.Add(provider);
+
+        var status = await provider.CheckAsync(ct);
+
+        Assert.Equal(HealthLevel.Error, status.Level);
+        Assert.StartsWith("Plugin provider 'p' could not start: ", status.Detail);
+        Assert.Contains("Null character in path", status.Detail);
+    }
+
     [Fact(Timeout = TestTimeout.Generous)]
     public async Task DisposingTheProviderReleasesItsLease()
     {

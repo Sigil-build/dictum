@@ -5,4 +5,8 @@
     <ProjectReference Include="../Dictum.Audio/Dictum.Audio.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Dictum.Host.Tests" />
+  </ItemGroup>
+
 </Project>

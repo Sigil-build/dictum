@@ -94,6 +94,35 @@ public sealed class PluginReloadTests : IAsyncDisposable
         Assert.False(Runs(oldPid), "the plugin still runs");
     }
 
+    /// <summary>
+    /// One plugin provider that fails in a way nobody planned for does not end the warm-up: the next profile's plugin
+    /// still takes its lease and starts, so the sweep after the warm-up keeps it.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task ABrokenProviderDoesNotStopTheWarmUpOfTheNext()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var config = new DictumConfig
+        {
+            Stt =
+            {
+                ["broken"] = new PluginSttConfig { Plugin = "broken", Model = _model },
+                ["p"] = new PluginSttConfig { Plugin = "test", Model = _model },
+            },
+            Plugins =
+            {
+                ["broken"] = new PluginRegistration { Path = _dir.File("bad\0name") },
+                ["test"] = new PluginRegistration { Path = _folder },
+            },
+            Profiles = [new ProfileConfig { Id = "first", Stt = "broken" }, new ProfileConfig { Id = "second", Stt = "p" }],
+        };
+
+        await Engine(config).WarmUpAsync(ct);
+        await _plugins.StopUnusedAsync().WaitAsync(ct);
+
+        Assert.Equal(PluginInstanceState.Ready, Assert.Single(_plugins.Instances).State);
+    }
+
     /// <summary>The rest of the daemon's reload, once the new engine is built: dispose the old one, warm up the new one, sweep.</summary>
     private async Task ReloadAsync(DictumHost old, DictumHost next, CancellationToken ct)
     {

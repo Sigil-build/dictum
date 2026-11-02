@@ -27,9 +27,6 @@ public sealed class PluginStt(
 {
     private const string TranscriptionsPath = "audio/transcriptions";
 
-    /// <summary>How many of the plugin's last lines a failed check quotes.</summary>
-    private const int QuotedLines = 5;
-
     /// <summary>A transcription may take this long, and twice the clip's length on top: a plugin may run on a slow CPU.</summary>
     private static readonly TimeSpan TranscribeTimeout = TimeSpan.FromSeconds(60);
 
@@ -89,7 +86,10 @@ public sealed class PluginStt(
             endpoint.Info.Model?.Id ?? config.Model);
     }
 
-    /// <summary>Starts the plugin if it is not running yet, which may take as long as its start timeout.</summary>
+    /// <summary>
+    /// Starts the plugin if it is not running yet, which may take as long as its start timeout. Only a cancellation of
+    /// <paramref name="ct"/> throws: any other failure is an error status, so a warm-up goes on to the next provider.
+    /// </summary>
     public async Task<HealthStatus> CheckAsync(CancellationToken ct)
     {
         try
@@ -100,14 +100,17 @@ public sealed class PluginStt(
         catch (PluginUnavailableException ex)
         {
             // Its last lines often say why it stopped, such as a missing library.
-            var detail = ex.Output.Count == 0
-                ? ex.Message
-                : $"{ex.Message.TrimEnd('.')}; last output: {string.Join(" | ", ex.Output.TakeLast(QuotedLines))}";
-            return HealthStatus.Error(detail, ex.Hint);
+            return HealthStatus.Error(ex.WithOutput(ex.Message), ex.Hint);
         }
         catch (ProviderUnavailableException ex)
         {
             return HealthStatus.Error(ex.Message);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            // Nothing planned for, such as a registered folder that no path can name.
+            log.Warn($"STT '{id}' check failed: {ex.Message}", ex);
+            return HealthStatus.Error($"{Name} could not start: {ex.Message}");
         }
     }
 

@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
@@ -31,6 +32,9 @@ public sealed class PluginProcess : IAsyncDisposable
     /// </summary>
     private static readonly TimeSpan KillWait = TimeSpan.FromSeconds(5);
 
+    /// <summary>What cmd.exe acts on in a batch file's command line.</summary>
+    private static readonly SearchValues<char> BatchSpecial = SearchValues.Create("&%^!\"<>|()");
+
     private readonly PluginLaunch _launch;
     private readonly ILog _log;
     private readonly TimeSpan _stopGrace;
@@ -46,13 +50,13 @@ public sealed class PluginProcess : IAsyncDisposable
     private readonly Lazy<Task> _stopping;
 
     /// <exception cref="PluginUnavailableException">The system refused to start the program.</exception>
-    private PluginProcess(PluginLaunch launch, string key, ILog log, TimeSpan stopGrace)
+    private PluginProcess(PluginLaunch launch, IReadOnlyList<string> arguments, string key, ILog log, TimeSpan stopGrace)
     {
         _launch = launch;
         _log = log;
         _stopGrace = stopGrace;
         _stopping = new Lazy<Task>(StopCoreAsync);
-        _process = new Process { StartInfo = StartInfo(launch, key) };
+        _process = new Process { StartInfo = StartInfo(launch, arguments, key) };
         _process.OutputDataReceived += (_, e) => OnLine(e.Data, fromStdout: true);
         _process.ErrorDataReceived += (_, e) => OnLine(e.Data, fromStdout: false);
         try
@@ -95,11 +99,16 @@ public sealed class PluginProcess : IAsyncDisposable
     /// Launches the plugin and waits until it is ready, within <see cref="PluginTimings.StartTimeout"/>. On any failure
     /// it kills what it launched first; cancelling <paramref name="ct"/> does too, and throws as usual.
     /// </summary>
-    /// <exception cref="PluginUnavailableException">It could not start, exited, timed out or broke protocol 1.</exception>
+    /// <exception cref="PluginUnavailableException">
+    /// It could not start, exited, timed out or broke protocol 1; or, before anything runs, its batch file would have
+    /// been given an argument that cmd.exe acts on.
+    /// </exception>
     public static async Task<PluginProcess> StartAsync(PluginLaunch launch, HttpClient http, ILog log, PluginTimings timings, CancellationToken ct)
     {
+        var arguments = Arguments(launch);
+        RefuseWhatABatchFileWouldRun(launch, arguments);
         var key = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(KeyBytes));
-        var plugin = new PluginProcess(launch, key, log, timings.StopGrace);
+        var plugin = new PluginProcess(launch, arguments, key, log, timings.StopGrace);
         try
         {
             using var start = CancellationTokenSource.CreateLinkedTokenSource(ct, plugin._ended.Token);
@@ -135,7 +144,49 @@ public sealed class PluginProcess : IAsyncDisposable
 
     public async ValueTask DisposeAsync() => await StopAsync().ConfigureAwait(false);
 
-    private static ProcessStartInfo StartInfo(PluginLaunch launch, string key)
+    /// <summary>Protocol 1's command line: <c>--port 0 [--model &lt;path&gt;] [--threads &lt;n&gt;]</c>.</summary>
+    private static List<string> Arguments(PluginLaunch launch)
+    {
+        List<string> arguments = ["--port", "0"];
+        if (launch.Model is { } model)
+        {
+            arguments.AddRange(["--model", model]);
+        }
+
+        if (launch.Threads is { } threads)
+        {
+            arguments.AddRange(["--threads", threads.ToString(CultureInfo.InvariantCulture)]);
+        }
+
+        return arguments;
+    }
+
+    /// <summary>
+    /// On Windows, a <c>.cmd</c> or <c>.bat</c> program runs under cmd.exe, which reads the whole command line again:
+    /// <c>&amp;</c>, <c>|</c> and the rest run or redirect what follows them, and <c>%</c> expands even inside quotes.
+    /// A model path from a copied config must never make Dictum run something the user did not confirm, so such an
+    /// argument is refused before anything starts.
+    /// </summary>
+    /// <exception cref="PluginUnavailableException">An argument holds one of <see cref="BatchSpecial"/>.</exception>
+    private static void RefuseWhatABatchFileWouldRun(PluginLaunch launch, List<string> arguments)
+    {
+        if (!OperatingSystem.IsWindows() || !IsBatchFile(launch.Executable)
+            || arguments.Find(argument => argument.AsSpan().ContainsAny(BatchSpecial)) is not { } refused)
+        {
+            return;
+        }
+
+        throw new PluginUnavailableException(
+            $"Plugin {launch.PluginId} starts through {Path.GetFileName(launch.Executable)}, which cannot be given {PluginText.Show(refused)}: it holds one of & % ^ ! \" < > | ( ).",
+            "Use a path without those characters, or ask the plugin's author for a program (.exe) instead of a script.");
+    }
+
+    /// <summary>By its extension, as Windows decides; a trailing dot or space, which Windows drops from a name, changes nothing.</summary>
+    private static bool IsBatchFile(string executable) =>
+        Path.GetExtension(executable.TrimEnd('.', ' ')) is var extension
+        && (extension.Equals(".cmd", StringComparison.OrdinalIgnoreCase) || extension.Equals(".bat", StringComparison.OrdinalIgnoreCase));
+
+    private static ProcessStartInfo StartInfo(PluginLaunch launch, IReadOnlyList<string> arguments, string key)
     {
         var info = new ProcessStartInfo(launch.Executable)
         {
@@ -152,18 +203,9 @@ public sealed class PluginProcess : IAsyncDisposable
         };
 
         // Each argument whole, whatever spaces or letters the paths hold.
-        info.ArgumentList.Add("--port");
-        info.ArgumentList.Add("0");
-        if (launch.Model is { } model)
+        foreach (var argument in arguments)
         {
-            info.ArgumentList.Add("--model");
-            info.ArgumentList.Add(model);
-        }
-
-        if (launch.Threads is { } threads)
-        {
-            info.ArgumentList.Add("--threads");
-            info.ArgumentList.Add(threads.ToString(CultureInfo.InvariantCulture));
+            info.ArgumentList.Add(argument);
         }
 
         info.Environment[PluginProtocol.KeyVariable] = key;

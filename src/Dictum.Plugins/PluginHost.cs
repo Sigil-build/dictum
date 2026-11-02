@@ -1,5 +1,4 @@
 using Dictum.Core.Diagnostics;
-using Dictum.Core.Http;
 
 namespace Dictum.Plugins;
 
@@ -43,8 +42,8 @@ public sealed class PluginHost(PluginTrustStore trust, ILog log, PluginHostOptio
 
     private bool _disposed;
 
-    /// <summary>The client every request to a plugin goes through, its health polls included.</summary>
-    public HttpClient Http { get; } = ProviderHttp.CreateClient();
+    /// <summary>The client every request to a plugin goes through, its health polls included; it never uses a proxy.</summary>
+    public HttpClient Http { get; } = PluginHttp.CreateClient();
 
     /// <summary>Every instance no sweep has removed yet, leased or not; for doctor and the tests.</summary>
     public IReadOnlyCollection<PluginInstance> Instances

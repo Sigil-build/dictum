@@ -205,6 +205,46 @@ public sealed class PluginHostTests : IAsyncDisposable
         Assert.Equal("Save the settings or restart the daemon to try again.", error.Hint);
     }
 
+    /// <summary>
+    /// A restart whose own start fails is one more exit within the budget, as the daemon's supervisor counts it, and
+    /// is tried again after the delay. The plugin reads its behaviour at each start, so every restart here fails.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task ARestartThatCannotStartIsTriedAgainWithinTheBudget()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var host = Host();
+        var folder = ConfirmedFolder(new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs });
+        using var lease = host.Acquire(TestPlugins.Launch(folder));
+        await lease.Instance.ReadyAsync(ct);
+
+        new TestPluginBehaviour { ExitAtStart = 3, Stderr = ["no CUDA here"] }.Save(Path.Combine(folder, BehaviourFile));
+        await Eventually.WaitForAsync(() => lease.Instance.State == PluginInstanceState.Failed, "the plugin given up on", Patience);
+
+        Assert.Equal(4, lease.Instance.Launches);
+        var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => lease.Instance.ReadyAsync(ct));
+        Assert.Equal("Plugin test kept stopping; Dictum stopped restarting it after 3 restarts within 5 minutes.", error.Message);
+        Assert.Equal("Save the settings or restart the daemon to try again.", error.Hint);
+        Assert.Contains("no CUDA here", error.Output);
+    }
+
+    /// <summary>A start that begins once a stop is under way, as a restart whose delay has just ended may, launches nothing.</summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task AStartUnderAStopLaunchesNothing()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        using var http = PluginHttp.CreateClient();
+        using var stopping = new CancellationTokenSource();
+        await stopping.CancelAsync();
+        var instance = new PluginInstance(
+            TestPlugins.Launch(ConfirmedFolder()), _trust, _log, http, PluginHostOptions.Default, TimeProvider.System, stopping.Token);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => instance.ReadyAsync(ct));
+
+        Assert.Equal(0, instance.Launches);
+        Assert.Equal(PluginInstanceState.Stopped, instance.State);
+    }
+
     [Fact(Timeout = TestTimeout.Generous)]
     public async Task RestartsOutsideTheWindowDoNotCount()
     {

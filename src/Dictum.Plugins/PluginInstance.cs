@@ -19,7 +19,8 @@ public enum PluginInstanceState
 
 /// <summary>
 /// The process of one <see cref="PluginKey"/>: started on the first <see cref="ReadyAsync"/>, shared by every lease,
-/// and restarted within the budget when it exits unasked. One lock guards the state, and nothing waits under it.
+/// and restarted within the budget when it exits unasked; a restart that cannot start counts as one more exit. One lock
+/// guards the state, and nothing waits under it.
 /// </summary>
 /// <remarks>
 /// A stop that Dictum asks for detaches the process under the lock before it closes the plugin's stdin. The exit
@@ -168,7 +169,7 @@ public sealed class PluginInstance
                     start = _starting!;
                     break;
                 default:
-                    start = BeginStart(TimeSpan.Zero);
+                    start = BeginStart(TimeSpan.Zero, restart: false);
                     break;
             }
         }
@@ -236,10 +237,11 @@ public sealed class PluginInstance
     }
 
     /// <summary>Under the lock: a start on the thread pool, so that the trust check's hashing runs outside the lock.</summary>
-    private Task<PluginEndpoint> BeginStart(TimeSpan delay)
+    /// <param name="restart">After an exit nobody asked for: a launch that fails counts against the restart budget.</param>
+    private Task<PluginEndpoint> BeginStart(TimeSpan delay, bool restart)
     {
         var ct = _stopping.Token;
-        var start = Task.Run(() => StartAsync(delay, ct));
+        var start = Task.Run(() => StartAsync(delay, restart, ct));
 
         // Its callers may have stopped waiting, and nobody waits for a restart: the failure is logged and kept instead.
         _ = start.ContinueWith(
@@ -252,7 +254,7 @@ public sealed class PluginInstance
         return start;
     }
 
-    private async Task<PluginEndpoint> StartAsync(TimeSpan delay, CancellationToken ct)
+    private async Task<PluginEndpoint> StartAsync(TimeSpan delay, bool restart, CancellationToken ct)
     {
         PluginProcess process;
         var launched = false;
@@ -263,6 +265,8 @@ public sealed class PluginInstance
                 await Task.Delay(delay, _time, ct).ConfigureAwait(false);
             }
 
+            // A stop that came during the delay, or before this start ran at all, launches nothing.
+            ct.ThrowIfCancellationRequested();
             ThrowUnlessConfirmed();
             lock (_gate)
             {
@@ -275,10 +279,16 @@ public sealed class PluginInstance
         catch (Exception ex)
         {
             var cancelled = ex is OperationCanceledException && ct.IsCancellationRequested;
+            string? next = null;
             lock (_gate)
             {
                 _starting = null;
-                if (launched && !cancelled && !_ended)
+                if (!launched || cancelled || _ended)
+                {
+                    // Cancelled by a stop, or refused before any launch: an unconfirmed program is checked again next time.
+                    _state = PluginInstanceState.Stopped;
+                }
+                else if (!restart)
                 {
                     _state = PluginInstanceState.Failed;
                     _failure = ForLaterCallers(ex);
@@ -286,14 +296,18 @@ public sealed class PluginInstance
                 }
                 else
                 {
-                    // Cancelled by a stop, or refused before any launch: an unconfirmed program is checked again next time.
-                    _state = PluginInstanceState.Stopped;
+                    next = AfterFailedRestart(ex);
                 }
             }
 
             if (!cancelled)
             {
                 LogFailure(ex);
+            }
+
+            if (next is not null)
+            {
+                _log.Warn(next);
             }
 
             throw;
@@ -353,21 +367,39 @@ public sealed class PluginInstance
 
             _process = null;
             _lastOutput = output;
-            if (TakeRestart())
-            {
-                BeginStart(_options.Delay);
-                message = $"Plugin {_launch.PluginId} (pid {process.Id}) stopped by itself with code {code}; restarting it";
-            }
-            else
-            {
-                message = KeptStopping();
-                _state = PluginInstanceState.Failed;
-                _failure = new PluginUnavailableException(message, RetryHint, output);
-            }
+            message = RestartOrGiveUp(output) ?? $"Plugin {_launch.PluginId} (pid {process.Id}) stopped by itself with code {code}; restarting it";
         }
 
         _log.Warn(message);
         await process.DisposeAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Under the lock, after a restart's own launch failed: one more exit within the budget, as the daemon's supervisor
+    /// counts a start that fails. Returns what to log.
+    /// </summary>
+    private string AfterFailedRestart(Exception ex)
+    {
+        _lastOutput = (ex as PluginUnavailableException)?.Output ?? [];
+        return RestartOrGiveUp(_lastOutput) ?? $"Plugin {_launch.PluginId} could not be restarted; trying again";
+    }
+
+    /// <summary>
+    /// Under the lock: begins a restart after the delay while the budget allows, and returns null; past it, fails the
+    /// instance and returns why.
+    /// </summary>
+    private string? RestartOrGiveUp(IReadOnlyList<string> output)
+    {
+        if (TakeRestart())
+        {
+            BeginStart(_options.Delay, restart: true);
+            return null;
+        }
+
+        var message = KeptStopping();
+        _state = PluginInstanceState.Failed;
+        _failure = new PluginUnavailableException(message, RetryHint, output);
+        return message;
     }
 
     /// <summary>Under the lock: counts a restart unless <see cref="PluginHostOptions.MaxRestarts"/> already fall in the window.</summary>

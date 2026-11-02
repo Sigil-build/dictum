@@ -1,7 +1,9 @@
 using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
+using Dictum.Plugins;
 
 namespace Dictum.Host.Daemon;
 
@@ -28,8 +30,19 @@ internal sealed class DaemonCommandRouter(
         {
             // A provider that is down or a server that times out must not look like a dead daemon to the client.
             log.Error($"IPC '{request.Command}' failed: {ex.Message}", ex);
-            return IpcResponse.Failure(DictumDaemon.MessageOf(ex));
+            return IpcResponse.Failure(FailureOf(ex));
         }
+    }
+
+    /// <summary>
+    /// The failure a client shows, which has no field for a hint: the cause's message, its hint after it, and a
+    /// plugin's last lines after both, as doctor's row quotes them.
+    /// </summary>
+    internal static string FailureOf(Exception ex)
+    {
+        var cause = ex is DictationException { InnerException: { } inner } ? inner : ex;
+        var text = cause is IHasHint { Hint: { Length: > 0 } hint } ? $"{cause.Message} {hint}" : cause.Message;
+        return cause is PluginUnavailableException plugin ? plugin.WithOutput(text) : text;
     }
 
     private async Task<IpcResponse> DispatchAsync(IpcRequest request, CancellationToken ct)
