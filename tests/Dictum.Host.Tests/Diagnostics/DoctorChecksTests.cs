@@ -89,7 +89,8 @@ public sealed class DoctorChecksTests : IDisposable
         Assert.Contains("No answer within", checks.Single(c => c.Name == "stt:s").Status.Detail);
     }
 
-    // A plugin's check may have to start it, which takes far longer than asking a server.
+    // A plugin's check may have to start it, which takes far longer than asking a server. The row returns as soon as
+    // the check does, so the long limit costs nothing and leaves a busy runner room.
     [Fact]
     public async Task APluginRowGetsItsStartTimeout()
     {
@@ -105,7 +106,7 @@ public sealed class DoctorChecksTests : IDisposable
         {
             GetStt = _ => new SlowStt(TimeSpan.FromMilliseconds(500)),
             CheckTimeout = TimeSpan.FromMilliseconds(100),
-            PluginCheckTimeout = TimeSpan.FromSeconds(2),
+            PluginCheckTimeout = TimeSpan.FromSeconds(30),
         };
 
         var checks = await DoctorChecks.RunAsync(inputs, _ct);

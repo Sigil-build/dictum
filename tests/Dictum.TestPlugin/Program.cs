@@ -152,11 +152,11 @@ internal static class Program
         }
 
         var form = await request.ReadFormAsync();
-        var bytes = form.Files.GetFile("file")?.Length ?? 0;
+        var file = form.Files.GetFile("file");
         var text = behaviour.Echo
             ? string.Create(
                 CultureInfo.InvariantCulture,
-                $"language={form["language"]};languages={form["languages"]};prompt={form["prompt"]};model={form["model"]};bytes={bytes}")
+                $"language={form["language"]};languages={form["languages"]};prompt={form["prompt"]};model={form["model"]};response_format={form["response_format"]};file={file?.FileName};type={file?.ContentType};bytes={file?.Length ?? 0}")
             : behaviour.Text;
         return Results.Json(new Transcription(text, behaviour.Language), AnswerJson.Default.Transcription);
     }

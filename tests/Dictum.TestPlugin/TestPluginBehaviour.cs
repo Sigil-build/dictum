@@ -15,7 +15,10 @@ public sealed record TestPluginBehaviour
     /// <summary>The language the transcription answers with; none when null.</summary>
     public string? Language { get; set; }
 
-    /// <summary>Answers with the form it got: <c>language=…;languages=…;prompt=…;model=…;bytes=…</c>.</summary>
+    /// <summary>
+    /// Answers with the form it got: <c>language=…;languages=…;prompt=…;model=…;response_format=…;file=…;type=…;bytes=…</c>,
+    /// the last three of the file part: its name, its content type and its length.
+    /// </summary>
     public bool Echo { get; set; }
 
     /// <summary><c>/health</c> answers 503 until this long after the start.</summary>

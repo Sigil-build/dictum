@@ -174,7 +174,7 @@ public sealed class PluginHostTests : IAsyncDisposable
     {
         var ct = TestContext.Current.CancellationToken;
         var host = Host();
-        var folder = ConfirmedFolder(new TestPluginBehaviour { ExitAfterReadyMs = 200 });
+        var folder = ConfirmedFolder(new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs });
         using var lease = host.Acquire(TestPlugins.Launch(folder));
         await lease.Instance.ReadyAsync(ct);
         var first = lease.Instance.ProcessId;
@@ -226,6 +226,28 @@ public sealed class PluginHostTests : IAsyncDisposable
         Assert.Equal("Plugin test kept stopping; Dictum stopped restarting it after 3 restarts within 5 minutes.", error.Message);
         Assert.Equal("Save the settings or restart the daemon to try again.", error.Hint);
         Assert.Contains("no CUDA here", error.Output);
+    }
+
+    /// <summary>
+    /// A restart is a launch like any other: the user's confirmation is checked again, and once it is gone the plugin
+    /// stays stopped. The record is forgotten rather than the program changed, since Windows locks a running program.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task ARestartChecksTheConfirmationAgain()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var host = Host();
+        using var lease = host.Acquire(TestPlugins.Launch(ConfirmedFolder(new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs })));
+        await lease.Instance.ReadyAsync(ct);
+
+        _trust.Forget("test");
+        await Eventually.WaitForAsync(() => lease.Instance.State == PluginInstanceState.Stopped, "the restart refused", Patience);
+
+        Assert.Equal(1, lease.Instance.Launches);
+        var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => lease.Instance.ReadyAsync(ct));
+        Assert.Equal("Plugin test has not been confirmed on this computer.", error.Message);
+        Assert.Equal(1, lease.Instance.Launches);
+        Assert.False(TestPlugins.RunsIn(_dir), "the plugin runs");
     }
 
     /// <summary>A start that begins once a stop is under way, as a restart whose delay has just ended may, launches nothing.</summary>

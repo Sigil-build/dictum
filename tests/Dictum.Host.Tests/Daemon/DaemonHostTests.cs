@@ -5,6 +5,7 @@ using Dictum.Core.Diagnostics;
 using Dictum.Host.Daemon;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
+using Dictum.Plugins;
 using Dictum.Testing;
 
 namespace Dictum.Host.Tests.Daemon;
@@ -12,6 +13,9 @@ namespace Dictum.Host.Tests.Daemon;
 public sealed class DaemonHostTests : IDisposable
 {
     private static readonly TimeSpan Patience = TimeSpan.FromSeconds(5);
+
+    /// <summary>The warm-up follows the start, which a busy runner may deliver late.</summary>
+    private static readonly TimeSpan SweepPatience = TimeSpan.FromSeconds(15);
 
     private readonly TempDirectory _dir = new();
     private readonly CancellationToken _ct = TestContext.Current.CancellationToken;
@@ -68,10 +72,30 @@ public sealed class DaemonHostTests : IDisposable
     }
 
     /// <summary>
+    /// After the warm-up the daemon stops the plugins that no engine holds, such as those a reload replaced. An instance
+    /// whose lease is gone stands for one; a lease alone starts nothing, so no program runs here.
+    /// </summary>
+    [Fact]
+    public async Task AfterTheWarmUpThePluginsNoEngineHoldsAreStopped()
+    {
+        var log = new ListLog();
+        await using var plugins = new PluginHost(new PluginTrustStore(_dir.File("plugin-trust.json"), log), log);
+        var launch = new PluginLaunch("test", "Test", "1.0.0", _dir.Path, _dir.File("plugin.exe"), Model: null, Threads: null);
+        plugins.Acquire(launch).Dispose();
+        Assert.Single(plugins.Instances);
+
+        await RunAsync(
+            () => Eventually.WaitForAsync(() => plugins.Instances.Count == 0, "the sweep after the warm-up", SweepPatience),
+            plugins: plugins);
+
+        Assert.Empty(plugins.Instances);
+    }
+
+    /// <summary>
     /// Runs the daemon on a temp config and socket while <paramref name="body"/> talks to it, waits until it has started,
     /// then stops it.
     /// </summary>
-    private async Task RunAsync(Func<Task> body, ISoundPlayer? sounds = null)
+    private async Task RunAsync(Func<Task> body, ISoundPlayer? sounds = null, PluginHost? plugins = null)
     {
         var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var store = new ConfigStore(_dir.File("config.json"), NullLog.Instance);
@@ -96,7 +120,8 @@ public sealed class DaemonHostTests : IDisposable
             CreateEngine,
             _ => { },
             _ => started.TrySetResult(),
-            sounds ?? new FakeSounds());
+            sounds ?? new FakeSounds(),
+            plugins);
 
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(_ct);
         var run = DaemonHost.RunAsync(options, stop.Token);

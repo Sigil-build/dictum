@@ -88,7 +88,21 @@ public sealed class PluginSttTests : IAsyncDisposable
 
         var transcript = await Provider(config).TranscribeAsync(Clip, new SttRequest("uk", null), ct);
 
-        Assert.EndsWith($";model={config.Model};bytes={Wav.ToPcm16Bytes(Clip).Length}", transcript.Text);
+        Assert.Contains($";model={config.Model};", transcript.Text);
+        Assert.EndsWith($";bytes={Wav.ToPcm16Bytes(Clip).Length}", transcript.Text);
+    }
+
+    /// <summary>Protocol 1's form asks for JSON, and sends the recording as a WAV file named audio.wav.</summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task TheFormAsksForJsonAndSendsAWavFile()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        var transcript = await Provider(Echo()).TranscribeAsync(Clip, new SttRequest("uk", null), ct);
+
+        Assert.Contains(";response_format=json;", transcript.Text);
+        Assert.Contains(";file=audio.wav;", transcript.Text);
+        Assert.Contains(";type=audio/wav;", transcript.Text);
     }
 
     [Fact(Timeout = TestTimeout.Generous)]

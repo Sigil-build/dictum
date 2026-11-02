@@ -14,7 +14,8 @@ namespace Dictum.Integration.Tests.Plugins;
 /// <summary>
 /// The minimal plugin in <c>docs/guides/write-a-plugin.md</c>, run the way its reader would: the program, the launcher
 /// for this system and the manifest are copied from the guide's <c>{#example}</c> section into a folder, and Dictum
-/// starts it under protocol 1. Enabled with DICTUM_INTEGRATION=1; skipped when the launcher's Python is not on PATH.
+/// starts it under protocol 1. It runs without DICTUM_INTEGRATION, so that CI's Linux job runs plugin.sh, python3
+/// and the execute bit; skipped when the launcher's Python is not on PATH, or on a system the guide does not ship for.
 /// </summary>
 public sealed partial class WritePluginGuideTests : IDisposable
 {
@@ -44,7 +45,6 @@ public sealed partial class WritePluginGuideTests : IDisposable
     [Fact(Timeout = 60_000)]
     public async Task TheGuidesPythonExampleIsAWorkingPlugin()
     {
-        Assert.SkipUnless(Environment.GetEnvironmentVariable("DICTUM_INTEGRATION") == "1", "Set DICTUM_INTEGRATION=1 to run");
         Assert.SkipUnless(CanRun(Python), $"{Python} is not on PATH");
         var ct = TestContext.Current.CancellationToken;
 
