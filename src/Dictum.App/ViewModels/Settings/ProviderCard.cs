@@ -28,6 +28,7 @@ public enum ProviderKind
 {
     Local,
     Remote,
+    Plugin,
 }
 
 /// <summary>
@@ -35,7 +36,8 @@ public enum ProviderKind
 /// <list type="bullet">
 /// <item>Local Whisper: model, runtime, threads, VAD.</item>
 /// <item>Remote server: URL, model, <see cref="Key"/>, timeout.</item>
-/// <item>Both: Test, by a recording of <see cref="TestSeconds"/> seconds with the live meter or by the built-in sample.</item>
+/// <item>Plugin: read-only text; edit it in config.json.</item>
+/// <item>All: Test, by a recording of <see cref="TestSeconds"/> seconds with the live meter or by the built-in sample.</item>
 /// </list>
 /// The daemon tests its own copy of the config, so Test saves pending edits first and gives the daemon time to reload.
 /// </summary>
@@ -83,6 +85,8 @@ public sealed partial class ProviderCard : ObservableObject
 
     public bool IsRemote => Kind == ProviderKind.Remote;
 
+    public bool IsPlugin => Kind == ProviderKind.Plugin;
+
     public string SecretName => SecretNames.Stt(Id);
 
     public ApiKeyField Key { get; }
@@ -92,6 +96,10 @@ public sealed partial class ProviderCard : ObservableObject
 
     [ObservableProperty]
     public partial string UsedBy { get; private set; } = "";
+
+    /// <summary>What a plugin card says instead of fields: the card is read-only until Settings can pick the plugin's model.</summary>
+    [ObservableProperty]
+    public partial string PluginText { get; private set; } = "";
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RemoveCommand))]
@@ -169,7 +177,12 @@ public sealed partial class ProviderCard : ObservableObject
         try
         {
             var users = config.Profiles.Where(p => p.Stt == Id).Select(p => p.Name ?? p.Id).ToList();
-            Title = UiText.Format(IsLocal ? Strings.SettingsProvidersLocalTitle : Strings.SettingsProvidersRemoteTitle, Id);
+            Title = Kind switch
+            {
+                ProviderKind.Local => UiText.Format(Strings.SettingsProvidersLocalTitle, Id),
+                ProviderKind.Plugin => $"{Strings.SettingsProvidersPluginTitle} · {Id}",
+                _ => UiText.Format(Strings.SettingsProvidersRemoteTitle, Id),
+            };
             UsedBy = users.Count == 0
                 ? Strings.SettingsProvidersUnused
                 : UiText.Format(Strings.SettingsProvidersUsedBy, string.Join(", ", users));
@@ -184,6 +197,9 @@ public sealed partial class ProviderCard : ObservableObject
                     break;
                 case OpenAiCompatibleSttConfig remote:
                     LoadRemote(remote, path);
+                    break;
+                case PluginSttConfig plugin:
+                    PluginText = UiText.Format(Strings.SettingsProvidersPluginText, plugin.Plugin, plugin.Model);
                     break;
             }
         }

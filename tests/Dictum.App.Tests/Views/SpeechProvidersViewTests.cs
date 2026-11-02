@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.App.Tests.Settings;
 using Dictum.App.ViewModels.Settings;
@@ -40,6 +41,28 @@ public sealed class SpeechProvidersViewTests(AvaloniaFixture fx) : IDisposable
 
         Assert.Equal("sk-123", secrets.Values["dictum-stt-remote"]);
         Assert.Equal("", key.Text);
+        window.Close();
+    });
+
+    [Fact]
+    public Task ThePluginCardShowsItsTextAndHint() => fx.Ui(() =>
+    {
+        var store = new ConfigStore(_dir.File("config.json"), NullLog.Instance);
+        store.Save(new DictumConfig { Stt = { ["p"] = new PluginSttConfig { Plugin = "test", Model = "m1" } } });
+        var session = new SettingsSession(store, new ManualTimers(), NullLog.Instance);
+        session.Load();
+        var page = new SpeechProvidersPage(session, new SpeechServices(new FakeChannel(), new FrameHub(TimeProvider.System), new ManualTimers(),
+            new FakeSecrets(), _ => [], _ => true, _ => Task.CompletedTask, TimeProvider.System, NullLog.Instance));
+        var window = new Window { Content = new ViewLocator().Build(page)!, Width = 960, Height = 1400 };
+        window.Show();
+        Dispatcher.UIThread.RunJobs();
+
+        var texts = window.GetVisualDescendants().OfType<TextBlock>().Where(t => t.IsEffectivelyVisible).Select(t => t.Text).ToList();
+        Assert.Contains("Runs the plugin test with the model m1.", texts);
+        Assert.Contains(Strings.SettingsProvidersPluginHint, texts);
+        Assert.DoesNotContain(Strings.SettingsProvidersUrl, texts);
+        Assert.DoesNotContain(Strings.SettingsProvidersTimeout, texts);
+        Assert.DoesNotContain(window.GetVisualDescendants().OfType<TextBox>(), t => t.IsEffectivelyVisible);
         window.Close();
     });
 }

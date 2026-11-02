@@ -217,6 +217,53 @@ public sealed class SpeechProvidersPageTests : IDisposable
         Assert.Equal(["local"], page.Cards.Select(c => c.Id));
     }
 
+    private static DictumConfig WithPlugin()
+    {
+        var config = ProfilesPageTests.Sample();
+        config.Stt["p"] = new PluginSttConfig { Plugin = "test", Model = "m1" };
+        return config;
+    }
+
+    [Fact]
+    public void APluginProviderShowsAsAPluginCard()
+    {
+        var (page, _) = Open(WithPlugin());
+
+        var card = Card(page, "p");
+        Assert.Equal(ProviderKind.Plugin, card.Kind);
+        Assert.True(card.IsPlugin);
+        Assert.False(card.IsRemote);
+        Assert.False(card.IsLocal);
+        Assert.Equal("Plugin · p", card.Title);
+        Assert.Equal("Runs the plugin test with the model m1.", card.PluginText);
+    }
+
+    [Fact]
+    public async Task RemovingAPluginProviderDeletesNoSecret()
+    {
+        var (page, session) = Open(WithPlugin());
+        _secrets.Values["dictum-stt-p"] = "stray";
+        _secrets.Values["dictum-stt-remote"] = "sk-123";
+
+        Card(page, "p").RemoveCommand.Execute(null);
+        await Task.Yield();
+
+        session.Flush();
+        Assert.False(session.Config.Stt.ContainsKey("p"));
+        Assert.False(Store.Load().Stt.ContainsKey("p"));
+        Assert.Equal(["dictum-stt-p", "dictum-stt-remote"], _secrets.Values.Keys.Order());
+    }
+
+    [Fact]
+    public async Task APluginCardIsTestedThroughTheDaemonLikeTheOthers()
+    {
+        var (page, _) = Open(WithPlugin());
+
+        await Card(page, "p").TestSampleCommand.ExecuteAsync(null);
+
+        Assert.Equal("p", _channel.Sent.Single(r => r.Command == IpcCommand.TestStt).Stt);
+    }
+
     [Fact]
     public async Task ATestSavesFirstAndWaitsForTheReload()
     {
