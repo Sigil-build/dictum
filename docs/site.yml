@@ -20,6 +20,7 @@ nav:
       - guides/words-and-rules.md
       - guides/start-at-login.md
       - guides/update-and-remove.md
+      - guides/write-a-plugin.md
   - Reference:
       - reference/settings.md
       - reference/setup-wizard.md

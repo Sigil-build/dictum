@@ -22,11 +22,12 @@ public sealed class PluginsCommandTests : IDisposable
 
     public void Dispose() => _dir.Dispose();
 
+    /// <summary>The added line points at how to use the plugin, in the guide's language that the config's UI language picks.</summary>
     [Fact]
     public async Task AddWithYesConfirmsAndRegistersThePlugin()
     {
         var folder = TestPlugins.Folder(_dir);
-        SaveConfig(new DictumConfig());
+        SaveConfig(new DictumConfig { General = new GeneralSettings { UiLanguage = UiLanguages.Ukrainian } });
 
         var (code, output, error) = await RunAsync("add", folder, "--yes");
 
@@ -35,7 +36,9 @@ public sealed class PluginsCommandTests : IDisposable
         Assert.Equal(PluginTrust.Confirmed, Check(folder));
         Assert.Contains(Trust, error, StringComparison.Ordinal);
         Assert.Contains($"Test 1.0.0 by an unknown publisher from {folder}", error, StringComparison.Ordinal);
-        Assert.Contains("Added Test 1.0.0 (protocol 1).", output, StringComparison.Ordinal);
+        Assert.Equal(
+            ["Added Test 1.0.0 (protocol 1).", "see: https://docs.sigil.build/uk/dictum/guides/write-a-plugin/#use"],
+            output.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries));
         Assert.False(TestPlugins.RunsIn(_dir));
     }
 

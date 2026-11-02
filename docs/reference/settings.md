@@ -211,7 +211,7 @@ Remote server. How long Dictum waits for the server's answer, from 1 to 600 seco
 
 #### Plugin {#provider-plugin}
 
-A provider whose `type` is `plugin` in `config.json` shows as a read-only card: the plugin it runs and the model it uses. It has no fields, because a plugin has no server address and no API key; to change it, edit the provider in `config.json`. **Remove provider** deletes no key for it. **Test** works as for the other providers.
+A provider whose `type` is `plugin` in `config.json` shows as a read-only card: the plugin it runs and the model it uses. It has no fields, because a plugin has no server address and no API key; to change it, edit the provider in `config.json`. **Remove provider** deletes no key for it. **Test** works as for the other providers. [Write a plugin](../guides/write-a-plugin.md#use) shows how to add a plugin and write its provider.
 
 #### Test {#provider-test}
 

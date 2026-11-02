@@ -1,8 +1,10 @@
 using System.CommandLine;
+using System.Globalization;
 using System.Text.Json;
 using Dictum.Cli.Output;
 using Dictum.Core;
 using Dictum.Core.Configuration;
+using Dictum.Core.Docs;
 using Dictum.Plugins;
 
 namespace Dictum.Cli.Commands;
@@ -104,6 +106,10 @@ internal static class PluginsCommand
             }
 
             context.Out.WriteLine($"Added {manifest.Name} {manifest.Version} (protocol {PluginProtocol.Version}).");
+
+            // The next step, a speech provider that uses the plugin, is in the guide: in the UI language, like doctor's links.
+            var language = DocsLinks.Language(config.General.UiLanguage, CultureInfo.CurrentUICulture);
+            context.Out.WriteLine($"see: {DocsLinks.For(DocsPage.WritePlugin, language, DocsAnchors.WritePlugin.Use).AbsoluteUri}");
             return ExitCodes.Success;
         }, ct));
         return add;
