@@ -6,6 +6,7 @@ using Dictum.Core.Diagnostics;
 using Dictum.Host;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
+using Dictum.Plugins;
 
 namespace Dictum.Cli;
 
@@ -16,6 +17,7 @@ internal sealed class CliContext : IAsyncDisposable
     private DictumConfig? _config;
     private bool _configLoaded;
     private PlatformServices? _platform;
+    private PluginHost? _plugins;
 
     /// <param name="consoleLevel">Overrides the stderr log level (the daemon logs Info by default).</param>
     public CliContext(ParseResult parse, LogLevel? consoleLevel = null)
@@ -56,6 +58,12 @@ internal sealed class CliContext : IAsyncDisposable
             return new PlatformSettings(general.TerminalApps, general.Injector);
         },
         Paths.DataDirectory);
+
+    /// <summary>
+    /// The plugin processes this invocation starts, which end with it. Made on first use, so that a command whose
+    /// config has no plugin provider starts no plugin client.
+    /// </summary>
+    public PluginHost Plugins => _plugins ??= new PluginHost(new PluginTrustStore(Paths.PluginTrustFile, Log), Log);
 
     /// <summary>The config, or null when the file does not exist. Invalid files throw <see cref="ConfigException"/>.</summary>
     public DictumConfig? TryLoadConfig()
@@ -115,13 +123,27 @@ internal sealed class CliContext : IAsyncDisposable
 
     public DictumHost Host() => _host ??= CreateHost(TryLoadConfig());
 
-    public DictumHost CreateHost(DictumConfig? config) => DictumHost.Create(Paths, Log, config, Platform.Secrets, Platform.ActiveApp);
+    /// <summary>A host for <paramref name="config"/>, given <see cref="Plugins"/> only when the config has a plugin provider.</summary>
+    public DictumHost CreateHost(DictumConfig? config) =>
+        DictumHost.Create(
+            Paths,
+            Log,
+            config,
+            Platform.Secrets,
+            Platform.ActiveApp,
+            config?.Stt.Values.Any(stt => stt is PluginSttConfig) == true ? Plugins : null);
 
+    /// <summary>The host first, which lets go of its plugins, then the plugins, which log while they stop.</summary>
     public async ValueTask DisposeAsync()
     {
         if (_host is not null)
         {
             await _host.DisposeAsync().ConfigureAwait(false);
+        }
+
+        if (_plugins is not null)
+        {
+            await _plugins.DisposeAsync().ConfigureAwait(false);
         }
 
         Log.Dispose();

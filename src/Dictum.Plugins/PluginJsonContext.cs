@@ -13,4 +13,5 @@ namespace Dictum.Plugins;
 [JsonSerializable(typeof(PluginTrustFile))]
 [JsonSerializable(typeof(PluginReadyLine))]
 [JsonSerializable(typeof(PluginInfo))]
+[JsonSerializable(typeof(PluginTranscription))]
 internal sealed partial class PluginJsonContext : JsonSerializerContext;

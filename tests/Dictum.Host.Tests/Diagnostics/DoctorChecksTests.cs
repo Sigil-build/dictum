@@ -89,6 +89,31 @@ public sealed class DoctorChecksTests : IDisposable
         Assert.Contains("No answer within", checks.Single(c => c.Name == "stt:s").Status.Detail);
     }
 
+    // A plugin's check may have to start it, which takes far longer than asking a server.
+    [Fact]
+    public async Task APluginRowGetsItsStartTimeout()
+    {
+        var config = new DictumConfig
+        {
+            Stt =
+            {
+                ["p"] = new PluginSttConfig { Plugin = "test", Model = "m1" },
+                ["w"] = new WhisperLocalSttConfig { Model = "m.bin" },
+            },
+        };
+        var inputs = Inputs(config) with
+        {
+            GetStt = _ => new SlowStt(TimeSpan.FromMilliseconds(500)),
+            CheckTimeout = TimeSpan.FromMilliseconds(100),
+            PluginCheckTimeout = TimeSpan.FromSeconds(2),
+        };
+
+        var checks = await DoctorChecks.RunAsync(inputs, _ct);
+
+        Assert.Equal(HealthLevel.Ok, checks.Single(c => c.Name == PlatformCheckNames.Stt("p")).Status.Level);
+        Assert.Contains("No answer within", checks.Single(c => c.Name == PlatformCheckNames.Stt("w")).Status.Detail);
+    }
+
     [Fact]
     public async Task ADaemonThatTakesTheConnectionButNeverAnswersIsAnErrorRow()
     {
@@ -135,6 +160,19 @@ public sealed class DoctorChecksTests : IDisposable
         Stt = new() { ["s"] = new WhisperLocalSttConfig { Model = model } },
         Profiles = [new ProfileConfig { Id = "p", Stt = "s" }],
     };
+
+    private sealed class SlowStt(TimeSpan delay) : ISpeechToText
+    {
+        public string Id => "slow";
+
+        public Task<Transcript> TranscribeAsync(AudioClip clip, SttRequest request, CancellationToken ct) => throw new NotSupportedException();
+
+        public async Task<HealthStatus> CheckAsync(CancellationToken ct)
+        {
+            await Task.Delay(delay, ct);
+            return HealthStatus.Ok("answered");
+        }
+    }
 
     private sealed class SilentStt : ISpeechToText
     {

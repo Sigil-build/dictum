@@ -11,6 +11,7 @@ using Dictum.Core.Processing;
 using Dictum.Core.Stt;
 using Dictum.Host.Daemon;
 using Dictum.Platform.Injection;
+using Dictum.Plugins;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Dictum.Host;
@@ -28,7 +29,7 @@ public sealed class DictumHost : IDictationEngine
     private readonly ConcurrentDictionary<string, ITextProcessor> _processors = new(StringComparer.Ordinal);
     private DictationPipeline? _pipeline;
 
-    private DictumHost(AppPaths paths, ILog log, DictumConfig config, ISecretStore secrets, IActiveAppProvider? activeApp)
+    private DictumHost(AppPaths paths, ILog log, DictumConfig config, ISecretStore secrets, IActiveAppProvider? activeApp, PluginHost? plugins)
     {
         Paths = paths;
         Log = log;
@@ -41,7 +42,7 @@ public sealed class DictumHost : IDictationEngine
             ? new FileAudioSource(file)
             : new PortAudioSource(log));
         _services = services.BuildServiceProvider();
-        _providers = new ProviderFactory(paths, secrets, log);
+        _providers = new ProviderFactory(paths, secrets, log, plugins, config.Plugins);
     }
 
     public AppPaths Paths { get; }
@@ -57,8 +58,15 @@ public sealed class DictumHost : IDictationEngine
     /// <param name="config">Null when no config file exists; ad-hoc providers (e.g. <c>--model</c>) still work.</param>
     /// <param name="secrets">Backs <c>secret:</c> values; defaults to a store that explains it is unavailable.</param>
     /// <param name="activeApp">Names the focused app when a recording stops, for a prompt's <c>{{app}}</c>; none leaves it unknown.</param>
-    public static DictumHost Create(AppPaths paths, ILog log, DictumConfig? config, ISecretStore? secrets = null, IActiveAppProvider? activeApp = null) =>
-        new(paths, log, config ?? new DictumConfig(), secrets ?? new UnavailableSecretStore(), activeApp);
+    /// <param name="plugins">Runs the plugin providers; it stays the caller's. Without it a plugin provider fails when it is used.</param>
+    public static DictumHost Create(
+        AppPaths paths,
+        ILog log,
+        DictumConfig? config,
+        ISecretStore? secrets = null,
+        IActiveAppProvider? activeApp = null,
+        PluginHost? plugins = null) =>
+        new(paths, log, config ?? new DictumConfig(), secrets ?? new UnavailableSecretStore(), activeApp, plugins);
 
     /// <summary>The state cues on the default output device, for the daemon and the Settings sound test.</summary>
     public static ISoundPlayer CreateSoundPlayer(ILog log) => new SoundPlayer(log);

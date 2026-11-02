@@ -138,6 +138,13 @@ internal static class Program
 
     private static async Task<IResult> TranscribeAsync(HttpRequest request, TestPluginBehaviour behaviour)
     {
+        if (behaviour.ExitOnTranscribe)
+        {
+            // No shutdown and no answer: the connection drops as the process goes.
+            using var self = Process.GetCurrentProcess();
+            self.Kill();
+        }
+
         if (behaviour.TranscribeStatus is { } status)
         {
             var message = string.Create(CultureInfo.InvariantCulture, $"The test plugin answers {status}.");

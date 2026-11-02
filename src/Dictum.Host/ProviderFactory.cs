@@ -4,6 +4,7 @@ using Dictum.Core.Diagnostics;
 using Dictum.Core.Http;
 using Dictum.Core.Processing;
 using Dictum.Core.Stt;
+using Dictum.Plugins;
 using Dictum.Processing;
 using Dictum.Setup;
 using Dictum.Stt.OpenAi;
@@ -20,13 +21,27 @@ public sealed class ProviderFactory : IDisposable
     private readonly HttpClient _http = ProviderHttp.CreateClient();
     private readonly ProviderRegistry _registry;
 
-    public ProviderFactory(AppPaths paths, ISecretStore secrets, ILog log)
+    /// <param name="plugins">
+    /// The plugin processes of this Dictum process, which only the daemon and the CLI have. Without it, creating a
+    /// plugin provider throws; every other provider is created as usual.
+    /// </param>
+    /// <param name="registrations">The user's plugins by id, the <c>plugins</c> section of the config.</param>
+    public ProviderFactory(
+        AppPaths paths,
+        ISecretStore secrets,
+        ILog log,
+        PluginHost? plugins = null,
+        IReadOnlyDictionary<string, PluginRegistration>? registrations = null)
     {
         var values = new ConfigValueResolver(secrets);
         var templates = new PromptTemplates(paths.PromptsDirectory);
+        var resolver = new PluginResolver(paths, registrations ?? new Dictionary<string, PluginRegistration>());
         _registry = new ProviderRegistry()
             .AddStt<WhisperLocalSttConfig>((id, c) => new WhisperLocalStt(id, c, paths, log, CatalogSource))
             .AddStt<OpenAiCompatibleSttConfig>((id, c) => new OpenAiCompatibleStt(id, c, _http, values, log))
+            .AddStt<PluginSttConfig>((id, c) => plugins is null
+                ? throw new ConfigException($"STT provider '{id}' runs a plugin, which only the daemon and the CLI start.")
+                : new PluginStt(id, c, resolver, plugins, values, log))
             .AddProcessor<ReplaceProcessorConfig>((id, c) => new ReplaceProcessor(id, c, log))
             .AddProcessor<LlmProcessorConfig>((id, c) => new LlmProcessor(id, c, _http, values, templates, log));
     }

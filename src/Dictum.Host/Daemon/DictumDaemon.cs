@@ -33,6 +33,7 @@ public sealed class DictumDaemon : IAsyncDisposable
     private readonly SttTester _tester;
     private readonly DaemonCommandRouter _router;
     private readonly BackgroundWork _work = new();
+    private readonly Func<Task>? _afterWarmUp;
     private IDictationEngine _engine;
     private IReadOnlyList<ConfigIssue> _configWarnings;
     private (DictumConfig Config, IReadOnlyList<ConfigIssue>? Warnings)? _pendingConfig;
@@ -46,6 +47,10 @@ public sealed class DictumDaemon : IAsyncDisposable
     private bool _stoppingAnnounced;
     private bool _disposed;
 
+    /// <param name="afterWarmUp">
+    /// Runs after each warm-up of the engine in use, such as the sweep that stops the plugins no engine holds; not for
+    /// an engine that a reload replaced while it warmed up. A failure is logged.
+    /// </param>
     public DictumDaemon(
         DictumConfig config,
         Func<DictumConfig, IDictationEngine> createEngine,
@@ -55,9 +60,11 @@ public sealed class DictumDaemon : IAsyncDisposable
         IpcEventHub? events = null,
         IReadOnlyList<ConfigIssue>? configWarnings = null,
         DaemonHostCommands? host = null,
-        TimeProvider? time = null)
+        TimeProvider? time = null,
+        Func<Task>? afterWarmUp = null)
     {
         _createEngine = createEngine;
+        _afterWarmUp = afterWarmUp;
         _platform = platform;
         _sounds = sounds;
         _log = log;
@@ -505,6 +512,24 @@ public sealed class DictumDaemon : IAsyncDisposable
         {
             _warmedUp = true;
             PublishStatus();
+            await AfterWarmUpAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async Task AfterWarmUpAsync()
+    {
+        if (_afterWarmUp is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _afterWarmUp().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _log.Warn($"The step after the warm-up failed: {ex.Message}", ex);
         }
     }
 

@@ -41,7 +41,8 @@ internal static class DaemonCommand
                 context.Log,
                 context.CreateHost,
                 context.UseConfig,
-                status => PrintSummary(context, status)),
+                status => PrintSummary(context, status),
+                Plugins: context.Plugins),
             ct).ConfigureAwait(false);
         return ExitCodes.Success;
     }

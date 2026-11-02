@@ -6,6 +6,7 @@ using Dictum.Core.Diagnostics;
 using Dictum.Host.Diagnostics;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
+using Dictum.Plugins;
 
 namespace Dictum.Host.Daemon;
 
@@ -14,6 +15,9 @@ namespace Dictum.Host.Daemon;
 /// <param name="UseConfig">Gets every config the daemon is about to apply, so settings read at use time follow it.</param>
 /// <param name="Started">Gets the status once the daemon serves and its hotkeys are registered.</param>
 /// <param name="Sounds">The cue player, which stays the caller's; the default plays through the sound device.</param>
+/// <param name="Plugins">
+/// The plugin processes the engines lease, which stay the caller's. After each warm-up, those no engine holds are stopped.
+/// </param>
 public sealed record DaemonHostOptions(
     DictumConfig Config,
     IReadOnlyList<ConfigIssue> Warnings,
@@ -25,7 +29,8 @@ public sealed record DaemonHostOptions(
     Func<DictumConfig, IDictationEngine> CreateEngine,
     Action<DictumConfig> UseConfig,
     Action<DaemonStatus> Started,
-    ISoundPlayer? Sounds = null);
+    ISoundPlayer? Sounds = null,
+    PluginHost? Plugins = null);
 
 /// <summary>
 /// The daemon process: the event hub, the daemon, its IPC server and the config watcher, from start until Ctrl+C,
@@ -52,8 +57,18 @@ public static class DaemonHost
         // Only a player made here is disposed here, after the daemon, which plays cues until its own disposal.
         var sounds = options.Sounds ?? DictumHost.CreateSoundPlayer(log);
         using var ownedSounds = options.Sounds is null ? sounds as IDisposable : null;
+
+        // The sweep follows the warm-up of the engine in use, which has taken its plugins' leases by then.
         await using var daemon = new DictumDaemon(
-            options.Config, options.CreateEngine, platform, sounds, log, events, options.Warnings, commands);
+            options.Config,
+            options.CreateEngine,
+            platform,
+            sounds,
+            log,
+            events,
+            options.Warnings,
+            commands,
+            afterWarmUp: options.Plugins is { } plugins ? () => plugins.StopUnusedAsync() : null);
 
         // The server listens before the hotkeys are registered, which can take seconds on a portal.
         await using var server = new IpcServer(options.SocketPath, log, events);

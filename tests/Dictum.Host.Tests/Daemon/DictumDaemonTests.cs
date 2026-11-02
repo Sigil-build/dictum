@@ -816,6 +816,47 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         await WaitForAsync(() => daemon.Status().WarmedUp == true);
     }
 
+    // The daemon stops the plugins no engine holds once the engine in use has warmed up and taken its own.
+    [Fact]
+    public async Task TheAfterWarmUpHookRunsForEachWarmUpOfTheCurrentEngine()
+    {
+        var runs = 0;
+        await using var daemon = await StartAsync(Config(), afterWarmUp: () =>
+        {
+            Interlocked.Increment(ref runs);
+            return Task.CompletedTask;
+        });
+        await WaitForAsync(() => Volatile.Read(ref runs) == 1);
+        await daemon.ApplyConfigAsync(Config(), _ct);
+        await WaitForAsync(() => Volatile.Read(ref runs) == 2);
+
+        // The third engine is replaced by the fourth while it still warms up, and its warm-up ends after the fourth's.
+        var replaced = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _warmUp = replaced.Task;
+        await daemon.ApplyConfigAsync(Config(), _ct);
+        _warmUp = Task.CompletedTask;
+        await daemon.ApplyConfigAsync(Config(), _ct);
+        await WaitForAsync(() => Volatile.Read(ref runs) == 3);
+        replaced.SetResult();
+
+        // Disposal waits for every warm-up, the replaced engine's included.
+        await daemon.DisposeAsync();
+
+        Assert.Equal(4, _engines.Count);
+        Assert.Equal(3, runs);
+    }
+
+    [Fact]
+    public async Task AFailingAfterWarmUpHookIsLoggedAndTheWarmUpStillEnds()
+    {
+        var log = new ListLog();
+        await using var daemon = await StartAsync(Config(), log: log, afterWarmUp: () => throw new InvalidOperationException("sweep failed"));
+
+        await WaitForAsync(() => daemon.Status().WarmedUp == true && log.Has("sweep failed"));
+
+        Assert.Contains(log.Lines, l => l.Level == LogLevel.Warning && l.Message.Contains("sweep failed", StringComparison.Ordinal));
+    }
+
     private async Task<List<IpcEvent>> CollectAsync(IpcSubscriber subscriber, Func<List<IpcEvent>, bool> until)
     {
         var events = new List<IpcEvent>();
@@ -830,7 +871,12 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     }
 
     private async Task<DictumDaemon> StartAsync(
-        DictumConfig config, bool withHotkeys = true, TimeProvider? time = null, DaemonHostCommands? host = null)
+        DictumConfig config,
+        bool withHotkeys = true,
+        TimeProvider? time = null,
+        DaemonHostCommands? host = null,
+        Func<Task>? afterWarmUp = null,
+        ILog? log = null)
     {
         var platform = new PlatformServices(
             "test",
@@ -845,7 +891,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
             var engine = new FakeEngine(c, _stt) { WarmingUp = _warmUp };
             _engines.Add(engine);
             return engine;
-        }, platform, _sounds, NullLog.Instance, _events, host: host, time: time);
+        }, platform, _sounds, log ?? NullLog.Instance, _events, host: host, time: time, afterWarmUp: afterWarmUp);
         await daemon.StartAsync(_ct);
         return daemon;
     }

@@ -38,6 +38,9 @@ public sealed record TestPluginBehaviour
     /// <summary>Transcriptions answer this status with an error.</summary>
     public int? TranscribeStatus { get; set; }
 
+    /// <summary>Kills its own process when a transcription arrives, before it answers, as a crash mid-request would.</summary>
+    public bool ExitOnTranscribe { get; set; }
+
     /// <summary>Keeps running when its stdin closes, until it is killed.</summary>
     public bool IgnoreStdin { get; set; }
 
