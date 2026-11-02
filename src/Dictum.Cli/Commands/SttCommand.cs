@@ -92,6 +92,7 @@ internal static class SttCommand
     {
         WhisperLocalSttConfig w => $"{WhisperLocalSttConfig.TypeName}  model={w.Model} runtime={w.Runtime.ToString().ToLowerInvariant()} vad={w.Vad.ToString().ToLowerInvariant()}",
         OpenAiCompatibleSttConfig o => $"{OpenAiCompatibleSttConfig.TypeName}  {o.BaseUrl} model={o.Model}",
+        PluginSttConfig p => $"plugin {p.Plugin} · model {p.Model}",
         _ => config.GetType().Name,
     };
 }
