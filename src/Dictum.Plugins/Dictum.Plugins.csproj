@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="../Dictum.Core/Dictum.Core.csproj" />
+    <ProjectReference Include="../Dictum.Audio/Dictum.Audio.csproj" />
+  </ItemGroup>
+
+</Project>

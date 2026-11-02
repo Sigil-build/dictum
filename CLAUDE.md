@@ -32,6 +32,7 @@ https://claude.ai/code/artifact/ba039eea-3640-41cc-898a-b1b024e07370
 - `src/Dictum.Core`: contracts, pipeline, profiles, history. No project references, no interop or OS APIs; plain .NET `OperatingSystem` branches are fine.
 - `src/Dictum.Audio`, `Dictum.Processing`: reference Core. `src/Dictum.Stt.Whisper`, `Dictum.Stt.OpenAi`: reference Core and Audio.
 - `src/Dictum.Setup`: model catalog, downloader, setup planner and runner (`dictum init`). References Core only.
+- `src/Dictum.Plugins`: plugin manifests, the trust record, plugin processes and their host, and the plugin speech provider. References Core and Audio.
 - `src/Dictum.Platform`: platform abstractions (hotkeys, injection, clipboard, secrets, autostart) and the SharpHook implementations that Windows and X11 share. References Core.
 - `src/Dictum.Platform.{Windows,Linux}`: per-OS implementations. Reference Platform. macOS is unsupported and has no project: it gets Platform's `UnsupportedPlatform`.
 - `src/Dictum.Host`: composition root, daemon, IPC server. Core defines the `ProviderRegistry`; Host fills it. References everything above.
