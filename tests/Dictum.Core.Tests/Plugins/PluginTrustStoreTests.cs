@@ -88,6 +88,24 @@ public sealed class PluginTrustStoreTests : IDisposable
         Assert.Equal(PluginTrust.Confirmed, NewStore().Check("a", folder, program));
     }
 
+    [Theory]
+    [InlineData("""{"version":1,"custom":{"a":null}}""")]
+    [InlineData("""{"version":1,"custom":{"a":{}}}""")]
+    [InlineData("""{"version":1,"custom":{"a":{"folder":"bad\u0000path","executable":"x","sha256":"y"}}}""")]
+    public void ARecordOfTheWrongShapeIsNotConfirmedAndIsReplacedOnConfirm(string json)
+    {
+        var (folder, program) = Plugin("a");
+        File.WriteAllText(TrustFile, json);
+        var store = NewStore();
+
+        Assert.Equal(PluginTrust.NotConfirmed, store.Check("a", folder, program));
+        Assert.Single(_log.Lines, l => l.Level == LogLevel.Warning);
+
+        store.Confirm("a", folder, program);
+
+        Assert.Equal(PluginTrust.Confirmed, NewStore().Check("a", folder, program));
+    }
+
     [Fact]
     public void RecordsSurviveANewStore()
     {

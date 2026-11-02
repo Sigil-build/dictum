@@ -73,8 +73,37 @@ public sealed class PluginTrustStore(string path, ILog log)
         }
     }
 
-    private static bool SamePath(string recorded, string actual) =>
-        string.Equals(Normalize(recorded), Normalize(actual), PathComparison.Current);
+    private static bool SamePath(string recorded, string actual)
+    {
+        try
+        {
+            return string.Equals(Normalize(recorded), Normalize(actual), PathComparison.Current);
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>A record that parsed but cannot be used: a null record, a missing field or a path with an invalid character.</summary>
+    private static bool IsUsable(PluginTrustRecord? record)
+    {
+        if (record is not { Folder: not null, Executable: not null, Sha256: not null })
+        {
+            return false;
+        }
+
+        try
+        {
+            _ = Normalize(record.Folder);
+            _ = Normalize(record.Executable);
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+    }
 
     private static string Normalize(string path) => Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
 
@@ -89,7 +118,23 @@ public sealed class PluginTrustStore(string path, ILog log)
         try
         {
             var file = JsonSerializer.Deserialize(File.ReadAllText(path), PluginJsonContext.Default.PluginTrustFile);
-            return file is { Custom: not null } ? file : Empty();
+            if (file is not { Custom: not null })
+            {
+                return Empty();
+            }
+
+            var unusable = file.Custom.Where(r => !IsUsable(r.Value)).Select(r => r.Key).ToList();
+            if (unusable.Count > 0)
+            {
+                // The other records stay; the unusable ones count as not confirmed and a Confirm drops them.
+                log.Warn($"{path} holds unusable records ({string.Join(", ", unusable)}), so those plugins do not count as confirmed.");
+                foreach (var id in unusable)
+                {
+                    file.Custom.Remove(id);
+                }
+            }
+
+            return file;
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {

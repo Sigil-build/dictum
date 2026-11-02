@@ -337,11 +337,15 @@ public class ConfigValidatorTests
     [Fact]
     public void APluginModelIsAnIdOrAnAbsolutePath()
     {
-        var issue = Assert.Single(ConfigValidator.Validate(WithPlugin(new PluginSttConfig { Plugin = "p", Model = "models/x.onnx" })));
+        foreach (var bad in new[] { "models/x.onnx", "..", "C:model", " x ", "My Model" })
+        {
+            var issue = Assert.Single(ConfigValidator.Validate(WithPlugin(new PluginSttConfig { Plugin = "p", Model = bad })));
 
-        Assert.Equal(
-            (ConfigIssueSeverity.Error, "stt.p.model", "must be a model id from the plugin or an absolute path"),
-            (issue.Severity, issue.Path, issue.Message));
+            Assert.Equal(
+                (ConfigIssueSeverity.Error, "stt.p.model", "must be a model id from the plugin or an absolute path"),
+                (issue.Severity, issue.Path, issue.Message));
+        }
+
         Assert.Empty(ConfigValidator.Validate(WithPlugin(new PluginSttConfig { Plugin = "p", Model = "parakeet-int8" })));
         Assert.Empty(ConfigValidator.Validate(WithPlugin(new PluginSttConfig { Plugin = "p", Model = ModelPath })));
     }

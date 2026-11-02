@@ -126,6 +126,11 @@ public sealed record PluginManifest(
                 continue;
             }
 
+            if (!PluginIds.IsValidModelId(model.Id))
+            {
+                problems.Add($"model id '{model.Id}' {PluginIds.ModelRule}");
+            }
+
             if (!seen.Add(model.Id))
             {
                 problems.Add($"model id '{model.Id}' appears twice");
@@ -143,8 +148,19 @@ public sealed record PluginManifest(
         }
     }
 
+    /// <summary>Relative, with no empty, <c>.</c> or <c>..</c> segment on either kind of separator; subfolders are fine.</summary>
+    private static bool IsInsideModelFolder(string? file) =>
+        !string.IsNullOrEmpty(file)
+        && !Path.IsPathRooted(file)
+        && file.Split('/', '\\').All(segment => segment is not ("" or "." or ".."));
+
     private static void CheckModelFile(string modelId, PluginManifestFile file, List<string> problems)
     {
+        if (!IsInsideModelFolder(file.File))
+        {
+            problems.Add($"model {modelId}: {file.File} must be a file name inside the model's folder");
+        }
+
         if (!Uri.TryCreate(file.Url, UriKind.Absolute, out var url) || url.Scheme != Uri.UriSchemeHttps)
         {
             problems.Add($"model {modelId}: {file.File} must come from an https address");

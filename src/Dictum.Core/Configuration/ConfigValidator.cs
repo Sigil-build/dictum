@@ -203,8 +203,7 @@ public static class ConfigValidator
         {
             Error(issues, modelPath, "must not be empty");
         }
-        else if ((plugin.Model.Contains('/', StringComparison.Ordinal) || plugin.Model.Contains('\\', StringComparison.Ordinal))
-                 && !Path.IsPathFullyQualified(plugin.Model))
+        else if (!PluginIds.IsValidModelId(plugin.Model) && !Path.IsPathFullyQualified(plugin.Model))
         {
             Error(issues, modelPath, "must be a model id from the plugin or an absolute path");
         }

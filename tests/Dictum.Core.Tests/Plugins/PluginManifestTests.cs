@@ -132,6 +132,45 @@ public sealed class PluginManifestTests : IDisposable
         Assert.Equal(["model m: a.bin needs a SHA-256", "model m: a.bin needs its size in bytes"], Problems());
     }
 
+    [Theory]
+    [InlineData("../x")]
+    [InlineData("My Model")]
+    public void AModelIdThatIsNotASafeNameIsRefused(string id)
+    {
+        Write(Manifest(models: $$"""[{"id":"{{id}}","title":"M","files":[{{ModelFile()}}],"languages":["en"]}]"""));
+
+        Assert.Equal([$"model id '{id}' {PluginIds.ModelRule}"], Problems());
+    }
+
+    [Theory]
+    [InlineData("../model.onnx")]
+    [InlineData("a//b")]
+    [InlineData("a/./b")]
+    [InlineData("a/")]
+    public void AModelFileNameOutsideTheModelFolderIsRefused(string file)
+    {
+        Write(Manifest(models: $$"""[{"id":"m","title":"M","files":[{{ModelFile(file: file)}}],"languages":["en"]}]"""));
+
+        Assert.Equal([$"model m: {file} must be a file name inside the model's folder"], Problems());
+    }
+
+    [Fact]
+    public void ARootedModelFileNameIsRefused()
+    {
+        var rooted = OperatingSystem.IsWindows() ? "C:\\\\x" : "/etc/x";
+        Write(Manifest(models: $$"""[{"id":"m","title":"M","files":[{{ModelFile(file: rooted)}}],"languages":["en"]}]"""));
+
+        Assert.Single(Problems(), p => p.EndsWith("must be a file name inside the model's folder", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AModelFileInASubfolderLoads()
+    {
+        Write(Manifest(models: $$"""[{"id":"m","title":"M","files":[{{ModelFile(file: "tokenizer/vocab.txt")}}],"languages":["en"]}]"""));
+
+        Assert.Equal("tokenizer/vocab.txt", PluginManifest.Load(_folder.Path).Models![0].Files[0].File);
+    }
+
     [Fact]
     public void ModelIdsMustBeUnique()
     {
@@ -170,8 +209,8 @@ public sealed class PluginManifestTests : IDisposable
         File.WriteAllText(_folder.File("plugin.json"), json);
     }
 
-    private static string ModelFile(string url = "https://example.com/a.bin", string sha = ValidSha, int size = 42) =>
-        $$"""{"file":"a.bin","url":"{{url}}","sha256":"{{sha}}","size":{{size}}}""";
+    private static string ModelFile(string url = "https://example.com/a.bin", string sha = ValidSha, int size = 42, string file = "a.bin") =>
+        $$"""{"file":"{{file}}","url":"{{url}}","sha256":"{{sha}}","size":{{size}}}""";
 
     private static string Manifest(
         int protocol = 1,
