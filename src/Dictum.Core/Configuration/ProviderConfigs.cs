@@ -9,6 +9,7 @@ namespace Dictum.Core.Configuration;
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(WhisperLocalSttConfig), WhisperLocalSttConfig.TypeName)]
 [JsonDerivedType(typeof(OpenAiCompatibleSttConfig), OpenAiCompatibleSttConfig.TypeName)]
+[JsonDerivedType(typeof(PluginSttConfig), PluginSttConfig.TypeName)]
 public abstract record SttConfig;
 
 public enum WhisperRuntime
@@ -63,6 +64,21 @@ public sealed record OpenAiCompatibleSttConfig : SttConfig
 
     public override string ToString() =>
         KeyRedaction.Print(nameof(OpenAiCompatibleSttConfig), (this with { ApiKey = KeyRedaction.Redact(ApiKey) }).PrintMembers);
+}
+
+/// <summary>A speech engine that runs as a plugin: a program in its own folder, registered under <c>plugins</c> or shipped with Dictum.</summary>
+public sealed record PluginSttConfig : SttConfig
+{
+    public const string TypeName = "plugin";
+
+    /// <summary>The id of the plugin, see <see cref="PluginIds"/>.</summary>
+    public required string Plugin { get; init; }
+
+    /// <summary>A model id from the plugin's manifest, or an absolute path to a model the plugin loads.</summary>
+    public required string Model { get; init; }
+
+    /// <summary>Threads for the plugin to use; null leaves it to the plugin.</summary>
+    public int? Threads { get; init; }
 }
 
 /// <summary>Base for text processor settings. The <c>type</c> property selects the derived record.</summary>

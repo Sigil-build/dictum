@@ -303,4 +303,91 @@ public class ConfigValidatorTests
             (issue.Severity, issue.Path, issue.Message));
         Assert.Empty(ConfigValidator.Validate(absolute));
     }
+
+    private static DictumConfig WithPlugin(PluginSttConfig plugin)
+    {
+        var config = DefaultConfig.Create();
+        config.Stt["p"] = plugin;
+        return config;
+    }
+
+    private static string ModelPath => Path.Combine(Path.GetTempPath(), "models", "x.onnx");
+
+    [Fact]
+    public void APluginProviderNeedsAPluginAndAModel()
+    {
+        var issues = ConfigValidator.Validate(WithPlugin(new PluginSttConfig { Plugin = " ", Model = "" }));
+
+        Assert.Equal(
+            [
+                (ConfigIssueSeverity.Error, "stt.p.plugin", "must not be empty"),
+                (ConfigIssueSeverity.Error, "stt.p.model", "must not be empty"),
+            ],
+            issues.Select(i => (i.Severity, i.Path, i.Message)));
+    }
+
+    [Fact]
+    public void APluginProviderNamesAValidPluginId()
+    {
+        var issue = Assert.Single(ConfigValidator.Validate(WithPlugin(new PluginSttConfig { Plugin = "My_Sherpa", Model = "m" })));
+
+        Assert.Equal((ConfigIssueSeverity.Error, "stt.p.plugin", PluginIds.Rule), (issue.Severity, issue.Path, issue.Message));
+    }
+
+    [Fact]
+    public void APluginModelIsAnIdOrAnAbsolutePath()
+    {
+        var issue = Assert.Single(ConfigValidator.Validate(WithPlugin(new PluginSttConfig { Plugin = "p", Model = "models/x.onnx" })));
+
+        Assert.Equal(
+            (ConfigIssueSeverity.Error, "stt.p.model", "must be a model id from the plugin or an absolute path"),
+            (issue.Severity, issue.Path, issue.Message));
+        Assert.Empty(ConfigValidator.Validate(WithPlugin(new PluginSttConfig { Plugin = "p", Model = "parakeet-int8" })));
+        Assert.Empty(ConfigValidator.Validate(WithPlugin(new PluginSttConfig { Plugin = "p", Model = ModelPath })));
+    }
+
+    [Fact]
+    public void PluginThreadsMustBePositive()
+    {
+        var issue = Assert.Single(ConfigValidator.Validate(WithPlugin(new PluginSttConfig { Plugin = "p", Model = "m", Threads = 0 })));
+
+        Assert.Equal(
+            (ConfigIssueSeverity.Error, "stt.p.threads", "must be 1 or more, or left out"),
+            (issue.Severity, issue.Path, issue.Message));
+        Assert.Empty(ConfigValidator.Validate(WithPlugin(new PluginSttConfig { Plugin = "p", Model = "m", Threads = 1 })));
+    }
+
+    [Fact]
+    public void ARegisteredPluginNeedsAValidIdAndAnAbsolutePath()
+    {
+        var config = DefaultConfig.Create();
+        config.Plugins["Bad"] = new PluginRegistration { Path = Path.GetTempPath() };
+        config.Plugins["ok"] = new PluginRegistration { Path = "rel" };
+        config.Plugins["whisper"] = new PluginRegistration { Path = Path.GetTempPath() };
+        config.Plugins["fine"] = new PluginRegistration { Path = Path.GetTempPath() };
+
+        var issues = ConfigValidator.Validate(config);
+
+        Assert.Equal(
+            [
+                (ConfigIssueSeverity.Error, "plugins.Bad", PluginIds.Rule),
+                (ConfigIssueSeverity.Error, "plugins.ok.path", "must be an absolute path to the plugin's folder"),
+                (ConfigIssueSeverity.Error, "plugins.whisper", PluginIds.Rule),
+            ],
+            issues.Select(i => (i.Severity, i.Path, i.Message)));
+    }
+
+    [Fact]
+    public void AProfileWithALanguageListOnAPluginGetsNoWarning()
+    {
+        var config = WithPlugin(new PluginSttConfig { Plugin = "p", Model = "m" });
+        config.Profiles[0] = config.Profiles[0] with { Stt = "p", Language = "uk, en" };
+
+        Assert.Empty(ConfigValidator.Validate(config));
+    }
+
+    // Core cannot see the official plugins (2b); Host reports a plugin that is missing.
+    [Fact]
+    public void APluginTheConfigDoesNotRegisterIsNotAnError() =>
+        Assert.Empty(ConfigValidator.Validate(WithPlugin(new PluginSttConfig { Plugin = "unregistered", Model = "m" })));
 }

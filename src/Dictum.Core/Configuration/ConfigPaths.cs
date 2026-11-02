@@ -11,6 +11,7 @@ public static class ConfigPaths
     private static readonly string GeneralRoot = JsonName(nameof(DictumConfig.General));
     private static readonly string SttRoot = JsonName(nameof(DictumConfig.Stt));
     private static readonly string ProcessorsRoot = JsonName(nameof(DictumConfig.Processors));
+    private static readonly string PluginsRoot = JsonName(nameof(DictumConfig.Plugins));
     private static readonly string ProfilesRoot = JsonName(nameof(DictumConfig.Profiles));
 
     public static string General(string field) => Field(GeneralRoot, field);
@@ -18,6 +19,8 @@ public static class ConfigPaths
     public static string Stt(string id, string? field = null) => WithField($"{SttRoot}.{id}", field);
 
     public static string Processor(string id, string? field = null) => WithField($"{ProcessorsRoot}.{id}", field);
+
+    public static string Plugin(string id, string? field = null) => WithField($"{PluginsRoot}.{id}", field);
 
     public static string Profile(int index, string? field = null) => WithField(Item(ProfilesRoot, index), field);
 

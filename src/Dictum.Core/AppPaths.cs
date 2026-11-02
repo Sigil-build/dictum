@@ -61,6 +61,9 @@ public sealed class AppPaths
     /// <summary>When dictum-gui last asked GitHub for the newest release, what it found and which version it last announced.</summary>
     public string UpdateCheckFile => Path.Combine(DataDirectory, "update-check.json");
 
+    /// <summary>Which plugin programs the user has trusted; see the plugin runtime.</summary>
+    public string PluginTrustFile => Path.Combine(DataDirectory, "plugin-trust.json");
+
     public string LogsDirectory => Path.Combine(DataDirectory, "logs");
 
     /// <summary>The tray glyphs as SVG files, for a StatusNotifierItem's icon theme path.</summary>

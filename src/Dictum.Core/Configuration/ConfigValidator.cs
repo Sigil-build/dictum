@@ -37,6 +37,11 @@ public static class ConfigValidator
             }
         }
 
+        foreach (var (id, plugin) in config.Plugins)
+        {
+            ValidatePlugin(issues, ConfigPaths.Plugin(id), id, plugin);
+        }
+
         var seenIds = new HashSet<string>(StringComparer.Ordinal);
         var takenHotkeys = new HashSet<Hotkey>();
         for (var i = 0; i < config.Profiles.Count; i++)
@@ -175,6 +180,51 @@ public static class ConfigValidator
                 }
 
                 break;
+            case PluginSttConfig plugin:
+                ValidatePluginProvider(issues, path, plugin);
+                break;
+        }
+    }
+
+    private static void ValidatePluginProvider(List<ConfigIssue> issues, string path, PluginSttConfig plugin)
+    {
+        var pluginPath = ConfigPaths.Field(path, nameof(PluginSttConfig.Plugin));
+        if (string.IsNullOrWhiteSpace(plugin.Plugin))
+        {
+            Error(issues, pluginPath, "must not be empty");
+        }
+        else if (!PluginIds.IsValid(plugin.Plugin))
+        {
+            Error(issues, pluginPath, PluginIds.Rule);
+        }
+
+        var modelPath = ConfigPaths.Field(path, nameof(PluginSttConfig.Model));
+        if (string.IsNullOrWhiteSpace(plugin.Model))
+        {
+            Error(issues, modelPath, "must not be empty");
+        }
+        else if ((plugin.Model.Contains('/', StringComparison.Ordinal) || plugin.Model.Contains('\\', StringComparison.Ordinal))
+                 && !Path.IsPathFullyQualified(plugin.Model))
+        {
+            Error(issues, modelPath, "must be a model id from the plugin or an absolute path");
+        }
+
+        if (plugin.Threads < 1)
+        {
+            Error(issues, ConfigPaths.Field(path, nameof(PluginSttConfig.Threads)), "must be 1 or more, or left out");
+        }
+    }
+
+    private static void ValidatePlugin(List<ConfigIssue> issues, string path, string id, PluginRegistration plugin)
+    {
+        if (!PluginIds.IsValid(id))
+        {
+            Error(issues, path, PluginIds.Rule);
+        }
+
+        if (!Path.IsPathFullyQualified(plugin.Path ?? string.Empty))
+        {
+            Error(issues, ConfigPaths.Field(path, nameof(PluginRegistration.Path)), "must be an absolute path to the plugin's folder");
         }
     }
 
