@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text.Json;
+using Dictum.Core;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Http;
 using Dictum.Plugins;
@@ -17,6 +18,9 @@ public sealed class PluginProcessTests : IDisposable
 
     /// <summary>For waits on the plugin's output, which a busy runner may deliver late.</summary>
     private static readonly TimeSpan Patience = TimeSpan.FromSeconds(15);
+
+    /// <summary>A stop that kills: the grace, up to 5 s for the killed plugin to be gone, and room for a busy runner.</summary>
+    private static readonly TimeSpan StopWithin = TimeSpan.FromSeconds(10);
 
     private readonly TempDirectory _dir = new();
     private readonly ListLog _log = new();
@@ -176,44 +180,80 @@ public sealed class PluginProcessTests : IDisposable
         var ct = TestContext.Current.CancellationToken;
         var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { IgnoreStdin = true });
         var plugin = await StartAsync(TestPlugins.Launch(folder), ct, PluginTimings.Default with { StopGrace = TimeSpan.FromMilliseconds(500) });
+        Assert.True(TestPluginRuns(), "the check does not see the running plugin");
 
-        await plugin.StopAsync().WaitAsync(TimeSpan.FromSeconds(5), ct);
+        await plugin.StopAsync().WaitAsync(StopWithin, ct);
+        await plugin.Exited.WaitAsync(Patience, ct);
 
-        Assert.True(plugin.Exited.IsCompleted);
         Assert.False(TestPluginRuns(), "the plugin still runs");
     }
 
-    /// <summary>The folder and the model path reach the program whole, since every argument goes through ArgumentList.</summary>
+    /// <summary>The wait after the kill has a bound of its own, so with no grace at all the stop still sees the plugin gone.</summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task AKilledProgramIsWaitedForApartFromTheGrace()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { IgnoreStdin = true });
+        var plugin = await StartAsync(TestPlugins.Launch(folder), ct, PluginTimings.Default with { StopGrace = TimeSpan.Zero });
+
+        await plugin.StopAsync().WaitAsync(StopWithin, ct);
+
+        Assert.True(plugin.Exited.IsCompleted, "StopAsync returned before the killed plugin was gone");
+    }
+
+    /// <summary>
+    /// The program runs in its folder, the folder and the model path reach it whole since every argument goes through
+    /// ArgumentList, and the trust record hashes the program there.
+    /// </summary>
     [Fact(Timeout = TestTimeout.Generous)]
     public async Task AFolderWithSpacesAndCyrillicWorks()
     {
         var ct = TestContext.Current.CancellationToken;
         var folder = TestPlugins.Folder(_dir, folderName: "плагін з пробілом");
         var model = TestPlugins.Model(_dir, new TestPluginBehaviour(), "модель з пробілом.json");
+        var launch = TestPlugins.Launch(folder, model);
+        var trust = new PluginTrustStore(_dir.File("plugin-trust.json"), _log);
+        trust.Confirm(launch.PluginId, folder, launch.Executable);
 
-        await using var plugin = await StartAsync(TestPlugins.Launch(folder, model), ct);
+        await using var plugin = await StartAsync(launch, ct);
+        var cwd = (await RawInfoAsync(plugin, ct)).GetProperty("cwd").GetString()!;
 
         Assert.Equal("Test", plugin.Endpoint.Info.Name);
         Assert.Equal("модель з пробілом", plugin.Endpoint.Info.Model?.Id);
+        Assert.True(SamePath(folder, cwd), $"the plugin ran in {cwd}");
+        Assert.Equal(PluginTrust.Confirmed, trust.Check(launch.PluginId, folder, launch.Executable));
     }
 
     private Task<PluginProcess> StartAsync(PluginLaunch launch, CancellationToken ct, PluginTimings? timings = null) =>
         PluginProcess.StartAsync(launch, _http, _log, timings ?? PluginTimings.Default, ct);
 
-    /// <summary>Starts the plugin, asks <c>/dictum/v1/info</c> directly with the endpoint's key, and stops it.</summary>
+    /// <summary>Starts the plugin, reads what <c>/dictum/v1/info</c> says of its arguments, and stops it.</summary>
     private async Task<(string[] Argv, int? Threads, string Key)> InfoAsync(PluginLaunch launch, CancellationToken ct)
     {
         await using var plugin = await StartAsync(launch, ct);
+        var info = await RawInfoAsync(plugin, ct);
+        var argv = info.GetProperty("argv").EnumerateArray().Select(argument => argument.GetString()!).ToArray();
+        var threads = info.GetProperty("threads") is { ValueKind: JsonValueKind.Number } number ? number.GetInt32() : (int?)null;
+        return (argv, threads, plugin.Endpoint.Key);
+    }
+
+    /// <summary>Asks <c>/dictum/v1/info</c> directly with the endpoint's key, for the test plugin's extra fields.</summary>
+    private async Task<JsonElement> RawInfoAsync(PluginProcess plugin, CancellationToken ct)
+    {
         using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(plugin.Endpoint.Url, "/dictum/v1/info"));
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", plugin.Endpoint.Key);
         using var response = await _http.SendAsync(request, ct);
         response.EnsureSuccessStatusCode();
 
         using var info = JsonDocument.Parse(await response.Content.ReadAsStringAsync(ct));
-        var argv = info.RootElement.GetProperty("argv").EnumerateArray().Select(argument => argument.GetString()!).ToArray();
-        var threads = info.RootElement.GetProperty("threads") is { ValueKind: JsonValueKind.Number } number ? number.GetInt32() : (int?)null;
-        return (argv, threads, plugin.Endpoint.Key);
+        return info.RootElement.Clone();
     }
+
+    private static bool SamePath(string expected, string actual) =>
+        string.Equals(
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(expected)),
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(actual)),
+            PathComparison.Current);
 
     /// <summary>Whether a test plugin from this test's folder still runs; every test copies the plugin into its own.</summary>
     private bool TestPluginRuns()

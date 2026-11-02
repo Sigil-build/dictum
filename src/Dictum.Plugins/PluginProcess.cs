@@ -25,6 +25,12 @@ public sealed class PluginProcess : IAsyncDisposable
     private const string InfoPath = "/dictum/v1/info";
     private const string Hint = "See its output above, and the plugin's own documentation.";
 
+    /// <summary>
+    /// How long a killed plugin has to be gone, its output drained included. Apart from the grace, which is the
+    /// plugin's time to exit by itself and may be short.
+    /// </summary>
+    private static readonly TimeSpan KillWait = TimeSpan.FromSeconds(5);
+
     private readonly PluginLaunch _launch;
     private readonly ILog _log;
     private readonly TimeSpan _stopGrace;
@@ -337,7 +343,7 @@ public sealed class PluginProcess : IAsyncDisposable
         Release();
     }
 
-    /// <summary>Kills the plugin with every process it started, and gives it the grace to be gone.</summary>
+    /// <summary>Kills the plugin with every process it started, and waits up to <see cref="KillWait"/> for it to be gone.</summary>
     private async Task KillAsync()
     {
         try
@@ -351,11 +357,11 @@ public sealed class PluginProcess : IAsyncDisposable
 
         try
         {
-            await Exited.WaitAsync(_stopGrace).ConfigureAwait(false);
+            await Exited.WaitAsync(KillWait).ConfigureAwait(false);
         }
         catch (TimeoutException)
         {
-            _log.Warn($"Plugin {_launch.PluginId} (pid {Id}) did not end within {Seconds(_stopGrace)} s of being killed");
+            _log.Warn($"Plugin {_launch.PluginId} (pid {Id}) did not end within {Seconds(KillWait)} s of being killed");
         }
     }
 

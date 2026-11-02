@@ -84,7 +84,8 @@ internal static class Program
                 behaviour.Version,
                 model is null ? null : new ModelInfo(ModelId(model), behaviour.Languages, behaviour.SetLanguage, Prompt: true),
                 args,
-                threads),
+                threads,
+                Environment.CurrentDirectory),
             AnswerJson.Default.Info));
         app.MapPost("/v1/audio/transcriptions", (HttpRequest request) => TranscribeAsync(request, behaviour));
         await app.StartAsync();
@@ -197,7 +198,8 @@ internal sealed record ReadyLine(int DictumPlugin, string Url);
 
 internal sealed record Health(string Status);
 
-internal sealed record Info(int Protocol, string Name, string Version, ModelInfo? Model, IReadOnlyList<string> Argv, int? Threads);
+/// <summary>Protocol 1's info, plus what the tests check of the launch: the arguments, the threads and the working folder.</summary>
+internal sealed record Info(int Protocol, string Name, string Version, ModelInfo? Model, IReadOnlyList<string> Argv, int? Threads, string Cwd);
 
 internal sealed record ModelInfo(string Id, IReadOnlyList<string> Languages, bool SetLanguage, bool Prompt);
 
