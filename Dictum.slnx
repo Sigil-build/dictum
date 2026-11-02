@@ -20,6 +20,7 @@
     <Project Path="tests/Dictum.Core.Tests/Dictum.Core.Tests.csproj" />
     <Project Path="tests/Dictum.Host.Tests/Dictum.Host.Tests.csproj" />
     <Project Path="tests/Dictum.Integration.Tests/Dictum.Integration.Tests.csproj" />
+    <Project Path="tests/Dictum.TestPlugin/Dictum.TestPlugin.csproj" />
     <Project Path="tests/Dictum.Testing/Dictum.Testing.csproj" />
   </Folder>
 </Solution>

@@ -43,6 +43,7 @@ https://claude.ai/code/artifact/ba039eea-3640-41cc-898a-b1b024e07370
 - `tests/Dictum.App.Tests`: the desktop app on fakes and Avalonia.Headless; the real-daemon test is gated by `DICTUM_INTEGRATION=1`.
 - `tests/Dictum.Integration.Tests`: real STT/LLM tests gated by `DICTUM_INTEGRATION=1`, the catalog check gated by `DICTUM_CHECK_CATALOG=1`, and tests against the current OS (clipboard, Credential Manager, registry, tray, D-Bus). The real-desktop caption-button and tray-balloon tests, which briefly show real windows, are gated by `DICTUM_INTEGRATION=1` too.
 - `tests/Dictum.Testing`: the fakes and helpers the test projects share; a library, not a test project.
+- `tests/Dictum.TestPlugin`: a Kestrel plugin under protocol 1 whose behaviour a JSON file sets; the plugin tests launch copies of it through `TestPlugins`. A program, not a test project.
 - `docs/`: the user documentation, each page in English and in Ukrainian (`*.uk.md`), and `site.yml` with the nav and version for docs.sigil.build; `UserDocsTests` in Core.Tests checks its structure.
 
 ## Conventions
