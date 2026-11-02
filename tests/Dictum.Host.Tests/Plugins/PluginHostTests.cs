@@ -13,6 +13,15 @@ public sealed class PluginHostTests : IAsyncDisposable
 {
     private const string BehaviourFile = "behaviour.json";
 
+    /// <summary>A plugin's own start failures carry it (<see cref="PluginProcess"/>).</summary>
+    private const string StartHint = "See its output above, and the plugin's own documentation.";
+
+    /// <summary>
+    /// How long a crashing plugin lives after its info answer. Dictum's start ends only once it has read that answer,
+    /// so a stalled runner needs room here, or a crash lands inside the start and fails it instead.
+    /// </summary>
+    private const int CrashAfterMs = 500;
+
     /// <summary>For waits on starts, crashes and restarts, which a busy runner may deliver late.</summary>
     private static readonly TimeSpan Patience = TimeSpan.FromSeconds(15);
 
@@ -183,7 +192,7 @@ public sealed class PluginHostTests : IAsyncDisposable
     {
         var ct = TestContext.Current.CancellationToken;
         var host = Host(NoRestartDelay, new ManualClock());
-        using var lease = host.Acquire(TestPlugins.Launch(ConfirmedFolder(new TestPluginBehaviour { ExitAfterReadyMs = 100 })));
+        using var lease = host.Acquire(TestPlugins.Launch(ConfirmedFolder(new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs })));
         await lease.Instance.ReadyAsync(ct);
 
         await Eventually.WaitForAsync(() => lease.Instance.State == PluginInstanceState.Failed, "the plugin given up on", Patience);
@@ -202,7 +211,7 @@ public sealed class PluginHostTests : IAsyncDisposable
         var ct = TestContext.Current.CancellationToken;
         var clock = new ManualClock();
         var host = Host(NoRestartDelay, clock);
-        using var lease = host.Acquire(TestPlugins.Launch(ConfirmedFolder(new TestPluginBehaviour { ExitAfterReadyMs = 100 })));
+        using var lease = host.Acquire(TestPlugins.Launch(ConfirmedFolder(new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs })));
         await lease.Instance.ReadyAsync(ct);
 
         for (var launches = 2; launches <= 5; launches++)
@@ -221,15 +230,20 @@ public sealed class PluginHostTests : IAsyncDisposable
     {
         var ct = TestContext.Current.CancellationToken;
         var host = Host();
-        var folder = ConfirmedFolder(new TestPluginBehaviour { ExitAtStart = 3 });
+        var folder = ConfirmedFolder(new TestPluginBehaviour { ExitAtStart = 3, Stderr = ["no CUDA here"] });
         var launch = TestPlugins.Launch(folder);
         using var first = host.Acquire(launch);
         var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => first.Instance.ReadyAsync(ct));
         Assert.Equal("Plugin test exited with code 3 while starting.", error.Message);
+        Assert.Equal(StartHint, error.Hint);
         Assert.Equal(PluginInstanceState.Failed, first.Instance.State);
 
-        // Without a new lease it stays failed, and says why.
-        Assert.Same(error, await Assert.ThrowsAsync<PluginUnavailableException>(() => first.Instance.ReadyAsync(ct)));
+        // Without a new lease it stays failed: later callers, such as Settings' Test, get why and how to retry.
+        var later = await Assert.ThrowsAsync<PluginUnavailableException>(() => first.Instance.ReadyAsync(ct));
+        Assert.Equal(error.Message, later.Message);
+        Assert.Equal($"{StartHint} Then save the settings or restart the daemon to try again.", later.Hint);
+        Assert.Contains("no CUDA here", later.Output);
+        Assert.Equal(error.Output, later.Output);
         Assert.Equal(1, first.Instance.Launches);
 
         new TestPluginBehaviour().Save(Path.Combine(folder, BehaviourFile));
@@ -241,19 +255,22 @@ public sealed class PluginHostTests : IAsyncDisposable
         Assert.Equal(2, second.Instance.Launches);
     }
 
-    /// <summary>Review focus 5: a config copied from another computer names a plugin nobody confirmed here.</summary>
+    /// <summary>
+    /// Review focus 5: a config copied from another computer names a plugin nobody confirmed here. Its folder has
+    /// spaces, so the hint quotes it for the command to work when pasted.
+    /// </summary>
     [Fact(Timeout = TestTimeout.Generous)]
     public async Task AnUnconfirmedPluginNeverStarts()
     {
         var ct = TestContext.Current.CancellationToken;
         var host = Host();
-        var folder = TestPlugins.Folder(_dir);
+        var folder = TestPlugins.Folder(_dir, folderName: "плагін з пробілом");
         using var lease = host.Acquire(TestPlugins.Launch(folder));
 
         var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => lease.Instance.ReadyAsync(ct));
 
         Assert.Equal("Plugin test has not been confirmed on this computer.", error.Message);
-        Assert.Equal($"Confirm it with 'dictum plugins add {folder}'.", error.Hint);
+        Assert.Equal($"Confirm it with 'dictum plugins add \"{folder}\"'.", error.Hint);
         Assert.Equal(0, lease.Instance.Launches);
         Assert.Equal(PluginInstanceState.Stopped, lease.Instance.State);
         Assert.False(TestPlugins.RunsIn(_dir), "the plugin runs");
@@ -273,7 +290,7 @@ public sealed class PluginHostTests : IAsyncDisposable
         var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => lease.Instance.ReadyAsync(ct));
 
         Assert.Equal("Plugin test changed since you added it.", error.Message);
-        Assert.Equal($"Confirm it with 'dictum plugins add {folder}'.", error.Hint);
+        Assert.Equal($"Confirm it with 'dictum plugins add \"{folder}\"'.", error.Hint);
         Assert.Equal(0, lease.Instance.Launches);
         Assert.Equal(PluginInstanceState.Stopped, lease.Instance.State);
         Assert.False(TestPlugins.RunsIn(_dir), "the plugin runs");

@@ -27,7 +27,8 @@ public enum PluginInstanceState
 /// </remarks>
 public sealed class PluginInstance
 {
-    private const string KeptStoppingHint = "Save the settings or restart the daemon to try again.";
+    /// <summary>A new lease retries a failed instance, and a settings save or a daemon restart takes one.</summary>
+    private const string RetryHint = "Save the settings or restart the daemon to try again.";
 
     private readonly PluginLaunch _launch;
     private readonly PluginTrustStore _trust;
@@ -51,8 +52,8 @@ public sealed class PluginInstance
     /// <summary>Set while <see cref="PluginInstanceState.Ready"/>, and held until it is stopped.</summary>
     private PluginProcess? _process;
 
-    /// <summary>Set while <see cref="PluginInstanceState.Failed"/>.</summary>
-    private Exception? _failure;
+    /// <summary>Set while <see cref="PluginInstanceState.Failed"/>: why, and how to try again.</summary>
+    private PluginUnavailableException? _failure;
 
     private IReadOnlyList<string> _lastOutput = [];
     private int _leases;
@@ -146,7 +147,7 @@ public sealed class PluginInstance
 
     /// <summary>
     /// The plugin's endpoint once it is ready: at once when it is, by joining the start under way, or by starting it
-    /// once the trust record confirms its program. A failed instance throws why it failed.
+    /// once the trust record confirms its program. A failed instance throws why it failed, and how to try again.
     /// </summary>
     /// <param name="ct">Stops only this caller's wait. The start goes on under the host's lifetime, for the others.</param>
     /// <exception cref="PluginUnavailableException">It is not confirmed, could not start, or kept stopping.</exception>
@@ -280,8 +281,8 @@ public sealed class PluginInstance
                 if (launched && !cancelled && !_ended)
                 {
                     _state = PluginInstanceState.Failed;
-                    _failure = ex;
-                    _lastOutput = ex is PluginUnavailableException unavailable ? unavailable.Output : [];
+                    _failure = ForLaterCallers(ex);
+                    _lastOutput = _failure.Output;
                 }
                 else
                 {
@@ -331,7 +332,8 @@ public sealed class PluginInstance
         };
         if (problem is not null)
         {
-            throw new PluginUnavailableException(problem, $"Confirm it with 'dictum plugins add {_launch.Folder}'.");
+            // Quoted, so that the command works when pasted, whatever spaces the folder holds.
+            throw new PluginUnavailableException(problem, $"Confirm it with 'dictum plugins add \"{_launch.Folder}\"'.");
         }
     }
 
@@ -360,7 +362,7 @@ public sealed class PluginInstance
             {
                 message = KeptStopping();
                 _state = PluginInstanceState.Failed;
-                _failure = new PluginUnavailableException(message, KeptStoppingHint, output);
+                _failure = new PluginUnavailableException(message, RetryHint, output);
             }
         }
 
@@ -384,6 +386,23 @@ public sealed class PluginInstance
 
         _restarts.Enqueue(now);
         return true;
+    }
+
+    /// <summary>
+    /// A failed start as the instance keeps it. Whoever waited for the start got the failure itself; a later caller,
+    /// such as Settings' Test long after, also learns how to try again.
+    /// </summary>
+    private PluginUnavailableException ForLaterCallers(Exception ex)
+    {
+        if (ex is not PluginUnavailableException unavailable)
+        {
+            return new PluginUnavailableException($"Plugin {_launch.PluginId} could not start: {ex.Message}", RetryHint);
+        }
+
+        var hint = string.IsNullOrEmpty(unavailable.Hint)
+            ? RetryHint
+            : $"{unavailable.Hint} Then save the settings or restart the daemon to try again.";
+        return new PluginUnavailableException(unavailable.Message, hint, unavailable.Output);
     }
 
     private string KeptStopping()
