@@ -87,6 +87,38 @@ public sealed class PluginManifestTests : IDisposable
         Assert.Equal(["name must not be empty", "version must not be empty"], Problems());
     }
 
+    [Theory]
+    [InlineData("name", "My\\u001b[2Jplugin", "name must not contain control characters")]
+    [InlineData("publisher", "Me\\r", "publisher must not contain control characters")]
+    [InlineData("title", "M\\u0085", "model m: title must not contain control characters")]
+    [InlineData("version", "1\\t0", "version must not contain control characters")]
+    public void ControlCharactersAreRefusedAndNeverEchoed(string field, string value, string problem)
+    {
+        var title = field == "title" ? value : "M";
+        Write(Manifest(
+            name: field == "name" ? value : "My plugin",
+            version: field == "version" ? value : "1.2.0",
+            publisher: field == "publisher" ? value : "Me",
+            models: $$"""[{"id":"m","title":"{{title}}","files":[{{ModelFile()}}],"languages":["en"]}]"""));
+
+        var problems = Problems();
+
+        Assert.Equal([problem], problems);
+        Assert.All(problems, p => Assert.DoesNotContain(p, char.IsControl));
+    }
+
+    [Fact]
+    public void AValueThatIsEchoedIsEscapedWhenItHoldsControlCharacters()
+    {
+        Write(Manifest(id: "bad\\u001b[2J", models: $$"""[{"id":"m\u0007","title":"M","files":[{{ModelFile(file: "a\\u001b.bin")}}],"languages":["en"]}]"""));
+
+        var problems = Problems();
+
+        Assert.Contains("id 'bad\\u001b[2J' ", problems[0], StringComparison.Ordinal);
+        Assert.Contains(problems, p => p.Contains("model m\\u0007: file name must not contain control characters", StringComparison.Ordinal));
+        Assert.All(problems, p => Assert.DoesNotContain(p, char.IsControl));
+    }
+
     [Fact]
     public void TheProgramForThisSystemMustBeInTheFolder()
     {
@@ -217,6 +249,7 @@ public sealed class PluginManifestTests : IDisposable
         string id = "my-plugin",
         string name = "My plugin",
         string version = "1.2.0",
+        string publisher = "Me",
         string? executable = null,
         string models = "[]",
         string extra = "") =>
@@ -227,7 +260,7 @@ public sealed class PluginManifestTests : IDisposable
           "id": "{{id}}",
           "name": "{{name}}",
           "version": "{{version}}",
-          "publisher": "Me",
+          "publisher": "{{publisher}}",
           "homepage": "https://example.com",
           "executable": {{executable ?? $$"""{"{{Rid}}":"plugin.exe"}"""}},
           "models": {{models}}

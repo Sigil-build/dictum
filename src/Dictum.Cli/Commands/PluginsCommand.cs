@@ -94,10 +94,15 @@ internal static class PluginsCommand
             var executable = manifest.ExecutablePath(folder);
             await Probe(context, new PluginLaunch(manifest.Id, manifest.Name, manifest.Version, folder, executable, Model: null, Threads: null), token).ConfigureAwait(false);
 
-            // Saved before it is confirmed: a failed save then leaves a plugin that is not confirmed, never a confirmation nobody asked for.
-            config.Plugins[manifest.Id] = new PluginRegistration { Path = folder };
-            context.SaveValidated(config);
             new PluginTrustStore(context.Paths.PluginTrustFile, context.Log).Confirm(manifest.Id, folder, executable);
+
+            // A re-confirm changes nothing in the config, so it is not rewritten: a running daemon would reload it for nothing.
+            if (!registered)
+            {
+                config.Plugins[manifest.Id] = new PluginRegistration { Path = folder };
+                context.SaveValidated(config);
+            }
+
             context.Out.WriteLine($"Added {manifest.Name} {manifest.Version} (protocol {PluginProtocol.Version}).");
             return ExitCodes.Success;
         }, ct));

@@ -141,6 +141,52 @@ public sealed class PluginsCommandTests : IDisposable
     }
 
     [Fact]
+    public async Task ReconfirmingTheSameFolderLeavesTheConfigUntouched()
+    {
+        var folder = TestPlugins.Folder(_dir);
+        SaveConfig(new DictumConfig());
+        await RunAsync("add", folder, "--yes");
+        var before = File.ReadAllBytes(_configFile);
+        var old = new DateTime(2000, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        File.SetLastWriteTimeUtc(_configFile, old);
+        string[] spellings = OperatingSystem.IsWindows()
+            ? [folder + Path.DirectorySeparatorChar, folder.ToUpperInvariant()]
+            : [folder + Path.DirectorySeparatorChar];
+
+        foreach (var spelling in spellings)
+        {
+            File.AppendAllText(PluginManifest.Load(folder).ExecutablePath(folder), "x");
+            Assert.Equal(PluginTrust.Changed, Check(folder));
+
+            var (code, _, _) = await RunAsync("add", spelling, "--yes");
+
+            Assert.Equal(0, code);
+            Assert.Equal(PluginTrust.Confirmed, Check(folder));
+            Assert.Equal(before, File.ReadAllBytes(_configFile));
+            Assert.Equal(old, File.GetLastWriteTimeUtc(_configFile));
+        }
+    }
+
+    [Fact]
+    public async Task AManifestWithAnEscapeSequenceIsRefusedBeforeAnyQuestion()
+    {
+        var folder = TestPlugins.Folder(_dir);
+        var executable = PluginManifest.Load(folder).ExecutablePath(folder);
+        var manifest = Path.Combine(folder, PluginProtocol.ManifestFile);
+        File.WriteAllText(manifest, File.ReadAllText(manifest).Replace("\"Test\"", "\"Test\\u001b[2J\"", StringComparison.Ordinal));
+        SaveConfig(new DictumConfig());
+
+        var (code, _, error) = await RunAsync("add", folder, "--yes");
+
+        Assert.Equal(2, code);
+        Assert.Contains("name must not contain control characters", error, StringComparison.Ordinal);
+        Assert.DoesNotContain('\u001b', error);
+        Assert.DoesNotContain(Trust, error, StringComparison.Ordinal);
+        Assert.Empty(LoadConfig().Plugins);
+        Assert.Equal(PluginTrust.NotConfirmed, _trust.Check("test", folder, executable));
+    }
+
+    [Fact]
     public async Task RemoveRefusesAPluginAProviderUses()
     {
         var folder = TestPlugins.Folder(_dir);

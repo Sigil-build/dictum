@@ -67,8 +67,15 @@ public sealed record PluginManifest(
 
         if (!PluginIds.IsValid(Id))
         {
-            problems.Add($"id '{Id}' {PluginIds.Rule}");
+            problems.Add($"id '{Show(Id)}' {PluginIds.Rule}");
         }
+
+        // These strings reach the terminal before the user is asked anything, so none may carry an escape sequence.
+        RefuseControl("id", Id, problems);
+        RefuseControl("name", Name, problems);
+        RefuseControl("version", Version, problems);
+        RefuseControl("publisher", Publisher, problems);
+        RefuseControl("homepage", Homepage, problems);
 
         if (string.IsNullOrWhiteSpace(Name))
         {
@@ -85,6 +92,18 @@ public sealed record PluginManifest(
         return problems;
     }
 
+    private static void RefuseControl(string field, string? value, List<string> problems)
+    {
+        if (value is not null && value.Any(char.IsControl))
+        {
+            problems.Add($"{field} must not contain control characters");
+        }
+    }
+
+    /// <summary>A manifest value for a message: control characters spelt out, so a message never moves the cursor.</summary>
+    private static string Show(string? value) =>
+        string.Concat((value ?? "").Select(c => char.IsControl(c) ? $"\\u{(int)c:x4}" : c.ToString()));
+
     private void CheckProgram(string folder, List<string> problems)
     {
         var rid = PluginProtocol.CurrentRid;
@@ -94,13 +113,14 @@ public sealed record PluginManifest(
             return;
         }
 
+        RefuseControl($"program for {rid}", file, problems);
         if (!IsInside(folder, file))
         {
             problems.Add($"the program for {rid} must be a file name inside the folder");
         }
         else if (!File.Exists(Path.Combine(folder, file)))
         {
-            problems.Add($"the program {file} for {rid} is not in the folder");
+            problems.Add($"the program {Show(file)} for {rid} is not in the folder");
         }
     }
 
@@ -128,17 +148,19 @@ public sealed record PluginManifest(
 
             if (!PluginIds.IsValidModelId(model.Id))
             {
-                problems.Add($"model id '{model.Id}' {PluginIds.ModelRule}");
+                problems.Add($"model id '{Show(model.Id)}' {PluginIds.ModelRule}");
             }
 
             if (!seen.Add(model.Id))
             {
-                problems.Add($"model id '{model.Id}' appears twice");
+                problems.Add($"model id '{Show(model.Id)}' appears twice");
             }
 
+            RefuseControl($"model {Show(model.Id)}: id", model.Id, problems);
+            RefuseControl($"model {Show(model.Id)}: title", model.Title, problems);
             if (model.Languages is null || model.Languages.Count == 0)
             {
-                problems.Add($"model {model.Id} must list its languages");
+                problems.Add($"model {Show(model.Id)} must list its languages");
             }
 
             foreach (var file in model.Files ?? [])
@@ -156,24 +178,28 @@ public sealed record PluginManifest(
 
     private static void CheckModelFile(string modelId, PluginManifestFile file, List<string> problems)
     {
+        modelId = Show(modelId);
+        var shown = Show(file.File);
+        RefuseControl($"model {modelId}: file name", file.File, problems);
+        RefuseControl($"model {modelId}: url", file.Url, problems);
         if (!IsInsideModelFolder(file.File))
         {
-            problems.Add($"model {modelId}: {file.File} must be a file name inside the model's folder");
+            problems.Add($"model {modelId}: {shown} must be a file name inside the model's folder");
         }
 
         if (!Uri.TryCreate(file.Url, UriKind.Absolute, out var url) || url.Scheme != Uri.UriSchemeHttps)
         {
-            problems.Add($"model {modelId}: {file.File} must come from an https address");
+            problems.Add($"model {modelId}: {shown} must come from an https address");
         }
 
         if (file.Sha256 is not { Length: Sha256HexLength } hash || !hash.All(char.IsAsciiHexDigit))
         {
-            problems.Add($"model {modelId}: {file.File} needs a SHA-256");
+            problems.Add($"model {modelId}: {shown} needs a SHA-256");
         }
 
         if (file.Size <= 0)
         {
-            problems.Add($"model {modelId}: {file.File} needs its size in bytes");
+            problems.Add($"model {modelId}: {shown} needs its size in bytes");
         }
     }
 }
