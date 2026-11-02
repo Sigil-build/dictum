@@ -789,6 +789,9 @@
     <value>Remote server · {0}</value>
   </data>
   <data name="SettingsProvidersPluginTitle" xml:space="preserve">
+    <value>Plugin · {0}</value>
+  </data>
+  <data name="SettingsProvidersPlugin" xml:space="preserve">
     <value>Plugin</value>
   </data>
   <data name="SettingsProvidersPluginText" xml:space="preserve">

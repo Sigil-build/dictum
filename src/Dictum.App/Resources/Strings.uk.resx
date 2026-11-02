@@ -789,6 +789,9 @@
     <value>Сервер · {0}</value>
   </data>
   <data name="SettingsProvidersPluginTitle" xml:space="preserve">
+    <value>Плагін · {0}</value>
+  </data>
+  <data name="SettingsProvidersPlugin" xml:space="preserve">
     <value>Плагін</value>
   </data>
   <data name="SettingsProvidersPluginText" xml:space="preserve">

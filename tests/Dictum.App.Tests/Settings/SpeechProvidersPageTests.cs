@@ -1,3 +1,4 @@
+using System.Text;
 using Dictum.App.Daemon;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
@@ -236,6 +237,15 @@ public sealed class SpeechProvidersPageTests : IDisposable
         Assert.False(card.IsLocal);
         Assert.Equal("Plugin · p", card.Title);
         Assert.Equal("Runs the plugin test with the model m1.", card.PluginText);
+    }
+
+    // The title is one string in each language, as the Local and Remote ones are, so a translation can order it.
+    [Fact]
+    public void APluginCardsTitleIsItsFormatString()
+    {
+        var (page, _) = Open(WithPlugin());
+
+        Assert.Equal(string.Format(Strings.Culture, CompositeFormat.Parse(Strings.SettingsProvidersPluginTitle), "p"), Card(page, "p").Title);
     }
 
     [Fact]

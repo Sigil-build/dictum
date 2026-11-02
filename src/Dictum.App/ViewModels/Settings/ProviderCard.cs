@@ -180,7 +180,7 @@ public sealed partial class ProviderCard : ObservableObject
             Title = Kind switch
             {
                 ProviderKind.Local => UiText.Format(Strings.SettingsProvidersLocalTitle, Id),
-                ProviderKind.Plugin => $"{Strings.SettingsProvidersPluginTitle} · {Id}",
+                ProviderKind.Plugin => UiText.Format(Strings.SettingsProvidersPluginTitle, Id),
                 _ => UiText.Format(Strings.SettingsProvidersRemoteTitle, Id),
             };
             UsedBy = users.Count == 0

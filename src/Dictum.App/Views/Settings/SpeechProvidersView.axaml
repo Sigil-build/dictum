@@ -72,7 +72,7 @@
                 </Grid>
 
                 <StackPanel Spacing="4" IsVisible="{Binding IsPlugin}">
-                  <TextBlock Text="{x:Static res:Strings.SettingsProvidersPluginTitle}" Classes="hint" />
+                  <TextBlock Text="{x:Static res:Strings.SettingsProvidersPlugin}" Classes="hint" />
                   <TextBlock Text="{Binding PluginText}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
                   <TextBlock Text="{x:Static res:Strings.SettingsProvidersPluginHint}" Classes="hint" TextWrapping="Wrap" />
                 </StackPanel>
