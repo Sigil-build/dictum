@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Text.Json.Nodes;
 using Dictum.Plugins;
 using Dictum.TestPlugin;
@@ -64,6 +66,31 @@ public static class TestPlugins
     {
         var manifest = PluginManifest.Load(folder);
         return new PluginLaunch(id, manifest.Name, manifest.Version, folder, manifest.ExecutablePath(folder), model, threads);
+    }
+
+    /// <summary>Whether a test plugin copied into <paramref name="dir"/> still runs; every test copies the plugin into its own.</summary>
+    public static bool RunsIn(TempDirectory dir)
+    {
+        var mine = Path.DirectorySeparatorChar + Path.GetFileName(dir.Path) + Path.DirectorySeparatorChar;
+        foreach (var process in Process.GetProcessesByName(ProgramName))
+        {
+            using (process)
+            {
+                try
+                {
+                    if (!process.HasExited && process.MainModule?.FileName.Contains(mine, StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        return true;
+                    }
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or Win32Exception)
+                {
+                    // It exited while we looked.
+                }
+            }
+        }
+
+        return false;
     }
 
     private static void CopyDirectory(string from, string to)

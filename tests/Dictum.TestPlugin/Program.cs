@@ -73,20 +73,37 @@ internal static class Program
             await next(context);
         });
 
-        // 8-10.
+        // The end of the plugin: 0 when its stdin closes, or a crash.
+        var exit = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var infoSent = 0;
+
+        // 8-11.
         app.MapGet("/health", () => started.ElapsedMilliseconds < behaviour.LoadMs
             ? Results.Json(new Health("loading"), AnswerJson.Default.Health, statusCode: StatusCodes.Status503ServiceUnavailable)
             : Results.Json(new Health("ready"), AnswerJson.Default.Health));
-        app.MapGet("/dictum/v1/info", () => Results.Json(
-            new Info(
-                behaviour.InfoProtocol,
-                behaviour.Name,
-                behaviour.Version,
-                model is null ? null : new ModelInfo(ModelId(model), behaviour.Languages, behaviour.SetLanguage, Prompt: true),
-                args,
-                threads,
-                Environment.CurrentDirectory),
-            AnswerJson.Default.Info));
+        app.MapGet("/dictum/v1/info", (HttpContext context) =>
+        {
+            // 11. Dictum counts the plugin ready once it has this answer, so a crash is timed from the first one sent.
+            if (behaviour.ExitAfterReadyMs is { } exitAfter && Interlocked.Exchange(ref infoSent, 1) == 0)
+            {
+                context.Response.OnCompleted(() =>
+                {
+                    _ = Task.Delay(exitAfter).ContinueWith(_ => exit.TrySetResult(CrashCode), TaskScheduler.Default);
+                    return Task.CompletedTask;
+                });
+            }
+
+            return Results.Json(
+                new Info(
+                    behaviour.InfoProtocol,
+                    behaviour.Name,
+                    behaviour.Version,
+                    model is null ? null : new ModelInfo(ModelId(model), behaviour.Languages, behaviour.SetLanguage, Prompt: true),
+                    args,
+                    threads,
+                    Environment.CurrentDirectory),
+                AnswerJson.Default.Info);
+        });
         app.MapPost("/v1/audio/transcriptions", (HttpRequest request) => TranscribeAsync(request, behaviour));
         await app.StartAsync();
 
@@ -103,13 +120,7 @@ internal static class Program
             Console.WriteLine(afterReady);
         }
 
-        // 11-12.
-        var exit = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
-        if (behaviour.ExitAfterReadyMs is { } exitAfter)
-        {
-            _ = Task.Delay(exitAfter).ContinueWith(_ => exit.TrySetResult(CrashCode), TaskScheduler.Default);
-        }
-
+        // 12.
         if (!behaviour.IgnoreStdin)
         {
             _ = Task.Run(() =>

@@ -24,7 +24,10 @@ public sealed record TestPluginBehaviour
     /// <summary>Exits with this code after the stderr lines, before it listens.</summary>
     public int? ExitAtStart { get; set; }
 
-    /// <summary>Exits with code 1 this long after the ready line, as a crash would.</summary>
+    /// <summary>
+    /// Exits with code 1, as a crash would, this long after its first <c>/dictum/v1/info</c> answer was sent: the last
+    /// step of Dictum's start, so the crash never lands inside the start, however slow the plugin's first requests are.
+    /// </summary>
     public int? ExitAfterReadyMs { get; set; }
 
     public bool NoReadyLine { get; set; }

@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -102,7 +101,7 @@ public sealed class PluginProcessTests : IDisposable
 
         Assert.Equal("Plugin test did not get ready within 1 s.", error.Message);
         Assert.Equal(Hint, error.Hint);
-        Assert.False(TestPluginRuns(), "the plugin still runs");
+        Assert.False(TestPlugins.RunsIn(_dir), "the plugin still runs");
     }
 
     [Fact(Timeout = TestTimeout.Generous)]
@@ -115,7 +114,7 @@ public sealed class PluginProcessTests : IDisposable
 
         Assert.Equal("Plugin test announced http://192.0.2.1:80, which is not on this computer.", error.Message);
         Assert.Equal(Hint, error.Hint);
-        Assert.False(TestPluginRuns(), "the plugin still runs");
+        Assert.False(TestPlugins.RunsIn(_dir), "the plugin still runs");
     }
 
     [Fact(Timeout = TestTimeout.Generous)]
@@ -128,7 +127,7 @@ public sealed class PluginProcessTests : IDisposable
 
         Assert.Equal("Plugin test speaks protocol 2; this Dictum speaks protocol 1.", error.Message);
         Assert.Equal(Hint, error.Hint);
-        Assert.False(TestPluginRuns(), "the plugin still runs");
+        Assert.False(TestPlugins.RunsIn(_dir), "the plugin still runs");
     }
 
     [Fact(Timeout = TestTimeout.Generous)]
@@ -180,12 +179,12 @@ public sealed class PluginProcessTests : IDisposable
         var ct = TestContext.Current.CancellationToken;
         var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { IgnoreStdin = true });
         var plugin = await StartAsync(TestPlugins.Launch(folder), ct, PluginTimings.Default with { StopGrace = TimeSpan.FromMilliseconds(500) });
-        Assert.True(TestPluginRuns(), "the check does not see the running plugin");
+        Assert.True(TestPlugins.RunsIn(_dir), "the check does not see the running plugin");
 
         await plugin.StopAsync().WaitAsync(StopWithin, ct);
         await plugin.Exited.WaitAsync(Patience, ct);
 
-        Assert.False(TestPluginRuns(), "the plugin still runs");
+        Assert.False(TestPlugins.RunsIn(_dir), "the plugin still runs");
     }
 
     /// <summary>The wait after the kill has a bound of its own, so with no grace at all the stop still sees the plugin gone.</summary>
@@ -254,29 +253,4 @@ public sealed class PluginProcessTests : IDisposable
             Path.TrimEndingDirectorySeparator(Path.GetFullPath(expected)),
             Path.TrimEndingDirectorySeparator(Path.GetFullPath(actual)),
             PathComparison.Current);
-
-    /// <summary>Whether a test plugin from this test's folder still runs; every test copies the plugin into its own.</summary>
-    private bool TestPluginRuns()
-    {
-        var mine = Path.DirectorySeparatorChar + Path.GetFileName(_dir.Path) + Path.DirectorySeparatorChar;
-        foreach (var process in Process.GetProcessesByName("dictum-test-plugin"))
-        {
-            using (process)
-            {
-                try
-                {
-                    if (!process.HasExited && process.MainModule?.FileName.Contains(mine, StringComparison.OrdinalIgnoreCase) == true)
-                    {
-                        return true;
-                    }
-                }
-                catch (Exception ex) when (ex is InvalidOperationException or Win32Exception)
-                {
-                    // It exited while we looked.
-                }
-            }
-        }
-
-        return false;
-    }
 }
