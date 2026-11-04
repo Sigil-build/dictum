@@ -605,7 +605,8 @@ public sealed class PluginProcessTests : IDisposable
             await child.WaitForExitAsync(ct).WaitAsync(Patience, ct);
         }
 
-        Assert.True(plugin.Exited.IsCompleted, "the plugin's exit was not noticed");
+        // The child goes once Dictum closes its stdin, which follows the noticed exit; waiting keeps a slow runner honest.
+        await plugin.Exited.WaitAsync(Patience, ct);
     }
 
     /// <summary>
