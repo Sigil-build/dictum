@@ -36,7 +36,7 @@ public sealed record PluginManifest(
         PluginManifest? manifest;
         try
         {
-            manifest = JsonSerializer.Deserialize(File.ReadAllText(path), PluginJsonContext.Default.PluginManifest);
+            manifest = Parse(File.ReadAllBytes(path));
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
@@ -59,6 +59,18 @@ public sealed record PluginManifest(
 
     /// <summary>The full path of this system's program inside the plugin's folder.</summary>
     public string ExecutablePath(string folder) => Path.Combine(folder, Executable[PluginProtocol.CurrentRid]);
+
+    /// <summary>
+    /// The file's bytes as a manifest, unchecked; null for a JSON <c>null</c>. The one way plugin.json is read, by
+    /// <see cref="Load"/> and by the trust record alike, so that both always see the same <see cref="Program"/>.
+    /// </summary>
+    /// <exception cref="JsonException">The bytes are not a manifest in JSON.</exception>
+    internal static PluginManifest? Parse(byte[] json)
+    {
+        // UTF-8 unless a byte order mark says otherwise, which it skips.
+        using var reader = new StreamReader(new MemoryStream(json), detectEncodingFromByteOrderMarks: true);
+        return JsonSerializer.Deserialize(reader.ReadToEnd(), PluginJsonContext.Default.PluginManifest);
+    }
 
     private List<string> Check(string folder)
     {
@@ -164,7 +176,30 @@ public sealed record PluginManifest(
             {
                 problems.Add($"program lists '{Show(entry)}', which is not in the plugin's folder");
             }
+            else if (IsThroughLink(folder, entry))
+            {
+                problems.Add($"program lists '{Show(entry)}', which is a link or is inside a linked folder");
+            }
         }
+    }
+
+    /// <summary>
+    /// Whether the entry, or a folder on the way to it, is a link. The trust record does not enter a linked folder, and
+    /// one on the way leads out of the plugin's folder, so the author would believe a file is checked when it is not.
+    /// </summary>
+    private static bool IsThroughLink(string folder, string entry)
+    {
+        var path = folder;
+        foreach (var segment in entry.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
+        {
+            path = Path.Combine(path, segment);
+            if (PluginProgramFiles.IsLink(Directory.Exists(path) ? new DirectoryInfo(path) : new FileInfo(path)))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool IsInside(string folder, string file)
@@ -264,13 +299,12 @@ public sealed record PluginManifest(
     private static string Index(int i) => i.ToString(CultureInfo.InvariantCulture);
 
     /// <summary>
-    /// Relative, with no empty, <c>.</c> or <c>..</c> segment on either kind of separator; subfolders are fine. A
-    /// manifest serves every system, so a path rooted on Windows, such as <c>C:\x</c>, is refused on Linux too.
+    /// Relative, with no empty, <c>.</c> or <c>..</c> segment on either kind of separator, so no leading separator
+    /// either; subfolders are fine. A manifest serves every system, so a drive, as in <c>C:\x</c>, is refused on Linux too.
     /// </summary>
     private static bool IsInsideFolder(string? file) =>
         !string.IsNullOrEmpty(file)
         && !Path.IsPathRooted(file)
-        && file[0] is not ('/' or '\\')
         && !(file.Length >= 2 && char.IsAsciiLetter(file[0]) && file[1] == ':')
         && file.Split('/', '\\').All(segment => segment is not ("" or "." or ".."));
 

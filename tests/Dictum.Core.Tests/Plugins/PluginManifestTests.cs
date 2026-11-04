@@ -11,9 +11,19 @@ public sealed class PluginManifestTests : IDisposable
 
     private readonly TempDirectory _folder = new();
 
+    /// <summary>Where a link in the plugin's folder points: outside it, as a link may.</summary>
+    private readonly TempDirectory _elsewhere = new();
+
+    private readonly FolderLinks _links = new();
+
     private static string Rid => PluginProtocol.CurrentRid;
 
-    public void Dispose() => _folder.Dispose();
+    public void Dispose()
+    {
+        _links.Dispose();
+        _folder.Dispose();
+        _elsewhere.Dispose();
+    }
 
     [Fact]
     public void AValidManifestLoads()
@@ -244,6 +254,52 @@ public sealed class PluginManifestTests : IDisposable
         Assert.Equal(
             ["program lists 'plugin.py', which is not in the plugin's folder", "program lists 'lib/missing', which is not in the plugin's folder"],
             Problems());
+    }
+
+    /// <summary>
+    /// A listed folder that is a link would add no files, and one on the way to an entry would lead out of the folder:
+    /// either way the author would think a file is checked when it is not, so the manifest says so.
+    /// </summary>
+    [Fact]
+    public void AProgramEntryThatIsALinkIsAProblem()
+    {
+        File.WriteAllText(_elsewhere.File("x.py"), "print()");
+        _links.Add(_folder.File("lib"), _elsewhere.Path);
+        Write(Manifest(extra: "\"program\": [\"lib\"],"));
+
+        Assert.Equal(["program lists 'lib', which is a link or is inside a linked folder"], Problems());
+    }
+
+    [Fact]
+    public void AProgramEntryInsideALinkedFolderIsAProblem()
+    {
+        Directory.CreateDirectory(Path.Combine(_elsewhere.Path, "sub"));
+        File.WriteAllText(Path.Combine(_elsewhere.Path, "sub", "x.py"), "print()");
+        Directory.CreateDirectory(_folder.File("src"));
+        _links.Add(Path.Combine(_folder.Path, "src", "lib"), _elsewhere.Path);
+        Write(Manifest(extra: "\"program\": [\"src/lib/sub/x.py\", \"src/lib/sub\"],"));
+
+        Assert.Equal(
+            ["program lists 'src/lib/sub/x.py', which is a link or is inside a linked folder", "program lists 'src/lib/sub', which is a link or is inside a linked folder"],
+            Problems());
+    }
+
+    [Fact]
+    public void AProgramEntryThatIsAFileLinkIsAProblem()
+    {
+        File.WriteAllText(_elsewhere.File("x.py"), "print()");
+        try
+        {
+            File.CreateSymbolicLink(_folder.File("plugin.py"), _elsewhere.File("x.py"));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Assert.Skip($"This account cannot make symbolic links: {ex.Message}");
+        }
+
+        Write(Manifest(extra: "\"program\": [\"plugin.py\"],"));
+
+        Assert.Equal(["program lists 'plugin.py', which is a link or is inside a linked folder"], Problems());
     }
 
     [Fact]

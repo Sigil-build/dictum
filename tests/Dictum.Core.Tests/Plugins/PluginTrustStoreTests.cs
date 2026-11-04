@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text.Json.Nodes;
 using Dictum.Core.Diagnostics;
 using Dictum.Plugins;
@@ -10,16 +9,11 @@ public sealed class PluginTrustStoreTests : IDisposable
 {
     private readonly TempDirectory _temp = new();
     private readonly ListLog _log = new();
-    private readonly List<string> _links = [];
+    private readonly FolderLinks _links = new();
 
     public void Dispose()
     {
-        // A link goes first: removing the folder that holds a junction fails on Windows.
-        foreach (var link in _links)
-        {
-            Directory.Delete(link);
-        }
-
+        _links.Dispose();
         _temp.Dispose();
     }
 
@@ -257,6 +251,71 @@ public sealed class PluginTrustStoreTests : IDisposable
         Assert.Equal(before, File.ReadAllBytes(TrustFile));
     }
 
+    /// <summary>
+    /// <c>plugins add</c> takes the hashes before the plugin first runs and records them after: what is recorded is
+    /// what the user was shown, not what the program left behind.
+    /// </summary>
+    [Fact]
+    public void AConfirmationRecordsTheFilesAsTheyWereWhenItWasPrepared()
+    {
+        var (folder, program) = Plugin("a", "plugin.py");
+        Put(folder, "plugin.py", "before");
+        var store = NewStore();
+
+        var confirmation = store.Prepare("a", folder, program);
+        Put(folder, "plugin.py", "after");
+        Assert.Equal(PluginTrust.NotConfirmed, store.Check("a", folder, program).Trust);
+        store.Confirm(confirmation);
+
+        Assert.Equal(Changed("plugin.py"), store.Check("a", folder, program));
+    }
+
+    [Fact]
+    public void ANewerTrustFileRefusesAConfirmationBeforeItIsPrepared()
+    {
+        var (folder, program) = Plugin("a");
+        File.WriteAllText(TrustFile, """{"version":2,"custom":{}}""");
+
+        var error = Assert.Throws<PluginTrustException>(() => NewStore().Prepare("a", folder, program));
+
+        Assert.Contains("was written by a newer Dictum", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A version bump is when the shape is likely to change: a file this Dictum cannot read as its own is still a newer
+    /// one, not a damaged one, and is neither trusted nor replaced.
+    /// </summary>
+    [Fact]
+    public void ANewerTrustFileOfAnotherShapeIsNotOverwritten()
+    {
+        var (folder, program) = Plugin("a");
+        var newer = new JsonObject
+        {
+            ["version"] = 2,
+            ["custom"] = new JsonObject
+            {
+                ["a"] = new JsonObject
+                {
+                    ["folder"] = folder,
+                    ["executable"] = program,
+                    ["files"] = new JsonObject { ["plugin.exe"] = new JsonObject { ["sha256"] = PluginTrustStore.HashFile(program), ["size"] = 9 } },
+                },
+            },
+        };
+        File.WriteAllText(TrustFile, newer.ToJsonString());
+        var before = File.ReadAllBytes(TrustFile);
+        var store = NewStore();
+
+        Assert.Equal(PluginTrust.NotConfirmed, store.Check("a", folder, program).Trust);
+        var warning = Assert.Single(_log.Lines, l => l.Level == LogLevel.Warning);
+        Assert.Contains("was written by a newer Dictum (file version 2; this one reads 1)", warning.Message, StringComparison.Ordinal);
+
+        Assert.Throws<PluginTrustException>(() => store.Confirm("a", folder, program));
+        store.Forget("a");
+
+        Assert.Equal(before, File.ReadAllBytes(TrustFile));
+    }
+
     /// <summary>Ledger line 49: Windows' file system ignores case, so a folder spelt in other letters is the same plugin.</summary>
     [Fact]
     public void APathThatDiffersOnlyInCaseIsTheSamePluginOnWindows()
@@ -292,9 +351,9 @@ public sealed class PluginTrustStoreTests : IDisposable
         Put(folder, "lib/a.py");
         var elsewhere = Path.Combine(_temp.Path, "elsewhere");
         Put(elsewhere, "inside.py");
-        LinkFolder(Path.Combine(folder, "lib", "up"), folder);
-        LinkFolder(Path.Combine(folder, "lib", "elsewhere"), elsewhere);
-        LinkFolder(Path.Combine(folder, "linked"), elsewhere);
+        _links.Add(Path.Combine(folder, "lib", "up"), folder);
+        _links.Add(Path.Combine(folder, "lib", "elsewhere"), elsewhere);
+        _links.Add(Path.Combine(folder, "linked"), elsewhere);
         var store = NewStore();
         store.Confirm("a", folder, program);
 
@@ -331,33 +390,6 @@ public sealed class PluginTrustStoreTests : IDisposable
         File.WriteAllText(target, "after");
 
         Assert.Equal(Changed("lib/file.py"), store.Check("a", folder, program));
-    }
-
-    /// <summary>A symbolic link to the folder; on a Windows account that may not make one, a junction, which needs no right.</summary>
-    private void LinkFolder(string link, string target)
-    {
-        try
-        {
-            Directory.CreateSymbolicLink(link, target);
-            _links.Add(link);
-            return;
-        }
-        catch (IOException) when (OperatingSystem.IsWindows())
-        {
-            // A required privilege is not held by the client.
-        }
-
-        var start = new ProcessStartInfo("cmd.exe") { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true };
-        foreach (var argument in (string[])["/c", "mklink", "/J", link, target])
-        {
-            start.ArgumentList.Add(argument);
-        }
-
-        using var mklink = Process.Start(start)!;
-        mklink.StandardOutput.ReadToEnd();
-        mklink.WaitForExit();
-        Assert.True(mklink.ExitCode == 0 && Directory.Exists(link), $"mklink /J {link} failed with code {mklink.ExitCode}");
-        _links.Add(link);
     }
 
     [Fact]

@@ -72,6 +72,12 @@ internal static class PluginsCommand
                     $"A plugin named {manifest.Id} is already added from {existing.Path}. Remove it first: dictum plugins remove {manifest.Id}");
             }
 
+            // Hashed now, before the user is asked and before the program runs, so the record pins the files as they
+            // are shown, not as the plugin leaves them; and a trust file this Dictum may not change refuses at once.
+            var executable = manifest.ExecutablePath(folder);
+            var trust = new PluginTrustStore(context.Paths.PluginTrustFile, context.Log);
+            var confirmation = trust.Prepare(manifest.Id, folder, executable);
+
             context.Error.WriteLine($"{manifest.Name} {manifest.Version} by {manifest.Publisher ?? "an unknown publisher"} from {folder}");
             if (registered)
             {
@@ -100,10 +106,9 @@ internal static class PluginsCommand
                 }
             }
 
-            var executable = manifest.ExecutablePath(folder);
             await Probe(context, new PluginLaunch(manifest.Id, manifest.Name, manifest.Version, folder, executable, Model: null, Threads: null), token).ConfigureAwait(false);
 
-            new PluginTrustStore(context.Paths.PluginTrustFile, context.Log).Confirm(manifest.Id, folder, executable);
+            trust.Confirm(confirmation);
 
             // A re-confirm changes nothing in the config, so it is not rewritten: a running daemon would reload it for nothing.
             if (!registered)

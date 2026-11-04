@@ -53,17 +53,29 @@ public sealed class PluginTrustStore(string path, ILog log)
     /// <exception cref="PluginTrustException">A newer Dictum wrote the file, which this one leaves as it is.</exception>
     /// <exception cref="IOException">A program file cannot be read.</exception>
     /// <exception cref="UnauthorizedAccessException">A program file may not be read.</exception>
-    public void Confirm(string id, string folder, string executable)
+    public void Confirm(string id, string folder, string executable) => Confirm(Prepare(id, folder, executable));
+
+    /// <summary>
+    /// The first half of a confirmation, taken before the plugin runs: refuses a file that a newer Dictum wrote, so that
+    /// nothing runs for a confirmation that cannot be kept, and hashes the program files as they are now.
+    /// </summary>
+    /// <exception cref="PluginTrustException">A newer Dictum wrote the file, which this one leaves as it is.</exception>
+    /// <exception cref="IOException">A program file cannot be read.</exception>
+    /// <exception cref="UnauthorizedAccessException">A program file may not be read.</exception>
+    public PluginConfirmation Prepare(string id, string folder, string executable)
+    {
+        ThrowIfNewer(Read());
+        var files = PluginProgramFiles.List(folder, executable).Hashes();
+        return new PluginConfirmation(id, new PluginTrustRecord(Path.GetFullPath(folder), Path.GetFullPath(executable), files));
+    }
+
+    /// <summary>Records a confirmation that <see cref="Prepare"/> took, with the files as they were then. Replaces a damaged file.</summary>
+    /// <exception cref="PluginTrustException">A newer Dictum wrote the file meanwhile, which this one leaves as it is.</exception>
+    public void Confirm(PluginConfirmation confirmation)
     {
         var file = Read();
-        if (file.Version > FileVersion)
-        {
-            throw new PluginTrustException(
-                $"{Newer(file.Version)}, so this Dictum does not change it.",
-                "Update Dictum, then confirm the plugin again.");
-        }
-
-        file.Custom[id] = new PluginTrustRecord(Path.GetFullPath(folder), Path.GetFullPath(executable), PluginProgramFiles.List(folder, executable).Hashes());
+        ThrowIfNewer(file);
+        file.Custom[confirmation.Id] = confirmation.Record;
         Write(file);
     }
 
@@ -82,6 +94,14 @@ public sealed class PluginTrustStore(string path, ILog log)
     {
         using var stream = File.OpenRead(path);
         return Convert.ToHexStringLower(SHA256.HashData(stream));
+    }
+
+    private void ThrowIfNewer(PluginTrustFile file)
+    {
+        if (file.Version > FileVersion)
+        {
+            throw new PluginTrustException($"{Newer(file.Version)}, so this Dictum does not change it.", "Update Dictum, then confirm the plugin again.");
+        }
     }
 
     private string Newer(int version) =>
@@ -137,13 +157,16 @@ public sealed class PluginTrustStore(string path, ILog log)
 
         try
         {
-            var file = JsonSerializer.Deserialize(File.ReadAllText(path), PluginJsonContext.Default.PluginTrustFile);
-            if (file is { Version: > FileVersion })
+            // The version first, alone: a newer Dictum may change the rest of the shape, and its file is not damaged.
+            var text = File.ReadAllText(path);
+            var version = JsonSerializer.Deserialize(text, PluginJsonContext.Default.PluginTrustVersion)?.Version ?? 0;
+            if (version > FileVersion)
             {
-                log.Warn($"{Newer(file.Version)}, so no plugin counts as confirmed.");
-                return file with { Custom = new Dictionary<string, PluginTrustRecord>(StringComparer.Ordinal) };
+                log.Warn($"{Newer(version)}, so no plugin counts as confirmed.");
+                return new PluginTrustFile(version, new Dictionary<string, PluginTrustRecord>(StringComparer.Ordinal));
             }
 
+            var file = JsonSerializer.Deserialize(text, PluginJsonContext.Default.PluginTrustFile);
             if (file is not { Custom: not null })
             {
                 return Empty();
@@ -184,7 +207,24 @@ public sealed class PluginTrustException(string message, string? hint = null) : 
     public string? Hint { get; } = hint;
 }
 
+/// <summary>A plugin's program files as they were when its confirmation was prepared, before it ran, waiting to be recorded.</summary>
+public sealed class PluginConfirmation
+{
+    internal PluginConfirmation(string id, PluginTrustRecord record)
+    {
+        Id = id;
+        Record = record;
+    }
+
+    public string Id { get; }
+
+    internal PluginTrustRecord Record { get; }
+}
+
 internal sealed record PluginTrustFile(int Version, Dictionary<string, PluginTrustRecord> Custom);
+
+/// <summary>Only the version of <c>plugin-trust.json</c>, which every version of the file keeps; the other fields are skipped.</summary>
+internal sealed record PluginTrustVersion(int Version);
 
 /// <param name="Files">The hash of each program file, by its path relative to <paramref name="Folder"/>, written with <c>/</c>.</param>
 internal sealed record PluginTrustRecord(string Folder, string Executable, Dictionary<string, string> Files);

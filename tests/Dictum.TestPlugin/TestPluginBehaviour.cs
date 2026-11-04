@@ -47,6 +47,12 @@ public sealed record TestPluginBehaviour
     /// <summary>Keeps running when its stdin closes, until it is killed.</summary>
     public bool IgnoreStdin { get; set; }
 
+    /// <summary>
+    /// A file next to the program, by its name, that gets a line appended first thing: a plugin that changes its own
+    /// files when it runs, and a mark that it ran at all.
+    /// </summary>
+    public string? AppendAtStart { get; set; }
+
     /// <summary>Written to stderr first thing.</summary>
     public IReadOnlyList<string> Stderr { get; set; } = [];
 

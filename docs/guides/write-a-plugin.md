@@ -75,7 +75,7 @@ Whisper is built into Dictum and is not a plugin program. Dictum's own plugins a
 :   The program to run on each system, by its runtime identifier: `win-x64` for Windows and `linux-x64` for Linux. The value is a file in the plugin's folder, or in a folder inside it, such as `bin/hello.exe`. It may be a script: a `.cmd` file on Windows, or a shell script with its execute bit set on Linux. On Windows, a `.cmd` or `.bat` launcher cannot be given a path with some characters in it; [the example](#example) says which.
 
 `program`
-:   The files and folders the program is made of, as paths inside the plugin's folder, such as `["plugin.py", "lib"]`: the script a launcher runs, the modules it imports, the libraries it loads. Dictum checks them, with `plugin.json` and the program that `executable` names, before every start: see [Add it to Dictum](#add). A folder covers every file beneath it, except in folders named `__pycache__`, which Python writes by itself. A folder that is a link is not followed; a file that is a link counts as the file it points to. Each entry is a path inside the folder, in a subfolder if you like, with no `..`, `.` or empty part, and not a full path such as `C:\hello\plugin.py`. Each must be in the folder, or Dictum says `program lists 'lib', which is not in the plugin's folder`. Do not list a folder the plugin writes to itself, such as one for logs: every write to it would count as a change. Optional, but without it Dictum checks only `plugin.json` and that program, and `dictum plugins add` says so.
+:   The files and folders the program is made of, as paths inside the plugin's folder, such as `["plugin.py", "lib"]`: the script a launcher runs, the modules it imports, the libraries it loads. Dictum checks them, with `plugin.json` and the program that `executable` names, before every start: see [Add it to Dictum](#add). A folder covers every file beneath it, except in folders named `__pycache__`, which Python writes by itself. Inside a listed folder, a folder that is a link is not followed, and a file that is a link counts as the file it points to. Each entry is a path inside the folder, in a subfolder if you like, with no `..`, `.` or empty part, and not a full path such as `C:\hello\plugin.py`. Each must be in the folder, or Dictum says `program lists 'lib', which is not in the plugin's folder`. An entry may not be a link, nor be inside a folder that is one: Dictum says `program lists 'lib', which is a link or is inside a linked folder`. Do not list a file or folder the plugin writes to itself, such as one for logs: every write to it would count as a change, even one during the run that `dictum plugins add` makes. Optional, but without it Dictum checks only `plugin.json` and that program, and `dictum plugins add` says so.
 
 `models`
 :   Optional: the models the plugin offers. Each has an `id` (lowercase letters, digits, `.`, `_` and `-`, at most 64 characters, starting with a letter or a digit), a `title`, the `languages` it knows, which must not be empty, and its `files`. Each file has a `file` name inside the model's folder (subfolders are fine, `..` is not), an `https` address in `url`, its `sha256` and its `size` in bytes. `setLanguage` and `prompt` say whether the model can be told the language and whether it uses a prompt: see [Languages and prompts](#language). Both are true unless you set them to false. `licence` is optional.
@@ -369,7 +369,7 @@ dictum plugins add ~/plugins/hello
 
 On Windows, run `dictum` by its full path: see [The command line](../getting-started.md#command-line).
 
-Dictum reads `plugin.json`, shows who the plugin says it is, and asks:
+Dictum reads `plugin.json`, takes the SHA-256 of `plugin.json`, of the program and of each file that `program` lists, shows who the plugin says it is, and asks:
 
 ```text
 Hello 1.0.0 by Your name from /home/you/plugins/hello
@@ -379,7 +379,7 @@ Add it? [y/N]:
 
 When `plugin.json` has no `program`, or an empty one, Dictum says so before it asks: `plugin.json lists no program files, so Dictum checks only plugin.json and plugin.cmd for changes.`
 
-If you answer `y`, Dictum runs the plugin once, without a model, to check that it starts and says who it is, and stops it again. Then it records the SHA-256 of `plugin.json`, of the program and of each file that `program` lists, adds the folder to `plugins` in `config.json`, and says:
+If you answer `y`, Dictum runs the plugin once, without a model, to check that it starts and says who it is, and stops it again. Then it records the SHA-256 sums it took before the plugin ran, adds the folder to `plugins` in `config.json`, and says:
 
 ```text
 Added Hello 1.0.0 (protocol 1).

@@ -75,11 +75,31 @@ public sealed class PluginsCommandTests : IDisposable
         Assert.Equal(PluginTrust.Confirmed, Check(folder));
     }
 
-    /// <summary>Ledger line 48: a plugin-trust.json from a newer Dictum is left as it is, and nothing is added.</summary>
+    /// <summary>
+    /// The record pins the files as the user was shown them, before the plugin first ran: a plugin that rewrites a listed
+    /// file when it starts shows as changed afterwards, not as confirmed in its new state.
+    /// </summary>
+    [Fact]
+    public async Task AddRecordsTheFilesAsTheyWereBeforeThePluginRan()
+    {
+        const string State = "state.txt";
+        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { AppendAtStart = State }, program: [State]);
+        File.WriteAllText(Path.Combine(folder, State), "shipped\n");
+        SaveConfig(new DictumConfig());
+
+        var (code, _, error) = await RunAsync("add", folder, "--yes");
+
+        Assert.True(code == 0, error);
+        Assert.Equal("shipped\nran\n", File.ReadAllText(Path.Combine(folder, State)));
+        Assert.Equal(new PluginTrustResult(PluginTrust.Changed, State), _trust.Check("test", folder, PluginManifest.Load(folder).ExecutablePath(folder)));
+    }
+
+    /// <summary>Ledger line 48: a plugin-trust.json from a newer Dictum is left as it is, nothing is added, and the plugin never runs.</summary>
     [Fact]
     public async Task AddRefusesToOverwriteATrustFileANewerDictumWrote()
     {
-        var folder = TestPlugins.Folder(_dir);
+        const string Ran = "ran.txt";
+        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { AppendAtStart = Ran });
         SaveConfig(new DictumConfig());
         var trustFile = AppPaths.FromEnvironment().PluginTrustFile;
         var saved = File.Exists(trustFile) ? File.ReadAllBytes(trustFile) : null;
@@ -94,6 +114,7 @@ public sealed class PluginsCommandTests : IDisposable
             Assert.Contains("hint: Update Dictum, then confirm the plugin again.", error, StringComparison.Ordinal);
             Assert.Equal("""{"version":2,"custom":{}}""", File.ReadAllText(trustFile));
             Assert.Empty(LoadConfig().Plugins);
+            Assert.False(File.Exists(Path.Combine(folder, Ran)), "the plugin ran before Dictum refused");
         }
         finally
         {

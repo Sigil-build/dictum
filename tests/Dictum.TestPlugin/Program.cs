@@ -42,6 +42,11 @@ internal static class Program
         var behaviour = Behaviour(model);
 
         // 2-4.
+        if (behaviour.AppendAtStart is { } file)
+        {
+            await File.AppendAllTextAsync(Path.Combine(AppContext.BaseDirectory, file), "ran\n");
+        }
+
         foreach (var line in behaviour.Stderr)
         {
             await Console.Error.WriteLineAsync(line);

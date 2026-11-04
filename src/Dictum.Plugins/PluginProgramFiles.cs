@@ -118,9 +118,9 @@ internal sealed class PluginProgramFiles
     }
 
     /// <summary>
-    /// The entries of <c>program</c> that name a path inside the folder, read as <see cref="PluginManifest.Load"/>
-    /// reads the file; none when it is not JSON. An entry the manifest's check refuses is skipped: such a manifest
-    /// never loads, so its plugin never starts.
+    /// The entries of <c>program</c> that name a path inside the folder, parsed as <see cref="PluginManifest.Load"/>
+    /// parses the file; none when it is not JSON, and then <see cref="PluginManifest.Load"/> refuses it too. An entry
+    /// the manifest's check refuses is skipped: such a manifest never loads, so its plugin never starts.
     /// </summary>
     private static IEnumerable<string> Entries(byte[]? manifest)
     {
@@ -131,9 +131,7 @@ internal sealed class PluginProgramFiles
 
         try
         {
-            using var reader = new StreamReader(new MemoryStream(manifest), detectEncodingFromByteOrderMarks: true);
-            var parsed = JsonSerializer.Deserialize(reader.ReadToEnd(), PluginJsonContext.Default.PluginManifest);
-            return parsed?.Program?.Where(PluginManifest.IsProgramEntry) ?? [];
+            return PluginManifest.Parse(manifest)?.Program?.Where(PluginManifest.IsProgramEntry) ?? [];
         }
         catch (JsonException)
         {
@@ -169,9 +167,9 @@ internal sealed class PluginProgramFiles
         }
     }
 
-    /// <summary>A symbolic link or a junction; Windows marks other folders, such as cloud placeholders, as reparse points too.</summary>
-    private static bool IsLink(DirectoryInfo directory) =>
-        (directory.Attributes & FileAttributes.ReparsePoint) != 0 && directory.LinkTarget is not null;
+    /// <summary>A symbolic link or a junction; Windows marks other files, such as cloud placeholders, as reparse points too.</summary>
+    internal static bool IsLink(FileSystemInfo info) =>
+        (info.Attributes & FileAttributes.ReparsePoint) != 0 && info.LinkTarget is not null;
 
     private static string Relative(string folder, string path) => Path.GetRelativePath(folder, path).Replace(Path.DirectorySeparatorChar, '/');
 }

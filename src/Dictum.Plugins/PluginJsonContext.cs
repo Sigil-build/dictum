@@ -11,6 +11,7 @@ namespace Dictum.Plugins;
     WriteIndented = true)]
 [JsonSerializable(typeof(PluginManifest))]
 [JsonSerializable(typeof(PluginTrustFile))]
+[JsonSerializable(typeof(PluginTrustVersion))]
 [JsonSerializable(typeof(PluginReadyLine))]
 [JsonSerializable(typeof(PluginInfo))]
 [JsonSerializable(typeof(PluginTranscription))]
