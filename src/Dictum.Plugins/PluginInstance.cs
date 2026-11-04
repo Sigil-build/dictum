@@ -503,7 +503,11 @@ public sealed class PluginInstance
             if (restart)
             {
                 var details = PluginStartFailedException.Details(unavailable);
-                _log.Warn(details is null ? ex.Message : $"{ex.Message}{Environment.NewLine}{details}");
+                _log.Warn(ex.Message);
+                foreach (var line in details?.Split('\n') ?? [])
+                {
+                    _log.Warn($"  {line.TrimEnd('\r')}");
+                }
             }
             else
             {

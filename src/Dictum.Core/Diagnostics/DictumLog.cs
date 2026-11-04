@@ -46,10 +46,12 @@ public sealed class DictumLog : ILog, IDisposable
         {
             if (_console is not null && level >= _consoleLevel && (ConsoleFilter?.Invoke(level, message, exception) ?? true))
             {
-                // What a plugin or a remote server said may be in the message or the exception; the file keeps it raw.
-                _console.WriteLine(TerminalText.ShowLines(exception is null || _consoleLevel > LogLevel.Debug
-                    ? $"{Prefix(level)}{message}"
-                    : $"{Prefix(level)}{message}{Environment.NewLine}{exception}"));
+                // What a plugin or a remote server said may be in the message or the exception; the file keeps it raw. A
+                // message is one line, so that its text cannot forge another; only an exception's dump keeps its breaks.
+                var line = $"{Prefix(level)}{TerminalText.Show(message)}";
+                _console.WriteLine(exception is null || _consoleLevel > LogLevel.Debug
+                    ? line
+                    : $"{line}{Environment.NewLine}{TerminalText.ShowLines(exception.ToString())}");
             }
 
             WriteFile(level, message, exception);

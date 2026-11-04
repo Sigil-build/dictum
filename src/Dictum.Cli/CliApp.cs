@@ -100,7 +100,7 @@ internal static class CliApp
     private static int Report(CliContext context, Exception ex)
     {
         var inner = ex is DictationException { InnerException: { } cause } ? cause : ex;
-        context.Log.Write(LogLevel.Debug, ex.ToString());
+        context.Log.Write(LogLevel.Debug, $"{ex.GetType().Name} ended the command", ex);
         switch (inner)
         {
             case ConfigException config:

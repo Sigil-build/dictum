@@ -104,6 +104,40 @@ public class DictumLogTests
         Assert.Contains("bad \u001b]0;PWNED\u0007 header", file, StringComparison.Ordinal);
     }
 
+    /// <summary>Text from a server or a plugin in a message must not start a console line of its own.</summary>
+    [Fact]
+    public void ALineBreakInAMessageDoesNotMakeAnotherConsoleLine()
+    {
+        var console = new StringWriter();
+        using var log = new DictumLog(LogLevel.Debug, includeText: false, console, logsDirectory: null);
+
+        log.Warn("seen\nerror: forged\r\nmore");
+
+        Assert.Equal($"warning: seen\\u000aerror: forged\\u000d\\u000amore{Environment.NewLine}", console.ToString());
+    }
+
+    [Fact]
+    public void AnExceptionsDumpKeepsItsLineBreaksOnTheConsole()
+    {
+        var console = new StringWriter();
+        using var log = new DictumLog(LogLevel.Debug, includeText: false, console, logsDirectory: null);
+        Exception thrown;
+        try
+        {
+            throw new InvalidOperationException("one\ntwo");
+        }
+        catch (InvalidOperationException ex)
+        {
+            thrown = ex;
+        }
+
+        log.Warn("failed", thrown);
+
+        var lines = console.ToString().Split(Environment.NewLine);
+        Assert.Equal("warning: failed", lines[0]);
+        Assert.Contains(lines, l => l.StartsWith("   at ", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void AnotherFileNameKeepsTwoProcessesApart()
     {

@@ -41,9 +41,11 @@ public sealed class ConsoleSinksTests : IDisposable
 
     /// <summary>A server whose answer holds an escape sequence in a header name: the exception it causes carries those bytes.</summary>
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task AServersMalformedAnswerReachesTheConsoleSpeltOut(bool verbose)
+    [InlineData("stt-test", false)]
+    [InlineData("stt-test", true)]
+    [InlineData("transcribe", false)]
+    [InlineData("transcribe", true)]
+    public async Task AServersMalformedAnswerReachesTheConsoleSpeltOut(string command, bool verbose)
     {
         using var listener = new TcpListener(IPAddress.Loopback, 0);
         listener.Start();
@@ -60,6 +62,19 @@ public sealed class ConsoleSinksTests : IDisposable
                     var buffer = new byte[8192];
                     _ = await stream.ReadAsync(buffer, cts.Token);
                     await stream.WriteAsync(Encoding.Latin1.GetBytes("HTTP/1.1 200 OK\r\nX\u001b]0;PWNED\u0007: v\r\nContent-Length: 0\r\n\r\n"), cts.Token);
+
+                    // Take the rest of the upload, so that the client reads the answer rather than a reset.
+                    using var drain = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
+                    drain.CancelAfter(300);
+                    try
+                    {
+                        while (await stream.ReadAsync(buffer, drain.Token) > 0)
+                        {
+                        }
+                    }
+                    catch (OperationCanceledException) when (!cts.IsCancellationRequested)
+                    {
+                    }
                 }
             }
             catch (Exception ex) when (ex is OperationCanceledException or SocketException or ObjectDisposedException or IOException)
@@ -74,10 +89,10 @@ public sealed class ConsoleSinksTests : IDisposable
         var wav = _dir.File("sample.wav");
         using (var stream = File.Create(wav))
         {
-            Audio.Wav.WritePcm16(stream, new float[16_000], 16_000);
+            Audio.Wav.WritePcm16(stream, Enumerable.Range(0, 16_000).Select(i => 0.5f * MathF.Sin(i * 0.0549f)).ToArray(), 16_000);
         }
 
-        string[] args = ["stt", "test", "remote", "--file", wav, "--config", _configFile];
+        string[] args = command == "transcribe" ? ["transcribe", wav, "--config", _configFile] : ["stt", "test", "remote", "--file", wav, "--config", _configFile];
         using var console = new ConsoleCapture();
         var code = await console.RunAsync(verbose ? [.. args, "--verbose"] : args);
         await cts.CancelAsync();
@@ -88,6 +103,10 @@ public sealed class ConsoleSinksTests : IDisposable
         Assert.NotEqual(0, code);
         Assert.False(all.Contains('\u001b', StringComparison.Ordinal), all);
         Assert.False(all.Contains('\u0007', StringComparison.Ordinal), all);
-        Assert.Contains("\\u001b", all, StringComparison.Ordinal);
+        Assert.True(all.Contains("\\u001b", StringComparison.Ordinal), all);
+        if (verbose && command == "transcribe")
+        {
+            Assert.Contains(Environment.NewLine + "   at ", console.Error.ToString(), StringComparison.Ordinal);
+        }
     }
 }
