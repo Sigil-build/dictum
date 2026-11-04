@@ -17,6 +17,28 @@ public class DictumLogTests
         Assert.Equal($"warning: shown{Environment.NewLine}", console.ToString());
     }
 
+    /// <summary>A message the console is told to skip, because the command reports it itself, is still in the file.</summary>
+    [Fact]
+    public void AMessageTheConsoleSkipsIsStillInTheFile()
+    {
+        using var dir = new TempDirectory();
+        var console = new StringWriter();
+        using (var log = new DictumLog(LogLevel.Warning, includeText: false, console, dir.Path)
+        {
+            ConsoleFilter = (_, _, exception) => exception is null,
+        })
+        {
+            log.Warn("skipped", new InvalidOperationException());
+            log.Warn("shown");
+        }
+
+        Assert.Equal($"warning: shown{Environment.NewLine}", console.ToString());
+        Assert.Collection(
+            File.ReadAllLines(dir.File("dictum.log")).Where(l => !l.StartsWith("System.", StringComparison.Ordinal) && !l.StartsWith("   at", StringComparison.Ordinal)),
+            l => Assert.EndsWith("WARNING skipped", l),
+            l => Assert.EndsWith("WARNING shown", l));
+    }
+
     [Fact]
     public void FileGetsEveryLevel()
     {

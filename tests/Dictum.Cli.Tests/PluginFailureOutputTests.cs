@@ -1,6 +1,7 @@
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Host.Ipc;
 using Dictum.Plugins;
 using Dictum.Testing;
 using Dictum.TestPlugin;
@@ -82,6 +83,49 @@ public sealed class PluginFailureOutputTests : IDisposable
         Assert.Equal(3, code);
         Assert.Equal(1, Count(error, "which cannot be given"));
         Assert.DoesNotContain("warning:", error, StringComparison.Ordinal);
+    }
+
+    /// <summary>The daemon answers with a failure's kind: a provider that is down ends the command with 3, like the local ones.</summary>
+    [Theory]
+    [InlineData("start")]
+    [InlineData("toggle")]
+    public async Task ADaemonCommandWhosePluginCannotStartExits3WithTheHintOnce(string command)
+    {
+        var message = "Plugin test has not been confirmed on this computer. Confirm it with 'dictum plugins add \"C:\\p\"'.";
+        await using var server = new IpcServer(IpcEndpoint.SocketPath(AppPaths.FromEnvironment()), NullLog.Instance);
+        server.Start((_, _) => Task.FromResult(IpcResponse.Failure(message, IpcFailureKind.ProviderUnavailable)));
+
+        var (code, _, error) = await RunAsync(command);
+
+        Assert.Equal(3, code);
+        Assert.Equal($"error: {message}", error.TrimEnd());
+    }
+
+    /// <summary>An older daemon names no kind: the exit code is as it was.</summary>
+    [Fact]
+    public async Task ADaemonFailureWithoutAKindStillExits1()
+    {
+        await using var server = new IpcServer(IpcEndpoint.SocketPath(AppPaths.FromEnvironment()), NullLog.Instance);
+        server.Start((_, _) => Task.FromResult(IpcResponse.Failure("It failed.")));
+
+        var (code, _, error) = await RunAsync("start");
+
+        Assert.Equal(1, code);
+        Assert.Equal("error: It failed.", error.TrimEnd());
+    }
+
+    /// <summary>A plugin's own last line can hold anything; doctor's row spells it out.</summary>
+    [Fact]
+    public async Task APluginsLastLinesAreShownEscapedInDoctorsRow()
+    {
+        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { ExitAtStart = 3, Stderr = ["\u001b[31mno CUDA\u001b[0m"] });
+        _trust.Confirm("test", folder, PluginManifest.Load(folder).ExecutablePath(folder));
+        SaveConfig(folder, model: ModelFile());
+
+        var (_, output, _) = await RunAsync("doctor");
+
+        Assert.False(Dirty(output), output);
+        Assert.Contains("last output: \\u001b[31mno CUDA\\u001b[0m", output, StringComparison.Ordinal);
     }
 
     /// <summary>A copied config can carry anything in a path; the terminal gets it spelt out.</summary>

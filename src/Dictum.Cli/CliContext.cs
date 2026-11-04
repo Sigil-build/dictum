@@ -28,7 +28,12 @@ internal sealed class CliContext : IAsyncDisposable
         Paths = AppPaths.FromEnvironment().WithDownloads(ConfiguredDownloads);
         Verbose = parse.GetValue(CliApp.VerboseOption);
         ConfigPath = Paths.ConfigFileFrom(parse.GetValue(CliApp.ConfigOption));
-        Log = new DictumLog(Verbose ? LogLevel.Debug : consoleLevel ?? LogLevel.Warning, includeText: Verbose, Error, Paths.LogsDirectory);
+        Log = new DictumLog(Verbose ? LogLevel.Debug : consoleLevel ?? LogLevel.Warning, includeText: Verbose, Error, Paths.LogsDirectory)
+        {
+            // A plugin that cannot start is thrown to the command, which reports it as its error; the same warning would
+            // print it twice. The log file keeps it.
+            ConsoleFilter = (level, _, exception) => level != LogLevel.Warning || exception is not PluginUnavailableException,
+        };
         NativeStderr.ShowDiagnostics = Verbose;
         Store = new ConfigStore(ConfigPath, Log);
     }

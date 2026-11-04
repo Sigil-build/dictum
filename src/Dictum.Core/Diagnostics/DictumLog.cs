@@ -30,6 +30,12 @@ public sealed class DictumLog : ILog, IDisposable
 
     public bool IncludeText { get; }
 
+    /// <summary>
+    /// Says whether a message goes to the console, after its level allowed it, for a command that reports a failure itself
+    /// and would print it twice. The file has every message either way.
+    /// </summary>
+    public Func<LogLevel, string, Exception?, bool>? ConsoleFilter { get; init; }
+
     /// <summary>The log file, for messages that point at it; null without a logs directory.</summary>
     public string? FilePath => _filePath;
 
@@ -37,7 +43,7 @@ public sealed class DictumLog : ILog, IDisposable
     {
         lock (_gate)
         {
-            if (_console is not null && level >= _consoleLevel)
+            if (_console is not null && level >= _consoleLevel && (ConsoleFilter?.Invoke(level, message, exception) ?? true))
             {
                 _console.WriteLine(exception is null || _consoleLevel > LogLevel.Debug
                     ? $"{Prefix(level)}{message}"

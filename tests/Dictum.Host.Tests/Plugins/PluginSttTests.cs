@@ -232,6 +232,30 @@ public sealed class PluginSttTests : IAsyncDisposable
         Assert.Equal(HealthLevel.Error, status.Level);
         Assert.StartsWith("Plugin provider 'p' could not start: ", status.Detail);
         Assert.Contains("Null character in path", status.Detail);
+        Assert.Contains(_log.Lines, line => line.Level == LogLevel.Warning && line.Message.Contains("check failed", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// A daemon's warm-up reports a status and throws nothing, so the log is where an unattended machine shows that a
+    /// plugin cannot start: at Warning, whoever else reports it.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task AWarmUpOfAPluginThatCannotStartLeavesAWarningInTheLog()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var folder = TestPlugins.Folder(_dir);
+        var model = TestPlugins.Model(_dir, new TestPluginBehaviour());
+        var resolver = new PluginResolver(
+            new AppPaths(_dir.Path, _dir.Path),
+            new Dictionary<string, PluginRegistration> { ["test"] = new() { Path = folder } });
+        var provider = new PluginStt(
+            "p", new PluginSttConfig { Plugin = "test", Model = model }, resolver, _host, new ConfigValueResolver(new FakeSecrets()), _log);
+        _providers.Add(provider);
+
+        var status = await provider.CheckAsync(ct);
+
+        Assert.Equal(HealthLevel.Error, status.Level);
+        Assert.Contains(_log.Lines, line => line.Level == LogLevel.Warning && line.Message.Contains("has not been confirmed", StringComparison.Ordinal));
     }
 
     [Fact(Timeout = TestTimeout.Generous)]

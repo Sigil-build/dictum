@@ -440,6 +440,21 @@ public sealed class PluginManifestTests : IDisposable
         Assert.Equal($"plugin.json in {_folder.Path} is not valid: {string.Join("; ", problems)}", exception.Message);
     }
 
+    /// <summary>The folder is the registration's path from config.json, so a message that names it spells out what it holds.</summary>
+    [Fact]
+    public void TheFolderInAMessageIsShownEscaped()
+    {
+        var folder = Path.Combine(_folder.Path, "a\u202eb\u001b[2J");
+
+        var missing = Assert.Throws<PluginManifestException>(() => PluginManifest.Load(folder));
+        var invalid = new PluginManifestException(folder, ["a problem"]);
+
+        Assert.Contains("a\\u202eb\\u001b[2J", missing.Message, StringComparison.Ordinal);
+        Assert.Contains("a\\u202eb\\u001b[2J", Assert.Single(missing.Problems), StringComparison.Ordinal);
+        Assert.Equal($"plugin.json in {_folder.Path}{Path.DirectorySeparatorChar}a\\u202eb\\u001b[2J is not valid: a problem", invalid.Message);
+        Assert.All(new[] { missing.Message, invalid.Message }, m => Assert.DoesNotContain(m, IsHidden));
+    }
+
     private static bool IsHidden(char c) =>
         char.IsControl(c) || char.GetUnicodeCategory(c) is UnicodeCategory.Format or UnicodeCategory.LineSeparator or UnicodeCategory.ParagraphSeparator;
 

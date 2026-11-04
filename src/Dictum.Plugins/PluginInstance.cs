@@ -341,7 +341,7 @@ public sealed class PluginInstance
 
             if (!cancelled)
             {
-                LogFailure(ex, restart);
+                LogFailure(ex);
             }
 
             if (next is not null)
@@ -489,20 +489,20 @@ public sealed class PluginInstance
     }
 
     /// <summary>
-    /// A start that someone waits for is not a warning: the failure reaches that caller, who reports it (the CLI as its
-    /// error, doctor as a row), and it would print twice. The log file has it either way. A restart nobody waits for is
-    /// the log's to say.
+    /// Always a warning, since a daemon's warm-up reports a status and throws nothing, so the log is where an unattended
+    /// machine shows it. The exception goes with it as a <see cref="PluginUnavailableException"/>, so that a command that
+    /// reports the same failure itself can keep it off its console (<see cref="DictumLog.ConsoleFilter"/>).
     /// </summary>
-    private void LogFailure(Exception ex, bool restart)
+    private void LogFailure(Exception ex)
     {
-        var level = restart ? LogLevel.Warning : LogLevel.Info;
         if (ex is PluginUnavailableException)
         {
-            _log.Write(level, ex.Message);
+            _log.Warn(ex.Message, ex);
         }
         else
         {
-            _log.Write(level, $"Plugin {_launch.PluginId} could not start: {PluginText.Show(ex.Message)}", ex);
+            var message = $"Plugin {_launch.PluginId} could not start: {PluginText.Show(ex.Message)}";
+            _log.Warn(message, new PluginUnavailableException(message, inner: ex));
         }
     }
 }

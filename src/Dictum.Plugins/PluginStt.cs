@@ -108,9 +108,11 @@ public sealed class PluginStt(
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
-            // Nothing planned for, such as a registered folder that no path can name. The status says it to whoever asked,
-            // so the log keeps it as information, with the exception, and nothing prints twice.
-            log.Write(LogLevel.Info, $"STT '{id}' check failed: {PluginText.Show(ex.Message)}", ex);
+            // Nothing planned for, such as a registered folder that no path can name. The status says it to whoever asked;
+            // the log has it too, which is all an unattended daemon's warm-up leaves. As a PluginUnavailableException, so
+            // that a command that prints the status can keep the warning off its console.
+            var message = $"STT '{id}' check failed: {PluginText.Show(ex.Message)}";
+            log.Warn(message, new PluginUnavailableException(message, inner: ex));
             return HealthStatus.Error($"{Name} could not start: {PluginText.Show(ex.Message)}");
         }
     }

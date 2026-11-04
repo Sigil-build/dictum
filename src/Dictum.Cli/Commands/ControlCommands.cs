@@ -29,8 +29,9 @@ internal static class ControlCommands
             var response = await new IpcClient(context.SocketPath).SendAsync(new IpcRequest(name, parse.GetValue(profile)), token).ConfigureAwait(false);
             if (!response.Ok)
             {
+                // The daemon's text holds the hint already, so it prints once; the kind gives the exit code of its own commands.
                 context.Error.WriteLine($"error: {response.Error}");
-                return ExitCodes.Error;
+                return response.Kind == IpcFailureKind.ProviderUnavailable ? ExitCodes.ProviderUnavailable : ExitCodes.Error;
             }
 
             var status = response.Status!;

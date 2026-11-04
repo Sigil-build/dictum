@@ -612,6 +612,25 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         Assert.Equal("Plugin test has not been confirmed on this computer. Confirm it with 'dictum plugins add \"C:\\p\"'.", response.Error);
     }
 
+    /// <summary>The failure's kind is what lets the CLI exit 3 for a provider that is down, as its own commands do.</summary>
+    [Fact]
+    public async Task AFailureOfAProviderNamesItsKind()
+    {
+        await using var daemon = await StartAsync(Config());
+
+        _stt.FailWith = new PluginUnavailableException("Plugin test has not been confirmed on this computer.", "Confirm it.");
+        var plugin = await daemon.HandleAsync(new IpcRequest(IpcCommand.TestStt, Stt: "s", Sample: true), _ct);
+        _stt.FailWith = new ProviderUnavailableException("The server is not answering.");
+        var provider = await daemon.HandleAsync(new IpcRequest(IpcCommand.TestStt, Stt: "s", Sample: true), _ct);
+        _stt.FailWith = new InvalidOperationException("Something else.");
+        var other = await daemon.HandleAsync(new IpcRequest(IpcCommand.TestStt, Stt: "s", Sample: true), _ct);
+
+        Assert.Equal(IpcFailureKind.ProviderUnavailable, plugin.Kind);
+        Assert.Equal("Plugin test has not been confirmed on this computer. Confirm it.", plugin.Error);
+        Assert.Equal(IpcFailureKind.ProviderUnavailable, provider.Kind);
+        Assert.Null(other.Kind);
+    }
+
     [Fact]
     public async Task TestSttIsRefusedWhileBusyAndForAnUnknownProvider()
     {
