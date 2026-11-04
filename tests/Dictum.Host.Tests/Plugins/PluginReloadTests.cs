@@ -24,7 +24,7 @@ public sealed class PluginReloadTests : IAsyncDisposable
     public PluginReloadTests()
     {
         var trust = new PluginTrustStore(_dir.File("plugin-trust.json"), _log);
-        _plugins = new PluginHost(trust, _log);
+        _plugins = new PluginHost(trust, PlatformFactory.CreateProcessGroups(), _log);
         _paths = new AppPaths(_dir.Path, _dir.Path);
         _folder = TestPlugins.Folder(_dir);
         var launch = TestPlugins.Launch(_folder);

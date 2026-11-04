@@ -1,5 +1,8 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Sockets;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Dictum.Core;
@@ -18,11 +21,20 @@ public sealed class PluginProcessTests : IDisposable
     /// <summary>The file a batch launcher writes when it runs.</summary>
     private const string StartedMark = "started.txt";
 
+    /// <summary>How long a crashing plugin lives after its info answer, so that the crash never lands inside the start.</summary>
+    private const int CrashAfterMs = 500;
+
     /// <summary>For waits on the plugin's output, which a busy runner may deliver late.</summary>
     private static readonly TimeSpan Patience = TimeSpan.FromSeconds(15);
 
     /// <summary>A stop that kills: the grace, up to 5 s for the killed plugin to be gone, and room for a busy runner.</summary>
     private static readonly TimeSpan StopWithin = TimeSpan.FromSeconds(10);
+
+    /// <summary>
+    /// A start that is meant to time out after the ready line: long enough for the plugin to print it on a busy runner,
+    /// and for Windows, which tries a refused connection on this computer again for about 2 s, to give up on one.
+    /// </summary>
+    private static readonly PluginTimings HealthTimeout = PluginTimings.Default with { StartTimeout = TimeSpan.FromSeconds(5) };
 
     private readonly TempDirectory _dir = new();
     private readonly ListLog _log = new();
@@ -31,6 +43,7 @@ public sealed class PluginProcessTests : IDisposable
     public void Dispose()
     {
         _http.Dispose();
+        TestPlugins.EndAllIn(_dir);
         _dir.Dispose();
     }
 
@@ -141,7 +154,10 @@ public sealed class PluginProcessTests : IDisposable
         var folder = TestPlugins.Folder(_dir, behaviour: behaviour);
 
         await using var plugin = await StartAsync(TestPlugins.Launch(folder), ct);
-        await Eventually.WaitForAsync(() => _log.Has("plugin test: listening"), "the line after the ready line", Patience);
+
+        // Each stream has a reader of its own, so the order of stdout's lines against stderr's is not kept.
+        await Eventually.WaitForAsync(
+            () => _log.Has("plugin test: warming up") && _log.Has("plugin test: listening") && _log.Has("plugin test: note"), "the three lines", Patience);
 
         Assert.Contains((LogLevel.Info, "plugin test: warming up"), _log.Lines);
         Assert.Contains((LogLevel.Info, "plugin test: listening"), _log.Lines);
@@ -269,6 +285,212 @@ public sealed class PluginProcessTests : IDisposable
     }
 
     /// <summary>
+    /// .NET reads a redirected stream asynchronously by blocking a thread-pool thread, since the pipe is synchronous: two
+    /// for each plugin, which starved the pool of a 2-core machine. Each stream has a thread of its own instead.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task OutputIsReadOffTheThreadPool()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var log = new ThreadNotingLog();
+        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { Banner = "warming up", Stderr = ["note"] });
+
+        await using var plugin = await StartAsync(TestPlugins.Launch(folder), ct, log: log);
+        await Eventually.WaitForAsync(() => log.PluginLines.Count == 2, "a line of each stream", Patience);
+
+        Assert.All(log.PluginLines, line => Assert.False(line.OnPool, $"'{line.Message}' was handled on a thread-pool thread"));
+    }
+
+    /// <summary>Ledger 59: a plugin that answers <c>/health</c>, but never with 200, used to time out without a word on why.</summary>
+    [Theory(Timeout = TestTimeout.Generous)]
+    [InlineData(404, "404 Not Found")]
+    [InlineData(500, "500 Internal Server Error")]
+    public async Task AStartTimeoutSaysWhatHealthLastAnswered(int status, string answer)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { HealthStatus = status });
+
+        var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => StartAsync(TestPlugins.Launch(folder), ct, HealthTimeout));
+
+        Assert.Equal($"Plugin test did not get ready within 5 s; /health last answered {answer}.", error.Message);
+        Assert.Equal(Hint, error.Hint);
+        Assert.False(TestPlugins.RunsIn(_dir), "the plugin still runs");
+    }
+
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task AStartTimeoutSaysWhyHealthCouldNotBeReached()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { ReadyUrl = $"http://127.0.0.1:{FreePort()}" });
+
+        var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => StartAsync(TestPlugins.Launch(folder), ct, HealthTimeout));
+
+        const string Start = "Plugin test did not get ready within 5 s; /health could not be reached: ";
+        Assert.StartsWith(Start, error.Message, StringComparison.Ordinal);
+        Assert.True(error.Message.Length > Start.Length + 1, $"no reason in '{error.Message}'");
+        Assert.EndsWith(".", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task AStartTimeoutSaysThatHealthsAnswerCouldNotBeRead()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { HealthCutShort = true });
+
+        var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => StartAsync(TestPlugins.Launch(folder), ct, HealthTimeout));
+
+        const string Start = "Plugin test did not get ready within 5 s; its last answer to /health could not be read: ";
+        Assert.StartsWith(Start, error.Message, StringComparison.Ordinal);
+        Assert.True(error.Message.Length > Start.Length + 1, $"no reason in '{error.Message}'");
+    }
+
+    /// <summary>Ledger 62: an <c>https</c> address on this computer used to be told it is not on this computer.</summary>
+    [Theory(Timeout = TestTimeout.Generous)]
+    [InlineData("https://127.0.0.1:5001")]
+    [InlineData("https://localhost:5001")]
+    public async Task AnHttpsReadyUrlIsRefusedAsNotHttp(string url)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { ReadyUrl = url });
+
+        var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => StartAsync(TestPlugins.Launch(folder), ct));
+
+        Assert.Equal($"Plugin test announced {url}, but protocol 1 is plain http on this computer.", error.Message);
+        Assert.Equal(Hint, error.Hint);
+        Assert.False(TestPlugins.RunsIn(_dir), "the plugin still runs");
+    }
+
+    /// <summary>Ledger 60: 401 or 403, to either request of the start.</summary>
+    [Theory(Timeout = TestTimeout.Generous)]
+    [InlineData(401, null)]
+    [InlineData(null, 403)]
+    public async Task AnUnauthorizedAnswerSaysTheKeyWasRejected(int? healthStatus, int? infoStatus)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { HealthStatus = healthStatus, InfoStatus = infoStatus });
+
+        var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => StartAsync(TestPlugins.Launch(folder), ct));
+
+        Assert.Equal("Plugin test rejected Dictum's key.", error.Message);
+        Assert.Equal(Hint, error.Hint);
+        Assert.False(TestPlugins.RunsIn(_dir), "the plugin still runs");
+    }
+
+    /// <summary>Ledger 60: the system refuses to run the program, so it never printed anything.</summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task AProgramTheSystemCannotStartFailsWithItsReason()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var folder = TestPlugins.Folder(_dir);
+        var launch = TestPlugins.Launch(folder) with { Executable = Path.Combine(folder, OperatingSystem.IsWindows() ? "missing.exe" : "missing") };
+
+        var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => StartAsync(launch, ct));
+
+        const string Start = "Plugin test could not be started: ";
+        Assert.StartsWith(Start, error.Message, StringComparison.Ordinal);
+        Assert.True(error.Message.Length > Start.Length + 1, $"no reason in '{error.Message}'");
+        Assert.Equal(Hint, error.Hint);
+        Assert.Empty(error.Output);
+    }
+
+    /// <summary>Ledger 60: <c>/dictum/v1/info</c> answers, but not as protocol 1 asks.</summary>
+    [Theory(Timeout = TestTimeout.Generous)]
+    [InlineData(500, null, "Plugin test answered 500 to /dictum/v1/info.")]
+    [InlineData(null, "not json", "Plugin test answered /dictum/v1/info with invalid JSON: ")]
+    [InlineData(null, "null", "Plugin test answered /dictum/v1/info with invalid JSON: it holds no object.")]
+    public async Task AnInfoFailureIsReported(int? status, string? body, string message)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { InfoStatus = status, InfoBody = body });
+
+        var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => StartAsync(TestPlugins.Launch(folder), ct));
+
+        Assert.StartsWith(message, error.Message, StringComparison.Ordinal);
+        Assert.Equal(Hint, error.Hint);
+        Assert.False(TestPlugins.RunsIn(_dir), "the plugin still runs");
+    }
+
+    /// <summary>
+    /// The plugin's last lines are still in its pipes when it exits, and the start's failure reports them: here the
+    /// last of a flood that fills the pipe, written right before the exit.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task AnExitWhileStartingReportsItsVeryLastLines()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var lines = Enumerable.Range(1, 20_000).Select(i => $"err {i}").ToArray();
+        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { Stderr = lines, ExitAtStart = 3 });
+
+        var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => StartAsync(TestPlugins.Launch(folder), ct));
+
+        Assert.Equal("Plugin test exited with code 3 while starting.", error.Message);
+        Assert.Equal(lines[^20..], error.Output);
+    }
+
+    /// <summary>
+    /// A process the plugin started that follows protocol 1 exits once its input closes, and Dictum closes it as soon as
+    /// the plugin exits. No group ends the child here, as on a system that has none.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task AChildThatFollowsTheProtocolEndsWhenThePluginExits()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var behaviour = new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs, LeaveChild = true, ChildFollowsStdin = true };
+        var folder = TestPlugins.Folder(_dir, behaviour: behaviour);
+
+        await using var plugin = await StartAsync(TestPlugins.Launch(folder), ct, groups: NullProcessGroups.Instance);
+        using var child = await TestPlugins.LeftChildAsync(folder, Patience);
+
+        if (child is not null)
+        {
+            await child.WaitForExitAsync(ct).WaitAsync(Patience, ct);
+        }
+
+        Assert.True(plugin.Exited.IsCompleted, "the plugin's exit was not noticed");
+    }
+
+    /// <summary>
+    /// Where no group ends what the plugin started, a process that holds its output after it exited gets one warning,
+    /// which names the plugin's pid. The exit itself is noticed at once.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task AProcessLeftRunningAfterTheExitIsWarnedOfOnce()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs, LeaveChild = true });
+
+        await using var plugin = await StartAsync(TestPlugins.Launch(folder), ct, groups: NullProcessGroups.Instance);
+        using var child = await TestPlugins.LeftChildAsync(folder, Patience);
+        Assert.NotNull(child);
+        await plugin.Exited.WaitAsync(Patience, ct);
+        var warning = $"Plugin test (pid {plugin.Id}) exited 5 s ago, but its output is still open: a process it started is still running";
+        await Eventually.WaitForAsync(() => _log.Has(warning), "the warning", Patience);
+
+        Assert.Single(_log.Lines, line => line == (LogLevel.Warning, warning));
+        Assert.False(child.HasExited, "the child ended, so nothing held the output");
+    }
+
+    /// <summary>
+    /// A stop waits a little for the output to close before Dictum lets go of the plugin, so what still arrives soon
+    /// after the exit reaches the log: here a line that a process the plugin left prints half a second after it started.
+    /// Ledger 61: the stop does not take the plugin, which has exited, for one that would not exit.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task WhatArrivesSoonAfterTheExitStillGoesToTheLog()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var behaviour = new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs, LeaveChild = true, ChildSaysAfterMs = 500 };
+        var folder = TestPlugins.Folder(_dir, behaviour: behaviour);
+
+        var plugin = await StartAsync(TestPlugins.Launch(folder), ct, groups: NullProcessGroups.Instance);
+        await plugin.Exited.WaitAsync(Patience, ct);
+        await plugin.StopAsync().WaitAsync(StopWithin, ct);
+
+        Assert.True(_log.Has("plugin test: child here"), "the line that arrived after the exit did not reach the log");
+        Assert.DoesNotContain(_log.Lines, line => line.Level == LogLevel.Warning && line.Message.Contains("did not exit", StringComparison.Ordinal));
+    }
+
+    /// <summary>
     /// The test plugin started through a batch file named <paramref name="launcher"/>, as a plugin in a scripting
     /// language often is. The batch file writes <see cref="StartedMark"/> before it starts the program.
     /// </summary>
@@ -285,8 +507,17 @@ public sealed class PluginProcessTests : IDisposable
         return folder;
     }
 
-    private Task<PluginProcess> StartAsync(PluginLaunch launch, CancellationToken ct, PluginTimings? timings = null) =>
-        PluginProcess.StartAsync(launch, _http, _log, timings ?? PluginTimings.Default, ct);
+    private Task<PluginProcess> StartAsync(
+        PluginLaunch launch, CancellationToken ct, PluginTimings? timings = null, IProcessGroups? groups = null, ILog? log = null) =>
+        PluginProcess.StartAsync(launch, _http, groups ?? PlatformFactory.CreateProcessGroups(), log ?? _log, timings ?? PluginTimings.Default, ct);
+
+    /// <summary>A port on this computer that nothing listens on, for a moment at least.</summary>
+    private static int FreePort()
+    {
+        using var listener = new TcpListener(IPAddress.Loopback, 0);
+        listener.Start();
+        return ((IPEndPoint)listener.LocalEndpoint).Port;
+    }
 
     /// <summary>Starts the plugin, reads what <c>/dictum/v1/info</c> says of its arguments, and stops it.</summary>
     private async Task<(string[] Argv, int? Threads, string Key)> InfoAsync(PluginLaunch launch, CancellationToken ct)
@@ -315,4 +546,20 @@ public sealed class PluginProcessTests : IDisposable
             Path.TrimEndingDirectorySeparator(Path.GetFullPath(expected)),
             Path.TrimEndingDirectorySeparator(Path.GetFullPath(actual)),
             PathComparison.Current);
+
+    /// <summary>Notes, for each line of the plugin's output that reaches the log, whether a thread-pool thread wrote it.</summary>
+    private sealed class ThreadNotingLog : ILog
+    {
+        public ConcurrentQueue<(string Message, bool OnPool)> PluginLines { get; } = new();
+
+        public bool IncludeText => false;
+
+        public void Write(LogLevel level, string message, Exception? exception = null)
+        {
+            if (message.StartsWith("plugin test: ", StringComparison.Ordinal))
+            {
+                PluginLines.Enqueue((message, Thread.CurrentThread.IsThreadPoolThread));
+            }
+        }
+    }
 }

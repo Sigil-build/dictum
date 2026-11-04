@@ -16,6 +16,8 @@ internal static unsafe partial class Win32
     public const int ErrorNotFound = 1168;
     public const int GwlExStyle = -20;
     public const uint LwaAlpha = 0x2;
+    public const int JobObjectExtendedLimitInformationClass = 9;
+    public const uint JobObjectLimitKillOnJobClose = 0x2000;
 
     [LibraryImport("user32", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -126,6 +128,18 @@ internal static unsafe partial class Win32
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool CloseHandle(nint handle);
 
+    /// <summary>Unnamed, and with no security attributes, so that no process it holds inherits its handle.</summary>
+    [LibraryImport("kernel32", EntryPoint = "CreateJobObjectW", SetLastError = true)]
+    public static partial JobHandle CreateJobObject(nint attributes, nint name);
+
+    [LibraryImport("kernel32", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool SetInformationJobObject(JobHandle job, int informationClass, void* information, uint length);
+
+    [LibraryImport("kernel32", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static partial bool AssignProcessToJobObject(JobHandle job, SafeHandle process);
+
     [LibraryImport("advapi32", EntryPoint = "CredWriteW", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static partial bool CredWrite(Credential* credential, uint flags);
@@ -193,6 +207,58 @@ internal static unsafe partial class Win32
     public struct InfoTitleBuffer
     {
         private char _first;
+    }
+
+    /// <summary>JOBOBJECT_BASIC_LIMIT_INFORMATION.</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct JobObjectBasicLimitInformation
+    {
+        public long PerProcessUserTimeLimit;
+        public long PerJobUserTimeLimit;
+        public uint LimitFlags;
+        public nuint MinimumWorkingSetSize;
+        public nuint MaximumWorkingSetSize;
+        public uint ActiveProcessLimit;
+        public nuint Affinity;
+        public uint PriorityClass;
+        public uint SchedulingClass;
+    }
+
+    /// <summary>IO_COUNTERS.</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct IoCounters
+    {
+        public ulong ReadOperationCount;
+        public ulong WriteOperationCount;
+        public ulong OtherOperationCount;
+        public ulong ReadTransferCount;
+        public ulong WriteTransferCount;
+        public ulong OtherTransferCount;
+    }
+
+    /// <summary>JOBOBJECT_EXTENDED_LIMIT_INFORMATION: 144 bytes on 64-bit Windows.</summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct JobObjectExtendedLimitInformation
+    {
+        public JobObjectBasicLimitInformation BasicLimitInformation;
+        public IoCounters IoInfo;
+        public nuint ProcessMemoryLimit;
+        public nuint JobMemoryLimit;
+        public nuint PeakProcessMemoryUsed;
+        public nuint PeakJobMemoryUsed;
+    }
+
+    /// <summary>A job object's handle. Closing the last one ends every process in a job made to kill on close.</summary>
+    public sealed class JobHandle : SafeHandle
+    {
+        public JobHandle()
+            : base(0, ownsHandle: true)
+        {
+        }
+
+        public override bool IsInvalid => handle == 0;
+
+        protected override bool ReleaseHandle() => CloseHandle(handle);
     }
 
     /// <summary>CREDENTIALW.</summary>

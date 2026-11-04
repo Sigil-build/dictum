@@ -34,7 +34,7 @@ https://claude.ai/code/artifact/ba039eea-3640-41cc-898a-b1b024e07370
 - `src/Dictum.Setup`: model catalog, downloader, setup planner and runner (`dictum init`). References Core only.
 - `src/Dictum.Plugins`: plugin manifests, the trust record, plugin processes and their host, and the plugin speech provider. References Core and Audio.
 - `src/Dictum.Platform`: platform abstractions (hotkeys, injection, clipboard, secrets, autostart) and the SharpHook implementations that Windows and X11 share. References Core.
-- `src/Dictum.Platform.{Windows,Linux}`: per-OS implementations. Reference Platform. macOS is unsupported and has no project: it gets Platform's `UnsupportedPlatform`.
+- `src/Dictum.Platform.{Windows,Linux}`: per-OS implementations. Reference Platform. macOS is unsupported and has no project: it gets Platform's `UnsupportedPlatform`. Windows also has the job object behind Core's `IProcessGroups`, which ends what a plugin started; Host's `PlatformFactory` gives other systems `NullProcessGroups`.
 - `src/Dictum.Host`: composition root, daemon, IPC server. Core defines the `ProviderRegistry`; Host fills it. References everything above.
 - `src/Dictum.App`: Avalonia tray UI, exe `dictum-gui`. `src/Dictum.Cli`: CLI + IPC client, exe `dictum`. Both reference Host.
 - `tests/Dictum.Core.Tests`: unit tests on fakes for the libraries under Host, and `ArchitectureTests`, which check this layout.

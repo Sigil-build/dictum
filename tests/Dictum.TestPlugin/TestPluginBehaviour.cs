@@ -9,6 +9,9 @@ namespace Dictum.TestPlugin;
 /// </summary>
 public sealed record TestPluginBehaviour
 {
+    /// <summary>Where <see cref="LeaveChild"/> writes the pid of the process it starts, next to the program.</summary>
+    public const string ChildPidFile = "child.pid";
+
     /// <summary>The transcription's text, unless <see cref="Echo"/> is set.</summary>
     public string Text { get; set; } = "canned text";
 
@@ -33,10 +36,37 @@ public sealed record TestPluginBehaviour
     /// </summary>
     public int? ExitAfterReadyMs { get; set; }
 
+    /// <summary>
+    /// Right before the exit that <see cref="ExitAfterReadyMs"/> plays, starts a copy of its own program that inherits its
+    /// stdin, stdout and stderr, and writes the copy's pid to <see cref="ChildPidFile"/>. The copy runs for a minute
+    /// unless it is ended, whatever its stdin does, unless <see cref="ChildFollowsStdin"/>.
+    /// </summary>
+    public bool LeaveChild { get; set; }
+
+    /// <summary>The copy that <see cref="LeaveChild"/> starts exits when its stdin closes, as protocol 1 asks of a plugin.</summary>
+    public bool ChildFollowsStdin { get; set; }
+
+    /// <summary>The copy that <see cref="LeaveChild"/> starts prints <c>child here</c> on stdout this long after it starts.</summary>
+    public int? ChildSaysAfterMs { get; set; }
+
     public bool NoReadyLine { get; set; }
 
     /// <summary>Announced in the ready line instead of the address it listens on.</summary>
     public string? ReadyUrl { get; set; }
+
+    /// <summary><c>/health</c> answers this status with an error, instead of its own answer.</summary>
+    public int? HealthStatus { get; set; }
+
+    /// <summary>
+    /// <c>/health</c> promises a longer body than it sends, then drops the connection: an answer that cannot be read.
+    /// </summary>
+    public bool HealthCutShort { get; set; }
+
+    /// <summary><c>/dictum/v1/info</c> answers this status with an error.</summary>
+    public int? InfoStatus { get; set; }
+
+    /// <summary><c>/dictum/v1/info</c> answers 200 with this text instead of its JSON.</summary>
+    public string? InfoBody { get; set; }
 
     /// <summary>Transcriptions answer this status with an error.</summary>
     public int? TranscribeStatus { get; set; }

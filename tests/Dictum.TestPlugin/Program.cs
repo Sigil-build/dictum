@@ -13,20 +13,33 @@ namespace Dictum.TestPlugin;
 /// <summary>
 /// A plugin under protocol 1 that takes, in order, the numbered steps below; <see cref="TestPluginBehaviour"/> changes
 /// each of them. It reads the behaviour from <c>--model</c> when that is a <c>.json</c> file, else from
-/// <c>behaviour.json</c> next to the program, else uses the defaults.
+/// <c>behaviour.json</c> next to the program, else uses the defaults. Started with <c>--child</c>, it is instead the
+/// process that <see cref="TestPluginBehaviour.LeaveChild"/> leaves running.
 /// </summary>
 internal static class Program
 {
     private const string KeyVariable = "DICTUM_PLUGIN_KEY";
     private const string BehaviourFile = "behaviour.json";
+    private const string ChildOption = "--child";
+    private const string FollowStdinOption = "--follow-stdin";
+    private const string SayAfterOption = "--say-after";
 
     /// <summary>The exit code of an <see cref="TestPluginBehaviour.ExitAfterReadyMs"/> exit, which plays a crash.</summary>
     private const int CrashCode = 1;
 
     private static readonly TimeSpan StopWithin = TimeSpan.FromSeconds(2);
 
+    /// <summary>How long a child that <see cref="TestPluginBehaviour.LeaveChild"/> starts runs, unless it is ended first.</summary>
+    private static readonly TimeSpan ChildLifetime = TimeSpan.FromMinutes(1);
+
     public static async Task<int> Main(string[] args)
     {
+        if (args.Contains(ChildOption))
+        {
+            var sayAfter = Option(args, SayAfterOption) is { } ms ? int.Parse(ms, CultureInfo.InvariantCulture) : (int?)null;
+            return await RunAsChildAsync(args.Contains(FollowStdinOption), sayAfter);
+        }
+
         var started = Stopwatch.StartNew();
 
         // 1. Only Dictum starts a plugin, and it always gives the key.
@@ -83,9 +96,19 @@ internal static class Program
         var infoSent = 0;
 
         // 8-11.
-        app.MapGet("/health", () => started.ElapsedMilliseconds < behaviour.LoadMs
-            ? Results.Json(new Health("loading"), AnswerJson.Default.Health, statusCode: StatusCodes.Status503ServiceUnavailable)
-            : Results.Json(new Health("ready"), AnswerJson.Default.Health));
+        app.MapGet("/health", async (HttpContext context) =>
+        {
+            if (behaviour.HealthCutShort)
+            {
+                await CutShortAsync(context.Response);
+                return Results.Empty;
+            }
+
+            return behaviour.HealthStatus is { } status ? Error(status)
+                : started.ElapsedMilliseconds < behaviour.LoadMs
+                    ? Results.Json(new Health("loading"), AnswerJson.Default.Health, statusCode: StatusCodes.Status503ServiceUnavailable)
+                    : Results.Json(new Health("ready"), AnswerJson.Default.Health);
+        });
         app.MapGet("/dictum/v1/info", (HttpContext context) =>
         {
             // 11. Dictum counts the plugin ready once it has this answer, so a crash is timed from the first one sent.
@@ -93,9 +116,29 @@ internal static class Program
             {
                 context.Response.OnCompleted(() =>
                 {
-                    _ = Task.Delay(exitAfter).ContinueWith(_ => exit.TrySetResult(CrashCode), TaskScheduler.Default);
+                    _ = Task.Delay(exitAfter).ContinueWith(
+                        _ =>
+                        {
+                            if (behaviour.LeaveChild)
+                            {
+                                StartChild(behaviour);
+                            }
+
+                            exit.TrySetResult(CrashCode);
+                        },
+                        TaskScheduler.Default);
                     return Task.CompletedTask;
                 });
+            }
+
+            if (behaviour.InfoStatus is { } status)
+            {
+                return Error(status);
+            }
+
+            if (behaviour.InfoBody is { } body)
+            {
+                return Results.Text(body, "application/json");
             }
 
             return Results.Json(
@@ -152,8 +195,7 @@ internal static class Program
 
         if (behaviour.TranscribeStatus is { } status)
         {
-            var message = string.Create(CultureInfo.InvariantCulture, $"The test plugin answers {status}.");
-            return Results.Json(new ErrorAnswer(new ErrorDetail(message)), AnswerJson.Default.ErrorAnswer, statusCode: status);
+            return Error(status);
         }
 
         var form = await request.ReadFormAsync();
@@ -164,6 +206,67 @@ internal static class Program
                 $"language={form["language"]};languages={form["languages"]};prompt={form["prompt"]};model={form["model"]};response_format={form["response_format"]};file={file?.FileName};type={file?.ContentType};bytes={file?.Length ?? 0}")
             : behaviour.Text;
         return Results.Json(new Transcription(text, behaviour.Language), AnswerJson.Default.Transcription);
+    }
+
+    private static IResult Error(int status)
+    {
+        var message = string.Create(CultureInfo.InvariantCulture, $"The test plugin answers {status}.");
+        return Results.Json(new ErrorAnswer(new ErrorDetail(message)), AnswerJson.Default.ErrorAnswer, statusCode: status);
+    }
+
+    /// <summary>Promises 100 bytes, sends one, and drops the connection.</summary>
+    private static async Task CutShortAsync(HttpResponse response)
+    {
+        response.ContentLength = 100;
+        await response.WriteAsync("{");
+        await response.Body.FlushAsync();
+        response.HttpContext.Abort();
+    }
+
+    /// <summary>
+    /// A copy of this program, with no stream redirected: it inherits this process's stdin, stdout and stderr, so it holds
+    /// the pipes Dictum reads. Its pid goes to <see cref="TestPluginBehaviour.ChildPidFile"/>, written whole.
+    /// </summary>
+    private static void StartChild(TestPluginBehaviour behaviour)
+    {
+        var start = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false };
+        start.ArgumentList.Add(ChildOption);
+        if (behaviour.ChildFollowsStdin)
+        {
+            start.ArgumentList.Add(FollowStdinOption);
+        }
+
+        if (behaviour.ChildSaysAfterMs is { } sayAfter)
+        {
+            start.ArgumentList.Add(SayAfterOption);
+            start.ArgumentList.Add(sayAfter.ToString(CultureInfo.InvariantCulture));
+        }
+
+        using var child = Process.Start(start)!;
+        var pidFile = Path.Combine(AppContext.BaseDirectory, TestPluginBehaviour.ChildPidFile);
+        File.WriteAllText(pidFile + ".tmp", child.Id.ToString(CultureInfo.InvariantCulture));
+        File.Move(pidFile + ".tmp", pidFile, overwrite: true);
+    }
+
+    /// <summary>The process <see cref="StartChild"/> starts: it runs for <see cref="ChildLifetime"/> at most, and prints a line if asked.</summary>
+    private static async Task<int> RunAsChildAsync(bool followStdin, int? sayAfterMs)
+    {
+        var lifetime = Task.Delay(ChildLifetime);
+        if (sayAfterMs is { } ms)
+        {
+            _ = Task.Delay(ms).ContinueWith(_ => Console.WriteLine("child here"), TaskScheduler.Default);
+        }
+
+        if (followStdin)
+        {
+            await Task.WhenAny(lifetime, Task.Run(() => ReadToEnd(Console.OpenStandardInput())));
+        }
+        else
+        {
+            await lifetime;
+        }
+
+        return 0;
     }
 
     private static string? Option(string[] args, string name)

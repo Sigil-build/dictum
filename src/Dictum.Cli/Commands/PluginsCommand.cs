@@ -160,7 +160,8 @@ internal static class PluginsCommand
     {
         try
         {
-            await using var process = await PluginProcess.StartAsync(launch, context.Plugins.Http, context.Log, PluginTimings.Default, ct).ConfigureAwait(false);
+            await using var process = await PluginProcess.StartAsync(
+                launch, context.Plugins.Http, context.Plugins.Groups, context.Log, PluginTimings.Default, ct).ConfigureAwait(false);
             await process.StopAsync().ConfigureAwait(false);
         }
         catch (PluginUnavailableException ex)

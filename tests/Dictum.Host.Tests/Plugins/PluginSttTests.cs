@@ -28,7 +28,7 @@ public sealed class PluginSttTests : IAsyncDisposable
     public PluginSttTests()
     {
         _trust = new PluginTrustStore(_dir.File("plugin-trust.json"), _log);
-        _host = new PluginHost(_trust, _log);
+        _host = new PluginHost(_trust, PlatformFactory.CreateProcessGroups(), _log);
     }
 
     public async ValueTask DisposeAsync()

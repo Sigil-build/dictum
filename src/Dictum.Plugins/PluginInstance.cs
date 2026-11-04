@@ -1,4 +1,5 @@
 using System.Globalization;
+using Dictum.Core;
 using Dictum.Core.Diagnostics;
 
 namespace Dictum.Plugins;
@@ -35,6 +36,7 @@ public sealed class PluginInstance
     private readonly PluginTrustStore _trust;
     private readonly ILog _log;
     private readonly HttpClient _http;
+    private readonly IProcessGroups _groups;
     private readonly PluginHostOptions _options;
     private readonly TimeProvider _time;
     private readonly Lock _gate = new();
@@ -68,6 +70,7 @@ public sealed class PluginInstance
         PluginTrustStore trust,
         ILog log,
         HttpClient http,
+        IProcessGroups groups,
         PluginHostOptions options,
         TimeProvider time,
         CancellationToken lifetime)
@@ -76,6 +79,7 @@ public sealed class PluginInstance
         _trust = trust;
         _log = log;
         _http = http;
+        _groups = groups;
         _options = options;
         _time = time;
         _stopping = CancellationTokenSource.CreateLinkedTokenSource(lifetime);
@@ -274,7 +278,7 @@ public sealed class PluginInstance
             }
 
             launched = true;
-            process = await PluginProcess.StartAsync(_launch, _http, _log, _options.Timings, ct).ConfigureAwait(false);
+            process = await PluginProcess.StartAsync(_launch, _http, _groups, _log, _options.Timings, ct).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -358,6 +362,9 @@ public sealed class PluginInstance
     private async Task WatchAsync(PluginProcess process)
     {
         var code = await process.Exited.ConfigureAwait(false);
+
+        // The lines it printed last, which a failure keeps once the restarts run out.
+        await process.WaitForLastLinesAsync().ConfigureAwait(false);
         var output = process.RecentOutput;
         string message;
         lock (_gate)

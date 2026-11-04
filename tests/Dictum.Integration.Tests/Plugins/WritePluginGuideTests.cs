@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Dictum.Audio;
 using Dictum.Core.Audio;
+using Dictum.Host;
 using Dictum.Plugins;
 using Dictum.Testing;
 
@@ -128,7 +129,7 @@ public sealed partial class WritePluginGuideTests : IDisposable
     {
         try
         {
-            return await PluginProcess.StartAsync(launch, _http, _log, PluginTimings.Default, ct);
+            return await PluginProcess.StartAsync(launch, _http, PlatformFactory.CreateProcessGroups(), _log, PluginTimings.Default, ct);
         }
         catch (PluginUnavailableException ex)
         {

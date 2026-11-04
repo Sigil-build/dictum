@@ -46,6 +46,7 @@ public sealed class PluginHostTests : IAsyncDisposable
             await host.DisposeAsync();
         }
 
+        TestPlugins.EndAllIn(_dir);
         _dir.Dispose();
     }
 
@@ -188,6 +189,52 @@ public sealed class PluginHostTests : IAsyncDisposable
         Assert.Equal(2, lease.Instance.Launches);
     }
 
+    /// <summary>
+    /// Review focus 2: the plugin leaves a process that holds its output, then crashes. The crash is noticed when the
+    /// plugin's own process exits, not when its pipes close, which would be a minute later here.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task ACrashIsNoticedWhileAChildHoldsTheOutput()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var host = Host();
+        var folder = ConfirmedFolder(new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs, LeaveChild = true });
+        using var lease = host.Acquire(TestPlugins.Launch(folder));
+        await lease.Instance.ReadyAsync(ct);
+        var first = lease.Instance.ProcessId;
+        new TestPluginBehaviour().Save(Path.Combine(folder, BehaviourFile));
+
+        // The plugin writes the child's pid right before it crashes.
+        using var child = await TestPlugins.LeftChildAsync(folder, Patience);
+        await Eventually.WaitForAsync(
+            () => lease.Instance is { State: PluginInstanceState.Ready, ProcessId: { } pid } && pid != first, "the restarted plugin", TimeSpan.FromSeconds(10));
+
+        Assert.Equal(2, lease.Instance.Launches);
+    }
+
+    /// <summary>
+    /// Review focus 2: on Windows the plugin and every process it starts are in one group, which ends with the plugin.
+    /// Without a group the child runs on for a minute, as <c>AProcessLeftRunningAfterTheExitIsWarnedOfOnce</c> shows.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task AChildLeftByACrashIsEnded()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Only Windows has a group that ends what a plugin started");
+        var ct = TestContext.Current.CancellationToken;
+        var host = Host();
+        var folder = ConfirmedFolder(new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs, LeaveChild = true });
+        using var lease = host.Acquire(TestPlugins.Launch(folder));
+        await lease.Instance.ReadyAsync(ct);
+        new TestPluginBehaviour().Save(Path.Combine(folder, BehaviourFile));
+
+        using var child = await TestPlugins.LeftChildAsync(folder, Patience);
+
+        if (child is not null)
+        {
+            await child.WaitForExitAsync(ct).WaitAsync(Patience, ct);
+        }
+    }
+
     [Fact(Timeout = TestTimeout.Generous)]
     public async Task AfterThreeRestartsInFiveMinutesItStaysDown()
     {
@@ -260,7 +307,14 @@ public sealed class PluginHostTests : IAsyncDisposable
         using var stopping = new CancellationTokenSource();
         await stopping.CancelAsync();
         var instance = new PluginInstance(
-            TestPlugins.Launch(ConfirmedFolder()), _trust, _log, http, PluginHostOptions.Default, TimeProvider.System, stopping.Token);
+            TestPlugins.Launch(ConfirmedFolder()),
+            _trust,
+            _log,
+            http,
+            PlatformFactory.CreateProcessGroups(),
+            PluginHostOptions.Default,
+            TimeProvider.System,
+            stopping.Token);
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => instance.ReadyAsync(ct));
 
@@ -451,7 +505,7 @@ public sealed class PluginHostTests : IAsyncDisposable
 
     private PluginHost Host(PluginHostOptions? options = null, TimeProvider? time = null)
     {
-        var host = new PluginHost(_trust, _log, options, time);
+        var host = new PluginHost(_trust, PlatformFactory.CreateProcessGroups(), _log, options, time);
         _hosts.Add(host);
         return host;
     }

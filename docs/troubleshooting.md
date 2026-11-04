@@ -456,10 +456,16 @@ While the program starts. These messages come with the hint `See its output abov
 :   The program stopped before it was ready. Its last lines usually say why: a missing library or model file, or an interpreter that a launcher script calls but that is not on the `PATH` Dictum sees, as in `'python' is not recognized as an internal or external command,` on an English Windows.
 
 `Plugin hello did not get ready within 60 s.`
-:   The program printed no ready line, or `/health` did not answer 200 in time. Check that it prints `{"dictumPlugin":1,"url":"…"}` on stdout and flushes it, and that its model loads within a minute.
+:   The program printed no ready line in time. Check that it prints `{"dictumPlugin":1,"url":"…"}` on stdout and flushes it.
+
+`Plugin hello did not get ready within 60 s; /health last answered 503 Service Unavailable.`
+:   The program announced its address, but `/health` did not answer 200 in time. The rest says what Dictum heard last instead: a status, such as 503 while the model loads; `/health did not answer`, when no answer came at all; `/health could not be reached: …`, with the reason, when nothing listens at the address the ready line names; or `its last answer to /health could not be read: …`, when the answer broke off. Check that its model loads within a minute, and that it listens where it said. `/dictum/v1/info did not answer` means that `/health` answered 200, but `/dictum/v1/info` did not answer in time.
+
+`Plugin hello announced https://127.0.0.1:…, but protocol 1 is plain http on this computer.`
+:   The ready line names an address on your computer, but not with `http`. Protocol 1 is plain `http` on your computer: announce `http://127.0.0.1:<port>`, without TLS.
 
 `Plugin hello announced …, which is not on this computer.`
-:   The ready line names an address that is not `http` on `127.0.0.1`, `::1` or `localhost`. Dictum talks to a plugin only on your computer.
+:   The ready line names an address that is not on `127.0.0.1`, `::1` or `localhost`. Dictum talks to a plugin only on your computer.
 
 `Plugin hello rejected Dictum's key.`
 :   The plugin answered 401 or 403. It must take the key from the environment variable `DICTUM_PLUGIN_KEY`, and accept `Authorization: Bearer <key>`.

@@ -7,6 +7,7 @@ using System.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using Dictum.Core;
 using Dictum.Core.Diagnostics;
 
 namespace Dictum.Plugins;
@@ -14,9 +15,13 @@ namespace Dictum.Plugins;
 /// <summary>
 /// One running plugin program under protocol 1. It gets a fresh key in its environment, announces its address in a
 /// ready line on stdout, and is ready once <c>/health</c> answers 200 and <c>/dictum/v1/info</c> names protocol 1.
-/// Both of its output streams are read for as long as it runs, so a talkative plugin never blocks on a full pipe.
+/// Both of its output streams are read until they close, each on a thread of its own, so a talkative plugin never
+/// blocks on a full pipe, and no plugin holds a thread-pool thread.
 /// Its stdin is a pipe that only Dictum holds: <see cref="StopAsync"/> closes it, the plugin's sign to exit, and kills
 /// the process tree after the grace. If Dictum itself dies, the pipe closes with it.
+/// It starts in a group of its own, which every process it starts joins (<see cref="IProcessGroups"/>). Once it exits,
+/// by itself or not, Dictum closes its stdin, so that a process it started that follows protocol 1 exits too, and ends
+/// the group, which kills whatever else of it is left.
 /// </summary>
 public sealed class PluginProcess : IAsyncDisposable
 {
@@ -27,10 +32,19 @@ public sealed class PluginProcess : IAsyncDisposable
     private const string Hint = "See its output above, and the plugin's own documentation.";
 
     /// <summary>
-    /// How long a killed plugin has to be gone, its output drained included. Apart from the grace, which is the
-    /// plugin's time to exit by itself and may be short.
+    /// How long a killed plugin has to be gone. Apart from the grace, which is the plugin's time to exit by itself and
+    /// may be short.
     /// </summary>
     private static readonly TimeSpan KillWait = TimeSpan.FromSeconds(5);
+
+    /// <summary>
+    /// How long the last lines of a plugin that exited get to arrive. Its own lines are in its pipes when it exits, so
+    /// they arrive at once; only a process it left running, which holds the pipes open, makes this wait last.
+    /// </summary>
+    private static readonly TimeSpan LastLinesWait = TimeSpan.FromSeconds(2);
+
+    /// <summary>How long the output may stay open after the exit before a warning says that a process it started holds it.</summary>
+    private static readonly TimeSpan LeftRunningWait = TimeSpan.FromSeconds(5);
 
     /// <summary>What cmd.exe acts on in a batch file's command line.</summary>
     private static readonly SearchValues<char> BatchSpecial = SearchValues.Create("&%^!\"<>|()");
@@ -39,9 +53,13 @@ public sealed class PluginProcess : IAsyncDisposable
     private readonly ILog _log;
     private readonly TimeSpan _stopGrace;
     private readonly Process _process;
+    private readonly IDisposable _group;
     private readonly Lock _gate = new();
     private readonly Queue<string> _recent = new();
     private readonly TaskCompletionSource<PluginReadyLine> _readyLine = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    /// <summary>Completes once both output streams have closed, which a process the plugin started may put off.</summary>
+    private readonly TaskCompletionSource _outputClosed = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     /// <summary>Cancelled once the process has ended, so that every wait of the start ends with it.</summary>
     private readonly CancellationTokenSource _ended = new();
@@ -49,16 +67,30 @@ public sealed class PluginProcess : IAsyncDisposable
     /// <summary>One stop, however many callers ask for it.</summary>
     private readonly Lazy<Task> _stopping;
 
+    /// <summary>One wait for the last lines, however many callers ask for it.</summary>
+    private readonly Lazy<Task> _lastLines;
+
+    private int _openStreams = 2;
+    private int _inputClosed;
+
+    /// <summary>Set once Dictum lets go of the plugin: lines that still arrive no longer go to the log.</summary>
+    private volatile bool _released;
+
+    /// <summary>
+    /// What the start last heard at the plugin's address, for a start that times out: null before the ready line, then
+    /// what <c>/health</c> last answered, then that <c>/dictum/v1/info</c> has not answered yet.
+    /// </summary>
+    private string? _lastHeard;
+
     /// <exception cref="PluginUnavailableException">The system refused to start the program.</exception>
-    private PluginProcess(PluginLaunch launch, IReadOnlyList<string> arguments, string key, ILog log, TimeSpan stopGrace)
+    private PluginProcess(PluginLaunch launch, IReadOnlyList<string> arguments, string key, IProcessGroups groups, ILog log, TimeSpan stopGrace)
     {
         _launch = launch;
         _log = log;
         _stopGrace = stopGrace;
         _stopping = new Lazy<Task>(StopCoreAsync);
+        _lastLines = new Lazy<Task>(WaitForOutputToCloseAsync);
         _process = new Process { StartInfo = StartInfo(launch, arguments, key) };
-        _process.OutputDataReceived += (_, e) => OnLine(e.Data, fromStdout: true);
-        _process.ErrorDataReceived += (_, e) => OnLine(e.Data, fromStdout: false);
         try
         {
             _process.Start();
@@ -69,9 +101,12 @@ public sealed class PluginProcess : IAsyncDisposable
             throw new PluginUnavailableException($"Plugin {launch.PluginId} could not be started: {ex.Message}", Hint);
         }
 
-        _process.BeginOutputReadLine();
-        _process.BeginErrorReadLine();
         Id = _process.Id;
+
+        // At once, so that every process the plugin starts joins the group.
+        _group = Enclose(groups);
+        Read(_process.StandardOutput, fromStdout: true);
+        Read(_process.StandardError, fromStdout: false);
         Exited = WatchExitAsync();
     }
 
@@ -80,7 +115,10 @@ public sealed class PluginProcess : IAsyncDisposable
     /// <summary>Set before <see cref="StartAsync"/> returns.</summary>
     public PluginEndpoint Endpoint { get; private set; } = null!;
 
-    /// <summary>Completes with the exit code once the process has ended and the last of its output has been read.</summary>
+    /// <summary>
+    /// Completes with the exit code once the process has ended, whether or not a process it started still holds its
+    /// output open; its last lines may still be on their way.
+    /// </summary>
     public Task<int> Exited { get; }
 
     /// <summary>The last 20 lines of either stream, oldest first; the ready line is not among them.</summary>
@@ -103,12 +141,13 @@ public sealed class PluginProcess : IAsyncDisposable
     /// It could not start, exited, timed out or broke protocol 1; or, before anything runs, its batch file would have
     /// been given an argument that cmd.exe acts on.
     /// </exception>
-    public static async Task<PluginProcess> StartAsync(PluginLaunch launch, HttpClient http, ILog log, PluginTimings timings, CancellationToken ct)
+    public static async Task<PluginProcess> StartAsync(
+        PluginLaunch launch, HttpClient http, IProcessGroups groups, ILog log, PluginTimings timings, CancellationToken ct)
     {
         var arguments = Arguments(launch);
         RefuseWhatABatchFileWouldRun(launch, arguments);
         var key = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(KeyBytes));
-        var plugin = new PluginProcess(launch, arguments, key, log, timings.StopGrace);
+        var plugin = new PluginProcess(launch, arguments, key, groups, log, timings.StopGrace);
         try
         {
             using var start = CancellationTokenSource.CreateLinkedTokenSource(ct, plugin._ended.Token);
@@ -121,10 +160,13 @@ public sealed class PluginProcess : IAsyncDisposable
             {
                 if (!plugin._ended.IsCancellationRequested)
                 {
-                    throw plugin.Failure($"Plugin {launch.PluginId} did not get ready within {Seconds(timings.StartTimeout)} s.");
+                    // Nothing more when it printed no ready line; else what /health last answered, or that info did not.
+                    var heard = plugin._lastHeard is { } last ? $"; {last.TrimEnd('.')}" : "";
+                    throw plugin.Failure($"Plugin {launch.PluginId} did not get ready within {Seconds(timings.StartTimeout)} s{heard}.");
                 }
 
                 var code = await plugin.Exited.ConfigureAwait(false);
+                await plugin.WaitForLastLinesAsync().ConfigureAwait(false);
                 throw plugin.Failure($"Plugin {launch.PluginId} exited with code {code} while starting.");
             }
         }
@@ -139,10 +181,19 @@ public sealed class PluginProcess : IAsyncDisposable
         return plugin;
     }
 
-    /// <summary>Closes the plugin's stdin, and kills its process tree if it has not exited within the grace.</summary>
+    /// <summary>
+    /// Closes the plugin's stdin, kills its process tree if it has not exited within the grace, and lets its last lines
+    /// reach the log before it lets go of it.
+    /// </summary>
     public Task StopAsync() => _stopping.Value;
 
     public async ValueTask DisposeAsync() => await StopAsync().ConfigureAwait(false);
+
+    /// <summary>
+    /// Once <see cref="Exited"/> has completed: waits until its output has closed, for <see cref="LastLinesWait"/> at
+    /// most, so that <see cref="RecentOutput"/> and the log hold the last lines it printed.
+    /// </summary>
+    internal Task WaitForLastLinesAsync() => _lastLines.Value;
 
     /// <summary>Protocol 1's command line: <c>--port 0 [--model &lt;path&gt;] [--threads &lt;n&gt;]</c>.</summary>
     private static List<string> Arguments(PluginLaunch launch)
@@ -225,7 +276,14 @@ public sealed class PluginProcess : IAsyncDisposable
             throw Failure($"Plugin {_launch.PluginId} announced {ready.Url}, which is not on this computer.");
         }
 
+        if (url.Scheme != Uri.UriSchemeHttp)
+        {
+            throw Failure($"Plugin {_launch.PluginId} announced {ready.Url}, but protocol 1 is plain http on this computer.");
+        }
+
+        _lastHeard = $"{HealthPath} did not answer";
         await WaitUntilHealthyAsync(http, url, key, healthPoll, ct).ConfigureAwait(false);
+        _lastHeard = $"{InfoPath} did not answer";
         var info = await GetInfoAsync(http, url, key, ct).ConfigureAwait(false);
         if (info.Protocol != PluginProtocol.Version)
         {
@@ -235,8 +293,7 @@ public sealed class PluginProcess : IAsyncDisposable
         return new PluginEndpoint(url, key, info);
     }
 
-    private static bool IsOnThisComputer(Uri url) =>
-        url.Scheme == Uri.UriSchemeHttp && url.DnsSafeHost is "127.0.0.1" or "::1" or "localhost";
+    private static bool IsOnThisComputer(Uri url) => url.DnsSafeHost is "127.0.0.1" or "::1" or "localhost";
 
     private async Task WaitUntilHealthyAsync(HttpClient http, Uri url, string key, TimeSpan poll, CancellationToken ct)
     {
@@ -251,10 +308,16 @@ public sealed class PluginProcess : IAsyncDisposable
                 }
 
                 ThrowIfKeyRejected(response);
+                _lastHeard = $"{HealthPath} last answered {(int)response.StatusCode} {PluginText.Show(response.ReasonPhrase)}".TrimEnd();
             }
-            catch (HttpRequestException)
+            catch (HttpRequestException ex)
             {
-                // Not listening yet: a refused connection waits, like a 503 while the model loads.
+                // Not listening yet: a refused connection waits, like a 503 while the model loads. Why is kept, for a
+                // start that times out.
+                var reason = PluginText.Show(ex.GetBaseException().Message);
+                _lastHeard = ex.HttpRequestError is HttpRequestError.ConnectionError or HttpRequestError.NameResolutionError
+                    ? $"{HealthPath} could not be reached: {reason}"
+                    : $"its last answer to {HealthPath} could not be read: {reason}";
             }
 
             await Task.Delay(poll, ct).ConfigureAwait(false);
@@ -306,10 +369,67 @@ public sealed class PluginProcess : IAsyncDisposable
 
     private PluginUnavailableException Failure(string message) => new(message, Hint, RecentOutput);
 
-    /// <summary>Every line of either stream goes to the log and the recent output, except the ready line it waits for.</summary>
-    private void OnLine(string? line, bool fromStdout)
+    /// <summary>
+    /// The system refusing a group is no reason to refuse the plugin: it runs as before, and its stop still kills its
+    /// process tree, but a process it starts may outlive a crash.
+    /// </summary>
+    private IDisposable Enclose(IProcessGroups groups)
     {
-        if (string.IsNullOrEmpty(line))
+        try
+        {
+            return groups.Enclose(_process);
+        }
+        catch (Win32Exception ex)
+        {
+            if (!_process.HasExited)
+            {
+                _log.Warn($"Plugin {_launch.PluginId} (pid {Id}) runs outside a process group, so a process it starts may outlive it: {ex.Message}");
+            }
+
+            return NullProcessGroups.Instance.Enclose(_process);
+        }
+    }
+
+    /// <summary>
+    /// Reads one stream to its end on a thread of its own. .NET would read it asynchronously by blocking a thread-pool
+    /// thread, since the pipe is synchronous; two for each plugin starved the pool of a 2-core machine. The thread is a
+    /// background one, so that a process the plugin left running, which holds the pipe, never keeps Dictum from exiting.
+    /// </summary>
+    private void Read(StreamReader stream, bool fromStdout)
+    {
+        var reader = new Thread(() =>
+        {
+            using (stream)
+            {
+                try
+                {
+                    while (stream.ReadLine() is { } line)
+                    {
+                        OnLine(line, fromStdout);
+                    }
+                }
+                catch (IOException)
+                {
+                    // The pipe broke rather than closed: the end of the output all the same.
+                }
+            }
+
+            if (Interlocked.Decrement(ref _openStreams) == 0)
+            {
+                _outputClosed.TrySetResult();
+            }
+        })
+        {
+            IsBackground = true,
+            Name = $"plugin {_launch.PluginId} {(fromStdout ? "stdout" : "stderr")}",
+        };
+        reader.Start();
+    }
+
+    /// <summary>Every line of either stream goes to the log and the recent output, except the ready line it waits for.</summary>
+    private void OnLine(string line, bool fromStdout)
+    {
+        if (line.Length == 0 || _released)
         {
             return;
         }
@@ -353,16 +473,45 @@ public sealed class PluginProcess : IAsyncDisposable
 
     private async Task<int> WatchExitAsync()
     {
-        // With both streams read asynchronously, this also waits until their last lines have been handled.
+        // Nothing reads the streams asynchronously, so this waits for the process alone, not for its pipes to close,
+        // which a process it started may put off.
         await _process.WaitForExitAsync().ConfigureAwait(false);
         var code = _process.ExitCode;
         _log.Info($"Plugin {_launch.PluginId} (pid {Id}) exited with code {code}");
+
+        // What it left running: a process that follows protocol 1 exits as its stdin closes, and the group ends the rest.
+        CloseInput();
+        _group.Dispose();
+        _ = WarnIfLeftRunningAsync();
         await _ended.CancelAsync().ConfigureAwait(false);
         return code;
     }
 
-    private async Task StopCoreAsync()
+    /// <summary>
+    /// One warning when the output stays open after the exit: a process the plugin started holds it, one that its
+    /// group did not end, as on a system without groups.
+    /// </summary>
+    private async Task WarnIfLeftRunningAsync()
     {
+        try
+        {
+            await _outputClosed.Task.WaitAsync(LeftRunningWait).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            _log.Warn(
+                $"Plugin {_launch.PluginId} (pid {Id}) exited {Seconds(LeftRunningWait)} s ago, but its output is still open: a process it started is still running");
+        }
+    }
+
+    /// <summary>Closes the plugin's stdin once: its sign to exit, and that of every process it started that shares it.</summary>
+    private void CloseInput()
+    {
+        if (Interlocked.Exchange(ref _inputClosed, 1) != 0)
+        {
+            return;
+        }
+
         try
         {
             _process.StandardInput.Dispose();
@@ -371,7 +520,11 @@ public sealed class PluginProcess : IAsyncDisposable
         {
             // It has gone already, and its end of the pipe with it.
         }
+    }
 
+    private async Task StopCoreAsync()
+    {
+        CloseInput();
         try
         {
             await Exited.WaitAsync(_stopGrace).ConfigureAwait(false);
@@ -382,7 +535,25 @@ public sealed class PluginProcess : IAsyncDisposable
             await KillAsync().ConfigureAwait(false);
         }
 
+        // What it printed as it exited goes to the log before Dictum lets go of it.
+        if (Exited.IsCompleted)
+        {
+            await WaitForLastLinesAsync().ConfigureAwait(false);
+        }
+
         Release();
+    }
+
+    private async Task WaitForOutputToCloseAsync()
+    {
+        try
+        {
+            await _outputClosed.Task.WaitAsync(LastLinesWait).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            // A process it left running holds the pipes open; its own lines have arrived by now.
+        }
     }
 
     /// <summary>Kills the plugin with every process it started, and waits up to <see cref="KillWait"/> for it to be gone.</summary>
@@ -408,11 +579,13 @@ public sealed class PluginProcess : IAsyncDisposable
     }
 
     /// <summary>
-    /// Releases the process handle once the process has ended. One that will not end keeps it, since its exit code is
-    /// still to be read.
+    /// Lets go of the plugin: ends its group, which kills whatever of it is left, and releases the process handle once
+    /// the process has ended. One that will not end keeps it, since its exit code is still to be read.
     /// </summary>
     private void Release()
     {
+        _released = true;
+        _group.Dispose();
         if (Exited.IsCompleted)
         {
             _process.Dispose();

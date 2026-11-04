@@ -1,3 +1,4 @@
+using Dictum.Core;
 using Dictum.Core.Diagnostics;
 
 namespace Dictum.Plugins;
@@ -27,7 +28,9 @@ public sealed record PluginHostOptions(PluginTimings Timings, int MaxRestarts = 
 /// go keeps the process, even one still loading its model. <see cref="StopUnusedAsync"/> then stops what no engine
 /// holds. No program runs before the user confirmed it: the trust record is checked before every launch.
 /// </summary>
-public sealed class PluginHost(PluginTrustStore trust, ILog log, PluginHostOptions? options = null, TimeProvider? time = null) : IAsyncDisposable
+/// <param name="groups">Where each plugin process starts, so that what it starts ends with it.</param>
+public sealed class PluginHost(PluginTrustStore trust, IProcessGroups groups, ILog log, PluginHostOptions? options = null, TimeProvider? time = null)
+    : IAsyncDisposable
 {
     private readonly PluginHostOptions _options = options ?? PluginHostOptions.Default;
     private readonly TimeProvider _time = time ?? TimeProvider.System;
@@ -44,6 +47,9 @@ public sealed class PluginHost(PluginTrustStore trust, ILog log, PluginHostOptio
 
     /// <summary>The client every request to a plugin goes through, its health polls included; it never uses a proxy.</summary>
     public HttpClient Http { get; } = PluginHttp.CreateClient();
+
+    /// <summary>The groups every plugin process starts in, for a launch outside the host such as the probe of <c>plugins add</c>.</summary>
+    public IProcessGroups Groups => groups;
 
     /// <summary>Every instance no sweep has removed yet, leased or not; for doctor and the tests.</summary>
     public IReadOnlyCollection<PluginInstance> Instances
@@ -70,7 +76,7 @@ public sealed class PluginHost(PluginTrustStore trust, ILog log, PluginHostOptio
             ObjectDisposedException.ThrowIf(_disposed, this);
             if (!_instances.TryGetValue(key, out var instance))
             {
-                instance = new PluginInstance(launch, trust, log, Http, _options, _time, _lifetime.Token);
+                instance = new PluginInstance(launch, trust, log, Http, groups, _options, _time, _lifetime.Token);
                 _instances.Add(key, instance);
             }
 

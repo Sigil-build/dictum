@@ -63,7 +63,8 @@ internal sealed class CliContext : IAsyncDisposable
     /// The plugin processes this invocation starts, which end with it. Made on first use, so that a command whose
     /// config has no plugin provider starts no plugin client.
     /// </summary>
-    public PluginHost Plugins => _plugins ??= new PluginHost(new PluginTrustStore(Paths.PluginTrustFile, Log), Log);
+    public PluginHost Plugins => _plugins ??=
+        new PluginHost(new PluginTrustStore(Paths.PluginTrustFile, Log), PlatformFactory.CreateProcessGroups(), Log);
 
     /// <summary>The config, or null when the file does not exist. Invalid files throw <see cref="ConfigException"/>.</summary>
     public DictumConfig? TryLoadConfig()

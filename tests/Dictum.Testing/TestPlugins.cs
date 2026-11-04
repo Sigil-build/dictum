@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text.Json.Nodes;
 using Dictum.Plugins;
 using Dictum.TestPlugin;
@@ -85,26 +86,95 @@ public static class TestPlugins
     /// <summary>Whether a test plugin copied into <paramref name="dir"/> still runs; every test copies the plugin into its own.</summary>
     public static bool RunsIn(TempDirectory dir)
     {
-        var mine = Path.DirectorySeparatorChar + Path.GetFileName(dir.Path) + Path.DirectorySeparatorChar;
-        foreach (var process in Process.GetProcessesByName(ProgramName))
+        var running = RunningIn(dir);
+        foreach (var process in running)
+        {
+            process.Dispose();
+        }
+
+        return running.Count > 0;
+    }
+
+    /// <summary>Kills every test plugin still running from <paramref name="dir"/>, such as a child a test left on purpose.</summary>
+    public static void EndAllIn(TempDirectory dir)
+    {
+        foreach (var process in RunningIn(dir))
         {
             using (process)
             {
                 try
                 {
-                    if (!process.HasExited && process.MainModule?.FileName.Contains(mine, StringComparison.OrdinalIgnoreCase) == true)
-                    {
-                        return true;
-                    }
+                    process.Kill();
+                    process.WaitForExit(TimeSpan.FromSeconds(5));
                 }
                 catch (Exception ex) when (ex is InvalidOperationException or Win32Exception)
                 {
-                    // It exited while we looked.
+                    // It exited meanwhile.
                 }
             }
         }
+    }
 
-        return false;
+    /// <summary>
+    /// The process that <see cref="TestPluginBehaviour.LeaveChild"/> started from <paramref name="folder"/>, once its pid
+    /// is written; null when it has ended already. The caller disposes it.
+    /// </summary>
+    public static async Task<Process?> LeftChildAsync(string folder, TimeSpan patience)
+    {
+        var file = Path.Combine(folder, TestPluginBehaviour.ChildPidFile);
+        await Eventually.WaitForAsync(() => File.Exists(file), "the pid of the plugin's child", patience);
+        Process process;
+        try
+        {
+            process = Process.GetProcessById(int.Parse(File.ReadAllText(file), CultureInfo.InvariantCulture));
+        }
+        catch (ArgumentException)
+        {
+            // No process has that id any more.
+            return null;
+        }
+
+        try
+        {
+            // Not another program that got the id once the child was gone.
+            if (!process.HasExited && process.ProcessName == ProgramName)
+            {
+                return process;
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            // It exited while we looked.
+        }
+
+        process.Dispose();
+        return null;
+    }
+
+    /// <summary>The test plugins running from <paramref name="dir"/>; the caller disposes them.</summary>
+    private static List<Process> RunningIn(TempDirectory dir)
+    {
+        var mine = Path.DirectorySeparatorChar + Path.GetFileName(dir.Path) + Path.DirectorySeparatorChar;
+        var running = new List<Process>();
+        foreach (var process in Process.GetProcessesByName(ProgramName))
+        {
+            try
+            {
+                if (!process.HasExited && process.MainModule?.FileName.Contains(mine, StringComparison.OrdinalIgnoreCase) == true)
+                {
+                    running.Add(process);
+                    continue;
+                }
+            }
+            catch (Exception ex) when (ex is InvalidOperationException or Win32Exception)
+            {
+                // It exited while we looked.
+            }
+
+            process.Dispose();
+        }
+
+        return running;
     }
 
     private static void CopyDirectory(string from, string to)
