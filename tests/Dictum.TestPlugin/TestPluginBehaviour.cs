@@ -34,10 +34,10 @@ public sealed record TestPluginBehaviour
     /// Exits with code 1, as a crash would, this long after its first <c>/dictum/v1/info</c> answer was sent: the last
     /// step of Dictum's start, so the crash never lands inside the start, however slow the plugin's first requests are.
     /// </summary>
-    public int? ExitAfterReadyMs { get; set; }
+    public int? CrashAfterInfoMs { get; set; }
 
     /// <summary>
-    /// Right before the exit that <see cref="ExitAfterReadyMs"/> plays, starts a copy of its own program that inherits its
+    /// Right before the crash that <see cref="CrashAfterInfoMs"/> plays, starts a copy of its own program that inherits its
     /// stdin, stdout and stderr, and writes the copy's pid to <see cref="ChildPidFile"/>. The copy runs for a minute
     /// unless it is ended, whatever its stdin does, unless <see cref="ChildFollowsStdin"/>.
     /// </summary>

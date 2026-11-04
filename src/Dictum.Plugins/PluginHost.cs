@@ -86,7 +86,13 @@ public sealed class PluginHost(PluginTrustStore trust, IProcessGroups groups, IL
     }
 
     /// <summary>Stops and forgets every instance that no lease holds, a start in progress included.</summary>
-    public async Task StopUnusedAsync()
+    /// <param name="isCurrent">
+    /// Whether the engine that asks for the sweep is still the one in use; null sweeps regardless. A reload may replace
+    /// and dispose that engine before its successor has taken its leases, which it takes at its own warm-up: a sweep
+    /// for a replaced engine stops nothing, and the successor's sweep follows its warm-up. It is asked under the host's
+    /// lock, so it must not wait or call the host.
+    /// </param>
+    public async Task StopUnusedAsync(Func<bool>? isCurrent = null)
     {
         List<PluginInstance> unused;
         var swept = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -94,6 +100,14 @@ public sealed class PluginHost(PluginTrustStore trust, IProcessGroups groups, IL
         {
             // Under the host's lock no lease can be taken meanwhile, so an instance removed here has none for good.
             unused = [.. _instances.Values.Where(instance => !instance.IsLeased)];
+
+            // Asked once the leases are read, since letting go of a lease does not take this lock. A reload replaces the
+            // engine before it disposes the old one, so an engine still current here had let go of nothing it uses.
+            if (isCurrent is not null && !isCurrent())
+            {
+                return;
+            }
+
             foreach (var instance in unused)
             {
                 _instances.Remove(instance.Key);
@@ -122,7 +136,10 @@ public sealed class PluginHost(PluginTrustStore trust, IProcessGroups groups, IL
         }
     }
 
-    /// <summary>Cancels every start and stops every plugin, those a sweep is still stopping included.</summary>
+    /// <summary>
+    /// Cancels every start and stops every plugin, those a sweep is still stopping included. A part that fails does not
+    /// stop the rest; the first failure is thrown once all of it has run.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         PluginInstance[] all;
@@ -140,10 +157,24 @@ public sealed class PluginHost(PluginTrustStore trust, IProcessGroups groups, IL
             sweeps = [.. _sweeps];
         }
 
-        await _lifetime.CancelAsync().ConfigureAwait(false);
-        await Task.WhenAll(all.Select(instance => instance.StopAsync()).Concat(sweeps)).ConfigureAwait(false);
-        Http.Dispose();
-        _lifetime.Dispose();
+        try
+        {
+            // A callback on the token that throws fails the cancel, after the others have run.
+            await _lifetime.CancelAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            try
+            {
+                // Waits for every stop, whichever fails.
+                await Task.WhenAll(all.Select(instance => instance.StopAsync()).Concat(sweeps)).ConfigureAwait(false);
+            }
+            finally
+            {
+                Http.Dispose();
+                _lifetime.Dispose();
+            }
+        }
     }
 }
 

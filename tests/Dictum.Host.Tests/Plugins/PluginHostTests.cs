@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json.Nodes;
+using Dictum.Core;
 using Dictum.Plugins;
 using Dictum.Testing;
 using Dictum.TestPlugin;
@@ -171,12 +172,34 @@ public sealed class PluginHostTests : IAsyncDisposable
         Assert.Equal(1, b.Instance.Launches);
     }
 
+    /// <summary>
+    /// Ledger 72: the caller whose wait began the start stops waiting, as a dictation cancelled while the plugin loads
+    /// its model does. That stops only its own wait: the start goes on for the other caller, and the plugin starts once.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task ACallersTokenStopsOnlyItsOwnWait()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var host = Host();
+        using var lease = host.Acquire(TestPlugins.Launch(ConfirmedFolder(new TestPluginBehaviour { LoadMs = 1500 })));
+        using var cancelled = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var firstWait = lease.Instance.ReadyAsync(cancelled.Token);
+        var secondWait = lease.Instance.ReadyAsync(ct);
+
+        await cancelled.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => firstWait);
+        Assert.Same(await secondWait, await lease.Instance.ReadyAsync(ct));
+        Assert.Equal(PluginInstanceState.Ready, lease.Instance.State);
+        Assert.Equal(1, lease.Instance.Launches);
+    }
+
     [Fact(Timeout = TestTimeout.Generous)]
     public async Task AnExitAfterReadyIsRestarted()
     {
         var ct = TestContext.Current.CancellationToken;
         var host = Host();
-        var folder = ConfirmedFolder(new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs });
+        var folder = ConfirmedFolder(new TestPluginBehaviour { CrashAfterInfoMs = CrashAfterMs });
         using var lease = host.Acquire(TestPlugins.Launch(folder));
         await lease.Instance.ReadyAsync(ct);
         var first = lease.Instance.ProcessId;
@@ -198,7 +221,7 @@ public sealed class PluginHostTests : IAsyncDisposable
     {
         var ct = TestContext.Current.CancellationToken;
         var host = Host();
-        var folder = ConfirmedFolder(new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs, LeaveChild = true });
+        var folder = ConfirmedFolder(new TestPluginBehaviour { CrashAfterInfoMs = CrashAfterMs, LeaveChild = true });
         using var lease = host.Acquire(TestPlugins.Launch(folder));
         await lease.Instance.ReadyAsync(ct);
         var first = lease.Instance.ProcessId;
@@ -222,7 +245,7 @@ public sealed class PluginHostTests : IAsyncDisposable
         Assert.SkipUnless(OperatingSystem.IsWindows(), "Only Windows has a group that ends what a plugin started");
         var ct = TestContext.Current.CancellationToken;
         var host = Host();
-        var folder = ConfirmedFolder(new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs, LeaveChild = true });
+        var folder = ConfirmedFolder(new TestPluginBehaviour { CrashAfterInfoMs = CrashAfterMs, LeaveChild = true });
         using var lease = host.Acquire(TestPlugins.Launch(folder));
         await lease.Instance.ReadyAsync(ct);
         new TestPluginBehaviour().Save(Path.Combine(folder, BehaviourFile));
@@ -240,7 +263,7 @@ public sealed class PluginHostTests : IAsyncDisposable
     {
         var ct = TestContext.Current.CancellationToken;
         var host = Host(NoRestartDelay, new ManualClock());
-        using var lease = host.Acquire(TestPlugins.Launch(ConfirmedFolder(new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs })));
+        using var lease = host.Acquire(TestPlugins.Launch(ConfirmedFolder(new TestPluginBehaviour { CrashAfterInfoMs = CrashAfterMs })));
         await lease.Instance.ReadyAsync(ct);
 
         await Eventually.WaitForAsync(() => lease.Instance.State == PluginInstanceState.Failed, "the plugin given up on", Patience);
@@ -262,7 +285,7 @@ public sealed class PluginHostTests : IAsyncDisposable
     {
         var ct = TestContext.Current.CancellationToken;
         var host = Host();
-        var folder = ConfirmedFolder(new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs });
+        var folder = ConfirmedFolder(new TestPluginBehaviour { CrashAfterInfoMs = CrashAfterMs });
         using var lease = host.Acquire(TestPlugins.Launch(folder));
         await lease.Instance.ReadyAsync(ct);
 
@@ -285,7 +308,7 @@ public sealed class PluginHostTests : IAsyncDisposable
     {
         var ct = TestContext.Current.CancellationToken;
         var host = Host();
-        using var lease = host.Acquire(TestPlugins.Launch(ConfirmedFolder(new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs })));
+        using var lease = host.Acquire(TestPlugins.Launch(ConfirmedFolder(new TestPluginBehaviour { CrashAfterInfoMs = CrashAfterMs })));
         await lease.Instance.ReadyAsync(ct);
 
         _trust.Forget("test");
@@ -328,7 +351,7 @@ public sealed class PluginHostTests : IAsyncDisposable
         var ct = TestContext.Current.CancellationToken;
         var clock = new ManualClock();
         var host = Host(NoRestartDelay, clock);
-        using var lease = host.Acquire(TestPlugins.Launch(ConfirmedFolder(new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs })));
+        using var lease = host.Acquire(TestPlugins.Launch(ConfirmedFolder(new TestPluginBehaviour { CrashAfterInfoMs = CrashAfterMs })));
         await lease.Instance.ReadyAsync(ct);
 
         for (var launches = 2; launches <= 5; launches++)
@@ -437,6 +460,29 @@ public sealed class PluginHostTests : IAsyncDisposable
         Assert.False(TestPlugins.RunsIn(_dir), "the plugin runs");
     }
 
+    /// <summary>
+    /// Ledger 139: a model path that a batch launcher cannot be given is refused before anything runs, so it is no
+    /// launch. The instance fails as a start that fails does, so later callers get why, and how to try again.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task ARefusedBatchLaunchIsNotCounted()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Only Windows runs a batch file through cmd.exe");
+        var ct = TestContext.Current.CancellationToken;
+        var host = Host();
+        var folder = TestPlugins.BatchLauncherFolder(_dir, "plugin.cmd");
+        var launch = TestPlugins.Launch(folder, Directory.CreateDirectory(_dir.File("R&D")).FullName);
+        _trust.Confirm(launch.PluginId, folder, launch.Executable);
+        using var lease = host.Acquire(launch);
+
+        var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => lease.Instance.ReadyAsync(ct));
+
+        Assert.StartsWith("Plugin test starts through plugin.cmd, which cannot be given ", error.Message);
+        Assert.Equal(0, lease.Instance.Launches);
+        Assert.Equal(PluginInstanceState.Failed, lease.Instance.State);
+        Assert.False(File.Exists(Path.Combine(folder, TestPlugins.StartedMark)), "the launcher ran");
+    }
+
     [Fact(Timeout = TestTimeout.Generous)]
     public async Task ConfirmingAgainLetsItStartWithoutAReload()
     {
@@ -503,9 +549,32 @@ public sealed class PluginHostTests : IAsyncDisposable
         Assert.Empty(host.Instances);
     }
 
-    private PluginHost Host(PluginHostOptions? options = null, TimeProvider? time = null)
+    /// <summary>
+    /// Ledger 77: a part of the disposal that throws does not stop the rest. Here letting go of one plugin fails once it
+    /// has stopped; the other plugin is still stopped, and the host's client is still disposed.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task DisposingGoesOnWhenOnePartThrows()
     {
-        var host = new PluginHost(_trust, PlatformFactory.CreateProcessGroups(), _log, options, time);
+        var ct = TestContext.Current.CancellationToken;
+        var host = Host(groups: new FailingGroups(PlatformFactory.CreateProcessGroups()));
+        var folder = ConfirmedFolder();
+        using var failing = host.Acquire(TestPlugins.Launch(folder, threads: 2));
+        await failing.Instance.ReadyAsync(ct);
+        using var other = host.Acquire(TestPlugins.Launch(folder, threads: 4));
+        await other.Instance.ReadyAsync(ct);
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => host.DisposeAsync().AsTask().WaitAsync(ct));
+
+        Assert.Equal(FailingGroups.Failure, error.Message);
+        Assert.Equal(PluginInstanceState.Stopped, other.Instance.State);
+        Assert.False(TestPlugins.RunsIn(_dir), "a plugin still runs");
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => host.Http.GetAsync(new Uri("http://127.0.0.1:1/"), ct));
+    }
+
+    private PluginHost Host(PluginHostOptions? options = null, TimeProvider? time = null, IProcessGroups? groups = null)
+    {
+        var host = new PluginHost(_trust, groups ?? PlatformFactory.CreateProcessGroups(), _log, options, time);
         _hosts.Add(host);
         return host;
     }
@@ -537,6 +606,37 @@ public sealed class PluginHostTests : IAsyncDisposable
         {
             // No process has that id any more.
             return false;
+        }
+    }
+
+    /// <summary>
+    /// The system's groups, except that letting go of the first one fails once it has ended: as Dictum lets go of that
+    /// plugin, after it has stopped and its group has killed what it left.
+    /// </summary>
+    private sealed class FailingGroups(IProcessGroups groups) : IProcessGroups
+    {
+        public const string Failure = "The test cannot let go of this group.";
+
+        private int _enclosed;
+
+        public IDisposable Enclose(Process process)
+        {
+            var group = groups.Enclose(process);
+            return Interlocked.Increment(ref _enclosed) == 1 ? new FailingGroup(group) : group;
+        }
+
+        private sealed class FailingGroup(IDisposable group) : IDisposable
+        {
+            private int _disposals;
+
+            public void Dispose()
+            {
+                group.Dispose();
+                if (Interlocked.Increment(ref _disposals) > 1)
+                {
+                    throw new InvalidOperationException(Failure);
+                }
+            }
         }
     }
 }

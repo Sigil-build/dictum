@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Sockets;
 using Dictum.Core;
 using Dictum.Core.Audio;
@@ -113,6 +114,30 @@ public sealed class DoctorChecksTests : IDisposable
 
         Assert.Equal(HealthLevel.Ok, checks.Single(c => c.Name == PlatformCheckNames.Stt("p")).Status.Level);
         Assert.Contains("No answer within", checks.Single(c => c.Name == PlatformCheckNames.Stt("w")).Status.Detail);
+    }
+
+    // Ledger 90: a plugin's row may wait out the plugin's whole start, and the System page waits 2 minutes for the whole
+    // doctor. The plugin rows wait side by side, so plugins that hang take one timeout between them, not one each.
+    [Fact]
+    public async Task TwoHangingPluginsTakeOneTimeout()
+    {
+        var timeout = TimeSpan.FromSeconds(5);
+        var config = new DictumConfig
+        {
+            Stt =
+            {
+                ["a"] = new PluginSttConfig { Plugin = "a", Model = "m1" },
+                ["b"] = new PluginSttConfig { Plugin = "b", Model = "m1" },
+            },
+        };
+        var inputs = Inputs(config) with { GetStt = _ => new SilentStt(), PluginCheckTimeout = timeout };
+        var watch = Stopwatch.StartNew();
+
+        var checks = await DoctorChecks.RunAsync(inputs, _ct);
+
+        Assert.Equal("No answer within 5 s", checks.Single(c => c.Name == PlatformCheckNames.Stt("a")).Status.Detail);
+        Assert.Equal("No answer within 5 s", checks.Single(c => c.Name == PlatformCheckNames.Stt("b")).Status.Detail);
+        Assert.True(watch.Elapsed < timeout * 2, $"the doctor took {watch.Elapsed.TotalSeconds:F1} s");
     }
 
     [Fact]

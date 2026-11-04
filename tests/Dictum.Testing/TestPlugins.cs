@@ -13,6 +13,9 @@ public static class TestPlugins
     /// <summary>The test plugin's own code, which its program, the .NET launcher, loads: what a manifest's <c>program</c> would list.</summary>
     public const string AssemblyFile = ProgramName + ".dll";
 
+    /// <summary>The file that the batch file of <see cref="BatchLauncherFolder"/> writes when it runs.</summary>
+    public const string StartedMark = "started.txt";
+
     private const string ProgramName = "dictum-test-plugin";
     private const string BehaviourFile = "behaviour.json";
 
@@ -65,6 +68,24 @@ public static class TestPlugins
             File.SetUnixFileMode(executable, File.GetUnixFileMode(executable) | UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute);
         }
 
+        return folder;
+    }
+
+    /// <summary>
+    /// A copy of the test plugin in <paramref name="dir"/>, started through a batch file named <paramref name="launcher"/>,
+    /// as a plugin in a scripting language often is. The batch file writes <see cref="StartedMark"/> before it starts the
+    /// program. Windows only.
+    /// </summary>
+    public static string BatchLauncherFolder(TempDirectory dir, string launcher)
+    {
+        var folder = Folder(dir);
+        File.WriteAllText(
+            Path.Combine(folder, launcher),
+            $"@echo started> \"%~dp0{StartedMark}\"\r\n@\"%~dp0{ProgramName}.exe\" %*\r\n");
+        var manifestFile = Path.Combine(folder, PluginProtocol.ManifestFile);
+        var manifest = JsonNode.Parse(File.ReadAllText(manifestFile))!;
+        manifest["executable"]![PluginProtocol.CurrentRid] = launcher;
+        File.WriteAllText(manifestFile, manifest.ToJsonString());
         return folder;
     }
 

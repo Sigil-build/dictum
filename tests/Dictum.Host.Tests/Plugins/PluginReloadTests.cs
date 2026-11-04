@@ -1,6 +1,9 @@
 using System.Diagnostics;
 using Dictum.Core;
 using Dictum.Core.Configuration;
+using Dictum.Host.Daemon;
+using Dictum.Host.Tests.Daemon;
+using Dictum.Platform;
 using Dictum.Plugins;
 using Dictum.Testing;
 using Dictum.TestPlugin;
@@ -13,6 +16,9 @@ namespace Dictum.Host.Tests.Plugins;
 /// </summary>
 public sealed class PluginReloadTests : IAsyncDisposable
 {
+    /// <summary>For waits on a plugin's start, which a busy runner may deliver late.</summary>
+    private static readonly TimeSpan Patience = TimeSpan.FromSeconds(15);
+
     private readonly TempDirectory _dir = new();
     private readonly ListLog _log = new();
     private readonly PluginHost _plugins;
@@ -123,6 +129,92 @@ public sealed class PluginReloadTests : IAsyncDisposable
         Assert.Equal(PluginInstanceState.Ready, Assert.Single(_plugins.Instances).State);
     }
 
+    /// <summary>
+    /// Ledger 91: a disposed engine makes no provider. A provider made after the disposal, which nothing disposes, would
+    /// hold its plugin's lease for good once used, as a warm-up uses it.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task GetSttAfterDisposeTakesNoLease()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var engine = Engine(Config());
+        await engine.DisposeAsync();
+
+        Assert.Throws<ObjectDisposedException>(() => engine.GetStt("p"));
+        Assert.Throws<ObjectDisposedException>(() => engine.CreateAdHocStt("q", new PluginSttConfig { Plugin = "test", Model = _model }));
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => engine.WarmUpAsync(ct));
+        Assert.Empty(_plugins.Instances);
+    }
+
+    /// <summary>
+    /// Final review item 9: a reload replaces the engine and disposes the old one between the daemon's check that the
+    /// warmed-up engine is current and the sweep. The new engine takes its lease only at its warm-up, after the hotkeys
+    /// are registered, so at the sweep no lease holds the plugin. The sweep sees that its engine is no longer current
+    /// and stops nothing, and the new engine keeps the process.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task AReloadDuringTheSweepKeepsTheNewEnginesPlugin()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var hotkeys = new FakeHotkeys();
+        var platform = new PlatformServices(
+            "test",
+            () => hotkeys,
+            new FakeInjector(),
+            new UnavailableSecretStore(),
+            null,
+            new FakeNotifier(),
+            _ => Task.FromResult<IReadOnlyList<PlatformCheck>>([]));
+        var firstSweepWaits = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var reloaded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var firstSweepEnded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var sweeps = 0;
+
+        // The daemon disposes the engines it makes: the old one at the reload, the current one with itself.
+        await using var daemon = new DictumDaemon(
+            Config(),
+            config => DictumHost.Create(_paths, _log, config, plugins: () => _plugins),
+            platform,
+            new FakeSounds(),
+            _log,
+            afterWarmUp: async isCurrent =>
+            {
+                // DaemonHost's sweep. The first one waits, past the daemon's check, until the reload has replaced its engine.
+                var first = Interlocked.Increment(ref sweeps) == 1;
+                if (first)
+                {
+                    firstSweepWaits.SetResult();
+                    await reloaded.Task;
+                }
+
+                await _plugins.StopUnusedAsync(isCurrent);
+                if (first)
+                {
+                    firstSweepEnded.SetResult();
+                }
+            });
+        await daemon.StartAsync(ct);
+        await firstSweepWaits.Task.WaitAsync(Patience, ct);
+        var instance = Assert.Single(_plugins.Instances);
+        var pid = instance.ProcessId;
+
+        // The reload disposes the old engine, then waits in the hotkeys' registration, before the new engine warms up.
+        var registering = hotkeys.HoldNext();
+        var reload = daemon.ApplyConfigAsync(Config(), ct);
+        await hotkeys.Held.Task.WaitAsync(Patience, ct);
+        reloaded.SetResult();
+        await firstSweepEnded.Task.WaitAsync(Patience, ct);
+        registering.SetResult();
+        await reload.WaitAsync(Patience, ct);
+        await daemon.IdleAsync().WaitAsync(Patience, ct);
+
+        Assert.Equal(2, sweeps);
+        Assert.Equal(PluginInstanceState.Ready, instance.State);
+        Assert.Same(instance, Assert.Single(_plugins.Instances));
+        Assert.Equal(pid, instance.ProcessId);
+        Assert.Equal(1, instance.Launches);
+    }
+
     /// <summary>The rest of the daemon's reload, once the new engine is built: dispose the old one, warm up the new one, sweep.</summary>
     private async Task ReloadAsync(DictumHost old, DictumHost next, CancellationToken ct)
     {
@@ -134,7 +226,7 @@ public sealed class PluginReloadTests : IAsyncDisposable
 
     private DictumHost Engine(DictumConfig config)
     {
-        var engine = DictumHost.Create(_paths, _log, config, plugins: _plugins);
+        var engine = DictumHost.Create(_paths, _log, config, plugins: () => _plugins);
         _engines.Add(engine);
         return engine;
     }

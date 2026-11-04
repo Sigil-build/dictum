@@ -22,15 +22,16 @@ public sealed class ProviderFactory : IDisposable
     private readonly ProviderRegistry _registry;
 
     /// <param name="plugins">
-    /// The plugin processes of this Dictum process, which only the daemon and the CLI have. Without it, creating a
-    /// plugin provider throws; every other provider is created as usual.
+    /// The plugin processes of this Dictum process, which only the daemon and the CLI have. Asked for when a plugin
+    /// provider is created, and only then, so that a process that uses none makes none. Without it, creating a plugin
+    /// provider throws; every other provider is created as usual.
     /// </param>
     /// <param name="registrations">The user's plugins by id, the <c>plugins</c> section of the config.</param>
     public ProviderFactory(
         AppPaths paths,
         ISecretStore secrets,
         ILog log,
-        PluginHost? plugins = null,
+        Func<PluginHost>? plugins = null,
         IReadOnlyDictionary<string, PluginRegistration>? registrations = null)
     {
         var values = new ConfigValueResolver(secrets);
@@ -41,7 +42,7 @@ public sealed class ProviderFactory : IDisposable
             .AddStt<OpenAiCompatibleSttConfig>((id, c) => new OpenAiCompatibleStt(id, c, _http, values, log))
             .AddStt<PluginSttConfig>((id, c) => plugins is null
                 ? throw new ConfigException($"STT provider '{id}' runs a plugin, which only the daemon and the CLI start.")
-                : new PluginStt(id, c, resolver, plugins, values, log))
+                : new PluginStt(id, c, resolver, plugins(), values, log))
             .AddProcessor<ReplaceProcessorConfig>((id, c) => new ReplaceProcessor(id, c, log))
             .AddProcessor<LlmProcessorConfig>((id, c) => new LlmProcessor(id, c, _http, values, templates, log));
     }

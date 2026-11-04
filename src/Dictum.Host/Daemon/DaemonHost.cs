@@ -58,7 +58,8 @@ public static class DaemonHost
         var sounds = options.Sounds ?? DictumHost.CreateSoundPlayer(log);
         using var ownedSounds = options.Sounds is null ? sounds as IDisposable : null;
 
-        // The sweep follows the warm-up of the engine in use, which has taken its plugins' leases by then.
+        // The sweep follows the warm-up of the engine in use, which has taken its plugins' leases by then. A reload may
+        // replace that engine before the sweep reads the leases, so the sweep asks whether it is still current.
         await using var daemon = new DictumDaemon(
             options.Config,
             options.CreateEngine,
@@ -68,7 +69,7 @@ public static class DaemonHost
             events,
             options.Warnings,
             commands,
-            afterWarmUp: options.Plugins is { } plugins ? () => plugins.StopUnusedAsync() : null);
+            afterWarmUp: options.Plugins is { } plugins ? isCurrent => plugins.StopUnusedAsync(isCurrent) : null);
 
         // The server listens before the hotkeys are registered, which can take seconds on a portal.
         await using var server = new IpcServer(options.SocketPath, log, events);

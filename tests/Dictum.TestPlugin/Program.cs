@@ -11,10 +11,12 @@ using Microsoft.Extensions.Logging;
 namespace Dictum.TestPlugin;
 
 /// <summary>
-/// A plugin under protocol 1 that takes, in order, the numbered steps below; <see cref="TestPluginBehaviour"/> changes
-/// each of them. It reads the behaviour from <c>--model</c> when that is a <c>.json</c> file, else from
-/// <c>behaviour.json</c> next to the program, else uses the defaults. Started with <c>--child</c>, it is instead the
-/// process that <see cref="TestPluginBehaviour.LeaveChild"/> leaves running.
+/// A plugin under protocol 1 whose run takes the numbered steps below; <see cref="TestPluginBehaviour"/> changes each of
+/// them. They are numbered in the order a run takes them, which is not quite the order of the code: the endpoints that
+/// answer steps 8-11 are set up before the listener starts, so they come ahead of the ready line, steps 6-7. It reads the
+/// behaviour from <c>--model</c> when that is a <c>.json</c> file, else from <c>behaviour.json</c> next to the program,
+/// else uses the defaults. Started with <c>--child</c>, it is instead the process that
+/// <see cref="TestPluginBehaviour.LeaveChild"/> leaves running.
 /// </summary>
 internal static class Program
 {
@@ -24,7 +26,7 @@ internal static class Program
     private const string FollowStdinOption = "--follow-stdin";
     private const string SayAfterOption = "--say-after";
 
-    /// <summary>The exit code of an <see cref="TestPluginBehaviour.ExitAfterReadyMs"/> exit, which plays a crash.</summary>
+    /// <summary>The exit code of the crash that <see cref="TestPluginBehaviour.CrashAfterInfoMs"/> plays.</summary>
     private const int CrashCode = 1;
 
     private static readonly TimeSpan StopWithin = TimeSpan.FromSeconds(2);
@@ -112,11 +114,11 @@ internal static class Program
         app.MapGet("/dictum/v1/info", (HttpContext context) =>
         {
             // 11. Dictum counts the plugin ready once it has this answer, so a crash is timed from the first one sent.
-            if (behaviour.ExitAfterReadyMs is { } exitAfter && Interlocked.Exchange(ref infoSent, 1) == 0)
+            if (behaviour.CrashAfterInfoMs is { } crashAfter && Interlocked.Exchange(ref infoSent, 1) == 0)
             {
                 context.Response.OnCompleted(() =>
                 {
-                    _ = Task.Delay(exitAfter).ContinueWith(
+                    _ = Task.Delay(crashAfter).ContinueWith(
                         _ =>
                         {
                             if (behaviour.LeaveChild)

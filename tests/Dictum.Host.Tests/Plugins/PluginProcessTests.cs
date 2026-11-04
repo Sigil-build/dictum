@@ -5,7 +5,6 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using Dictum.Core;
 using Dictum.Core.Diagnostics;
 using Dictum.Plugins;
@@ -18,9 +17,6 @@ namespace Dictum.Host.Tests.Plugins;
 public sealed class PluginProcessTests : IDisposable
 {
     private const string Hint = "See its output above, and the plugin's own documentation.";
-
-    /// <summary>The file a batch launcher writes when it runs.</summary>
-    private const string StartedMark = "started.txt";
 
     /// <summary>How long a crashing plugin lives after its info answer, so that the crash never lands inside the start.</summary>
     private const int CrashAfterMs = 500;
@@ -261,7 +257,7 @@ public sealed class PluginProcessTests : IDisposable
     {
         Assert.SkipUnless(OperatingSystem.IsWindows(), "Only Windows runs a batch file through cmd.exe");
         var ct = TestContext.Current.CancellationToken;
-        var folder = BatchLauncherFolder(launcher);
+        var folder = TestPlugins.BatchLauncherFolder(_dir, launcher);
         var model = Directory.CreateDirectory(_dir.File(modelFolder)).FullName;
         var launch = TestPlugins.Launch(folder, model);
 
@@ -271,7 +267,7 @@ public sealed class PluginProcessTests : IDisposable
             $"Plugin test starts through {Path.GetFileName(launch.Executable)}, which cannot be given {model}: it holds one of & % ^ ! \" < > | ( ).",
             error.Message);
         Assert.Equal("Use a path without those characters, or ask the plugin's author for a program (.exe) instead of a script.", error.Hint);
-        Assert.False(File.Exists(Path.Combine(folder, StartedMark)), "the launcher ran");
+        Assert.False(File.Exists(Path.Combine(folder, TestPlugins.StartedMark)), "the launcher ran");
         Assert.False(TestPlugins.RunsIn(_dir), "the plugin runs");
     }
 
@@ -280,13 +276,13 @@ public sealed class PluginProcessTests : IDisposable
     {
         Assert.SkipUnless(OperatingSystem.IsWindows(), "Only Windows runs a batch file through cmd.exe");
         var ct = TestContext.Current.CancellationToken;
-        var folder = BatchLauncherFolder("plugin.cmd");
+        var folder = TestPlugins.BatchLauncherFolder(_dir, "plugin.cmd");
         var model = Directory.CreateDirectory(_dir.File("m1")).FullName;
 
         await using var plugin = await StartAsync(TestPlugins.Launch(folder, model), ct);
 
         Assert.Equal("m1", plugin.Endpoint.Info.Model?.Id);
-        Assert.True(File.Exists(Path.Combine(folder, StartedMark)), "the launcher did not run");
+        Assert.True(File.Exists(Path.Combine(folder, TestPlugins.StartedMark)), "the launcher did not run");
     }
 
     /// <summary>
@@ -514,7 +510,7 @@ public sealed class PluginProcessTests : IDisposable
     public async Task AChildThatFollowsTheProtocolEndsWhenThePluginExits()
     {
         var ct = TestContext.Current.CancellationToken;
-        var behaviour = new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs, LeaveChild = true, ChildFollowsStdin = true };
+        var behaviour = new TestPluginBehaviour { CrashAfterInfoMs = CrashAfterMs, LeaveChild = true, ChildFollowsStdin = true };
         var folder = TestPlugins.Folder(_dir, behaviour: behaviour);
 
         await using var plugin = await StartAsync(TestPlugins.Launch(folder), ct, groups: NullProcessGroups.Instance);
@@ -536,7 +532,7 @@ public sealed class PluginProcessTests : IDisposable
     public async Task AProcessLeftRunningAfterTheExitIsWarnedOfOnce()
     {
         var ct = TestContext.Current.CancellationToken;
-        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs, LeaveChild = true });
+        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { CrashAfterInfoMs = CrashAfterMs, LeaveChild = true });
 
         await using var plugin = await StartAsync(TestPlugins.Launch(folder), ct, groups: NullProcessGroups.Instance);
         using var child = await TestPlugins.LeftChildAsync(folder, Patience);
@@ -558,7 +554,7 @@ public sealed class PluginProcessTests : IDisposable
     public async Task WhatArrivesSoonAfterTheExitStillGoesToTheLog()
     {
         var ct = TestContext.Current.CancellationToken;
-        var behaviour = new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs, LeaveChild = true, ChildSaysAfterMs = 100 };
+        var behaviour = new TestPluginBehaviour { CrashAfterInfoMs = CrashAfterMs, LeaveChild = true, ChildSaysAfterMs = 100 };
         var folder = TestPlugins.Folder(_dir, behaviour: behaviour);
 
         var plugin = await StartAsync(TestPlugins.Launch(folder), ct, groups: NullProcessGroups.Instance);
@@ -567,23 +563,6 @@ public sealed class PluginProcessTests : IDisposable
 
         Assert.True(_log.Has("plugin test: child here"), "the line that arrived after the exit did not reach the log");
         Assert.DoesNotContain(_log.Lines, line => line.Level == LogLevel.Warning && line.Message.Contains("did not exit", StringComparison.Ordinal));
-    }
-
-    /// <summary>
-    /// The test plugin started through a batch file named <paramref name="launcher"/>, as a plugin in a scripting
-    /// language often is. The batch file writes <see cref="StartedMark"/> before it starts the program.
-    /// </summary>
-    private string BatchLauncherFolder(string launcher)
-    {
-        var folder = TestPlugins.Folder(_dir);
-        File.WriteAllText(
-            Path.Combine(folder, launcher),
-            $"@echo started> \"%~dp0{StartedMark}\"\r\n@\"%~dp0dictum-test-plugin.exe\" %*\r\n");
-        var manifestFile = Path.Combine(folder, PluginProtocol.ManifestFile);
-        var manifest = JsonNode.Parse(File.ReadAllText(manifestFile))!;
-        manifest["executable"]![PluginProtocol.CurrentRid] = launcher;
-        File.WriteAllText(manifestFile, manifest.ToJsonString());
-        return folder;
     }
 
     private Task<PluginProcess> StartAsync(

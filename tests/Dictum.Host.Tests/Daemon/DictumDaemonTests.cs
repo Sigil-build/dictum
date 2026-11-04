@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Dictum.Audio;
 using Dictum.Core;
 using Dictum.Core.Audio;
@@ -848,19 +849,20 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         await WaitForAsync(() => daemon.Status().WarmedUp == true);
     }
 
-    // The daemon stops the plugins no engine holds once the engine in use has warmed up and taken its own.
+    // The daemon stops the plugins no engine holds once the engine in use has warmed up and taken its own. The hook
+    // gets whether its engine is still in use, which a reload ends.
     [Fact]
     public async Task TheAfterWarmUpHookRunsForEachWarmUpOfTheCurrentEngine()
     {
-        var runs = 0;
-        await using var daemon = await StartAsync(Config(), afterWarmUp: () =>
+        var runs = new ConcurrentQueue<Func<bool>>();
+        await using var daemon = await StartAsync(Config(), afterWarmUp: isCurrent =>
         {
-            Interlocked.Increment(ref runs);
+            runs.Enqueue(isCurrent);
             return Task.CompletedTask;
         });
-        await WaitForAsync(() => Volatile.Read(ref runs) == 1);
+        await WaitForAsync(() => runs.Count == 1);
         await daemon.ApplyConfigAsync(Config(), _ct);
-        await WaitForAsync(() => Volatile.Read(ref runs) == 2);
+        await WaitForAsync(() => runs.Count == 2);
 
         // The third engine is replaced by the fourth while it still warms up, and its warm-up ends after the fourth's.
         var replaced = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -868,21 +870,22 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         await daemon.ApplyConfigAsync(Config(), _ct);
         _warmUp = Task.CompletedTask;
         await daemon.ApplyConfigAsync(Config(), _ct);
-        await WaitForAsync(() => Volatile.Read(ref runs) == 3);
+        await WaitForAsync(() => runs.Count == 3);
         replaced.SetResult();
 
-        // Disposal waits for every warm-up, the replaced engine's included.
-        await daemon.DisposeAsync();
+        // Every warm-up has ended, the replaced engine's included, while the daemon still runs: a disposal would stop
+        // the hook by itself, whether or not the engine was the current one.
+        await daemon.IdleAsync().WaitAsync(Patience, _ct);
 
         Assert.Equal(4, _engines.Count);
-        Assert.Equal(3, runs);
+        Assert.Equal([false, false, true], runs.Select(isCurrent => isCurrent()));
     }
 
     [Fact]
     public async Task AFailingAfterWarmUpHookIsLoggedAndTheWarmUpStillEnds()
     {
         var log = new ListLog();
-        await using var daemon = await StartAsync(Config(), log: log, afterWarmUp: () => throw new InvalidOperationException("sweep failed"));
+        await using var daemon = await StartAsync(Config(), log: log, afterWarmUp: _ => throw new InvalidOperationException("sweep failed"));
 
         await WaitForAsync(() => daemon.Status().WarmedUp == true && log.Has("sweep failed"));
 
@@ -907,7 +910,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         bool withHotkeys = true,
         TimeProvider? time = null,
         DaemonHostCommands? host = null,
-        Func<Task>? afterWarmUp = null,
+        Func<Func<bool>, Task>? afterWarmUp = null,
         ILog? log = null)
     {
         var platform = new PlatformServices(

@@ -27,9 +27,14 @@ public sealed class DictumHost : IDictationEngine
     private readonly IActiveAppProvider? _activeApp;
     private readonly ConcurrentDictionary<string, ISpeechToText> _stt = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, ITextProcessor> _processors = new(StringComparer.Ordinal);
-    private DictationPipeline? _pipeline;
 
-    private DictumHost(AppPaths paths, ILog log, DictumConfig config, ISecretStore secrets, IActiveAppProvider? activeApp, PluginHost? plugins)
+    /// <summary>Orders each new speech provider before or after the disposal, so that the disposal sees every one made.</summary>
+    private readonly Lock _gate = new();
+
+    private DictationPipeline? _pipeline;
+    private bool _disposed;
+
+    private DictumHost(AppPaths paths, ILog log, DictumConfig config, ISecretStore secrets, IActiveAppProvider? activeApp, Func<PluginHost>? plugins)
     {
         Paths = paths;
         Log = log;
@@ -58,21 +63,25 @@ public sealed class DictumHost : IDictationEngine
     /// <param name="config">Null when no config file exists; ad-hoc providers (e.g. <c>--model</c>) still work.</param>
     /// <param name="secrets">Backs <c>secret:</c> values; defaults to a store that explains it is unavailable.</param>
     /// <param name="activeApp">Names the focused app when a recording stops, for a prompt's <c>{{app}}</c>; none leaves it unknown.</param>
-    /// <param name="plugins">Runs the plugin providers; it stays the caller's. Without it a plugin provider fails when it is used.</param>
+    /// <param name="plugins">
+    /// Runs the plugin providers, those made ad hoc included; it stays the caller's, and is asked for only when a plugin
+    /// provider is made. Without it a plugin provider fails when it is used.
+    /// </param>
     public static DictumHost Create(
         AppPaths paths,
         ILog log,
         DictumConfig? config,
         ISecretStore? secrets = null,
         IActiveAppProvider? activeApp = null,
-        PluginHost? plugins = null) =>
+        Func<PluginHost>? plugins = null) =>
         new(paths, log, config ?? new DictumConfig(), secrets ?? new UnavailableSecretStore(), activeApp, plugins);
 
     /// <summary>The state cues on the default output device, for the daemon and the Settings sound test.</summary>
     public static ISoundPlayer CreateSoundPlayer(ILog log) => new SoundPlayer(log);
 
+    /// <exception cref="ObjectDisposedException">The host is disposed, and so would not dispose a provider made now.</exception>
     public ISpeechToText GetStt(string id) =>
-        _stt.GetOrAdd(id, key => Config.Stt.TryGetValue(key, out var config)
+        AddStt(id, key => Config.Stt.TryGetValue(key, out var config)
             ? _providers.CreateStt(key, config)
             : throw new ConfigException($"Unknown STT provider '{key}'. Configured: {ConfiguredIds.Format(Config.Stt.Keys)}."));
 
@@ -82,8 +91,9 @@ public sealed class DictumHost : IDictationEngine
             : throw new ConfigException($"Unknown processor '{key}'. Configured: {ConfiguredIds.Format(Config.Processors.Keys)}."));
 
     /// <summary>Creates a provider that is not in the config, e.g. from <c>--model</c>.</summary>
+    /// <exception cref="ObjectDisposedException">The host is disposed.</exception>
     public ISpeechToText CreateAdHocStt(string id, SttConfig config) =>
-        _stt.GetOrAdd(id, key => _providers.CreateStt(key, config));
+        AddStt(id, key => _providers.CreateStt(key, config));
 
     public DictationProfile ResolveProfile(ProfileOverrides overrides) =>
         ProfileResolver.Resolve(Config, overrides, GetStt, GetProcessor, CreateAdHocStt);
@@ -107,6 +117,16 @@ public sealed class DictumHost : IDictationEngine
 
     public async ValueTask DisposeAsync()
     {
+        lock (_gate)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+        }
+
         foreach (var stt in _stt.Values.OfType<IDisposable>())
         {
             stt.Dispose();
@@ -114,5 +134,18 @@ public sealed class DictumHost : IDictationEngine
 
         _providers.Dispose();
         await _services.DisposeAsync().ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The provider with this id, made on first use. A plugin provider takes its plugin's lease once used, and only its
+    /// disposal lets go of it, so none is made once the host's disposal has begun.
+    /// </summary>
+    private ISpeechToText AddStt(string id, Func<string, ISpeechToText> create)
+    {
+        lock (_gate)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            return _stt.GetOrAdd(id, create);
+        }
     }
 }

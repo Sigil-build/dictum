@@ -110,7 +110,10 @@ public sealed class PluginInstance
         }
     }
 
-    /// <summary>How many times its program was launched, restarts included; a launch refused for trust does not count.</summary>
+    /// <summary>
+    /// How many times its program was launched, restarts included. A launch refused for trust, or refused before anything
+    /// runs, does not count.
+    /// </summary>
     public int Launches
     {
         get
@@ -204,7 +207,10 @@ public sealed class PluginInstance
         }
     }
 
-    /// <summary>Stops it for good: cancels a start or a restart under way, and stops the process. The host calls it once.</summary>
+    /// <summary>
+    /// Stops it for good: cancels a start or a restart under way, and stops the process. The host calls it once. A part
+    /// that fails does not stop the rest, and is thrown once all of it has run.
+    /// </summary>
     internal async Task StopAsync()
     {
         Task? starting;
@@ -219,7 +225,26 @@ public sealed class PluginInstance
             _process = null;
         }
 
-        await _stopping.CancelAsync().ConfigureAwait(false);
+        try
+        {
+            await _stopping.CancelAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            try
+            {
+                await EndAsync(starting, process).ConfigureAwait(false);
+            }
+            finally
+            {
+                _stopping.Dispose();
+            }
+        }
+    }
+
+    /// <summary>Waits for the start that the stop cancelled to end, and stops the process.</summary>
+    private static async Task EndAsync(Task? starting, PluginProcess? process)
+    {
         if (starting is not null)
         {
             try
@@ -236,11 +261,14 @@ public sealed class PluginInstance
         {
             await process.DisposeAsync().ConfigureAwait(false);
         }
-
-        _stopping.Dispose();
     }
 
     /// <summary>Under the lock: a start on the thread pool, so that the trust check's hashing runs outside the lock.</summary>
+    /// <remarks>
+    /// The start may already run when <c>_state</c> and <c>_starting</c> are set here, after it is queued. That is safe
+    /// only under the lock, which every caller holds: the start changes both only under it as well, so even one that
+    /// ends at once cannot clear <c>_starting</c> before it is set, which would leave the instance starting for good.
+    /// </remarks>
     /// <param name="restart">After an exit nobody asked for: a launch that fails counts against the restart budget.</param>
     private Task<PluginEndpoint> BeginStart(TimeSpan delay, bool restart)
     {
@@ -261,7 +289,7 @@ public sealed class PluginInstance
     private async Task<PluginEndpoint> StartAsync(TimeSpan delay, bool restart, CancellationToken ct)
     {
         PluginProcess process;
-        var launched = false;
+        var confirmed = false;
         try
         {
             if (delay > TimeSpan.Zero)
@@ -272,12 +300,15 @@ public sealed class PluginInstance
             // A stop that came during the delay, or before this start ran at all, launches nothing.
             ct.ThrowIfCancellationRequested();
             ThrowUnlessConfirmed();
+            confirmed = true;
+
+            // Before the count: a launch refused before anything runs is a failure, but no launch.
+            PluginProcess.RefuseWhatABatchFileWouldRun(_launch);
             lock (_gate)
             {
                 _launches++;
             }
 
-            launched = true;
             process = await PluginProcess.StartAsync(_launch, _http, _groups, _log, _options.Timings, ct).ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -287,9 +318,9 @@ public sealed class PluginInstance
             lock (_gate)
             {
                 _starting = null;
-                if (!launched || cancelled || _ended)
+                if (!confirmed || cancelled || _ended)
                 {
-                    // Cancelled by a stop, or refused before any launch: an unconfirmed program is checked again next time.
+                    // Cancelled by a stop, or refused for trust: an unconfirmed program is checked again next time.
                     _state = PluginInstanceState.Stopped;
                 }
                 else if (!restart)

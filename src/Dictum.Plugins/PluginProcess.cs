@@ -147,8 +147,8 @@ public sealed class PluginProcess : IAsyncDisposable
     public static async Task<PluginProcess> StartAsync(
         PluginLaunch launch, HttpClient http, IProcessGroups groups, ILog log, PluginTimings timings, CancellationToken ct)
     {
+        RefuseWhatABatchFileWouldRun(launch);
         var arguments = Arguments(launch);
-        RefuseWhatABatchFileWouldRun(launch, arguments);
         var key = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(KeyBytes));
         var plugin = new PluginProcess(launch, arguments, key, groups, log, timings.StopGrace);
         try
@@ -226,13 +226,14 @@ public sealed class PluginProcess : IAsyncDisposable
     /// On Windows, a <c>.cmd</c> or <c>.bat</c> program runs under cmd.exe, which reads the whole command line again:
     /// <c>&amp;</c>, <c>|</c> and the rest run or redirect what follows them, and <c>%</c> expands even inside quotes.
     /// A model path from a copied config must never make Dictum run something the user did not confirm, so such an
-    /// argument is refused before anything starts.
+    /// argument is refused before anything starts. <see cref="StartAsync"/> checks it first; a caller that counts what
+    /// runs checks it before it counts.
     /// </summary>
     /// <exception cref="PluginUnavailableException">An argument holds one of <see cref="BatchSpecial"/>.</exception>
-    private static void RefuseWhatABatchFileWouldRun(PluginLaunch launch, List<string> arguments)
+    internal static void RefuseWhatABatchFileWouldRun(PluginLaunch launch)
     {
         if (!OperatingSystem.IsWindows() || !IsBatchFile(launch.Executable)
-            || arguments.Find(argument => argument.AsSpan().ContainsAny(BatchSpecial)) is not { } refused)
+            || Arguments(launch).Find(argument => argument.AsSpan().ContainsAny(BatchSpecial)) is not { } refused)
         {
             return;
         }

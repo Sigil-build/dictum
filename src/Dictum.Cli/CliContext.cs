@@ -13,6 +13,7 @@ namespace Dictum.Cli;
 /// <summary>Per-invocation state: paths, logging, config, the platform and a lazily built host.</summary>
 internal sealed class CliContext : IAsyncDisposable
 {
+    private readonly Lock _gate = new();
     private DictumHost? _host;
     private DictumConfig? _config;
     private bool _configLoaded;
@@ -60,11 +61,19 @@ internal sealed class CliContext : IAsyncDisposable
         Paths.DataDirectory);
 
     /// <summary>
-    /// The plugin processes this invocation starts, which end with it. Made on first use, so that a command whose
-    /// config has no plugin provider starts no plugin client.
+    /// The plugin processes this invocation starts, which end with it. Made on first use, so that a command that makes
+    /// no plugin provider starts no plugin client; a provider asks for it as it is made, on whichever thread.
     /// </summary>
-    public PluginHost Plugins => _plugins ??=
-        new PluginHost(new PluginTrustStore(Paths.PluginTrustFile, Log), PlatformFactory.CreateProcessGroups(), Log);
+    public PluginHost Plugins
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _plugins ??= new PluginHost(new PluginTrustStore(Paths.PluginTrustFile, Log), PlatformFactory.CreateProcessGroups(), Log);
+            }
+        }
+    }
 
     /// <summary>The config, or null when the file does not exist. Invalid files throw <see cref="ConfigException"/>.</summary>
     public DictumConfig? TryLoadConfig()
@@ -124,15 +133,12 @@ internal sealed class CliContext : IAsyncDisposable
 
     public DictumHost Host() => _host ??= CreateHost(TryLoadConfig());
 
-    /// <summary>A host for <paramref name="config"/>, given <see cref="Plugins"/> only when the config has a plugin provider.</summary>
+    /// <summary>
+    /// A host for <paramref name="config"/>. It gets <see cref="Plugins"/> when it first makes a plugin provider, one
+    /// that the config names or one made ad hoc.
+    /// </summary>
     public DictumHost CreateHost(DictumConfig? config) =>
-        DictumHost.Create(
-            Paths,
-            Log,
-            config,
-            Platform.Secrets,
-            Platform.ActiveApp,
-            config?.Stt.Values.Any(stt => stt is PluginSttConfig) == true ? Plugins : null);
+        DictumHost.Create(Paths, Log, config, Platform.Secrets, Platform.ActiveApp, () => Plugins);
 
     /// <summary>The host first, which lets go of its plugins, then the plugins, which log while they stop.</summary>
     public async ValueTask DisposeAsync()

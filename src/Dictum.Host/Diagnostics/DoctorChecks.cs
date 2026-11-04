@@ -139,12 +139,17 @@ public static class DoctorChecks
 
         if (config is not null)
         {
-            // A plugin's check starts the plugin, which may load its model first.
+            // A plugin's check starts the plugin, which may load its model first. They all start at once, so that
+            // plugins that hang take one timeout between them, not one each: the System page waits 2 minutes for all
+            // of doctor. The rows keep the config's order.
             var pluginTimeout = inputs.PluginCheckTimeout ?? PluginTimings.Default.StartTimeout + PluginMargin;
-            foreach (var (id, stt) in config.Stt)
+            var plugins = config.Stt
+                .Where(stt => stt.Value is PluginSttConfig)
+                .ToDictionary(stt => stt.Key, stt => CheckAsync(() => inputs.GetStt(stt.Key).CheckAsync(ct), pluginTimeout, ct));
+            foreach (var id in config.Stt.Keys)
             {
-                var limit = stt is PluginSttConfig ? pluginTimeout : timeout;
-                Add(PlatformCheckNames.Stt(id), await CheckAsync(() => inputs.GetStt(id).CheckAsync(ct), limit, ct).ConfigureAwait(false));
+                var check = plugins.TryGetValue(id, out var started) ? started : CheckAsync(() => inputs.GetStt(id).CheckAsync(ct), timeout, ct);
+                Add(PlatformCheckNames.Stt(id), await check.ConfigureAwait(false));
             }
 
             foreach (var id in config.Processors.Keys)
