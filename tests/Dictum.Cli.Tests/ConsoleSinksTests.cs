@@ -17,6 +17,28 @@ public sealed class ConsoleSinksTests : IDisposable
 
     public void Dispose() => _dir.Dispose();
 
+    /// <summary>A health detail can carry what a config or a server said, whichever provider made it; every command that prints one spells it out.</summary>
+    [Theory]
+    [InlineData("stt-test", false)]
+    [InlineData("doctor", false)]
+    [InlineData("doctor", true)]
+    public async Task AHealthDetailWithHiddenCharactersIsPrintedSpeltOut(string command, bool json)
+    {
+        var config = new DictumConfig();
+        config.Stt["local"] = new WhisperLocalSttConfig { Model = "m\u001b[2Jodel.bin" };
+        config.Profiles.Add(new ProfileConfig { Id = "local", Stt = "local" });
+        new ConfigStore(_configFile, NullLog.Instance).Save(config);
+
+        string[] args = command == "doctor" ? (json ? ["doctor", "--json"] : ["doctor"]) : ["stt", "test", "local"];
+        using var console = new ConsoleCapture();
+        _ = await console.RunAsync([.. args, "--config", _configFile]);
+
+        var all = console.Out.ToString() + console.Error;
+        Assert.False(all.Contains('\u001b', StringComparison.Ordinal), all);
+        // --json is already escaped by the JSON writer (as \u001B), and must stay valid JSON.
+        Assert.Contains(json ? "\\u001b" : "m\\u001b[2Jodel", all, json ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+    }
+
     /// <summary>A server whose answer holds an escape sequence in a header name: the exception it causes carries those bytes.</summary>
     [Theory]
     [InlineData(false)]

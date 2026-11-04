@@ -50,10 +50,10 @@ internal static class SttCommand
             var stt = context.Host().GetStt(parse.GetValue(id)!);
 
             var status = await stt.CheckAsync(token).ConfigureAwait(false);
-            context.Error.WriteLine($"{status.Level}: {status.Detail}");
+            context.Error.WriteLine($"{status.Level}: {TerminalText.Show(status.Detail)}");
             if (status.Hint is not null)
             {
-                context.Error.WriteLine($"  hint: {status.Hint}");
+                context.Error.WriteLine($"  hint: {TerminalText.Show(status.Hint)}");
             }
 
             if (status.Level == HealthLevel.Error)
