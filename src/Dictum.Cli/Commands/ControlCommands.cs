@@ -2,6 +2,7 @@ using System.CommandLine;
 using System.Text.Json;
 using Dictum.Cli.Output;
 using Dictum.Core.Audio;
+using Dictum.Core.Text;
 using Dictum.Host.Ipc;
 
 namespace Dictum.Cli.Commands;
@@ -30,12 +31,12 @@ internal static class ControlCommands
             if (!response.Ok)
             {
                 // The daemon's text holds the hint already, so it prints once; the kind gives the exit code of its own commands.
-                context.Error.WriteLine($"error: {response.Error}");
+                context.Error.WriteLine($"error: {TerminalText.Show(response.Error)}");
                 return response.Kind == IpcFailureKind.ProviderUnavailable ? ExitCodes.ProviderUnavailable : ExitCodes.Error;
             }
 
             var status = response.Status!;
-            context.Error.WriteLine(status.ActiveProfile is null ? status.State : $"{status.State} ({status.ActiveProfile})");
+            context.Error.WriteLine(status.ActiveProfile is null ? status.State : $"{status.State} ({TerminalText.Show(status.ActiveProfile)})");
             return ExitCodes.Success;
         }, ct));
         return command;
@@ -72,17 +73,17 @@ internal static class ControlCommands
             }
 
             var o = context.Out;
-            o.WriteLine($"daemon:  running (pid {status.ProcessId}), {status.State}{(status.ActiveProfile is null ? "" : $" ({status.ActiveProfile})")}");
-            o.WriteLine($"hotkeys: {status.HotkeyBackend}");
-            o.WriteLine($"paste:   {status.InjectorBackend}");
+            o.WriteLine($"daemon:  running (pid {status.ProcessId}), {status.State}{(status.ActiveProfile is null ? "" : $" ({TerminalText.Show(status.ActiveProfile)})")}");
+            o.WriteLine($"hotkeys: {TerminalText.Show(status.HotkeyBackend)}");
+            o.WriteLine($"paste:   {TerminalText.Show(status.InjectorBackend)}");
             foreach (var p in status.Profiles)
             {
-                o.WriteLine($"  {p.Id,-16} {p.Hotkey ?? "-",-18} {p.Mode,-11} {(p.Hotkey is null ? "" : p.Registered ? "registered" : "NOT registered")}");
+                o.WriteLine($"  {TerminalText.Show(p.Id),-16} {TerminalText.Show(p.Hotkey ?? "-"),-18} {p.Mode,-11} {(p.Hotkey is null ? "" : p.Registered ? "registered" : "NOT registered")}");
             }
 
             if (status.Warning is not null)
             {
-                o.WriteLine($"warning: {status.Warning}");
+                o.WriteLine($"warning: {TerminalText.Show(status.Warning)}");
             }
 
             return ExitCodes.Success;

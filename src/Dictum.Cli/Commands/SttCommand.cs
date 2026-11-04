@@ -28,7 +28,7 @@ internal static class SttCommand
             var config = context.LoadConfig();
             foreach (var (id, stt) in config.Stt)
             {
-                context.Out.WriteLine($"{id,-20} {Describe(stt)}");
+                context.Out.WriteLine($"{TerminalText.Show(id),-20} {Describe(stt)}");
             }
 
             return Task.FromResult(ExitCodes.Success);
@@ -91,8 +91,8 @@ internal static class SttCommand
 
     public static string Describe(SttConfig config) => config switch
     {
-        WhisperLocalSttConfig w => $"{WhisperLocalSttConfig.TypeName}  model={w.Model} runtime={w.Runtime.ToString().ToLowerInvariant()} vad={w.Vad.ToString().ToLowerInvariant()}",
-        OpenAiCompatibleSttConfig o => $"{OpenAiCompatibleSttConfig.TypeName}  {o.BaseUrl} model={o.Model}",
+        WhisperLocalSttConfig w => $"{WhisperLocalSttConfig.TypeName}  model={TerminalText.Show(w.Model)} runtime={w.Runtime.ToString().ToLowerInvariant()} vad={w.Vad.ToString().ToLowerInvariant()}",
+        OpenAiCompatibleSttConfig o => $"{OpenAiCompatibleSttConfig.TypeName}  {TerminalText.Show(o.BaseUrl)} model={TerminalText.Show(o.Model)}",
         PluginSttConfig p => $"plugin {TerminalText.Show(p.Plugin)} · model {TerminalText.Show(p.Model)}",
         _ => config.GetType().Name,
     };

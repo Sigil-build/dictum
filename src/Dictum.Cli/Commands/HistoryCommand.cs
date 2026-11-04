@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Text.Json;
 using Dictum.Cli.Output;
+using Dictum.Core.Text;
 
 namespace Dictum.Cli.Commands;
 
@@ -24,8 +25,8 @@ internal static class HistoryCommand
 
             foreach (var e in entries)
             {
-                var error = e.Error is null ? "" : $"  [failed: {e.Error}]";
-                context.Out.WriteLine($"{e.At.LocalDateTime:yyyy-MM-dd HH:mm}  {e.ProfileId}/{e.Provider}  {e.Text}{error}");
+                var error = e.Error is null ? "" : $"  [failed: {TerminalText.Show(e.Error)}]";
+                context.Out.WriteLine($"{e.At.LocalDateTime:yyyy-MM-dd HH:mm}  {TerminalText.Show(e.ProfileId)}/{TerminalText.Show(e.Provider)}  {TerminalText.Show(e.Text)}{error}");
             }
 
             return Task.FromResult(ExitCodes.Success);

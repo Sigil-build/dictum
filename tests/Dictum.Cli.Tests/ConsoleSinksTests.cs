@@ -1,3 +1,4 @@
+using Dictum.Core;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -16,6 +17,44 @@ public sealed class ConsoleSinksTests : IDisposable
     public ConsoleSinksTests(CliSandbox sandbox) => _configFile = sandbox.File($"sinks-{Guid.NewGuid():N}.json");
 
     public void Dispose() => _dir.Dispose();
+
+    /// <summary>What a daemon reports, and the names a config gives, reach the terminal spelt out; --json stays JSON.</summary>
+    [Theory]
+    [InlineData("status")]
+    [InlineData("start")]
+    public async Task ADaemonsAnswerIsPrintedSpeltOut(string command)
+    {
+        await using var server = new Dictum.Host.Ipc.IpcServer(Dictum.Host.Ipc.IpcEndpoint.SocketPath(AppPaths.FromEnvironment()), NullLog.Instance);
+        server.Start((_, _) => Task.FromResult(command == "start"
+            ? Dictum.Host.Ipc.IpcResponse.Failure("no \u001b[2Jprovider")
+            : Dictum.Host.Ipc.IpcResponse.Success(new Dictum.Host.Ipc.DaemonStatus(
+                "Idle", "act\u001b[2Jive", [new Dictum.Host.Ipc.ProfileStatus("p\u001b[2Jid", "Ctrl+A", "toggle", true)], "hk", "inj", 1, Warning: "w\u001b[2Jarn"))));
+
+        using var console = new ConsoleCapture();
+        _ = await console.RunAsync([command, "--config", _configFile]);
+
+        var all = console.Out.ToString() + console.Error;
+        Assert.False(all.Contains('\u001b', StringComparison.Ordinal), all);
+        Assert.Contains("\\u001b[2J", all, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("list")]
+    [InlineData("show")]
+    public async Task AProfileNameFromTheConfigIsPrintedSpeltOut(string command)
+    {
+        var config = new DictumConfig();
+        config.Stt["s\u001b[2J"] = new OpenAiCompatibleSttConfig { BaseUrl = "http://localhost:1/v1", Model = "m" };
+        config.Profiles.Add(new ProfileConfig { Id = "p\u001b[2Jid", Name = "n\u001b[2Jame", Stt = "s\u001b[2J" });
+        new ConfigStore(_configFile, NullLog.Instance).Save(config);
+
+        using var console = new ConsoleCapture();
+        _ = await console.RunAsync(command == "list" ? ["profiles", "list", "--config", _configFile] : ["profiles", "show", "p\u001b[2Jid", "--config", _configFile]);
+
+        var all = console.Out.ToString() + console.Error;
+        Assert.False(all.Contains('\u001b', StringComparison.Ordinal), all);
+        Assert.Contains("p\\u001b[2Jid", all, StringComparison.Ordinal);
+    }
 
     /// <summary>A health detail can carry what a config or a server said, whichever provider made it; every command that prints one spells it out.</summary>
     [Theory]
