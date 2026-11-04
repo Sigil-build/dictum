@@ -188,7 +188,7 @@ public sealed class PluginsCommandTests : IDisposable
 
         var (code, _, error) = await RunAsync("add", folder, "--yes");
 
-        Assert.Equal(1, code);
+        Assert.Equal(3, code);
         Assert.Contains("  | no CUDA here", error, StringComparison.Ordinal);
         Assert.Contains("hint:", error, StringComparison.Ordinal);
         Assert.Empty(LoadConfig().Plugins);

@@ -4,7 +4,7 @@ using System.Text;
 namespace Dictum.Plugins;
 
 /// <summary>Text from a plugin's folder or its config that Dictum prints: what a terminal must not be given raw.</summary>
-internal static class PluginText
+public static class PluginText
 {
     /// <summary>
     /// A control character, or one a terminal draws as nothing or as a line break: a format character, such as the

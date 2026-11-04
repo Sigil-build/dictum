@@ -29,7 +29,7 @@ public sealed class PluginProcess : IAsyncDisposable
     private const int KeptLines = 20;
     private const string HealthPath = "/health";
     private const string InfoPath = "/dictum/v1/info";
-    private const string Hint = "See its output above, and the plugin's own documentation.";
+    private const string Hint = "See the plugin's output, if it printed any, and its own documentation.";
 
     /// <summary>
     /// How long a killed plugin has to be gone. Apart from the grace, which is the plugin's time to exit by itself and
@@ -101,7 +101,7 @@ public sealed class PluginProcess : IAsyncDisposable
         catch (Win32Exception ex)
         {
             _process.Dispose();
-            throw new PluginUnavailableException($"Plugin {launch.PluginId} could not be started: {ex.Message}", Hint);
+            throw new PluginUnavailableException($"Plugin {launch.PluginId} could not be started: {PluginText.Show(ex.Message)}", Hint);
         }
 
         Id = _process.Id;
@@ -164,7 +164,7 @@ public sealed class PluginProcess : IAsyncDisposable
                 if (!plugin._ended.IsCancellationRequested)
                 {
                     // Nothing more when it printed no ready line; else what /health last answered, or that info did not.
-                    var heard = plugin._lastHeard is { } last ? $"; {last.TrimEnd('.')}" : "";
+                    var heard = plugin._lastHeard is { } last ? $"; {(last.EndsWith('.') ? last[..^1] : last)}" : "";
                     throw plugin.Failure($"Plugin {launch.PluginId} did not get ready within {Seconds(timings.StartTimeout)} s{heard}.");
                 }
 

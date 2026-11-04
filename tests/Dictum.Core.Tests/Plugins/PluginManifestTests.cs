@@ -174,10 +174,16 @@ public sealed class PluginManifestTests : IDisposable
         Write(Manifest());
         using var held = new FileStream(_folder.File("plugin.json"), FileMode.Open, FileAccess.Read, FileShare.None);
 
-        var problem = Assert.Single(Problems());
+        var exception = Assert.Throws<PluginManifestException>(() => PluginManifest.Load(_folder.Path));
 
+        var problem = Assert.Single(exception.Problems);
         Assert.StartsWith("plugin.json cannot be read: ", problem, StringComparison.Ordinal);
         Assert.DoesNotContain("not valid JSON", problem, StringComparison.Ordinal);
+
+        // An unreadable file is not an invalid one: the message says it once.
+        Assert.True(exception.Unreadable);
+        Assert.StartsWith("plugin.json cannot be read: ", exception.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("not valid", exception.Message, StringComparison.Ordinal);
     }
 
     /// <summary>Every text the file holds, the languages, the licence and other systems' programs included.</summary>

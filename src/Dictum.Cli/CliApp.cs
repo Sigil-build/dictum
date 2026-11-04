@@ -7,6 +7,7 @@ using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
+using Dictum.Plugins;
 using Dictum.Setup;
 
 namespace Dictum.Cli;
@@ -111,6 +112,16 @@ internal static class CliApp
                 return ExitCodes.InvalidConfig;
             case ProviderUnavailableException or HttpRequestException:
                 return Fail(context, ex.Message, ExitCodes.ProviderUnavailable);
+            case PluginUnavailableException plugin:
+                // A plugin that cannot start or answer is an unavailable provider, whichever command asked: with its
+                // hint, then the lines it printed last, which often say why. Only here, so that they print once.
+                var code = Fail(context, plugin.Message, ExitCodes.ProviderUnavailable, plugin.Hint);
+                foreach (var line in plugin.Output)
+                {
+                    context.Error.WriteLine($"  | {PluginText.Show(line)}");
+                }
+
+                return code;
             case DaemonNotRunningException:
                 return Fail(context, inner.Message, ExitCodes.DaemonNotRunning);
             case IHasHint hinted:

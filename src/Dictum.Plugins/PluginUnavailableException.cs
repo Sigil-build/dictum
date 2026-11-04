@@ -18,5 +18,5 @@ public sealed class PluginUnavailableException(string message, string? hint = nu
     /// one-line report shows, such as doctor's row or the failure of a provider's Test.
     /// </summary>
     public string WithOutput(string text) =>
-        Output.Count == 0 ? text : $"{text.TrimEnd('.')}; last output: {string.Join(" | ", Output.TakeLast(QuotedLines))}";
+        Output.Count == 0 ? text : $"{(text.EndsWith('.') ? text[..^1] : text)}; last output: {string.Join(" | ", Output.TakeLast(QuotedLines))}";
 }

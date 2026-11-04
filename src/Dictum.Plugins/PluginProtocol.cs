@@ -39,8 +39,18 @@ public static class PluginProtocol
             Architecture.Arm => "arm",
             _ => null,
         };
-        return family is null || arch is null ? runtimeRid : $"{family}-{arch}";
+        if (family is null || arch is null)
+        {
+            return runtimeRid;
+        }
+
+        // Alpine, by its name in the RID (alpine.3.20-x64), is the one distribution .NET names that uses musl.
+        return family == "linux" && IsMusl(parts[0]) ? $"linux-musl-{arch}" : $"{family}-{arch}";
     }
+
+    /// <summary>A distribution's name, such as <c>alpine</c> in <c>alpine.3.20-x64</c>, that runs on musl rather than glibc.</summary>
+    private static bool IsMusl(string distribution) =>
+        distribution.Split('.')[0].Equals("alpine", StringComparison.OrdinalIgnoreCase);
 
     private static OSPlatform CurrentOs() =>
         OperatingSystem.IsWindows() ? OSPlatform.Windows

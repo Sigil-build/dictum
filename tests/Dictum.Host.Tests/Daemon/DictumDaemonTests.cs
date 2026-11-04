@@ -487,7 +487,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         var response = await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "uk"), _ct);
 
         Assert.False(response.Ok);
-        Assert.Contains("Microphone not found", response.Error);
+        Assert.Equal("Microphone not found. Run 'dictum devices'.", response.Error);
     }
 
     [Fact]
@@ -588,7 +588,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     {
         _stt.FailWith = new PluginUnavailableException(
             "Plugin test exited with code 1 while starting.",
-            "See its output above, and the plugin's own documentation.",
+            "See the plugin's output, if it printed any, and its own documentation.",
             ["one", "two", "three", "four", "five", "six"]);
         await using var daemon = await StartAsync(Config());
 
@@ -596,7 +596,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
 
         Assert.False(response.Ok);
         Assert.Equal(
-            "Plugin test exited with code 1 while starting. See its output above, and the plugin's own documentation; last output: two | three | four | five | six",
+            "Plugin test exited with code 1 while starting. See the plugin's output, if it printed any, and its own documentation; last output: two | three | four | five | six",
             response.Error);
     }
 

@@ -31,14 +31,14 @@ public sealed class PluginResolver(AppPaths paths, IReadOnlyDictionary<string, P
         catch (PluginManifestException ex)
         {
             // Quoted, so that the command works when pasted, whatever spaces the folder holds.
-            throw new PluginUnavailableException(ex.Message, $"Fix its plugin.json, then confirm it with 'dictum plugins add \"{folder}\"'.");
+            throw new PluginUnavailableException(ex.Message, $"Fix its plugin.json, then confirm it with 'dictum plugins add \"{PluginText.Show(folder)}\"'.");
         }
 
         if (manifest.Id != id)
         {
             throw new PluginUnavailableException(
-                $"The plugin in {folder} calls itself '{manifest.Id}', not '{id}'.",
-                $"Add it again with 'dictum plugins add \"{folder}\"'.");
+                $"The plugin in {PluginText.Show(folder)} calls itself '{manifest.Id}', not '{id}'.",
+                $"Add it again with 'dictum plugins add \"{PluginText.Show(folder)}\"'.");
         }
 
         return new PluginLaunch(id, manifest.Name, manifest.Version, folder, manifest.ExecutablePath(folder), Model(config, manifest), config.Threads);
@@ -56,7 +56,7 @@ public sealed class PluginResolver(AppPaths paths, IReadOnlyDictionary<string, P
             var path = Normalize(model);
             return File.Exists(path) || Directory.Exists(path)
                 ? path
-                : throw new PluginUnavailableException($"Model not found: {path}", "Check stt.<id>.model in config.json.");
+                : throw new PluginUnavailableException($"Model not found: {PluginText.Show(path)}", "Check stt.<id>.model in config.json.");
         }
 
         var models = manifest.Models ?? [];
@@ -72,7 +72,7 @@ public sealed class PluginResolver(AppPaths paths, IReadOnlyDictionary<string, P
         return Directory.Exists(folder)
             ? folder
             : throw new PluginUnavailableException(
-                $"Model '{model}' of plugin '{id}' is not in {folder}.",
+                $"Model '{model}' of plugin '{id}' is not in {PluginText.Show(folder)}.",
                 "Put its files there, or set the model to an absolute path.");
     }
 

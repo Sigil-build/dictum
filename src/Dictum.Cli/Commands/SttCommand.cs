@@ -4,6 +4,7 @@ using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Stt;
 using Dictum.Host;
+using Dictum.Plugins;
 
 namespace Dictum.Cli.Commands;
 
@@ -92,7 +93,7 @@ internal static class SttCommand
     {
         WhisperLocalSttConfig w => $"{WhisperLocalSttConfig.TypeName}  model={w.Model} runtime={w.Runtime.ToString().ToLowerInvariant()} vad={w.Vad.ToString().ToLowerInvariant()}",
         OpenAiCompatibleSttConfig o => $"{OpenAiCompatibleSttConfig.TypeName}  {o.BaseUrl} model={o.Model}",
-        PluginSttConfig p => $"plugin {p.Plugin} · model {p.Model}",
+        PluginSttConfig p => $"plugin {PluginText.Show(p.Plugin)} · model {PluginText.Show(p.Model)}",
         _ => config.GetType().Name,
     };
 }

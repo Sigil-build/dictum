@@ -16,7 +16,7 @@ public sealed class PluginHostTests : IAsyncDisposable
     private const string BehaviourFile = "behaviour.json";
 
     /// <summary>A plugin's own start failures carry it (<see cref="PluginProcess"/>).</summary>
-    private const string StartHint = "See its output above, and the plugin's own documentation.";
+    private const string StartHint = "See the plugin's output, if it printed any, and its own documentation.";
 
     /// <summary>
     /// How long a crashing plugin lives after its info answer. Dictum's start ends only once it has read that answer,

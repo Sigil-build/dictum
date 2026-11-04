@@ -341,7 +341,7 @@ public sealed class PluginInstance
 
             if (!cancelled)
             {
-                LogFailure(ex);
+                LogFailure(ex, restart);
             }
 
             if (next is not null)
@@ -389,7 +389,7 @@ public sealed class PluginInstance
         if (problem is not null)
         {
             // Quoted, so that the command works when pasted, whatever spaces the folder holds.
-            throw new PluginUnavailableException(problem, $"Confirm it with 'dictum plugins add \"{_launch.Folder}\"'.");
+            throw new PluginUnavailableException(problem, $"Confirm it with 'dictum plugins add \"{PluginText.Show(_launch.Folder)}\"'.");
         }
     }
 
@@ -473,7 +473,7 @@ public sealed class PluginInstance
     {
         if (ex is not PluginUnavailableException unavailable)
         {
-            return new PluginUnavailableException($"Plugin {_launch.PluginId} could not start: {ex.Message}", RetryHint);
+            return new PluginUnavailableException($"Plugin {_launch.PluginId} could not start: {PluginText.Show(ex.Message)}", RetryHint);
         }
 
         var hint = string.IsNullOrEmpty(unavailable.Hint)
@@ -488,15 +488,21 @@ public sealed class PluginInstance
         return $"Plugin {_launch.PluginId} kept stopping; Dictum stopped restarting it after {_options.MaxRestarts} restarts within {minutes} minutes.";
     }
 
-    private void LogFailure(Exception ex)
+    /// <summary>
+    /// A start that someone waits for is not a warning: the failure reaches that caller, who reports it (the CLI as its
+    /// error, doctor as a row), and it would print twice. The log file has it either way. A restart nobody waits for is
+    /// the log's to say.
+    /// </summary>
+    private void LogFailure(Exception ex, bool restart)
     {
+        var level = restart ? LogLevel.Warning : LogLevel.Info;
         if (ex is PluginUnavailableException)
         {
-            _log.Warn(ex.Message);
+            _log.Write(level, ex.Message);
         }
         else
         {
-            _log.Warn($"Plugin {_launch.PluginId} could not start: {ex.Message}", ex);
+            _log.Write(level, $"Plugin {_launch.PluginId} could not start: {PluginText.Show(ex.Message)}", ex);
         }
     }
 }

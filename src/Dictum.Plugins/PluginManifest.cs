@@ -30,7 +30,7 @@ public sealed record PluginManifest(
         var path = Path.Combine(folder, PluginProtocol.ManifestFile);
         if (!File.Exists(path))
         {
-            throw new PluginManifestException(folder, [$"There is no {PluginProtocol.ManifestFile} in {folder}."]);
+            throw new PluginManifestException(folder, [$"There is no {PluginProtocol.ManifestFile} in {Show(folder)}."]);
         }
 
         PluginManifest? manifest;
@@ -40,11 +40,11 @@ public sealed record PluginManifest(
         }
         catch (JsonException ex)
         {
-            throw new PluginManifestException(folder, [$"{PluginProtocol.ManifestFile} is not valid JSON: {ex.Message}"]);
+            throw new PluginManifestException(folder, [$"{PluginProtocol.ManifestFile} is not valid JSON: {Show(ex.Message)}"]);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            throw new PluginManifestException(folder, [$"{PluginProtocol.ManifestFile} cannot be read: {ex.Message}"]);
+            throw new PluginManifestException(folder, [$"{PluginProtocol.ManifestFile} cannot be read: {Show(ex.Message)}"], unreadable: true);
         }
 
         if (manifest is null)
@@ -355,8 +355,14 @@ public sealed record PluginManifestFile(string File, string Url, string Sha256, 
 public sealed record PluginManifestLicence(string Name, string? Url);
 
 /// <summary>A plugin folder whose <c>plugin.json</c> cannot be used; <see cref="Problems"/> lists every fault found.</summary>
-public sealed class PluginManifestException(string folder, IReadOnlyList<string> problems)
-    : Exception($"{PluginProtocol.ManifestFile} in {folder} is not valid: {string.Join("; ", problems)}")
+/// <param name="unreadable">The file could not be read, which is no fault of its contents: the one problem says so, and the message does not call the file invalid.</param>
+public sealed class PluginManifestException(string folder, IReadOnlyList<string> problems, bool unreadable = false)
+    : Exception(unreadable
+        ? $"{problems[0]} (in {PluginText.Show(folder)})"
+        : $"{PluginProtocol.ManifestFile} in {PluginText.Show(folder)} is not valid: {string.Join("; ", problems)}")
 {
     public IReadOnlyList<string> Problems { get; } = problems;
+
+    /// <summary>The file exists but could not be read, such as one another program holds or the user may not open.</summary>
+    public bool Unreadable { get; } = unreadable;
 }

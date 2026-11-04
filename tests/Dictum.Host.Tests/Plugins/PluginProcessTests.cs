@@ -16,7 +16,7 @@ namespace Dictum.Host.Tests.Plugins;
 /// <summary>One plugin process under protocol 1, played by copies of the test plugin.</summary>
 public sealed class PluginProcessTests : IDisposable
 {
-    private const string Hint = "See its output above, and the plugin's own documentation.";
+    private const string Hint = "See the plugin's output, if it printed any, and its own documentation.";
 
     /// <summary>How long a crashing plugin lives after its info answer, so that the crash never lands inside the start.</summary>
     private const int CrashAfterMs = 500;

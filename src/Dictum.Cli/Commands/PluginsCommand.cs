@@ -47,7 +47,7 @@ internal static class PluginsCommand
                 var name = row.Version is null ? row.Name : $"{row.Name} {row.Version}";
                 context.Out.WriteLine(row.Path is null
                     ? $"{row.Id}  {name}  {row.State}"
-                    : $"{row.Id}  {name}  your own · {row.Path} · {row.State}");
+                    : $"{row.Id}  {name}  your own · {PluginText.Show(row.Path)} · {row.State}");
             }
 
             return Task.FromResult(ExitCodes.Success);
@@ -69,7 +69,7 @@ internal static class PluginsCommand
             if (registered && !string.Equals(Normalize(existing!.Path), folder, PathComparison.Current))
             {
                 throw new ConfigException(
-                    $"A plugin named {manifest.Id} is already added from {existing.Path}. Remove it first: dictum plugins remove {manifest.Id}");
+                    $"A plugin named {manifest.Id} is already added from {PluginText.Show(existing.Path)}. Remove it first: dictum plugins remove {manifest.Id}");
             }
 
             // Hashed now, before the user is asked and before the program runs, so the record pins the files as they
@@ -149,7 +149,7 @@ internal static class PluginsCommand
             config.Plugins.Remove(pluginId);
             context.SaveValidated(config);
             new PluginTrustStore(context.Paths.PluginTrustFile, context.Log).Forget(pluginId);
-            context.Out.WriteLine($"Removed {pluginId}. Its folder {registration.Path} was left as it was.");
+            context.Out.WriteLine($"Removed {pluginId}. Its folder {PluginText.Show(registration.Path)} was left as it was.");
             return Task.FromResult(ExitCodes.Success);
         }, ct));
         return remove;
@@ -158,21 +158,9 @@ internal static class PluginsCommand
     /// <summary>Starts the program with no model, so that it answers who it is, then stops it.</summary>
     private static async Task Probe(CliContext context, PluginLaunch launch, CancellationToken ct)
     {
-        try
-        {
-            await using var process = await PluginProcess.StartAsync(
-                launch, context.Plugins.Http, context.Plugins.Groups, context.Log, PluginTimings.Default, ct).ConfigureAwait(false);
-            await process.StopAsync().ConfigureAwait(false);
-        }
-        catch (PluginUnavailableException ex)
-        {
-            foreach (var line in ex.Output)
-            {
-                context.Error.WriteLine($"  | {line}");
-            }
-
-            throw;
-        }
+        await using var process = await PluginProcess.StartAsync(
+            launch, context.Plugins.Http, context.Plugins.Groups, context.Log, PluginTimings.Default, ct).ConfigureAwait(false);
+        await process.StopAsync().ConfigureAwait(false);
     }
 
     private static PluginManifest LoadManifest(string folder)
@@ -231,12 +219,13 @@ internal static class PluginsCommand
         }
         catch (PluginManifestException ex)
         {
-            return (id, null, $"plugin.json is not valid: {string.Join("; ", ex.Problems)}");
+            // An unreadable file is not an invalid one: its one problem already says what it is.
+            return (id, null, ex.Unreadable ? ex.Problems[0] : $"plugin.json is not valid: {string.Join("; ", ex.Problems)}");
         }
         catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException)
         {
             // A path no system can name, such as one with a null in it, or a folder the user may not read.
-            return (id, null, $"plugin.json cannot be read: {ex.Message}");
+            return (id, null, $"plugin.json cannot be read: {PluginText.Show(ex.Message)}");
         }
     }
 

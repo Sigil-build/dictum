@@ -24,7 +24,7 @@ internal sealed class DaemonCommandRouter(
         }
         catch (Exception ex) when (ex is ConfigException or InvalidOperationException or AudioDeviceException)
         {
-            return IpcResponse.Failure(ex.Message);
+            return IpcResponse.Failure(FailureOf(ex));
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
