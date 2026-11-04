@@ -19,6 +19,21 @@ public sealed class TerminalTextTests
         Assert.Equal(shown, TerminalText.Show(value));
     }
 
+    [Theory]
+    [InlineData("a\nb", "a\nb")]
+    [InlineData("a\r\nb", "a\r\nb")]
+    [InlineData("a\u001bb\nc", "a\\u001bb\nc")]
+    [InlineData("a\rb", "a\\u000db")]
+    [InlineData("a\r", "a\\u000d")]
+    [InlineData("a\r\r\nb", "a\\u000d\r\nb")]
+    [InlineData("a\tb", "a\\u0009b")]
+    [InlineData("a\u202Eb\r\n", "a\\u202eb\r\n")]
+    [InlineData(null, "")]
+    public void ShowLinesKeepsLineBreaksAndSpellsOutTheRest(string? value, string shown)
+    {
+        Assert.Equal(shown, TerminalText.ShowLines(value));
+    }
+
     /// <summary>
     /// A surrogate with no partner is no character at all: it is not hidden, and a terminal draws it as the replacement
     /// character, as <see cref="TerminalText.Show"/> does. Built in code, since a theory's data cannot carry one.

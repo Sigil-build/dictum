@@ -25,12 +25,26 @@ public static class TerminalText
     /// The value for a message, with each hidden character spelt out as <c>\uXXXX</c>, or as <c>\UXXXXXXXX</c> outside
     /// the BMP; null as nothing. A <c>\</c> is never spelt out, so text shown once is shown the same again.
     /// </summary>
-    public static string Show(string? value)
+    public static string Show(string? value) => Spell(value, keepLineBreaks: false);
+
+    /// <summary>
+    /// Like <see cref="Show"/>, for text of several lines, such as an exception with its stack trace: a <c>\n</c>, and a
+    /// <c>\r</c> directly before one, stay as they are. A lone <c>\r</c>, a tab and every other hidden character are
+    /// spelt out.
+    /// </summary>
+    public static string ShowLines(string? value) => Spell(value, keepLineBreaks: true);
+
+    private static string Spell(string? value, bool keepLineBreaks)
     {
+        var text = value ?? "";
         var shown = new StringBuilder();
-        foreach (var rune in (value ?? "").EnumerateRunes())
+        var index = 0;
+        foreach (var rune in text.EnumerateRunes())
         {
-            shown.Append(!IsHidden(rune) ? rune.ToString() : rune.IsBmp ? $"\\u{rune.Value:x4}" : $"\\U{rune.Value:x8}");
+            var next = index + rune.Utf16SequenceLength;
+            var keep = keepLineBreaks && (rune.Value == '\n' || (rune.Value == '\r' && next < text.Length && text[next] == '\n'));
+            shown.Append(keep || !IsHidden(rune) ? rune.ToString() : rune.IsBmp ? $"\\u{rune.Value:x4}" : $"\\U{rune.Value:x8}");
+            index = next;
         }
 
         return shown.ToString();

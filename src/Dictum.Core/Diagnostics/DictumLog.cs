@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Dictum.Core.Text;
 
 namespace Dictum.Core.Diagnostics;
 
@@ -45,9 +46,10 @@ public sealed class DictumLog : ILog, IDisposable
         {
             if (_console is not null && level >= _consoleLevel && (ConsoleFilter?.Invoke(level, message, exception) ?? true))
             {
-                _console.WriteLine(exception is null || _consoleLevel > LogLevel.Debug
+                // What a plugin or a remote server said may be in the message or the exception; the file keeps it raw.
+                _console.WriteLine(TerminalText.ShowLines(exception is null || _consoleLevel > LogLevel.Debug
                     ? $"{Prefix(level)}{message}"
-                    : $"{Prefix(level)}{message}{Environment.NewLine}{exception}");
+                    : $"{Prefix(level)}{message}{Environment.NewLine}{exception}"));
             }
 
             WriteFile(level, message, exception);

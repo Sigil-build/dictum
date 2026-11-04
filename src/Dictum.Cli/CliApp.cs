@@ -88,10 +88,10 @@ internal static class CliApp
 
     private static int Fail(CliContext context, string message, int exitCode, string? hint = null)
     {
-        context.Error.WriteLine($"error: {message}");
+        context.Error.WriteLine($"error: {TerminalText.Show(message)}");
         if (hint is not null)
         {
-            context.Error.WriteLine($"  hint: {hint}");
+            context.Error.WriteLine($"  hint: {TerminalText.Show(hint)}");
         }
 
         return exitCode;
@@ -104,7 +104,7 @@ internal static class CliApp
         switch (inner)
         {
             case ConfigException config:
-                context.Error.WriteLine($"error: {config.Message}");
+                context.Error.WriteLine($"error: {TerminalText.Show(config.Message)}");
                 foreach (var issue in config.Issues)
                 {
                     context.Error.WriteLine($"  {issue}");
@@ -133,14 +133,14 @@ internal static class CliApp
             case WavFormatException or FileNotFoundException or DirectoryNotFoundException:
                 return Fail(context, ex.Message, ExitCodes.Error);
             default:
-                context.Error.WriteLine($"error: {ex.Message}");
+                context.Error.WriteLine($"error: {TerminalText.Show(ex.Message)}");
                 if (!context.Verbose)
                 {
                     context.Error.WriteLine("  (run with --verbose for details)");
                 }
                 else
                 {
-                    context.Error.WriteLine(ex);
+                    context.Error.WriteLine(TerminalText.ShowLines(ex.ToString()));
                 }
 
                 return ExitCodes.Error;

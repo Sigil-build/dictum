@@ -9,6 +9,7 @@ using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Http;
 using Dictum.Core.Stt;
+using Dictum.Core.Text;
 
 namespace Dictum.Stt.OpenAi;
 
@@ -91,7 +92,7 @@ public sealed class OpenAiCompatibleStt(
         }
         catch (Exception ex) when (ex is HttpRequestException or ProviderUnavailableException or ConfigException or OperationCanceledException)
         {
-            return HealthStatus.Error($"{config.BaseUrl}: {ex.Message}", "Is the server running, and is baseUrl correct (including /v1)?");
+            return HealthStatus.Error($"{config.BaseUrl}: {TerminalText.Show(ex.Message)}", "Is the server running, and is baseUrl correct (including /v1)?");
         }
     }
 

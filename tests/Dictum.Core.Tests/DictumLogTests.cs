@@ -84,6 +84,27 @@ public class DictumLogTests
     }
 
     [Fact]
+    public void HiddenCharactersInAMessageOrAnExceptionReachTheConsoleSpeltOutAndTheFileRaw()
+    {
+        using var dir = new TempDirectory();
+        var console = new StringWriter();
+        using (var log = new DictumLog(LogLevel.Debug, includeText: false, console, dir.Path))
+        {
+            log.Warn("from \u001b[2Jserver", new InvalidOperationException("bad \u001b]0;PWNED\u0007 header"));
+        }
+
+        var shown = console.ToString();
+        Assert.DoesNotContain('\u001b', shown);
+        Assert.DoesNotContain('\u0007', shown);
+        Assert.Contains("from \\u001b[2Jserver", shown, StringComparison.Ordinal);
+        Assert.Contains("bad \\u001b]0;PWNED\\u0007 header", shown, StringComparison.Ordinal);
+        Assert.Contains(Environment.NewLine, shown, StringComparison.Ordinal);
+        var file = File.ReadAllText(dir.File("dictum.log"));
+        Assert.Contains("from \u001b[2Jserver", file, StringComparison.Ordinal);
+        Assert.Contains("bad \u001b]0;PWNED\u0007 header", file, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AnotherFileNameKeepsTwoProcessesApart()
     {
         using var dir = new TempDirectory();
