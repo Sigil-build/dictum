@@ -368,10 +368,6 @@ public sealed class PluginTrustStoreTests : IDisposable
     }
 
     /// <summary>
-    /// A linked folder is not entered, but it is a program file of its own, by where it points: one added to a listed
-    /// folder can shadow a module there, as a package <c>lib/foo</c> shadows <c>lib/foo.py</c> in Python.
-    /// </summary>
-    /// <summary>
     /// <c>.</c> lists the whole folder: a file planted anywhere in it, such as a <c>json.py</c> that Python would import
     /// in place of its own, or a <c>python.cmd</c> that cmd.exe would run, is a change. Python's caches still are not.
     /// </summary>
@@ -412,6 +408,10 @@ public sealed class PluginTrustStoreTests : IDisposable
         Assert.Equal(Changed("lib/b.py"), store.Check("a", folder, program));
     }
 
+    /// <summary>
+    /// A linked folder is not entered, but it is a program file of its own, by where it points: one added to a listed
+    /// folder can shadow a module there, as a package <c>lib/foo</c> shadows <c>lib/foo.py</c> in Python.
+    /// </summary>
     [Fact]
     public void AnAddedFolderLinkIsChanged()
     {

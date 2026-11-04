@@ -1,6 +1,7 @@
 using System.Net;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Text;
 
 namespace Dictum.Core.Http;
 
@@ -76,7 +77,7 @@ public sealed class OpenAiCompatibleServer(HttpClient http, ConfigValueResolver 
         }
         catch (HttpRequestException ex)
         {
-            throw new ProviderUnavailableException($"{name} is unreachable at {baseUrl}: {ex.Message}", ex);
+            throw new ProviderUnavailableException($"{name} is unreachable at {baseUrl}: {TerminalText.Show(ex.Message)}", ex);
         }
     }
 }

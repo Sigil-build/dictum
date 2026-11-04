@@ -138,19 +138,47 @@ public sealed partial class UserDocsTests
     [Fact]
     public void NoPageHoldsAControlOrFormatCharacter()
     {
+        AssertNone(AllPages().SelectMany(page => HiddenCharacters(page, File.ReadAllText(Full(page)))));
+    }
+
+    /// <summary>
+    /// A form feed or a next-line character is a control character that <c>ReplaceLineEndings</c> would turn into a line
+    /// break, so the text is scanned as it is read.
+    /// </summary>
+    [Theory]
+    [InlineData("a\fb", "p.md:1 holds U+000C")]
+    [InlineData("a\nb\u0085c", "p.md:2 holds U+0085")]
+    [InlineData("a\u001bb", "p.md:1 holds U+001B")]
+    [InlineData("a\u200eb", "p.md:1 holds U+200E")]
+    public void TheScanFindsWhatALineSplitWouldHide(string text, string problem)
+    {
+        Assert.Equal([problem], HiddenCharacters("p.md", text));
+    }
+
+    [Fact]
+    public void TheScanAllowsTabsAndLineBreaks()
+    {
+        Assert.Empty(HiddenCharacters("p.md", "a\tb\r\nc\nd"));
+    }
+
+    /// <summary>Each control character other than tab, LF and CR, and each format character, with its line.</summary>
+    private static List<string> HiddenCharacters(string page, string text)
+    {
         var problems = new List<string>();
-        foreach (var page in AllPages())
+        var line = 1;
+        foreach (var rune in text.EnumerateRunes())
         {
-            var lines = Lines(Full(page));
-            for (var i = 0; i < lines.Length; i++)
+            if (rune.Value == '\n')
             {
-                problems.AddRange(lines[i].EnumerateRunes()
-                    .Where(rune => (Rune.IsControl(rune) && rune.Value is not ('\t' or '\r')) || Rune.GetUnicodeCategory(rune) == UnicodeCategory.Format)
-                    .Select(rune => $"{page}:{i + 1} holds U+{rune.Value:X4}"));
+                line++;
+            }
+            else if ((Rune.IsControl(rune) && rune.Value is not ('\t' or '\r')) || Rune.GetUnicodeCategory(rune) == UnicodeCategory.Format)
+            {
+                problems.Add($"{page}:{line} holds U+{rune.Value:X4}");
             }
         }
 
-        AssertNone(problems);
+        return problems;
     }
 
     /// <summary>Fails with every problem on a line of its own, where <c>Assert.Empty</c> would show five, each cut short.</summary>

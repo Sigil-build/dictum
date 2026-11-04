@@ -271,7 +271,7 @@ internal sealed class TestForm
         var fileName = disposition.GetValueOrDefault("filename*") is { } star
             ? Uri.UnescapeDataString(star[(star.IndexOf("''", StringComparison.Ordinal) + 2)..])
             : disposition.GetValueOrDefault("filename");
-        if (fileName is not null)
+        if (fileName is not null && name == "file")
         {
             FileName = fileName;
             FileContentType = headers.GetValueOrDefault("Content-Type");

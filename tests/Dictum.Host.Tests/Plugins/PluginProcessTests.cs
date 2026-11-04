@@ -492,6 +492,23 @@ public sealed class PluginProcessTests : IDisposable
     }
 
     /// <summary>
+    /// System.Text.Json puts a property name from the plugin's answer into its exception's path. The name holds an ESC,
+    /// which the failure prints spelt out, not raw, as it prints every other text from a plugin.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task AnInfoReaderMessageHoldingAPluginsBytesIsSpeltOut()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { InfoBody = "{\"\\u001bq\": {\"a\": [1,}}" });
+
+        var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => StartAsync(TestPlugins.Launch(folder), ct));
+
+        Assert.StartsWith("Plugin test answered /dictum/v1/info with invalid JSON: ", error.Message, StringComparison.Ordinal);
+        Assert.Contains("\\u001bq", error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain('\u001b', error.Message);
+    }
+
+    /// <summary>
     /// The plugin's last lines can still be in its pipes when it exits, and the start's failure reports them. The log is
     /// slow on the first line here, as on a busy machine, so both lines are still unhandled when the exit is noticed.
     /// </summary>

@@ -39,6 +39,9 @@ public sealed class PluginHostTests : IAsyncDisposable
     /// </summary>
     private static readonly TimeSpan RestartAfterACrash = TimeSpan.FromSeconds(30);
 
+    /// <summary>The child's own 15 s wait and <see cref="RestartAfterACrash"/>, with room to start: the wait's message must come before the test's timeout.</summary>
+    private const int ChildAndRestartTimeout = 80_000;
+
     /// <summary>For the tests that crash the plugin again and again.</summary>
     private static readonly PluginHostOptions NoRestartDelay = PluginHostOptions.Default with { RestartDelay = TimeSpan.Zero };
 
@@ -253,7 +256,7 @@ public sealed class PluginHostTests : IAsyncDisposable
     /// plugin's own process exits, not when its pipes close, which would be a minute later here. The restart comes well
     /// inside that minute, within <see cref="RestartAfterACrash"/>.
     /// </summary>
-    [Fact(Timeout = TestTimeout.Extended)]
+    [Fact(Timeout = ChildAndRestartTimeout)]
     public async Task ACrashIsNoticedWhileAChildHoldsTheOutput()
     {
         var ct = TestContext.Current.CancellationToken;

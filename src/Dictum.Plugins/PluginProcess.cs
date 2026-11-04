@@ -280,9 +280,11 @@ public sealed class PluginProcess : IAsyncDisposable
         info.Environment[PluginProtocol.KeyVariable] = key;
 
         // The plugin runs in its folder, of which the trust record checks only what plugin.json lists. On Windows, cmd.exe
-        // and the system would run a program named there by its bare name ahead of the one on PATH, such as a planted
-        // python.cmd; Dictum passes full paths, so nothing needs that. And Python would read a compiled module from a
-        // __pycache__ beside its source, which the record skips, so its caches go to Dictum's folder for the plugin.
+        // and the system would search that working folder for a program named by its bare name ahead of PATH, such as a
+        // planted python.cmd; Dictum passes full paths, so nothing needs that. This does not cover a native plugin that
+        // starts a child by bare name: CreateProcess still tries the caller's own folder first, which listing "." covers.
+        // And Python would read a compiled module from a __pycache__ beside its source, which the record skips, so its
+        // caches go to Dictum's folder for the plugin.
         info.Environment[NoCurrentDirectoryVariable] = "1";
         info.Environment[PythonCacheVariable] = launch.Cache;
         return info;
@@ -366,11 +368,11 @@ public sealed class PluginProcess : IAsyncDisposable
         }
         catch (HttpRequestException ex)
         {
-            throw Failure($"Plugin {_launch.PluginId} did not answer {InfoPath}: {ex.Message}");
+            throw Failure($"Plugin {_launch.PluginId} did not answer {InfoPath}: {TerminalText.Show(ex.Message)}");
         }
         catch (JsonException ex)
         {
-            throw Failure($"Plugin {_launch.PluginId} answered {InfoPath} with invalid JSON: {ex.Message}");
+            throw Failure($"Plugin {_launch.PluginId} answered {InfoPath} with invalid JSON: {TerminalText.Show(ex.Message)}");
         }
     }
 
