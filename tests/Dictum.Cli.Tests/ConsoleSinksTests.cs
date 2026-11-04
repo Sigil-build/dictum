@@ -22,13 +22,14 @@ public sealed class ConsoleSinksTests : IDisposable
     [Theory]
     [InlineData("status")]
     [InlineData("start")]
+    [InlineData("toggle")]
     public async Task ADaemonsAnswerIsPrintedSpeltOut(string command)
     {
         await using var server = new Dictum.Host.Ipc.IpcServer(Dictum.Host.Ipc.IpcEndpoint.SocketPath(AppPaths.FromEnvironment()), NullLog.Instance);
         server.Start((_, _) => Task.FromResult(command == "start"
             ? Dictum.Host.Ipc.IpcResponse.Failure("no \u001b[2Jprovider")
             : Dictum.Host.Ipc.IpcResponse.Success(new Dictum.Host.Ipc.DaemonStatus(
-                "Idle", "act\u001b[2Jive", [new Dictum.Host.Ipc.ProfileStatus("p\u001b[2Jid", "Ctrl+A", "toggle", true)], "hk", "inj", 1, Warning: "w\u001b[2Jarn"))));
+                "Id\u001b[2Jle", "act\u001b[2Jive", [new Dictum.Host.Ipc.ProfileStatus("p\u001b[2Jid", "Ctrl+A", "tog\u001b[2Jgle", true)], "hk", "inj", 1, Warning: "w\u001b[2Jarn"))));
 
         using var console = new ConsoleCapture();
         _ = await console.RunAsync([command, "--config", _configFile]);

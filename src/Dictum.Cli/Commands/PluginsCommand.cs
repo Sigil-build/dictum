@@ -45,10 +45,10 @@ internal static class PluginsCommand
 
             foreach (var row in rows)
             {
-                var name = row.Version is null ? row.Name : $"{row.Name} {row.Version}";
+                var name = TerminalText.Show(row.Version is null ? row.Name : $"{row.Name} {row.Version}");
                 context.Out.WriteLine(row.Path is null
-                    ? $"{row.Id}  {name}  {row.State}"
-                    : $"{row.Id}  {name}  your own · {TerminalText.Show(row.Path)} · {row.State}");
+                    ? $"{TerminalText.Show(row.Id)}  {name}  {TerminalText.Show(row.State)}"
+                    : $"{TerminalText.Show(row.Id)}  {name}  your own · {TerminalText.Show(row.Path)} · {TerminalText.Show(row.State)}");
             }
 
             return Task.FromResult(ExitCodes.Success);

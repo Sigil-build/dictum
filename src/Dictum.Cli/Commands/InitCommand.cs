@@ -214,7 +214,7 @@ internal static class InitCommand
             }
             catch (ConfigException ex)
             {
-                context.Error.WriteLine($"warning: {ex.Message}");
+                context.Error.WriteLine($"warning: {TerminalText.Show(ex.Message)}");
             }
         }
 
