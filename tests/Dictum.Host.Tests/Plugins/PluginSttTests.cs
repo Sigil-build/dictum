@@ -3,6 +3,7 @@ using Dictum.Core;
 using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Http;
 using Dictum.Core.Stt;
 using Dictum.Plugins;
 using Dictum.Testing;
@@ -135,6 +136,32 @@ public sealed class PluginSttTests : IAsyncDisposable
         var error = await Assert.ThrowsAsync<ProviderUnavailableException>(() => provider.TranscribeAsync(Clip, new SttRequest("uk", null), ct));
 
         Assert.StartsWith("Plugin provider 'p' answered 500", error.Message);
+    }
+
+    /// <summary>
+    /// Review focus 4: what the plugin answered is its own text, which <c>dictum transcribe</c> prints and IPC passes on,
+    /// so the error spells it out, whether the answer is an error or not JSON.
+    /// </summary>
+    [Theory(Timeout = TestTimeout.Generous)]
+    [InlineData(500, @"Plugin provider 'p' answered 500 Internal Server Error: \u001b]0;PWNED\u0007")]
+    [InlineData(null, @"Plugin provider 'p' returned invalid JSON: \u001b]0;PWNED\u0007")]
+    public async Task WhatThePluginAnsweredIsSpeltOut(int? status, string message)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var provider = Provider(Config(new TestPluginBehaviour { TranscribeStatus = status, TranscribeBody = "\u001b]0;PWNED\u0007" }));
+
+        var error = await Assert.ThrowsAsync<ProviderUnavailableException>(() => provider.TranscribeAsync(Clip, new SttRequest("uk", null), ct));
+
+        Assert.Equal(message, error.Message);
+    }
+
+    /// <summary>The reason phrase of an error answer is the plugin's text too; .NET reads any byte past ASCII as a character.</summary>
+    [Fact]
+    public void TheReasonOfAnErrorAnswerIsSpeltOut()
+    {
+        var answer = new ServerAnswer(System.Net.HttpStatusCode.BadGateway, "Bad\u009b2J\u001b]0;PWNED\u0007", "{}");
+
+        Assert.Equal(@"Plugin provider 'p' answered 502 Bad\u009b2J\u001b]0;PWNED\u0007: {}", PluginStt.ErrorAnswer("Plugin provider 'p'", answer));
     }
 
     /// <summary>The connection drops before any answer; the caller gets Dictum's provider error, not the HTTP client's.</summary>

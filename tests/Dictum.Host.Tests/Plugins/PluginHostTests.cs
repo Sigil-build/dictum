@@ -31,6 +31,14 @@ public sealed class PluginHostTests : IAsyncDisposable
     /// <summary>For waits on starts, crashes and restarts, which a busy runner may deliver late.</summary>
     private static readonly TimeSpan Patience = TimeSpan.FromSeconds(15);
 
+    /// <summary>
+    /// From a crash to the restarted plugin's ready answer while a process it left holds its output. On Linux, which has
+    /// no group to end that process, this covers the 2 s that Dictum waits for the last lines, the 1 s restart delay and a
+    /// whole start, which a loaded 2-core runner may take several seconds over; and it is still half the minute that the
+    /// process holds the output, which a crash noticed only when the pipes close would wait out.
+    /// </summary>
+    private static readonly TimeSpan RestartAfterACrash = TimeSpan.FromSeconds(30);
+
     /// <summary>For the tests that crash the plugin again and again.</summary>
     private static readonly PluginHostOptions NoRestartDelay = PluginHostOptions.Default with { RestartDelay = TimeSpan.Zero };
 
@@ -242,9 +250,10 @@ public sealed class PluginHostTests : IAsyncDisposable
 
     /// <summary>
     /// Review focus 2: the plugin leaves a process that holds its output, then crashes. The crash is noticed when the
-    /// plugin's own process exits, not when its pipes close, which would be a minute later here.
+    /// plugin's own process exits, not when its pipes close, which would be a minute later here. The restart comes well
+    /// inside that minute, within <see cref="RestartAfterACrash"/>.
     /// </summary>
-    [Fact(Timeout = TestTimeout.Generous)]
+    [Fact(Timeout = TestTimeout.Extended)]
     public async Task ACrashIsNoticedWhileAChildHoldsTheOutput()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -258,7 +267,7 @@ public sealed class PluginHostTests : IAsyncDisposable
         // The plugin writes the child's pid right before it crashes.
         using var child = await TestPlugins.LeftChildAsync(folder, Patience);
         await Eventually.WaitForAsync(
-            () => lease.Instance is { State: PluginInstanceState.Ready, ProcessId: { } pid } && pid != first, "the restarted plugin", TimeSpan.FromSeconds(10));
+            () => lease.Instance is { State: PluginInstanceState.Ready, ProcessId: { } pid } && pid != first, "the restarted plugin", RestartAfterACrash);
 
         Assert.Equal(2, lease.Instance.Launches);
     }

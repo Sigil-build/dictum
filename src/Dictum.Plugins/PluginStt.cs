@@ -8,6 +8,7 @@ using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Http;
 using Dictum.Core.Stt;
+using Dictum.Core.Text;
 
 namespace Dictum.Plugins;
 
@@ -64,7 +65,7 @@ public sealed class PluginStt(
 
         if (!answer.IsSuccess)
         {
-            throw new ProviderUnavailableException($"{Name} answered {(int)answer.Status} {answer.ReasonPhrase}: {OpenAiCompatible.Snippet(answer.Body)}");
+            throw new ProviderUnavailableException(ErrorAnswer(Name, answer));
         }
 
         PluginTranscription? parsed;
@@ -74,7 +75,7 @@ public sealed class PluginStt(
         }
         catch (JsonException ex)
         {
-            throw new ProviderUnavailableException($"{Name} returned invalid JSON: {OpenAiCompatible.Snippet(answer.Body)}", ex);
+            throw new ProviderUnavailableException($"{Name} returned invalid JSON: {TerminalText.Show(OpenAiCompatible.Snippet(answer.Body))}", ex);
         }
 
         log.Debug($"STT '{id}' answered in {watch.ElapsedMilliseconds} ms");
@@ -111,9 +112,9 @@ public sealed class PluginStt(
             // Nothing planned for, such as a registered folder that no path can name. The status says it to whoever asked;
             // the log has it too, which is all an unattended daemon's warm-up leaves. As a PluginUnavailableException, so
             // that a command that prints the status can keep the warning off its console.
-            var message = $"STT '{id}' check failed: {PluginText.Show(ex.Message)}";
+            var message = $"STT '{id}' check failed: {TerminalText.Show(ex.Message)}";
             log.Warn(message, new PluginStartFailedException(message, ex));
-            return HealthStatus.Error($"{Name} could not start: {PluginText.Show(ex.Message)}");
+            return HealthStatus.Error($"{Name} could not start: {TerminalText.Show(ex.Message)}");
         }
     }
 
@@ -163,6 +164,13 @@ public sealed class PluginStt(
     }
 
     private ProviderUnavailableException Stopped(Exception ex) => new($"{Name} was stopped while in use.", ex);
+
+    /// <summary>
+    /// The message for an error answer: its status, and its reason and the start of its body, which are the plugin's own
+    /// text and so are spelt out.
+    /// </summary>
+    internal static string ErrorAnswer(string name, ServerAnswer answer) =>
+        $"{name} answered {(int)answer.Status} {TerminalText.Show(answer.ReasonPhrase)}: {TerminalText.Show(OpenAiCompatible.Snippet(answer.Body))}";
 
     /// <summary>
     /// Protocol 1's form, OpenAI's with one field more: one language goes as <c>language</c>, a list to pick from as

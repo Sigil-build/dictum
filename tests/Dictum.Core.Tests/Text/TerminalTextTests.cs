@@ -1,8 +1,8 @@
-using Dictum.Plugins;
+using Dictum.Core.Text;
 
-namespace Dictum.Core.Tests.Plugins;
+namespace Dictum.Core.Tests.Text;
 
-public sealed class PluginTextTests
+public sealed class TerminalTextTests
 {
     [Theory]
     [InlineData("plain", false, "plain")]
@@ -15,13 +15,13 @@ public sealed class PluginTextTests
     [InlineData(null, false, "")]
     public void HiddenCharactersAreSpeltOutAndTheRestIsShownAsItIs(string? value, bool hidden, string shown)
     {
-        Assert.Equal(hidden, PluginText.HasHidden(value));
-        Assert.Equal(shown, PluginText.Show(value));
+        Assert.Equal(hidden, TerminalText.HasHidden(value));
+        Assert.Equal(shown, TerminalText.Show(value));
     }
 
     /// <summary>
     /// A surrogate with no partner is no character at all: it is not hidden, and a terminal draws it as the replacement
-    /// character, as <see cref="PluginText.Show"/> does. Built in code, since a theory's data cannot carry one.
+    /// character, as <see cref="TerminalText.Show"/> does. Built in code, since a theory's data cannot carry one.
     /// </summary>
     [Fact]
     public void ALoneSurrogateIsNotHiddenAndIsShownAsTheReplacementCharacter()
@@ -30,8 +30,8 @@ public sealed class PluginTextTests
         {
             var value = "a" + surrogate + "b";
 
-            Assert.False(PluginText.HasHidden(value));
-            Assert.Equal("a" + (char)0xfffd + "b", PluginText.Show(value));
+            Assert.False(TerminalText.HasHidden(value));
+            Assert.Equal("a" + (char)0xfffd + "b", TerminalText.Show(value));
         }
     }
 }

@@ -64,6 +64,12 @@ public sealed class AppPaths
     /// <summary>Which plugin programs the user has trusted; see the plugin runtime.</summary>
     public string PluginTrustFile => Path.Combine(DataDirectory, "plugin-trust.json");
 
+    /// <summary>
+    /// The caches a plugin's program writes, such as Python's compiled modules, in a folder of Dictum's own for each
+    /// plugin, so that none of them lands in the plugin's folder, which its trust record covers.
+    /// </summary>
+    public string PluginCacheDirectory(string pluginId) => Path.Combine(DataDirectory, "plugin-cache", pluginId);
+
     public string LogsDirectory => Path.Combine(DataDirectory, "logs");
 
     /// <summary>The tray glyphs as SVG files, for a StatusNotifierItem's icon theme path.</summary>

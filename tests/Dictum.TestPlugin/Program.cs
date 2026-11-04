@@ -151,7 +151,8 @@ internal static class Program
                     model is null ? null : new ModelInfo(ModelId(model), behaviour.Languages, behaviour.SetLanguage, Prompt: true),
                     args,
                     threads,
-                    Environment.CurrentDirectory),
+                    Environment.CurrentDirectory,
+                    Variables()),
                 AnswerJson.Default.Info);
         });
         app.MapPost("/v1/audio/transcriptions", (HttpRequest request) => TranscribeAsync(request, behaviour));
@@ -160,7 +161,7 @@ internal static class Program
         // 6-7.
         if (!behaviour.NoReadyLine)
         {
-            Console.WriteLine(JsonSerializer.Serialize(new ReadyLine(1, behaviour.ReadyUrl ?? app.Urls.First()), AnswerJson.Default.ReadyLine));
+            Console.WriteLine(JsonSerializer.Serialize(new ReadyLine(1, behaviour.ReadyUrl ?? app.Urls.First() + behaviour.ReadyPath), AnswerJson.Default.ReadyLine));
         }
 
         Flood(Console.Out, "out", behaviour.FloodLines);
@@ -193,6 +194,11 @@ internal static class Program
             // No shutdown and no answer: the connection drops as the process goes.
             using var self = Process.GetCurrentProcess();
             self.Kill();
+        }
+
+        if (behaviour.TranscribeBody is { } body)
+        {
+            return Results.Text(body, "application/json", statusCode: behaviour.TranscribeStatus ?? StatusCodes.Status200OK);
         }
 
         if (behaviour.TranscribeStatus is { } status)
@@ -271,6 +277,11 @@ internal static class Program
         return 0;
     }
 
+    /// <summary>Every variable of its environment, which the tests check for what Dictum sets.</summary>
+    private static Dictionary<string, string> Variables() =>
+        Environment.GetEnvironmentVariables().Cast<System.Collections.DictionaryEntry>()
+            .ToDictionary(variable => (string)variable.Key, variable => (string?)variable.Value ?? "", StringComparer.Ordinal);
+
     private static string? Option(string[] args, string name)
     {
         var index = Array.IndexOf(args, name);
@@ -326,8 +337,12 @@ internal sealed record ReadyLine(int DictumPlugin, string Url);
 
 internal sealed record Health(string Status);
 
-/// <summary>Protocol 1's info, plus what the tests check of the launch: the arguments, the threads and the working folder.</summary>
-internal sealed record Info(int Protocol, string Name, string Version, ModelInfo? Model, IReadOnlyList<string> Argv, int? Threads, string Cwd);
+/// <summary>
+/// Protocol 1's info, plus what the tests check of the launch: the arguments, the threads, the working folder and the
+/// environment.
+/// </summary>
+internal sealed record Info(
+    int Protocol, string Name, string Version, ModelInfo? Model, IReadOnlyList<string> Argv, int? Threads, string Cwd, IReadOnlyDictionary<string, string> Env);
 
 internal sealed record ModelInfo(string Id, IReadOnlyList<string> Languages, bool SetLanguage, bool Prompt);
 

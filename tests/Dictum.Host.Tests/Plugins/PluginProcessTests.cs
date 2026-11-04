@@ -134,6 +134,50 @@ public sealed class PluginProcessTests : IDisposable
         Assert.False(TestPlugins.RunsIn(_dir), "the plugin still runs");
     }
 
+    /// <summary>Review focus 4: an address the ready line announces is the plugin's text, and the refusal quotes it spelt out.</summary>
+    [Theory(Timeout = TestTimeout.Generous)]
+    [InlineData("http://192.0.2.1:80/\u001b]0;PWNED\u0007", "which is not on this computer.")]
+    [InlineData("https://127.0.0.1:1/\u001b]0;PWNED\u0007", "but protocol 1 is plain http on this computer.")]
+    public async Task ARefusedAddressIsQuotedSpeltOut(string url, string why)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { ReadyUrl = url });
+
+        var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => StartAsync(TestPlugins.Launch(folder), ct));
+
+        Assert.Equal($@"Plugin test announced {url[..url.IndexOf('\u001b', StringComparison.Ordinal)]}\u001b]0;PWNED\u0007, {why}", error.Message);
+    }
+
+    /// <summary>The address the plugin is ready at reaches the log, which a foreground daemon prints, spelt out.</summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task TheReadyAddressIsLoggedSpeltOut()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { ReadyPath = "/\u001b]0;PWNED\u0007" });
+
+        await using var plugin = await StartAsync(TestPlugins.Launch(folder), ct);
+
+        Assert.True(_log.Has($@"Plugin test is ready at http://127.0.0.1:{plugin.Endpoint.Url.Port}/\u001b]0;PWNED\u0007 (pid {plugin.Id})"), string.Join('\n', _log.Messages));
+        Assert.DoesNotContain(_log.Messages, message => message.Contains('\u001b', StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Every line of the plugin reaches the log spelt out, since a foreground daemon and <c>--verbose</c> print the log on a
+    /// terminal; the lines a failure quotes stay as the plugin printed them, and each report spells them out itself.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task ThePluginsLinesAreLoggedSpeltOut()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { ExitAtStart = 3, Stderr = ["a\u001b]0;PWNED\u0007b"] });
+
+        var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => StartAsync(TestPlugins.Launch(folder), ct));
+
+        Assert.True(_log.Has(@"plugin test: a\u001b]0;PWNED\u0007b"), string.Join('\n', _log.Messages));
+        Assert.DoesNotContain(_log.Messages, message => message.Contains('\u001b', StringComparison.Ordinal));
+        Assert.Equal(["a\u001b]0;PWNED\u0007b"], error.Output);
+    }
+
     [Fact(Timeout = TestTimeout.Generous)]
     public async Task AnotherProtocolIsRefused()
     {
@@ -241,6 +285,26 @@ public sealed class PluginProcessTests : IDisposable
         Assert.Equal("модель з пробілом", plugin.Endpoint.Info.Model?.Id);
         Assert.True(SamePath(folder, cwd), $"the plugin ran in {cwd}");
         Assert.Equal(PluginTrust.Confirmed, trust.Check(launch.PluginId, folder, launch.Executable).Trust);
+    }
+
+    /// <summary>
+    /// The plugin runs in its folder, which only a listed file is checked in. So no program there runs by its bare name,
+    /// as cmd.exe would run a planted <c>python.cmd</c> before the Python on <c>PATH</c>, and Python keeps its compiled
+    /// modules in Dictum's folder for the plugin rather than in a <c>__pycache__</c> beside them, where a planted one
+    /// would run in place of a checked module.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task DictumsOwnVariablesReachThePlugin()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var launch = TestPlugins.Launch(TestPlugins.Folder(_dir));
+
+        await using var plugin = await StartAsync(launch, ct);
+        var environment = (await RawInfoAsync(plugin, ct)).GetProperty("env");
+
+        Assert.Equal("1", environment.GetProperty("NoDefaultCurrentDirectoryInExePath").GetString());
+        Assert.Equal(launch.Cache, environment.GetProperty("PYTHONPYCACHEPREFIX").GetString());
+        Assert.False(string.IsNullOrEmpty(environment.GetProperty(PluginProtocol.KeyVariable).GetString()));
     }
 
     /// <summary>
@@ -500,16 +564,20 @@ public sealed class PluginProcessTests : IDisposable
     }
 
     /// <summary>
-    /// A system that will not put the plugin in a group does not keep it from running: the log says so, naming the pid,
-    /// and the stop still ends the plugin.
+    /// A system that will not put the plugin in a group does not keep it from running, nor does a group that fails in a
+    /// way nobody planned for, which would otherwise leave the started process running with nothing reading its output:
+    /// the log says so, naming the pid, and the stop still ends the plugin.
     /// </summary>
-    [Fact(Timeout = TestTimeout.Generous)]
-    public async Task APluginTheSystemWillNotGroupStillRuns()
+    [Theory(Timeout = TestTimeout.Generous)]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task APluginTheSystemWillNotGroupStillRuns(bool unplanned)
     {
         var ct = TestContext.Current.CancellationToken;
+        Exception refusal = unplanned ? new InvalidOperationException("The group broke.") : new Win32Exception(5);
 
-        var plugin = await StartAsync(TestPlugins.Launch(TestPlugins.Folder(_dir)), ct, groups: new RefusingGroups());
-        var warning = $"Plugin test (pid {plugin.Id}) runs outside a process group, so a process it starts may outlive it: {RefusingGroups.Refusal.Message}";
+        var plugin = await StartAsync(TestPlugins.Launch(TestPlugins.Folder(_dir)), ct, groups: new RefusingGroups(refusal));
+        var warning = $"Plugin test (pid {plugin.Id}) runs outside a process group, so a process it starts may outlive it: {refusal.Message}";
         Assert.Equal("Test", plugin.Endpoint.Info.Name);
         Assert.Single(_log.Lines, line => line == (LogLevel.Warning, warning));
 
@@ -655,13 +723,10 @@ public sealed class PluginProcessTests : IDisposable
         }
     }
 
-    /// <summary>A system that will not put a process in a group.</summary>
-    private sealed class RefusingGroups : IProcessGroups
+    /// <summary>A system that will not put a process in a group, with <paramref name="refusal"/>, such as ERROR_ACCESS_DENIED.</summary>
+    private sealed class RefusingGroups(Exception refusal) : IProcessGroups
     {
-        /// <summary>ERROR_ACCESS_DENIED.</summary>
-        public static readonly Win32Exception Refusal = new(5);
-
-        public IDisposable Enclose(Process process) => throw Refusal;
+        public IDisposable Enclose(Process process) => throw refusal;
     }
 
     /// <summary>Notes, for each line of the plugin's output that reaches the log, whether a thread-pool thread wrote it.</summary>

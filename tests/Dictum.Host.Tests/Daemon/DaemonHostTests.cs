@@ -80,7 +80,7 @@ public sealed class DaemonHostTests : IDisposable
     {
         var log = new ListLog();
         await using var plugins = new PluginHost(new PluginTrustStore(_dir.File("plugin-trust.json"), log), PlatformFactory.CreateProcessGroups(), log);
-        var launch = new PluginLaunch("test", "Test", "1.0.0", _dir.Path, _dir.File("plugin.exe"), Model: null, Threads: null);
+        var launch = new PluginLaunch("test", "Test", "1.0.0", _dir.Path, _dir.File("plugin.exe"), Model: null, Threads: null, _dir.File("cache"));
         plugins.Acquire(launch).Dispose();
         Assert.Single(plugins.Instances);
 
@@ -101,7 +101,7 @@ public sealed class DaemonHostTests : IDisposable
     {
         var log = new ListLog();
         await using var plugins = new PluginHost(new PluginTrustStore(_dir.File("plugin-trust.json"), log), PlatformFactory.CreateProcessGroups(), log);
-        var launch = new PluginLaunch("test", "Test", "1.0.0", _dir.Path, _dir.File("plugin.exe"), Model: null, Threads: null);
+        var launch = new PluginLaunch("test", "Test", "1.0.0", _dir.Path, _dir.File("plugin.exe"), Model: null, Threads: null, _dir.File("cache"));
         plugins.Acquire(launch).Dispose();
         var sweep = DaemonHost.AfterWarmUp(plugins);
         Assert.NotNull(sweep);

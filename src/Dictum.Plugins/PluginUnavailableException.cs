@@ -1,4 +1,5 @@
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Text;
 
 namespace Dictum.Plugins;
 
@@ -19,5 +20,5 @@ public sealed class PluginUnavailableException(string message, string? hint = nu
     /// a terminal must not be given them raw, so each is spelt out; the stored lines stay as the plugin printed them.
     /// </summary>
     public string WithOutput(string text) =>
-        Output.Count == 0 ? text : $"{(text.EndsWith('.') ? text[..^1] : text)}; last output: {string.Join(" | ", Output.TakeLast(QuotedLines).Select(PluginText.Show))}";
+        Output.Count == 0 ? text : $"{(text.EndsWith('.') ? text[..^1] : text)}; last output: {string.Join(" | ", Output.TakeLast(QuotedLines).Select(TerminalText.Show))}";
 }

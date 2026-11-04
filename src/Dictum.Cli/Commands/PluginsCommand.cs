@@ -5,6 +5,7 @@ using Dictum.Cli.Output;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Docs;
+using Dictum.Core.Text;
 using Dictum.Plugins;
 
 namespace Dictum.Cli.Commands;
@@ -47,7 +48,7 @@ internal static class PluginsCommand
                 var name = row.Version is null ? row.Name : $"{row.Name} {row.Version}";
                 context.Out.WriteLine(row.Path is null
                     ? $"{row.Id}  {name}  {row.State}"
-                    : $"{row.Id}  {name}  your own · {PluginText.Show(row.Path)} · {row.State}");
+                    : $"{row.Id}  {name}  your own · {TerminalText.Show(row.Path)} · {row.State}");
             }
 
             return Task.FromResult(ExitCodes.Success);
@@ -69,16 +70,16 @@ internal static class PluginsCommand
             if (registered && !string.Equals(Normalize(existing!.Path), folder, PathComparison.Current))
             {
                 throw new ConfigException(
-                    $"A plugin named {manifest.Id} is already added from {PluginText.Show(existing.Path)}. Remove it first: dictum plugins remove {manifest.Id}");
+                    $"A plugin named {manifest.Id} is already added from {TerminalText.Show(existing.Path)}. Remove it first: dictum plugins remove {manifest.Id}");
             }
 
             // Hashed now, before the user is asked and before the program runs, so the record pins the files as they
             // are shown, not as the plugin leaves them; and a trust file this Dictum may not change refuses at once.
             var executable = manifest.ExecutablePath(folder);
             var trust = new PluginTrustStore(context.Paths.PluginTrustFile, context.Log);
-            var confirmation = trust.Prepare(manifest.Id, folder, executable);
+            var confirmation = Prepare(trust, manifest.Id, folder, executable);
 
-            context.Error.WriteLine($"{manifest.Name} {manifest.Version} by {manifest.Publisher ?? "an unknown publisher"} from {folder}");
+            context.Error.WriteLine($"{manifest.Name} {manifest.Version} by {manifest.Publisher ?? "an unknown publisher"} from {TerminalText.Show(folder)}");
             if (registered)
             {
                 context.Error.WriteLine($"{manifest.Id} is already added; confirming it again.");
@@ -106,7 +107,9 @@ internal static class PluginsCommand
                 }
             }
 
-            await Probe(context, new PluginLaunch(manifest.Id, manifest.Name, manifest.Version, folder, executable, Model: null, Threads: null), token).ConfigureAwait(false);
+            var launch = new PluginLaunch(
+                manifest.Id, manifest.Name, manifest.Version, folder, executable, Model: null, Threads: null, context.Paths.PluginCacheDirectory(manifest.Id));
+            await Probe(context, launch, token).ConfigureAwait(false);
 
             trust.Confirm(confirmation);
 
@@ -149,10 +152,29 @@ internal static class PluginsCommand
             config.Plugins.Remove(pluginId);
             context.SaveValidated(config);
             new PluginTrustStore(context.Paths.PluginTrustFile, context.Log).Forget(pluginId);
-            context.Out.WriteLine($"Removed {pluginId}. Its folder {PluginText.Show(registration.Path)} was left as it was.");
+            context.Out.WriteLine($"Removed {pluginId}. Its folder {TerminalText.Show(registration.Path)} was left as it was.");
             return Task.FromResult(ExitCodes.Success);
         }, ct));
         return remove;
+    }
+
+    /// <summary>
+    /// Hashes the program files for the record. One that cannot be read leaves nothing to record, so the plugin cannot
+    /// be added, as one that cannot start cannot; the reason names the file by its path, which the plugin's folder spells.
+    /// </summary>
+    /// <exception cref="PluginUnavailableException">A program file cannot be read.</exception>
+    private static PluginConfirmation Prepare(PluginTrustStore trust, string id, string folder, string executable)
+    {
+        try
+        {
+            return trust.Prepare(id, folder, executable);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new PluginUnavailableException(
+                $"Plugin {id} cannot be added, since a file of its program cannot be read: {TerminalText.Show(ex.Message)}",
+                "Check that you may read every file in the plugin's folder and that no program holds one open, then add it again.");
+        }
     }
 
     /// <summary>Starts the program with no model, so that it answers who it is, then stops it.</summary>
@@ -209,10 +231,13 @@ internal static class PluginsCommand
             }
 
             var manifest = PluginManifest.Load(folder);
-            var state = trust.Check(id, folder, manifest.ExecutablePath(folder)).Trust switch
+
+            // A change names the first file that differs, as the start's failure does.
+            var result = trust.Check(id, folder, manifest.ExecutablePath(folder));
+            var state = result.Trust switch
             {
                 PluginTrust.Confirmed => "confirmed",
-                PluginTrust.Changed => "changed since you added it",
+                PluginTrust.Changed => $"changed since you added it ({TerminalText.Show(result.ChangedFile)})",
                 _ => "not confirmed on this computer",
             };
             return (manifest.Name, manifest.Version, state);
@@ -225,7 +250,7 @@ internal static class PluginsCommand
         catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException)
         {
             // A path no system can name, such as one with a null in it, or a folder the user may not read.
-            return (id, null, $"plugin.json cannot be read: {PluginText.Show(ex.Message)}");
+            return (id, null, $"plugin.json cannot be read: {TerminalText.Show(ex.Message)}");
         }
     }
 

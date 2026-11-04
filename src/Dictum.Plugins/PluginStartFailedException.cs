@@ -1,4 +1,5 @@
 using System.Text;
+using Dictum.Core.Text;
 
 namespace Dictum.Plugins;
 
@@ -29,7 +30,7 @@ public sealed class PluginStartFailedException : Exception
         var text = new StringBuilder();
         if (!string.IsNullOrEmpty(ex.Hint))
         {
-            text.Append("Hint: ").Append(PluginText.Show(ex.Hint));
+            text.Append("Hint: ").Append(TerminalText.Show(ex.Hint));
         }
 
         if (ex.Output.Count > 0)
@@ -37,7 +38,7 @@ public sealed class PluginStartFailedException : Exception
             text.Append(text.Length == 0 ? "Last output:" : $"{Environment.NewLine}Last output:");
             foreach (var line in ex.Output)
             {
-                text.AppendLine().Append("  ").Append(PluginText.Show(line));
+                text.AppendLine().Append("  ").Append(TerminalText.Show(line));
             }
         }
 

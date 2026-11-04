@@ -273,7 +273,8 @@ public sealed class PluginManifestTests : IDisposable
     /// <summary>The rules for model file names, on every system: a manifest is shared, so a path rooted on Windows is refused on Linux too.</summary>
     [Theory]
     [InlineData("\"\"", "program lists '', which must be a file or folder name inside the plugin's folder")]
-    [InlineData("\".\"", "program lists '.', which must be a file or folder name inside the plugin's folder")]
+    [InlineData("\"./lib\"", "program lists './lib', which must be a file or folder name inside the plugin's folder")]
+    [InlineData("\"lib//\"", "program lists 'lib//', which must be a file or folder name inside the plugin's folder")]
     [InlineData("\"a/../b\"", "program lists 'a/../b', which must be a file or folder name inside the plugin's folder")]
     [InlineData("\"/abs\"", "program lists '/abs', which must be a file or folder name inside the plugin's folder")]
     [InlineData("\"C:\\\\x\"", "program lists 'C:\\x', which must be a file or folder name inside the plugin's folder")]
@@ -344,6 +345,23 @@ public sealed class PluginManifestTests : IDisposable
         Write(Manifest(extra: "\"program\": [\"plugin.py\"],"));
 
         Assert.Equal(["program lists 'plugin.py', which is a link or is inside a linked folder"], Problems());
+    }
+
+    /// <summary>
+    /// <c>.</c>, or <c>./</c>, lists the whole folder: the one <c>.</c> the rule allows. A folder may end with a
+    /// <c>/</c>; a file may not.
+    /// </summary>
+    [Fact]
+    public void TheWholeFolderAndAFolderWithATrailingSlashAreProgramEntries()
+    {
+        File.WriteAllText(_folder.File("plugin.py"), "print()");
+        Directory.CreateDirectory(_folder.File("lib"));
+        Write(Manifest(extra: "\"program\": [\".\", \"./\", \"lib/\"],"));
+
+        Assert.Equal([".", "./", "lib/"], PluginManifest.Load(_folder.Path).Program);
+
+        Write(Manifest(extra: "\"program\": [\"plugin.py/\"],"));
+        Assert.Equal(["program lists 'plugin.py/', which is not in the plugin's folder"], Problems());
     }
 
     [Fact]

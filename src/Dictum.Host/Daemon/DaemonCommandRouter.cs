@@ -30,10 +30,23 @@ internal sealed class DaemonCommandRouter(
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             // A provider that is down or a server that times out must not look like a dead daemon to the client.
-            log.Error($"IPC '{request.Command}' failed: {ex.Message}", ex);
+            if (IsExpected(ex))
+            {
+                // A plugin that cannot start, such as one not confirmed: a warning as the plugin host logs it, with its
+                // hint and last lines and no stack trace.
+                log.Warn($"IPC '{request.Command}' failed: {FailureOf(ex)}");
+            }
+            else
+            {
+                log.Error($"IPC '{request.Command}' failed: {ex.Message}", ex);
+            }
+
             return IpcResponse.Failure(FailureOf(ex), KindOf(ex));
         }
     }
+
+    private static bool IsExpected(Exception ex) =>
+        (ex is DictationException { InnerException: { } inner } ? inner : ex) is PluginUnavailableException;
 
     /// <summary>What a client may act on in a failure: that a provider, or the plugin it runs, could not start or answer.</summary>
     internal static string? KindOf(Exception ex) =>

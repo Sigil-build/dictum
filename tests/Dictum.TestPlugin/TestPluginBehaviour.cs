@@ -54,6 +54,9 @@ public sealed record TestPluginBehaviour
     /// <summary>Announced in the ready line instead of the address it listens on.</summary>
     public string? ReadyUrl { get; set; }
 
+    /// <summary>A path the ready line adds to the address it listens on, unless <see cref="ReadyUrl"/> is set.</summary>
+    public string ReadyPath { get; set; } = "";
+
     /// <summary><c>/health</c> answers this status with an error, instead of its own answer.</summary>
     public int? HealthStatus { get; set; }
 
@@ -70,6 +73,9 @@ public sealed record TestPluginBehaviour
 
     /// <summary>Transcriptions answer this status with an error.</summary>
     public int? TranscribeStatus { get; set; }
+
+    /// <summary>Transcriptions answer this text instead of their JSON, with <see cref="TranscribeStatus"/> when set, else 200.</summary>
+    public string? TranscribeBody { get; set; }
 
     /// <summary>Kills its own process when a transcription arrives, before it answers, as a crash mid-request would.</summary>
     public bool ExitOnTranscribe { get; set; }

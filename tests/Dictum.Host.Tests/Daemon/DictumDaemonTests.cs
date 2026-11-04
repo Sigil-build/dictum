@@ -631,6 +631,30 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         Assert.Null(other.Kind);
     }
 
+    /// <summary>
+    /// A plugin that cannot start, such as one not confirmed, is a failure Dictum expects: the log gets a warning, with
+    /// its hint and last lines and no stack trace, as the plugin host logs it. Any other failure keeps its exception.
+    /// </summary>
+    [Fact]
+    public async Task AnExpectedPluginFailureIsLoggedWithoutAStackTrace()
+    {
+        var log = new ListLog();
+        await using var daemon = await StartAsync(Config(), log: log);
+
+        _stt.FailWith = new PluginUnavailableException("Plugin test has not been confirmed on this computer.", "Confirm it.", ["one"]);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.TestStt, Stt: "s", Sample: true), _ct);
+        _stt.FailWith = new IOException("The disk is gone.");
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.TestStt, Stt: "s", Sample: true), _ct);
+
+        var expected = Assert.Single(log.Entries, entry => entry.Message.Contains("has not been confirmed", StringComparison.Ordinal));
+        Assert.Equal(
+            (LogLevel.Warning, $"IPC '{IpcCommand.TestStt}' failed: Plugin test has not been confirmed on this computer. Confirm it; last output: one", (Exception?)null),
+            expected);
+        var unexpected = Assert.Single(log.Entries, entry => entry.Message.Contains("The disk is gone.", StringComparison.Ordinal));
+        Assert.Equal(LogLevel.Error, unexpected.Level);
+        Assert.IsType<IOException>(unexpected.Exception);
+    }
+
     [Fact]
     public async Task TestSttIsRefusedWhileBusyAndForAnUnknownProvider()
     {

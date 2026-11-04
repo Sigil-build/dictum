@@ -180,6 +180,37 @@ public sealed class PluginsCommandTests : IDisposable
         Assert.Empty(LoadConfig().Plugins);
     }
 
+    /// <summary>
+    /// A program file that cannot be read when the plugin is added cannot be recorded: the plugin is not added, and the
+    /// message names the file, its path spelt out, as for a plugin that cannot start, rather than as a failure Dictum
+    /// did not expect. The folder's name holds a right-to-left override, which both systems allow in a name.
+    /// </summary>
+    [Fact]
+    public async Task AProgramFileThatCannotBeReadIsReportedAndNothingIsAdded()
+    {
+        const string Extra = "extra.py";
+        var folder = TestPlugins.Folder(_dir, folderName: "plug\u202ein", program: [Extra]);
+        var path = Path.Combine(folder, Extra);
+        File.WriteAllText(path, "print()");
+        SaveConfig(new DictumConfig());
+        using var held = OperatingSystem.IsWindows() ? new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None) : null;
+        if (!OperatingSystem.IsWindows())
+        {
+            File.SetUnixFileMode(path, UnixFileMode.None);
+            Assert.SkipWhen(CanRead(path), "This account reads a file it has no right to, as root does");
+        }
+
+        var (code, _, error) = await RunAsync("add", folder, "--yes");
+
+        Assert.Equal(3, code);
+        Assert.Contains("error: Plugin test cannot be added, since a file of its program cannot be read: ", error, StringComparison.Ordinal);
+        Assert.Contains(@"plug\u202ein", error, StringComparison.Ordinal);
+        Assert.DoesNotContain('\u202e', error);
+        Assert.DoesNotContain("--verbose", error, StringComparison.Ordinal);
+        Assert.Empty(LoadConfig().Plugins);
+        Assert.False(TestPlugins.RunsIn(_dir));
+    }
+
     [Fact]
     public async Task APluginThatCannotStartIsNotAdded()
     {
@@ -329,15 +360,17 @@ public sealed class PluginsCommandTests : IDisposable
         Assert.Matches(@"^whisper\s+Whisper\s+built in$", lines[0]);
         Assert.Equal($"test  Test 1.0.0  your own · {folder} · confirmed", lines[1]);
 
-        File.AppendAllText(PluginManifest.Load(folder).ExecutablePath(folder), "x");
+        // As the start's failure does, the state names the first file that differs.
+        var program = PluginManifest.Load(folder).ExecutablePath(folder);
+        File.AppendAllText(program, "x");
         var (_, changed, _) = await RunAsync("list");
-        Assert.Contains("changed since you added it", changed, StringComparison.Ordinal);
+        Assert.Contains($"changed since you added it ({Path.GetFileName(program)})", changed, StringComparison.Ordinal);
 
         var (_, json, _) = await RunAsync("list", "--json");
         var rows = JsonSerializer.Deserialize(json, CliJsonContext.Readable.ListPluginJson)!;
         Assert.Equal(["whisper", "test"], rows.Select(r => r.Id));
         Assert.Equal(["built-in", "custom"], rows.Select(r => r.Kind));
-        Assert.Equal("changed since you added it", rows[1].State);
+        Assert.Equal($"changed since you added it ({Path.GetFileName(program)})", rows[1].State);
     }
 
     [Fact]
@@ -440,6 +473,19 @@ public sealed class PluginsCommandTests : IDisposable
         var manifest = Path.Combine(folder, PluginProtocol.ManifestFile);
         var json = File.ReadAllText(manifest);
         File.WriteAllText(manifest, json[..json.LastIndexOf('}')] + $",\"models\":{models}}}");
+    }
+
+    private static bool CanRead(string path)
+    {
+        try
+        {
+            File.OpenRead(path).Dispose();
+            return true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 
     private PluginTrust Check(string folder) =>

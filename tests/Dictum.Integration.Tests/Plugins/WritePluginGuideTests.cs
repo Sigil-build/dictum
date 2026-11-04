@@ -25,6 +25,9 @@ public sealed partial class WritePluginGuideTests : IDisposable
     private const string Section = "example";
     private const string Text = "hello from python";
 
+    /// <summary>The model the plugin is started with, by its id: a space and Cyrillic letters, as a folder under C:\Users\Євген has.</summary>
+    private const string ModelId = "tiny модель";
+
     /// <summary>The systems Dictum is built for, which the guide's example must each have a program for.</summary>
     private static readonly string[] ShippedRids = ["win-x64", "linux-x64"];
 
@@ -54,8 +57,14 @@ public sealed partial class WritePluginGuideTests : IDisposable
         var folder = WriteExample(Path.Combine(_dir.Path, "плагін hello"));
         var manifest = PluginManifest.Load(folder);
 
+        // The guide calls the whole folder the strongest choice, and its example lists it. Confirmed as 'dictum plugins add'
+        // would, before it first runs; its runs then leave nothing in the folder that the check would see.
+        Assert.Equal(["."], manifest.Program);
+        var trust = new PluginTrustStore(_dir.File("plugin-trust.json"), _log);
+        trust.Confirm(manifest.Id, folder, manifest.ExecutablePath(folder));
+
         // A model folder with a space and Cyrillic letters too, as one under the user's own folder has: it is passed on whole.
-        var model = Directory.CreateDirectory(Path.Combine(_dir.Path, "моделі", manifest.Id, "tiny модель")).FullName;
+        var model = Directory.CreateDirectory(Path.Combine(_dir.Path, "моделі", manifest.Id, ModelId)).FullName;
 
         // As 'dictum plugins add' runs it: no model, so it only says who it is.
         await using (var bare = await StartAsync(Launch(folder, manifest, model: null), ct))
@@ -68,7 +77,7 @@ public sealed partial class WritePluginGuideTests : IDisposable
         var plugin = await StartAsync(Launch(folder, manifest, model), ct);
         try
         {
-            Assert.Equal("tiny модель", plugin.Endpoint.Info.Model?.Id);
+            Assert.Equal(ModelId, plugin.Endpoint.Info.Model?.Id);
 
             using var keyless = await _http.GetAsync(new Uri(plugin.Endpoint.Url, "/health"), ct);
             Assert.Equal(HttpStatusCode.Unauthorized, keyless.StatusCode);
@@ -94,6 +103,8 @@ public sealed partial class WritePluginGuideTests : IDisposable
         {
             await StopsWithinTheGraceAsync(plugin);
         }
+
+        Assert.Equal(PluginTrust.Confirmed, trust.Check(manifest.Id, folder, manifest.ExecutablePath(folder)).Trust);
     }
 
     /// <summary>
@@ -130,11 +141,15 @@ public sealed partial class WritePluginGuideTests : IDisposable
         return (response.StatusCode, await response.Content.ReadAsStringAsync(ct));
     }
 
-    /// <summary>The form <see cref="PluginStt"/> builds, checked for the field that tells the plugin the language.</summary>
+    /// <summary>
+    /// The form <see cref="PluginStt"/> builds for the model the plugin loaded, checked for the field that tells the plugin
+    /// the language, with a field from a later protocol after it, which protocol 1 asks the plugin to ignore.
+    /// </summary>
     private static async Task<MultipartFormDataContent> FormAsync(SttRequest request)
     {
-        var form = PluginStt.BuildForm("tiny", new AudioClip(new float[AudioClip.WhisperSampleRate / 2]), request);
+        var form = PluginStt.BuildForm(ModelId, new AudioClip(new float[AudioClip.WhisperSampleRate / 2]), request);
         var text = await form.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        Assert.Contains($"name=model\r\n\r\n{ModelId}\r\n", text, StringComparison.Ordinal);
         switch (request)
         {
             case { Language: { } language } when language != LanguageList.Auto:
@@ -149,6 +164,7 @@ public sealed partial class WritePluginGuideTests : IDisposable
                 break;
         }
 
+        form.Add(new StringContent("a field from a later protocol"), "later_field");
         return form;
     }
 
@@ -165,8 +181,8 @@ public sealed partial class WritePluginGuideTests : IDisposable
         }
     }
 
-    private static PluginLaunch Launch(string folder, PluginManifest manifest, string? model) =>
-        new(manifest.Id, manifest.Name, manifest.Version, folder, manifest.ExecutablePath(folder), model, Threads: null);
+    private PluginLaunch Launch(string folder, PluginManifest manifest, string? model) =>
+        new(manifest.Id, manifest.Name, manifest.Version, folder, manifest.ExecutablePath(folder), model, Threads: null, _dir.File(Path.Combine("plugin-cache", manifest.Id)));
 
     /// <summary>
     /// Writes the example's program, its manifest, and the launcher that the manifest names for this system, each from

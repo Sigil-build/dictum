@@ -1,10 +1,13 @@
 using System.Globalization;
 using System.Text;
 
-namespace Dictum.Plugins;
+namespace Dictum.Core.Text;
 
-/// <summary>Text from a plugin's folder or its config that Dictum prints: what a terminal must not be given raw.</summary>
-public static class PluginText
+/// <summary>
+/// Text from a file the user may have copied, such as <c>config.json</c> or a plugin's <c>plugin.json</c>, or from a
+/// plugin itself, that Dictum prints: what a terminal must not be given raw.
+/// </summary>
+public static class TerminalText
 {
     /// <summary>
     /// A control character, or one a terminal draws as nothing or as a line break: a format character, such as the
@@ -20,7 +23,7 @@ public static class PluginText
 
     /// <summary>
     /// The value for a message, with each hidden character spelt out as <c>\uXXXX</c>, or as <c>\UXXXXXXXX</c> outside
-    /// the BMP; null as nothing.
+    /// the BMP; null as nothing. A <c>\</c> is never spelt out, so text shown once is shown the same again.
     /// </summary>
     public static string Show(string? value)
     {

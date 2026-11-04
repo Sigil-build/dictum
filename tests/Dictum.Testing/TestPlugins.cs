@@ -97,11 +97,15 @@ public static class TestPlugins
         return path;
     }
 
-    /// <summary>A launch of the plugin in <paramref name="folder"/>, its name, version and program read from its manifest.</summary>
+    /// <summary>
+    /// A launch of the plugin in <paramref name="folder"/>, its name, version and program read from its manifest, and its
+    /// caches in <c>plugin-cache/&lt;id&gt;</c> next to the folder, as Dictum keeps them outside it.
+    /// </summary>
     public static PluginLaunch Launch(string folder, string? model = null, int? threads = null, string id = "test")
     {
         var manifest = PluginManifest.Load(folder);
-        return new PluginLaunch(id, manifest.Name, manifest.Version, folder, manifest.ExecutablePath(folder), model, threads);
+        var cache = Path.Combine(Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(folder))!, "plugin-cache", id);
+        return new PluginLaunch(id, manifest.Name, manifest.Version, folder, manifest.ExecutablePath(folder), model, threads, cache);
     }
 
     /// <summary>Whether a test plugin copied into <paramref name="dir"/> still runs; every test copies the plugin into its own.</summary>

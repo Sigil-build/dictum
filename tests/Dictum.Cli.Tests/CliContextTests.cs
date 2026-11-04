@@ -21,6 +21,22 @@ public sealed class CliContextTests
         Assert.IsType<PluginStt>(stt);
     }
 
+    // The context's own log keeps that warning off the console it writes to, and prints the others there.
+    [Fact]
+    public async Task APluginsFirstStartWarningNeverReachesTheConsole()
+    {
+        using var console = new ConsoleCapture();
+        await using (var context = new CliContext(CliApp.BuildRoot().Parse(["doctor"])))
+        {
+            var firstStart = new PluginStartFailedException(new PluginUnavailableException("Plugin p has not been confirmed."));
+            context.Log.Warn("Plugin p has not been confirmed.", firstStart);
+            context.Log.Warn("Plugin q kept stopping.");
+        }
+
+        Assert.DoesNotContain("Plugin p has not been confirmed.", console.Error.ToString(), StringComparison.Ordinal);
+        Assert.Contains("warning: Plugin q kept stopping.", console.Error.ToString(), StringComparison.Ordinal);
+    }
+
     // A command reports a first start's failure itself, so only that warning stays off its console. A restart's failure
     // reaches no command, and so does any other warning, whatever its exception.
     [Fact]

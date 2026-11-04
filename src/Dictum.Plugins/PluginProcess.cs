@@ -9,6 +9,7 @@ using System.Text;
 using System.Text.Json;
 using Dictum.Core;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Text;
 
 namespace Dictum.Plugins;
 
@@ -30,6 +31,12 @@ public sealed class PluginProcess : IAsyncDisposable
     private const string HealthPath = "/health";
     private const string InfoPath = "/dictum/v1/info";
     private const string Hint = "See the plugin's output, if it printed any, and its own documentation.";
+
+    /// <summary>Set, it keeps Windows from running a program in the working folder by its bare name.</summary>
+    private const string NoCurrentDirectoryVariable = "NoDefaultCurrentDirectoryInExePath";
+
+    /// <summary>Where Python 3.8 and later write and read their compiled modules, in place of <c>__pycache__</c> folders.</summary>
+    private const string PythonCacheVariable = "PYTHONPYCACHEPREFIX";
 
     /// <summary>
     /// How long a killed plugin has to be gone. Apart from the grace, which is the plugin's time to exit by itself and
@@ -101,7 +108,7 @@ public sealed class PluginProcess : IAsyncDisposable
         catch (Win32Exception ex)
         {
             _process.Dispose();
-            throw new PluginUnavailableException($"Plugin {launch.PluginId} could not be started: {PluginText.Show(ex.Message)}", Hint);
+            throw new PluginUnavailableException($"Plugin {launch.PluginId} could not be started: {TerminalText.Show(ex.Message)}", Hint);
         }
 
         Id = _process.Id;
@@ -187,7 +194,7 @@ public sealed class PluginProcess : IAsyncDisposable
             throw;
         }
 
-        log.Info($"Plugin {launch.PluginId} is ready at {plugin.Endpoint.Url} (pid {plugin.Id})");
+        log.Info($"Plugin {launch.PluginId} is ready at {TerminalText.Show(plugin.Endpoint.Url.ToString())} (pid {plugin.Id})");
         return plugin;
     }
 
@@ -239,7 +246,7 @@ public sealed class PluginProcess : IAsyncDisposable
         }
 
         throw new PluginUnavailableException(
-            $"Plugin {launch.PluginId} starts through {Path.GetFileName(launch.Executable)}, which cannot be given {PluginText.Show(refused)}: it holds one of & % ^ ! \" < > | ( ).",
+            $"Plugin {launch.PluginId} starts through {Path.GetFileName(launch.Executable)}, which cannot be given {TerminalText.Show(refused)}: it holds one of & % ^ ! \" < > | ( ).",
             "Use a path without those characters, or ask the plugin's author for a program (.exe) instead of a script.");
     }
 
@@ -271,6 +278,13 @@ public sealed class PluginProcess : IAsyncDisposable
         }
 
         info.Environment[PluginProtocol.KeyVariable] = key;
+
+        // The plugin runs in its folder, of which the trust record checks only what plugin.json lists. On Windows, cmd.exe
+        // and the system would run a program named there by its bare name ahead of the one on PATH, such as a planted
+        // python.cmd; Dictum passes full paths, so nothing needs that. And Python would read a compiled module from a
+        // __pycache__ beside its source, which the record skips, so its caches go to Dictum's folder for the plugin.
+        info.Environment[NoCurrentDirectoryVariable] = "1";
+        info.Environment[PythonCacheVariable] = launch.Cache;
         return info;
     }
 
@@ -284,12 +298,12 @@ public sealed class PluginProcess : IAsyncDisposable
 
         if (!Uri.TryCreate(ready.Url, UriKind.Absolute, out var url) || !IsOnThisComputer(url))
         {
-            throw Failure($"Plugin {_launch.PluginId} announced {ready.Url}, which is not on this computer.");
+            throw Failure($"Plugin {_launch.PluginId} announced {TerminalText.Show(ready.Url)}, which is not on this computer.");
         }
 
         if (url.Scheme != Uri.UriSchemeHttp)
         {
-            throw Failure($"Plugin {_launch.PluginId} announced {ready.Url}, but protocol 1 is plain http on this computer.");
+            throw Failure($"Plugin {_launch.PluginId} announced {TerminalText.Show(ready.Url)}, but protocol 1 is plain http on this computer.");
         }
 
         _lastHeard = $"{HealthPath} did not answer";
@@ -319,13 +333,13 @@ public sealed class PluginProcess : IAsyncDisposable
                 }
 
                 ThrowIfKeyRejected(response);
-                _lastHeard = $"{HealthPath} last answered {(int)response.StatusCode} {PluginText.Show(response.ReasonPhrase)}".TrimEnd();
+                _lastHeard = $"{HealthPath} last answered {(int)response.StatusCode} {TerminalText.Show(response.ReasonPhrase)}".TrimEnd();
             }
             catch (HttpRequestException ex)
             {
                 // Not listening yet: a refused connection waits, like a 503 while the model loads. Why is kept, for a
                 // start that times out.
-                var reason = PluginText.Show(ex.GetBaseException().Message);
+                var reason = TerminalText.Show(ex.GetBaseException().Message);
                 _lastHeard = ex.HttpRequestError is HttpRequestError.ConnectionError or HttpRequestError.NameResolutionError
                     ? $"{HealthPath} could not be reached: {reason}"
                     : $"its last answer to {HealthPath} could not be read: {reason}";
@@ -382,7 +396,8 @@ public sealed class PluginProcess : IAsyncDisposable
 
     /// <summary>
     /// The system refusing a group is no reason to refuse the plugin: it runs as before, and its stop still kills its
-    /// process tree, but a process it starts may outlive a crash.
+    /// process tree, but a process it starts may outlive a crash. So is any other failure of the group, which would
+    /// otherwise leave the process started with nothing reading its output.
     /// </summary>
     private IDisposable Enclose(IProcessGroups groups)
     {
@@ -390,7 +405,7 @@ public sealed class PluginProcess : IAsyncDisposable
         {
             return groups.Enclose(_process);
         }
-        catch (Win32Exception ex)
+        catch (Exception ex)
         {
             if (!_process.HasExited)
             {
@@ -469,7 +484,11 @@ public sealed class PluginProcess : IAsyncDisposable
         }
     }
 
-    /// <summary>Every line of either stream goes to the log and the recent output, except the ready line it waits for.</summary>
+    /// <summary>
+    /// Every line of either stream goes to the log and the recent output, except the ready line it waits for. The log
+    /// gets it spelt out, since a foreground daemon and <c>--verbose</c> print the log on a terminal; the recent output
+    /// keeps it as it is, and each report that quotes it spells it out.
+    /// </summary>
     private void OnLine(string line, bool fromStdout)
     {
         if (line.Length == 0 || _released)
@@ -483,7 +502,7 @@ public sealed class PluginProcess : IAsyncDisposable
             return;
         }
 
-        _log.Info($"plugin {_launch.PluginId}: {line}");
+        _log.Info($"plugin {_launch.PluginId}: {TerminalText.Show(line)}");
         lock (_gate)
         {
             if (_recent.Count == KeptLines)

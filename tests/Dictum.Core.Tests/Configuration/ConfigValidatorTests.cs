@@ -405,4 +405,22 @@ public class ConfigValidatorTests
     [Fact]
     public void APluginTheConfigDoesNotRegisterIsNotAnError() =>
         Assert.Empty(ConfigValidator.Validate(WithPlugin(new PluginSttConfig { Plugin = "unregistered", Model = "m" })));
+
+    /// <summary>
+    /// A key or a value of a copied config.json reaches the issue as it is, which Settings matches by its path; printed,
+    /// the issue spells out what a terminal would act on, once, however often it is printed.
+    /// </summary>
+    [Fact]
+    public void AnIssueIsPrintedWithItsHiddenCharactersSpeltOutOnce()
+    {
+        var config = new DictumConfig { Plugins = { ["\u001b]0;PWNED\u0007x"] = new PluginRegistration { Path = "C:/p" } } };
+        var issue = ConfigValidator.Validate(config).Single();
+
+        Assert.Equal("plugins.\u001b]0;PWNED\u0007x", issue.Path);
+        Assert.Equal($@"plugins.\u001b]0;PWNED\u0007x: {PluginIds.Rule}", issue.ToString());
+        Assert.Equal(
+            @"line 3: profiles[0].language: '\u202e' is not a language",
+            new ConfigIssue(ConfigIssueSeverity.Error, "profiles[0].language", "'\u202e' is not a language", 3).ToString());
+        Assert.Equal(@"stt.a: '\u001b' is spelt out already", new ConfigIssue(ConfigIssueSeverity.Warning, "stt.a", @"'\u001b' is spelt out already").ToString());
+    }
 }

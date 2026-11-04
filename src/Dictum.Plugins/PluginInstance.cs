@@ -1,6 +1,7 @@
 using System.Globalization;
 using Dictum.Core;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Text;
 
 namespace Dictum.Plugins;
 
@@ -383,13 +384,13 @@ public sealed class PluginInstance
             PluginTrust.Confirmed => null,
 
             // A file in a listed folder is named as it is on disk, so its name is spelt out like any text from the folder.
-            PluginTrust.Changed => $"Plugin {_launch.PluginId} changed since you added it ({PluginText.Show(trust.ChangedFile)}).",
+            PluginTrust.Changed => $"Plugin {_launch.PluginId} changed since you added it ({TerminalText.Show(trust.ChangedFile)}).",
             _ => $"Plugin {_launch.PluginId} has not been confirmed on this computer.",
         };
         if (problem is not null)
         {
             // Quoted, so that the command works when pasted, whatever spaces the folder holds.
-            throw new PluginUnavailableException(problem, $"Confirm it with 'dictum plugins add \"{PluginText.Show(_launch.Folder)}\"'.");
+            throw new PluginUnavailableException(problem, $"Confirm it with 'dictum plugins add \"{TerminalText.Show(_launch.Folder)}\"'.");
         }
     }
 
@@ -473,7 +474,7 @@ public sealed class PluginInstance
     {
         if (ex is not PluginUnavailableException unavailable)
         {
-            return new PluginUnavailableException($"Plugin {_launch.PluginId} could not start: {PluginText.Show(ex.Message)}", RetryHint);
+            return new PluginUnavailableException($"Plugin {_launch.PluginId} could not start: {TerminalText.Show(ex.Message)}", RetryHint);
         }
 
         var hint = string.IsNullOrEmpty(unavailable.Hint)
@@ -512,7 +513,7 @@ public sealed class PluginInstance
             return;
         }
 
-        var message = $"Plugin {_launch.PluginId} could not start: {PluginText.Show(ex.Message)}";
+        var message = $"Plugin {_launch.PluginId} could not start: {TerminalText.Show(ex.Message)}";
         _log.Warn(message, restart ? ex : new PluginStartFailedException(message, ex));
     }
 }

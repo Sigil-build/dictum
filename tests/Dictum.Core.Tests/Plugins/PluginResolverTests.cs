@@ -129,7 +129,9 @@ public sealed class PluginResolverTests : IDisposable
 
         var launch = Resolver().Resolve(Config(model) with { Threads = 3 });
 
-        Assert.Equal(new PluginLaunch("test", "Test plugin", "1.2.0", _folder, Path.Combine(_folder, "plugin.exe"), model, 3), launch);
+        Assert.Equal(
+            new PluginLaunch("test", "Test plugin", "1.2.0", _folder, Path.Combine(_folder, "plugin.exe"), model, 3, Path.Combine(_paths.DataDirectory, "plugin-cache", "test")),
+            launch);
     }
 
     /// <summary>The plugin host tells processes apart by the folder's spelling, so one folder must always be spelt alike.</summary>

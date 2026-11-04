@@ -367,6 +367,88 @@ public sealed class PluginTrustStoreTests : IDisposable
         Assert.Equal(Changed("lib/b.py"), store.Check("a", folder, program));
     }
 
+    /// <summary>
+    /// A linked folder is not entered, but it is a program file of its own, by where it points: one added to a listed
+    /// folder can shadow a module there, as a package <c>lib/foo</c> shadows <c>lib/foo.py</c> in Python.
+    /// </summary>
+    /// <summary>
+    /// <c>.</c> lists the whole folder: a file planted anywhere in it, such as a <c>json.py</c> that Python would import
+    /// in place of its own, or a <c>python.cmd</c> that cmd.exe would run, is a change. Python's caches still are not.
+    /// </summary>
+    [Theory]
+    [InlineData(".")]
+    [InlineData("./")]
+    public void TheWholeFolderCoversAFilePlantedAnywhereInIt(string entry)
+    {
+        var (folder, program) = Plugin("a", entry);
+        Put(folder, "plugin.py");
+        Put(folder, "lib/util.py");
+        var store = NewStore();
+        store.Confirm("a", folder, program);
+
+        Put(folder, "__pycache__/plugin.cpython-312.pyc", "cache");
+        Put(folder, "lib/__pycache__/util.cpython-312.pyc", "cache");
+        Assert.Equal(PluginTrust.Confirmed, store.Check("a", folder, program).Trust);
+
+        Put(folder, "lib/deep/json.py");
+        Assert.Equal(Changed("lib/deep/json.py"), store.Check("a", folder, program));
+
+        File.Delete(Path.Combine(folder, "lib", "deep", "json.py"));
+        Put(folder, "python.cmd", "@echo planted");
+        Assert.Equal(Changed("python.cmd"), store.Check("a", folder, program));
+    }
+
+    [Fact]
+    public void AFolderEntryWithATrailingSlashCoversTheFolder()
+    {
+        var (folder, program) = Plugin("a", "lib/");
+        Put(folder, "lib/a.py");
+        var store = NewStore();
+        store.Confirm("a", folder, program);
+
+        Assert.Contains("lib/a.py", JsonNode.Parse(File.ReadAllText(TrustFile))!["custom"]!["a"]!["files"]!.AsObject().Select(f => f.Key));
+
+        Put(folder, "lib/b.py");
+        Assert.Equal(Changed("lib/b.py"), store.Check("a", folder, program));
+    }
+
+    [Fact]
+    public void AnAddedFolderLinkIsChanged()
+    {
+        var (folder, program) = Plugin("a", "lib");
+        Put(folder, "lib/foo.py");
+        var elsewhere = Path.Combine(_temp.Path, "elsewhere");
+        Put(elsewhere, "__init__.py");
+        var store = NewStore();
+        store.Confirm("a", folder, program);
+
+        _links.Add(Path.Combine(folder, "lib", "foo"), elsewhere);
+
+        Assert.Equal(Changed("lib/foo"), store.Check("a", folder, program));
+    }
+
+    [Fact]
+    public void ARetargetedFolderLinkIsChanged()
+    {
+        var (folder, program) = Plugin("a", "lib");
+        Put(folder, "lib/a.py");
+        var (first, second) = (Path.Combine(_temp.Path, "first"), Path.Combine(_temp.Path, "second"));
+        Put(first, "x.py");
+        Put(second, "x.py");
+        var link = Path.Combine(folder, "lib", "linked");
+        _links.Add(link, first);
+        var store = NewStore();
+        store.Confirm("a", folder, program);
+        Assert.Equal(PluginTrust.Confirmed, store.Check("a", folder, program).Trust);
+
+        _links.Remove(link);
+        _links.Add(link, second);
+        Assert.Equal(Changed("lib/linked"), store.Check("a", folder, program));
+
+        _links.Remove(link);
+        Assert.Equal(Changed("lib/linked"), store.Check("a", folder, program));
+    }
+
     [Fact]
     public void ALinkedFileIsHashedByItsTarget()
     {

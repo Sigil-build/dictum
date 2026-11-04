@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Dictum.Testing;
@@ -129,6 +131,26 @@ public sealed partial class UserDocsTests
 
         // The i18n plugin finds each page's twin itself; the nav names only the English page.
         Assert.DoesNotContain(nav, IsUkrainian);
+    }
+
+    // A control character is invalid in the published HTML, and a format character cannot be seen in review: a page that
+    // means to show one writes its escape, such as `\u001b`.
+    [Fact]
+    public void NoPageHoldsAControlOrFormatCharacter()
+    {
+        var problems = new List<string>();
+        foreach (var page in AllPages())
+        {
+            var lines = Lines(Full(page));
+            for (var i = 0; i < lines.Length; i++)
+            {
+                problems.AddRange(lines[i].EnumerateRunes()
+                    .Where(rune => (Rune.IsControl(rune) && rune.Value is not ('\t' or '\r')) || Rune.GetUnicodeCategory(rune) == UnicodeCategory.Format)
+                    .Select(rune => $"{page}:{i + 1} holds U+{rune.Value:X4}"));
+            }
+        }
+
+        AssertNone(problems);
     }
 
     /// <summary>Fails with every problem on a line of its own, where <c>Assert.Empty</c> would show five, each cut short.</summary>

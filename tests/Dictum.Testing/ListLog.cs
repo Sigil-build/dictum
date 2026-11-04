@@ -15,7 +15,7 @@ public sealed class ListLog : ILog
 
     public bool IncludeText => false;
 
-    public void Write(LogLevel level, string message, Exception? exception = null) 
+    public void Write(LogLevel level, string message, Exception? exception = null)
     {
         Lines.Enqueue((level, message));
         Entries.Enqueue((level, message, exception));

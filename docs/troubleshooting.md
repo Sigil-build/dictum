@@ -442,12 +442,12 @@ The confirmation:
 :   The plugin is in `config.json`, but nobody confirmed it on this computer, or not with this folder and program: the file came from another computer, or was edited by hand. Run the command, which shows the plugin and asks you first.
 
 `Plugin hello changed since you added it (plugin.py).` → `Confirm it with 'dictum plugins add "…"'.`
-:   A file of the plugin is not the one Dictum recorded when you confirmed it: `plugin.json`, the program, or a file that its `program` lists. A file added to a listed folder, or gone from it, counts too. The message names the first file that differs, by its path in the plugin's folder. If you updated or edited the plugin, run the command to confirm it again. If you did not, find out what changed it before you do. Once you have confirmed it, the next dictation starts it.
+:   A file of the plugin is not the one Dictum recorded when you confirmed it: `plugin.json`, the program, or a file that its `program` lists. A file added to a listed folder or gone from it counts too, and so does a link in it that is added, removed or pointed elsewhere. The message names the first file that differs, by its path in the plugin's folder. If you updated or edited the plugin, run the command to confirm it again. If you did not, find out what changed it before you do. Once you have confirmed it, the next dictation starts it.
 
 `… plugin-trust.json was written by a newer Dictum (file version 2; this one reads 1), so this Dictum does not change it.` → `Update Dictum, then confirm the plugin again.`
 :   A newer version of Dictum wrote the file, and may record more than this one checks. This version trusts none of its records, so no plugin you added starts, and the log says `… so no plugin counts as confirmed.` `dictum plugins add` leaves the file as it is, and says so before it asks you or runs the plugin. Install the newer version again.
 
-While the program starts. These messages come with the hint `See the plugin's output, if it printed any, and its own documentation.` All of them but `Plugin … could not be started: …` also bring the lines the plugin printed last, if it printed any: after `last output:` in the row, or each after a `|` when a command such as `dictum transcribe` or `dictum plugins add` starts the plugin, or asks the daemon to; that command then exits with code 3. Characters a terminal would act on, such as escape codes, are shown as ``. That one has none, because the program never ran. When the daemon reports a start that failed earlier, the hint goes on: `Then save the settings or restart the daemon to try again.` The daemon does not try a plugin that failed to start again by itself; saving the settings, `dictum reload` or a restart of the daemon does.
+While the program starts. These messages come with the hint `See the plugin's output, if it printed any, and its own documentation.` All of them but `Plugin … could not be started: …` also bring the lines the plugin printed last, if it printed any. The doctor row, `dictum stt test` and the daemon's answer to a command such as `dictum start` show them after `last output:`, separated by `|`. `dictum transcribe` and `dictum plugins add`, which start the plugin themselves, show each on a line of its own after a `|`. Every command but `dictum doctor` then exits with code 3. Characters a terminal would act on, such as escape codes, are spelt out: the escape character as `\u001b`. That one has none, because the program never ran. When the daemon reports a start that failed earlier, the hint goes on: `Then save the settings or restart the daemon to try again.` The daemon does not try a plugin that failed to start again by itself; saving the settings, `dictum reload` or a restart of the daemon does.
 
 `Plugin hello could not be started: …`
 :   The system did not run the program that `plugin.json` names, and the rest of the text says why. On Linux, the file needs its execute bit: `chmod +x plugin.sh`. A script's first line must name an interpreter that exists.
@@ -503,7 +503,7 @@ During a dictation:
 
 `dictum plugins add` and `dictum plugins remove` say in their own messages what is wrong and what to do, such as `A plugin named hello is already added from …. Remove it first: dictum plugins remove hello`.
 
-The plugin's own lines are in `dictum.log` (see [Logs](#logs)), each after `plugin <id>:`, with what Dictum did with the plugin:
+The plugin's own lines are in `dictum.log` (see [Logs](#logs)), each after `plugin <id>:` and with the characters a terminal would act on spelt out, with what Dictum did with the plugin:
 
 ```text
 2026-11-02 10:15:02.481 +02:00 INFO plugin hello: loading /home/you/models/tiny

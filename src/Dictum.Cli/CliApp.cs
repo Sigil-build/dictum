@@ -6,6 +6,7 @@ using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Pipeline;
+using Dictum.Core.Text;
 using Dictum.Host.Ipc;
 using Dictum.Plugins;
 using Dictum.Setup;
@@ -118,7 +119,7 @@ internal static class CliApp
                 var code = Fail(context, plugin.Message, ExitCodes.ProviderUnavailable, plugin.Hint);
                 foreach (var line in plugin.Output)
                 {
-                    context.Error.WriteLine($"  | {PluginText.Show(line)}");
+                    context.Error.WriteLine($"  | {TerminalText.Show(line)}");
                 }
 
                 return code;

@@ -37,7 +37,7 @@ Whisper is built into Dictum and is not a plugin program. Dictum's own plugins a
     "win-x64": "plugin.cmd",
     "linux-x64": "plugin.sh"
   },
-  "program": ["plugin.py"],
+  "program": ["."],
   "models": [
     {
       "id": "tiny",
@@ -75,7 +75,7 @@ Whisper is built into Dictum and is not a plugin program. Dictum's own plugins a
 :   The program to run on each system, by its runtime identifier: `win-x64` for Windows and `linux-x64` for Linux. The value is a file in the plugin's folder, or in a folder inside it, such as `bin/hello.exe`. It may be a script: a `.cmd` file on Windows, or a shell script with its execute bit set on Linux. On Windows, a `.cmd` or `.bat` launcher cannot be given a path with some characters in it; [the example](#example) says which.
 
 `program`
-:   The files and folders the program is made of, as paths inside the plugin's folder, such as `["plugin.py", "lib"]`: the script a launcher runs, the modules it imports, the libraries it loads. Dictum checks them, with `plugin.json` and the program that `executable` names, before every start: see [Add it to Dictum](#add). A folder covers every file beneath it, except in folders named `__pycache__`, which Python writes by itself. Inside a listed folder, a folder that is a link is not followed, and a file that is a link counts as the file it points to. Each entry is a path inside the folder, in a subfolder if you like, with no `..`, `.` or empty part, and not a full path such as `C:\hello\plugin.py`. Each must be in the folder, or Dictum says `program lists 'lib', which is not in the plugin's folder`. An entry may not be a link, nor be inside a folder that is one: Dictum says `program lists 'lib', which is a link or is inside a linked folder`. Do not list a file or folder the plugin writes to itself, such as one for logs: every write to it would count as a change, even one during the run that `dictum plugins add` makes. Optional, but without it Dictum checks only `plugin.json` and that program, and `dictum plugins add` says so.
+:   The files and folders the program is made of, as paths inside the plugin's folder, such as `["plugin.py", "lib"]`: the script a launcher runs, the modules it imports, the libraries it loads. `"."` lists the whole folder, which is the strongest choice: then a file added anywhere in the folder, such as a module named like one the program imports, counts as a change. A plugin that lists less leaves the rest of its folder unchecked. Dictum checks them, with `plugin.json` and the program that `executable` names, before every start: see [Add it to Dictum](#add). A folder covers every file beneath it, except in folders named `__pycache__`, which Python writes by itself. Inside a listed folder, a folder that is a link is not followed, but it counts by where it points: a link added, removed or pointed elsewhere is a change. A file that is a link counts as the file it points to. Each entry is a path inside the folder, in a subfolder if you like, and a folder may end with `/`, as in `lib/`. Apart from `.` and `./`, an entry has no `..`, `.` or empty part, and is not a full path such as `C:\hello\plugin.py`. Each must be in the folder, or Dictum says `program lists 'lib', which is not in the plugin's folder`. An entry may not be a link, nor be inside a folder that is one: Dictum says `program lists 'lib', which is a link or is inside a linked folder`. Do not list a file or folder the plugin writes to itself, such as one for logs, and with `.` let it write nothing in its folder: every write there would count as a change, even one during the run that `dictum plugins add` makes. Optional, but without it Dictum checks only `plugin.json` and that program, and `dictum plugins add` says so.
 
 `models`
 :   Optional: the models the plugin offers. Each has an `id` (lowercase letters, digits, `.`, `_` and `-`, at most 64 characters, starting with a letter or a digit), a `title`, the `languages` it knows, which must not be empty, and its `files`. Each file has a `file` name inside the model's folder (subfolders are fine, `..` is not), an `https` address in `url`, its `sha256` and its `size` in bytes. `setLanguage` and `prompt` say whether the model can be told the language and whether it uses a prompt: see [Languages and prompts](#language). Both are true unless you set them to false. `licence` is optional.
@@ -112,6 +112,8 @@ Let the program accept options it does not know, as the example below does.
 
 **The key.** Each start gets a new key: 64 lowercase hexadecimal characters, in the environment variable `DICTUM_PLUGIN_KEY`. Every request from Dictum carries it as `Authorization: Bearer <key>`. Answer any request without that header with 401. The key is in the environment rather than on the command line because other programs on the computer can read a process's command line.
 
+**The environment.** The program gets the environment Dictum runs in, with three variables set: `DICTUM_PLUGIN_KEY`, above; `NoDefaultCurrentDirectoryInExePath=1`, so that on Windows neither cmd.exe nor the system runs a program from the plugin's folder by its bare name, and a launcher's `python` is the one on `PATH`, never a `python.cmd` that someone put in the folder; and `PYTHONPYCACHEPREFIX`, a folder of Dictum's own for the plugin, `plugin-cache/<id>` in its [data folder](../reference/files.md#data-folder), so that Python writes and reads its compiled modules there and not in `__pycache__` folders in the plugin's folder, which the check skips. Python started with `-E` or `-I` ignores `PYTHONPYCACHEPREFIX`.
+
 **The ready line.** Once the program listens, it prints one line on stdout:
 
 ```json
@@ -122,7 +124,7 @@ The address must be `http` on `127.0.0.1`, `::1` or `localhost`; Dictum refuses 
 
 Dictum then asks `GET /health` every 250 ms until it gets 200, and then `GET /dictum/v1/info`. From the start to that answer, the plugin has 60 seconds, model loading included. If it exits, does not get ready in time, announces another address, rejects the key or speaks another protocol, Dictum ends it and says why: see [When it does not work](#problems).
 
-**Its output.** Every line on stdout except the ready line, and every line on stderr, goes to Dictum's log as `plugin <id>: <line>`. Dictum also keeps the last 20 lines, and shows the last of them when the plugin fails to start. A plugin that prints what it heard puts the dictated text in the log, so don't.
+**Its output.** Every line on stdout except the ready line, and every line on stderr, goes to Dictum's log as `plugin <id>: <line>`, with the characters a terminal would act on spelt out: the escape character as `\u001b`. Dictum also keeps the last 20 lines, and shows the last of them when the plugin fails to start. A plugin that prints what it heard puts the dictated text in the log, so don't.
 
 Dictum reads both streams as UTF-8, so write UTF-8. On Windows, Python before 3.15 writes to a pipe in the system's ANSI code page instead, unless `PYTHONUTF8=1` or `PYTHONIOENCODING=utf-8` is set, or the script calls `sys.stdout.reconfigure(encoding="utf-8")`. Python 3.15 and later write UTF-8 by default. The example below calls `reconfigure`, which does no harm in either.
 
@@ -361,7 +363,7 @@ Make it executable with `chmod +x plugin.sh`. Both launchers run the Python that
     "win-x64": "plugin.cmd",
     "linux-x64": "plugin.sh"
   },
-  "program": ["plugin.py"]
+  "program": ["."]
 }
 ```
 
@@ -396,9 +398,9 @@ see: https://docs.sigil.build/dictum/guides/write-a-plugin/#use
 
 **After a change.** Before every start, Dictum compares those files with its record. Once one of them changes, or a file is added to a listed folder or removed from it, whether you edited the plugin or put in a new version, Dictum does not start the plugin until you confirm it again, and names the first file that differs: `Plugin hello changed since you added it (plugin.py).` To confirm it, run `dictum plugins add` with the same folder. Dictum says `hello is already added; confirming it again.` and asks again. If Dictum had refused to start the changed program, the next dictation starts it, with no restart. A daemon that still runs the old program keeps running it: confirming changes nothing in `config.json`, and saving the settings or `dictum reload` keep a plugin whose folder, version, model and threads stay the same. To run the new program, restart the daemon: quit Dictum from the tray menu and start it again, or run `dictum shutdown` and then `dictum daemon`.
 
-List in `program` every file that the program runs or loads: Dictum does not check a file that the list leaves out. The record is kept in `plugin-trust.json` in Dictum's [data folder](../reference/files.md#data-folder), for this computer only: a `config.json` copied from another computer names plugins that are not confirmed here yet.
+List in `program` every file that the program runs or loads, or `.` for the whole folder: Dictum does not check a file that the list leaves out, nor what the program loads from outside the folder, such as the Python it runs. The record is kept in `plugin-trust.json` in Dictum's [data folder](../reference/files.md#data-folder), for this computer only: a `config.json` copied from another computer names plugins that are not confirmed here yet.
 
-`dictum plugins list` shows each plugin you added, with its folder and its state: `confirmed`, `changed since you added it`, `not confirmed on this computer`, `the folder is missing`, `plugin.json is not valid: …` followed by the problems, or `plugin.json cannot be read: …` followed by the reason. `dictum plugins remove hello` forgets the plugin and leaves its folder alone. It refuses while a speech provider uses the plugin.
+`dictum plugins list` shows each plugin you added, with its folder and its state: `confirmed`, `changed since you added it (plugin.py)` with the first file that differs, `not confirmed on this computer`, `the folder is missing`, `plugin.json is not valid: …` followed by the problems, or `plugin.json cannot be read: …` followed by the reason. `dictum plugins remove hello` forgets the plugin and leaves its folder alone. It refuses while a speech provider uses the plugin.
 
 ## Use it in a profile {#use}
 

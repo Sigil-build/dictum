@@ -1,6 +1,7 @@
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Text;
 using Dictum.Host.Ipc;
 using Dictum.Plugins;
 using Dictum.Testing;
@@ -260,7 +261,7 @@ public sealed class PluginFailureOutputTests : IDisposable
     }
 
     /// <summary>Whether any line of <paramref name="text"/> holds a character a terminal would act on.</summary>
-    private static bool Dirty(string text) => text.Split('\n').Any(line => PluginText.HasHidden(line.TrimEnd('\r')));
+    private static bool Dirty(string text) => text.Split('\n').Any(line => TerminalText.HasHidden(line.TrimEnd('\r')));
 
     private static int Count(string text, string part)
     {

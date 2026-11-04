@@ -41,20 +41,32 @@ public sealed class FolderLinks : IDisposable
         _links.Add(link);
     }
 
+    /// <summary>Removes a link made here, never what it points to.</summary>
+    public void Remove(string link)
+    {
+        Delete(link);
+        _links.Remove(link);
+    }
+
     /// <summary>Removes each link, never what it points to.</summary>
     public void Dispose()
     {
         foreach (var link in _links)
         {
-            if (OperatingSystem.IsWindows())
-            {
-                Directory.Delete(link);
-            }
-            else
-            {
-                // A symbolic link is a file to unlink on Linux, whatever it points to.
-                File.Delete(link);
-            }
+            Delete(link);
+        }
+    }
+
+    private static void Delete(string link)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            Directory.Delete(link);
+        }
+        else
+        {
+            // A symbolic link is a file to unlink on Linux, whatever it points to.
+            File.Delete(link);
         }
     }
 }

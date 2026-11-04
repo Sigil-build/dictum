@@ -102,6 +102,18 @@ public class ConfigStoreTests
         Assert.NotNull(Assert.Single(ex.Issues).Line);
     }
 
+    /// <summary>The JSON reader quotes a value it cannot read, such as an unknown type, and the value may hold an escape sequence.</summary>
+    [Fact]
+    public void AValueTheReaderQuotesIsSpeltOut()
+    {
+        var ex = Assert.Throws<ConfigException>(() =>
+            ConfigStore.Parse("""{ "stt": { "a": { "type": "\u001b]0;PWNED\u0007", "model": "m" } } }"""));
+
+        Assert.Contains(@"'\u001b]0;PWNED\u0007'", ex.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain('\u001b', ex.Message);
+        Assert.DoesNotContain('\u001b', Assert.Single(ex.Issues).Message);
+    }
+
     [Fact]
     public void MissingRequiredPropertyIsAnError()
     {

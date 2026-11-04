@@ -6,14 +6,19 @@ namespace Dictum.Plugins;
 
 /// <summary>
 /// The files a plugin's program is made of, which its trust record covers: <c>plugin.json</c>, the executable, and
-/// every file under each entry of the manifest's <c>program</c>. A folder counts with every file beneath it, but no
-/// folder named <c>__pycache__</c> is entered, nor a folder that is a link; a file that is a link counts as its
-/// target. Each file is named by its path relative to the plugin's folder, written with <c>/</c>.
+/// every file under each entry of the manifest's <c>program</c>, the whole folder for <c>.</c>. A folder counts with
+/// every file beneath it, but no folder named <c>__pycache__</c> is entered, nor a folder that is a link: such a link
+/// counts as an entry of its own, by where it points, so that one added, removed or pointed elsewhere is a change. A
+/// file that is a link counts as its target. Each is named by its path relative to the plugin's folder, written with
+/// <c>/</c>.
 /// </summary>
 internal sealed class PluginProgramFiles
 {
     /// <summary>Python writes its caches here next to the modules it imports, so they change by themselves.</summary>
     private const string PythonCache = "__pycache__";
+
+    /// <summary>What a linked folder records in place of a hash: this, then its target as the system reports it.</summary>
+    private const string LinkPrefix = "link:";
 
     /// <summary>Paths compare as the file system does: on Windows a path that differs only in case is the same file.</summary>
     private static readonly StringComparer Paths = StringComparer.FromComparison(PathComparison.Current);
@@ -59,7 +64,8 @@ internal sealed class PluginProgramFiles
             }
             else if (Directory.Exists(path))
             {
-                Walk(folder, new DirectoryInfo(path), files);
+                // The plugin's own folder is entered even when it is a link: that is where the user keeps the plugin.
+                Walk(folder, new DirectoryInfo(path), files, isFolder: entry.Length == 0);
             }
         }
 
@@ -118,9 +124,10 @@ internal sealed class PluginProgramFiles
     }
 
     /// <summary>
-    /// The entries of <c>program</c> that name a path inside the folder, parsed as <see cref="PluginManifest.Load"/>
-    /// parses the file; none when it is not JSON, and then <see cref="PluginManifest.Load"/> refuses it too. An entry
-    /// the manifest's check refuses is skipped: such a manifest never loads, so its plugin never starts.
+    /// The entries of <c>program</c> that name a path inside the folder, as <see cref="PluginManifest.ProgramPath"/>
+    /// spells them, the whole folder as the empty path; parsed as <see cref="PluginManifest.Load"/> parses the file;
+    /// none when it is not JSON, and then <see cref="PluginManifest.Load"/> refuses it too. An entry the manifest's check
+    /// refuses is skipped: such a manifest never loads, so its plugin never starts.
     /// </summary>
     private static IEnumerable<string> Entries(byte[]? manifest)
     {
@@ -131,7 +138,7 @@ internal sealed class PluginProgramFiles
 
         try
         {
-            return PluginManifest.Parse(manifest)?.Program?.Where(PluginManifest.IsProgramEntry) ?? [];
+            return PluginManifest.Parse(manifest)?.Program?.Select(PluginManifest.ProgramPath).OfType<string>() ?? [];
         }
         catch (JsonException)
         {
@@ -139,13 +146,22 @@ internal sealed class PluginProgramFiles
         }
     }
 
-    private static void Walk(string folder, DirectoryInfo directory, Dictionary<string, Func<string>> files)
+    /// <param name="isFolder">The plugin's own folder, which is entered whatever it is.</param>
+    private static void Walk(string folder, DirectoryInfo directory, Dictionary<string, Func<string>> files, bool isFolder = false)
     {
         try
         {
-            // A link may lead anywhere, back up the tree included, so only real folders are entered.
-            if (directory.Name == PythonCache || IsLink(directory))
+            if (!isFolder && directory.Name == PythonCache)
             {
+                return;
+            }
+
+            // A link may lead anywhere, back up the tree included, so only real folders are entered; where it points is
+            // recorded instead, as it is when the record is made, so that a link added, removed or retargeted is a change.
+            if (!isFolder && IsLink(directory))
+            {
+                var target = LinkPrefix + directory.LinkTarget;
+                files.TryAdd(Relative(folder, directory.FullName), () => target);
                 return;
             }
 

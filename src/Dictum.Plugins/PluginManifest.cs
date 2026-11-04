@@ -2,13 +2,14 @@ using System.Globalization;
 using System.Text.Json;
 using Dictum.Core;
 using Dictum.Core.Configuration;
+using Dictum.Core.Text;
 
 namespace Dictum.Plugins;
 
 /// <summary>A plugin's <c>plugin.json</c>: who it is, the program to run for each system, and the models it offers.</summary>
 /// <param name="Program">
-/// The files and folders the program is made of, relative to the plugin's folder, such as the script a launcher runs.
-/// The trust record covers them, with <c>plugin.json</c> and the executable.
+/// The files and folders the program is made of, relative to the plugin's folder, such as the script a launcher runs;
+/// <c>.</c> for the whole folder. The trust record covers them, with <c>plugin.json</c> and the executable.
 /// </param>
 public sealed record PluginManifest(
     int Protocol,
@@ -22,6 +23,9 @@ public sealed record PluginManifest(
     IReadOnlyList<string>? Program)
 {
     private const int Sha256HexLength = 64;
+
+    /// <summary>The <c>program</c> entry that lists the whole plugin folder.</summary>
+    private const string WholeFolder = ".";
 
     /// <summary>Reads and checks <c>plugin.json</c> in the folder; every problem is collected before it throws.</summary>
     /// <exception cref="PluginManifestException">The file is missing, is not JSON, or breaks a rule.</exception>
@@ -116,21 +120,36 @@ public sealed record PluginManifest(
     }
 
     /// <summary>
-    /// Whether an entry of <see cref="Program"/> may be read as a path inside the plugin's folder: a relative path
-    /// without hidden characters. The trust record skips any other, as this check refuses it.
+    /// An entry of <see cref="Program"/> as a path inside the plugin's folder: <c>.</c> or <c>./</c>, the whole folder, as
+    /// the empty path, and any other entry without the <c>/</c> a folder may end with. Null for an entry that names no
+    /// path inside the folder, or holds a hidden character; the trust record skips it, as this check refuses it.
     /// </summary>
-    internal static bool IsProgramEntry(string? entry) => entry is not null && !PluginText.HasHidden(entry) && IsInsideFolder(entry);
+    internal static string? ProgramPath(string? entry)
+    {
+        if (entry is null || TerminalText.HasHidden(entry))
+        {
+            return null;
+        }
+
+        if (entry is WholeFolder or WholeFolder + "/")
+        {
+            return "";
+        }
+
+        var path = entry.EndsWith('/') ? entry[..^1] : entry;
+        return IsInsideFolder(path) ? path : null;
+    }
 
     private static void RefuseHidden(string field, string? value, List<string> problems)
     {
-        if (PluginText.HasHidden(value))
+        if (TerminalText.HasHidden(value))
         {
             problems.Add($"{field} must not contain control or invisible formatting characters");
         }
     }
 
     /// <summary>A manifest value for a message, its hidden characters spelt out, so a message never moves the cursor.</summary>
-    private static string Show(string? value) => PluginText.Show(value);
+    private static string Show(string? value) => TerminalText.Show(value);
 
     private void CheckProgram(string folder, List<string> problems)
     {
@@ -158,7 +177,10 @@ public sealed record PluginManifest(
         }
     }
 
-    /// <summary>The files and folders the program is made of, each of which must be in the folder now.</summary>
+    /// <summary>
+    /// The files and folders the program is made of, each of which must be in the folder now, as written: a file named
+    /// with a folder's trailing <c>/</c> is not found.
+    /// </summary>
     private void CheckProgramFiles(string folder, List<string> problems)
     {
         for (var i = 0; i < (Program?.Count ?? 0); i++)
@@ -168,11 +190,11 @@ public sealed record PluginManifest(
             {
                 problems.Add($"program[{Index(i)}] is empty");
             }
-            else if (PluginText.HasHidden(entry))
+            else if (TerminalText.HasHidden(entry))
             {
                 RefuseHidden($"program[{Index(i)}]", entry, problems);
             }
-            else if (!IsInsideFolder(entry))
+            else if (ProgramPath(entry) is not { } path)
             {
                 problems.Add($"program lists '{Show(entry)}', which must be a file or folder name inside the plugin's folder");
             }
@@ -180,7 +202,7 @@ public sealed record PluginManifest(
             {
                 problems.Add($"program lists '{Show(entry)}', which is not in the plugin's folder");
             }
-            else if (IsThroughLink(folder, entry))
+            else if (IsThroughLink(folder, path))
             {
                 problems.Add($"program lists '{Show(entry)}', which is a link or is inside a linked folder");
             }
@@ -190,9 +212,15 @@ public sealed record PluginManifest(
     /// <summary>
     /// Whether the entry, or a folder on the way to it, is a link. The trust record does not enter a linked folder, and
     /// one on the way leads out of the plugin's folder, so the author would believe a file is checked when it is not.
+    /// The plugin's folder itself may be a link: it is where the user keeps the plugin.
     /// </summary>
     private static bool IsThroughLink(string folder, string entry)
     {
+        if (entry.Length == 0)
+        {
+            return false;
+        }
+
         var path = folder;
         foreach (var segment in entry.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
         {
@@ -358,8 +386,8 @@ public sealed record PluginManifestLicence(string Name, string? Url);
 /// <param name="unreadable">The file could not be read, which is no fault of its contents: the one problem says so, and the message does not call the file invalid.</param>
 public sealed class PluginManifestException(string folder, IReadOnlyList<string> problems, bool unreadable = false)
     : Exception(unreadable
-        ? $"{problems[0]} (in {PluginText.Show(folder)})"
-        : $"{PluginProtocol.ManifestFile} in {PluginText.Show(folder)} is not valid: {string.Join("; ", problems)}")
+        ? $"{problems[0]} (in {TerminalText.Show(folder)})"
+        : $"{PluginProtocol.ManifestFile} in {TerminalText.Show(folder)} is not valid: {string.Join("; ", problems)}")
 {
     public IReadOnlyList<string> Problems { get; } = problems;
 
