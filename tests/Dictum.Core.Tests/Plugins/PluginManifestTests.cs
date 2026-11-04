@@ -142,6 +142,44 @@ public sealed class PluginManifestTests : IDisposable
         Assert.All(problems, p => Assert.DoesNotContain(p, IsHidden));
     }
 
+    /// <summary>A format character outside the BMP is a surrogate pair, which no single char of it shows to be hidden.</summary>
+    [Theory]
+    [InlineData("\\udb40\\udc01", "\\U000e0001")]
+    [InlineData("\\udb40\\udc41", "\\U000e0041")]
+    [InlineData("\\ud834\\udd73", "\\U0001d173")]
+    public void HiddenCharactersOutsideTheBmpAreRefusedAndShownEscaped(string character, string shown)
+    {
+        Write(Manifest(name: $"My{character}plugin", id: $"my{character}plugin"));
+
+        var problems = Problems();
+
+        Assert.Equal(
+            [$"id 'my{shown}plugin' {PluginIds.Rule}", "id must not contain control or invisible formatting characters", "name must not contain control or invisible formatting characters"],
+            problems);
+        Assert.All(problems, p => Assert.DoesNotContain(p, IsHidden));
+    }
+
+    [Fact]
+    public void ALetterOutsideTheBmpIsNotHidden()
+    {
+        // U+1F600 is a symbol, not a format character: it is shown as it is.
+        Write(Manifest(name: "My \ud83d\ude00 plugin"));
+
+        Assert.Equal("My 😀 plugin", PluginManifest.Load(_folder.Path).Name);
+    }
+
+    [Fact]
+    public void APluginJsonThatCannotBeReadSaysWhy()
+    {
+        Write(Manifest());
+        using var held = new FileStream(_folder.File("plugin.json"), FileMode.Open, FileAccess.Read, FileShare.None);
+
+        var problem = Assert.Single(Problems());
+
+        Assert.StartsWith("plugin.json cannot be read: ", problem, StringComparison.Ordinal);
+        Assert.DoesNotContain("not valid JSON", problem, StringComparison.Ordinal);
+    }
+
     /// <summary>Every text the file holds, the languages, the licence and other systems' programs included.</summary>
     [Fact]
     public void TheLanguagesTheLicenceAndEveryProgramAreCheckedToo()

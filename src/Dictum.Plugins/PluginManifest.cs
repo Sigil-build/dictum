@@ -38,9 +38,13 @@ public sealed record PluginManifest(
         {
             manifest = Parse(File.ReadAllBytes(path));
         }
-        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
+        catch (JsonException ex)
         {
             throw new PluginManifestException(folder, [$"{PluginProtocol.ManifestFile} is not valid JSON: {ex.Message}"]);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new PluginManifestException(folder, [$"{PluginProtocol.ManifestFile} cannot be read: {ex.Message}"]);
         }
 
         if (manifest is null)
@@ -115,11 +119,11 @@ public sealed record PluginManifest(
     /// Whether an entry of <see cref="Program"/> may be read as a path inside the plugin's folder: a relative path
     /// without hidden characters. The trust record skips any other, as this check refuses it.
     /// </summary>
-    internal static bool IsProgramEntry(string? entry) => entry is not null && !entry.Any(PluginText.IsHidden) && IsInsideFolder(entry);
+    internal static bool IsProgramEntry(string? entry) => entry is not null && !PluginText.HasHidden(entry) && IsInsideFolder(entry);
 
     private static void RefuseHidden(string field, string? value, List<string> problems)
     {
-        if (value is not null && value.Any(PluginText.IsHidden))
+        if (PluginText.HasHidden(value))
         {
             problems.Add($"{field} must not contain control or invisible formatting characters");
         }
@@ -164,7 +168,7 @@ public sealed record PluginManifest(
             {
                 problems.Add($"program[{Index(i)}] is empty");
             }
-            else if (entry.Any(PluginText.IsHidden))
+            else if (PluginText.HasHidden(entry))
             {
                 RefuseHidden($"program[{Index(i)}]", entry, problems);
             }

@@ -189,21 +189,13 @@ public static class ConfigValidator
     private static void ValidatePluginProvider(List<ConfigIssue> issues, string path, PluginSttConfig plugin)
     {
         var pluginPath = ConfigPaths.Field(path, nameof(PluginSttConfig.Plugin));
-        if (string.IsNullOrWhiteSpace(plugin.Plugin))
-        {
-            Error(issues, pluginPath, "must not be empty");
-        }
-        else if (!PluginIds.IsValid(plugin.Plugin))
+        if (Required(issues, pluginPath, plugin.Plugin) && !PluginIds.IsValid(plugin.Plugin))
         {
             Error(issues, pluginPath, PluginIds.Rule);
         }
 
         var modelPath = ConfigPaths.Field(path, nameof(PluginSttConfig.Model));
-        if (string.IsNullOrWhiteSpace(plugin.Model))
-        {
-            Error(issues, modelPath, "must not be empty");
-        }
-        else if (!PluginIds.IsValidModelId(plugin.Model) && !Path.IsPathFullyQualified(plugin.Model))
+        if (Required(issues, modelPath, plugin.Model) && !PluginIds.IsValidModelId(plugin.Model) && !Path.IsPathFullyQualified(plugin.Model))
         {
             Error(issues, modelPath, "must be a model id from the plugin or an absolute path");
         }
@@ -221,7 +213,8 @@ public static class ConfigValidator
             Error(issues, path, PluginIds.Rule);
         }
 
-        if (!Path.IsPathFullyQualified(plugin.Path ?? string.Empty))
+        // The span overload takes a null that JSON can still produce for the non-nullable property, as an empty path.
+        if (!Path.IsPathFullyQualified(plugin.Path.AsSpan()))
         {
             Error(issues, ConfigPaths.Field(path, nameof(PluginRegistration.Path)), "must be an absolute path to the plugin's folder");
         }
@@ -335,12 +328,16 @@ public static class ConfigValidator
         }
     }
 
-    private static void Required(List<ConfigIssue> issues, string path, string? value)
+    /// <summary>Whether the value is there; when it is not, the issue is added.</summary>
+    private static bool Required(List<ConfigIssue> issues, string path, string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
             Error(issues, path, "must not be empty");
+            return false;
         }
+
+        return true;
     }
 
     private static void Error(List<ConfigIssue> issues, string path, string message) =>

@@ -271,6 +271,22 @@ public sealed class PluginProcessTests : IDisposable
         Assert.False(TestPlugins.RunsIn(_dir), "the plugin runs");
     }
 
+    /// <summary>Only a batch file is refused such characters; a program (.exe) is given its arguments as they are.</summary>
+    [Theory(Timeout = TestTimeout.Generous)]
+    [InlineData("R&D")]
+    [InlineData("50%PATH%")]
+    public async Task AnExeLauncherStillGetsAmpersandAndPercentInItsArgumentsUnchanged(string modelFolder)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var folder = TestPlugins.Folder(_dir);
+        Directory.CreateDirectory(_dir.File(modelFolder));
+        var model = TestPlugins.Model(_dir, new TestPluginBehaviour(), Path.Combine(modelFolder, "model.json"));
+
+        var (argv, _, _) = await InfoAsync(TestPlugins.Launch(folder, model), ct);
+
+        Assert.Equal(model, argv[Array.IndexOf(argv, "--model") + 1]);
+    }
+
     [Fact(Timeout = TestTimeout.Generous)]
     public async Task ABatchLauncherStartsWithAnOrdinaryPath()
     {

@@ -381,6 +381,17 @@ public class ConfigValidatorTests
             issues.Select(i => (i.Severity, i.Path, i.Message)));
     }
 
+    /// <summary>JSON can say <c>"path": null</c> though the property is not nullable: the validator reports it and does not throw.</summary>
+    [Fact]
+    public void ARegisteredPluginWithANullPathFromJsonIsAnErrorNotACrash()
+    {
+        var config = ConfigStore.Parse("""{ "schemaVersion": 1, "plugins": { "p": { "path": null } } }""");
+
+        var issue = Assert.Single(ConfigValidator.Validate(config), i => i.Path == "plugins.p.path");
+
+        Assert.Equal("must be an absolute path to the plugin's folder", issue.Message);
+    }
+
     [Fact]
     public void AProfileWithALanguageListOnAPluginGetsNoWarning()
     {
