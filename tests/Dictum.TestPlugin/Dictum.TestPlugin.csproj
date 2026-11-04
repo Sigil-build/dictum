@@ -1,17 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    A plugin under protocol 1 for the process tests: a small Kestrel app whose behaviour a JSON file sets
-    (TestPluginBehaviour). A program the tests launch, not a test project, and never published.
+    A plugin under protocol 1 for the process tests: a small HTTP server on a socket (TestHttpServer) whose behaviour
+    a JSON file sets (TestPluginBehaviour). Only the base framework, as a plugin's start is most of a plugin test. A
+    program the tests launch, not a test project, and never published.
   -->
   <PropertyGroup>
     <AssemblyName>dictum-test-plugin</AssemblyName>
     <IsTestProject>false</IsTestProject>
   </PropertyGroup>
-
-  <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Remove="xunit.v3" />

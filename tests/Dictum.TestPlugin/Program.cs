@@ -3,10 +3,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
+using System.Text.Json.Serialization.Metadata;
 
 namespace Dictum.TestPlugin;
 
@@ -29,7 +26,8 @@ internal static class Program
     /// <summary>The exit code of the crash that <see cref="TestPluginBehaviour.CrashAfterInfoMs"/> plays.</summary>
     private const int CrashCode = 1;
 
-    private static readonly TimeSpan StopWithin = TimeSpan.FromSeconds(2);
+    /// <summary>What ASP.NET Core sends for JSON, as the test plugin did while it ran on it.</summary>
+    private const string JsonType = "application/json; charset=utf-8";
 
     /// <summary>How long a child that <see cref="TestPluginBehaviour.LeaveChild"/> starts runs, unless it is ended first.</summary>
     private static readonly TimeSpan ChildLifetime = TimeSpan.FromMinutes(1);
@@ -77,91 +75,27 @@ internal static class Program
             Console.WriteLine(banner);
         }
 
-        // 5. Kestrel's own log would print to stdout ahead of the ready line.
-        var builder = WebApplication.CreateSlimBuilder();
-        builder.Logging.ClearProviders();
-        builder.WebHost.UseUrls("http://127.0.0.1:0");
-        await using var app = builder.Build();
-        app.Use(async (context, next) =>
-        {
-            if (context.Request.Headers.Authorization != $"Bearer {key}")
-            {
-                context.Response.StatusCode = StatusCodes.Status401Unauthorized;
-                return;
-            }
-
-            await next(context);
-        });
-
         // The end of the plugin: 0 when its stdin closes, or a crash.
         var exit = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
         var infoSent = 0;
 
-        // 8-11.
-        app.MapGet("/health", async (HttpContext context) =>
-        {
-            if (behaviour.HealthCutShort)
+        // 5. A small server of its own (TestHttpServer): it prints nothing, so stdout holds only what the steps print.
+        // Every request needs the key; 8-11 answer the rest.
+        using var server = new TestHttpServer(request =>
+            request.Header("Authorization") != $"Bearer {key}" ? TestHttpResponse.Empty(401)
+            : (request.Method, request.Path) switch
             {
-                await CutShortAsync(context.Response);
-                return Results.Empty;
-            }
-
-            return behaviour.HealthStatus is { } status ? Error(status)
-                : started.ElapsedMilliseconds < behaviour.LoadMs
-                    ? Results.Json(new Health("loading"), AnswerJson.Default.Health, statusCode: StatusCodes.Status503ServiceUnavailable)
-                    : Results.Json(new Health("ready"), AnswerJson.Default.Health);
-        });
-        app.MapGet("/dictum/v1/info", (HttpContext context) =>
-        {
-            // 11. Dictum counts the plugin ready once it has this answer, so a crash is timed from the first one sent.
-            if (behaviour.CrashAfterInfoMs is { } crashAfter && Interlocked.Exchange(ref infoSent, 1) == 0)
-            {
-                context.Response.OnCompleted(() =>
-                {
-                    _ = Task.Delay(crashAfter).ContinueWith(
-                        _ =>
-                        {
-                            if (behaviour.LeaveChild)
-                            {
-                                StartChild(behaviour);
-                            }
-
-                            exit.TrySetResult(CrashCode);
-                        },
-                        TaskScheduler.Default);
-                    return Task.CompletedTask;
-                });
-            }
-
-            if (behaviour.InfoStatus is { } status)
-            {
-                return Error(status);
-            }
-
-            if (behaviour.InfoBody is { } body)
-            {
-                return Results.Text(body, "application/json");
-            }
-
-            return Results.Json(
-                new Info(
-                    behaviour.InfoProtocol,
-                    behaviour.Name,
-                    behaviour.Version,
-                    model is null ? null : new ModelInfo(ModelId(model), behaviour.Languages, behaviour.SetLanguage, Prompt: true),
-                    args,
-                    threads,
-                    Environment.CurrentDirectory,
-                    Variables()),
-                AnswerJson.Default.Info);
-        });
-        app.MapPost("/v1/audio/transcriptions", (HttpRequest request) => TranscribeAsync(request, behaviour));
-        await app.StartAsync();
+                ("GET", "/health") => Health(behaviour, started),
+                ("GET", "/dictum/v1/info") => Info(behaviour, model, args, threads, ref infoSent, exit),
+                ("POST", "/v1/audio/transcriptions") => Transcribe(request, behaviour),
+                _ => TestHttpResponse.Empty(404),
+            });
+        server.Start();
 
         // 6-7.
         if (!behaviour.NoReadyLine)
         {
-            Console.WriteLine(JsonSerializer.Serialize(new ReadyLine(1, behaviour.ReadyUrl ?? app.Urls.First() + behaviour.ReadyPath), AnswerJson.Default.ReadyLine));
+            Console.WriteLine(JsonSerializer.Serialize(new ReadyLine(1, behaviour.ReadyUrl ?? server.Url + behaviour.ReadyPath), AnswerJson.Default.ReadyLine));
         }
 
         Flood(Console.Out, "out", behaviour.FloodLines);
@@ -181,13 +115,62 @@ internal static class Program
             });
         }
 
-        var exitCode = await exit.Task;
-        using var stopping = new CancellationTokenSource(StopWithin);
-        await app.StopAsync(stopping.Token);
-        return exitCode;
+        // A request still under way is cut off: Dictum has stopped asking.
+        return await exit.Task;
     }
 
-    private static async Task<IResult> TranscribeAsync(HttpRequest request, TestPluginBehaviour behaviour)
+    /// <summary>8-10.</summary>
+    private static TestHttpResponse Health(TestPluginBehaviour behaviour, Stopwatch started)
+    {
+        if (behaviour.HealthCutShort)
+        {
+            // Promises 100 bytes, sends one, and drops the connection.
+            return TestHttpResponse.Text(200, "{", JsonType) with { PromisedLength = 100 };
+        }
+
+        return behaviour.HealthStatus is { } status ? Error(status)
+            : started.ElapsedMilliseconds < behaviour.LoadMs ? Json(503, new Health("loading"), AnswerJson.Default.Health)
+            : Json(200, new Health("ready"), AnswerJson.Default.Health);
+    }
+
+    /// <summary>11. Dictum counts the plugin ready once it has this answer, so a crash is timed from the first one sent.</summary>
+    private static TestHttpResponse Info(
+        TestPluginBehaviour behaviour, string? model, string[] args, int? threads, ref int infoSent, TaskCompletionSource<int> exit)
+    {
+        Action? sent = null;
+        if (behaviour.CrashAfterInfoMs is { } crashAfter && Interlocked.Exchange(ref infoSent, 1) == 0)
+        {
+            sent = () => _ = Task.Delay(crashAfter).ContinueWith(
+                _ =>
+                {
+                    if (behaviour.LeaveChild)
+                    {
+                        StartChild(behaviour);
+                    }
+
+                    exit.TrySetResult(CrashCode);
+                },
+                TaskScheduler.Default);
+        }
+
+        var answer = behaviour.InfoStatus is { } status ? Error(status)
+            : behaviour.InfoBody is { } body ? TestHttpResponse.Text(200, body, "application/json")
+            : Json(
+                200,
+                new Info(
+                    behaviour.InfoProtocol,
+                    behaviour.Name,
+                    behaviour.Version,
+                    model is null ? null : new ModelInfo(ModelId(model), behaviour.Languages, behaviour.SetLanguage, Prompt: true),
+                    args,
+                    threads,
+                    Environment.CurrentDirectory,
+                    Variables()),
+                AnswerJson.Default.Info);
+        return answer with { Sent = sent };
+    }
+
+    private static TestHttpResponse Transcribe(TestHttpRequest request, TestPluginBehaviour behaviour)
     {
         if (behaviour.ExitOnTranscribe)
         {
@@ -198,7 +181,7 @@ internal static class Program
 
         if (behaviour.TranscribeBody is { } body)
         {
-            return Results.Text(body, "application/json", statusCode: behaviour.TranscribeStatus ?? StatusCodes.Status200OK);
+            return TestHttpResponse.Text(behaviour.TranscribeStatus ?? 200, body, "application/json");
         }
 
         if (behaviour.TranscribeStatus is { } status)
@@ -206,30 +189,26 @@ internal static class Program
             return Error(status);
         }
 
-        var form = await request.ReadFormAsync();
-        var file = form.Files.GetFile("file");
-        var text = behaviour.Echo
-            ? string.Create(
+        var text = behaviour.Text;
+        if (behaviour.Echo)
+        {
+            var form = TestForm.Read(request.Header("Content-Type"), request.Body);
+            text = string.Create(
                 CultureInfo.InvariantCulture,
-                $"language={form["language"]};languages={form["languages"]};prompt={form["prompt"]};model={form["model"]};response_format={form["response_format"]};file={file?.FileName};type={file?.ContentType};bytes={file?.Length ?? 0}")
-            : behaviour.Text;
-        return Results.Json(new Transcription(text, behaviour.Language), AnswerJson.Default.Transcription);
+                $"language={form["language"]};languages={form["languages"]};prompt={form["prompt"]};model={form["model"]};response_format={form["response_format"]};file={form.FileName};type={form.FileContentType};bytes={form.FileLength}");
+        }
+
+        return Json(200, new Transcription(text, behaviour.Language), AnswerJson.Default.Transcription);
     }
 
-    private static IResult Error(int status)
+    private static TestHttpResponse Error(int status)
     {
         var message = string.Create(CultureInfo.InvariantCulture, $"The test plugin answers {status}.");
-        return Results.Json(new ErrorAnswer(new ErrorDetail(message)), AnswerJson.Default.ErrorAnswer, statusCode: status);
+        return Json(status, new ErrorAnswer(new ErrorDetail(message)), AnswerJson.Default.ErrorAnswer);
     }
 
-    /// <summary>Promises 100 bytes, sends one, and drops the connection.</summary>
-    private static async Task CutShortAsync(HttpResponse response)
-    {
-        response.ContentLength = 100;
-        await response.WriteAsync("{");
-        await response.Body.FlushAsync();
-        response.HttpContext.Abort();
-    }
+    private static TestHttpResponse Json<T>(int status, T value, JsonTypeInfo<T> type) =>
+        new(status, JsonSerializer.SerializeToUtf8Bytes(value, type), JsonType);
 
     /// <summary>
     /// A copy of this program, with no stream redirected: it inherits this process's stdin, stdout and stderr, so it holds
