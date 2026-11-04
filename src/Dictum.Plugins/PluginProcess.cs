@@ -67,11 +67,15 @@ public sealed class PluginProcess : IAsyncDisposable
     /// <summary>One stop, however many callers ask for it.</summary>
     private readonly Lazy<Task> _stopping;
 
-    /// <summary>One wait for the last lines, however many callers ask for it.</summary>
-    private readonly Lazy<Task> _lastLines;
-
     private int _openStreams = 2;
     private int _inputClosed;
+    private int _readerFailureReported;
+
+    /// <summary>
+    /// Set at the exit: completes once the last lines have arrived, or <see cref="LastLinesWait"/> after the exit, and
+    /// the exit is logged after them. One wait, however many callers ask for it.
+    /// </summary>
+    private Task _lastLines = Task.CompletedTask;
 
     /// <summary>Set once Dictum lets go of the plugin: lines that still arrive no longer go to the log.</summary>
     private volatile bool _released;
@@ -89,7 +93,6 @@ public sealed class PluginProcess : IAsyncDisposable
         _log = log;
         _stopGrace = stopGrace;
         _stopping = new Lazy<Task>(StopCoreAsync);
-        _lastLines = new Lazy<Task>(WaitForOutputToCloseAsync);
         _process = new Process { StartInfo = StartInfo(launch, arguments, key) };
         try
         {
@@ -173,6 +176,13 @@ public sealed class PluginProcess : IAsyncDisposable
         catch
         {
             await plugin.KillAsync().ConfigureAwait(false);
+
+            // What it printed until it was killed goes to the log before Dictum lets go of it.
+            if (plugin.Exited.IsCompleted)
+            {
+                await plugin.WaitForLastLinesAsync().ConfigureAwait(false);
+            }
+
             plugin.Release();
             throw;
         }
@@ -191,9 +201,9 @@ public sealed class PluginProcess : IAsyncDisposable
 
     /// <summary>
     /// Once <see cref="Exited"/> has completed: waits until its output has closed, for <see cref="LastLinesWait"/> at
-    /// most, so that <see cref="RecentOutput"/> and the log hold the last lines it printed.
+    /// most, so that <see cref="RecentOutput"/> and the log hold the last lines it printed, and the exit is logged.
     /// </summary>
-    internal Task WaitForLastLinesAsync() => _lastLines.Value;
+    internal Task WaitForLastLinesAsync() => _lastLines;
 
     /// <summary>Protocol 1's command line: <c>--port 0 [--model &lt;path&gt;] [--threads &lt;n&gt;]</c>.</summary>
     private static List<string> Arguments(PluginLaunch launch)
@@ -397,33 +407,65 @@ public sealed class PluginProcess : IAsyncDisposable
     /// </summary>
     private void Read(StreamReader stream, bool fromStdout)
     {
+        var name = fromStdout ? "stdout" : "stderr";
         var reader = new Thread(() =>
         {
-            using (stream)
+            try
             {
-                try
+                while (stream.ReadLine() is { } line)
                 {
-                    while (stream.ReadLine() is { } line)
+                    try
                     {
                         OnLine(line, fromStdout);
                     }
-                }
-                catch (IOException)
-                {
-                    // The pipe broke rather than closed: the end of the output all the same.
+                    catch (Exception ex)
+                    {
+                        // One line the log could not take: the rest are still read, so the plugin never blocks.
+                        ReportOnce($"a line on its {name} could not be handled, so it is left out of the log", ex);
+                    }
                 }
             }
-
-            if (Interlocked.Decrement(ref _openStreams) == 0)
+            catch (IOException)
             {
-                _outputClosed.TrySetResult();
+                // The pipe broke rather than closed: the end of the output all the same.
+            }
+            catch (Exception ex)
+            {
+                // Nothing on this thread may end Dictum.
+                ReportOnce($"its {name} could not be read any further", ex);
+            }
+            finally
+            {
+                stream.Dispose();
+                if (Interlocked.Decrement(ref _openStreams) == 0)
+                {
+                    _outputClosed.TrySetResult();
+                }
             }
         })
         {
             IsBackground = true,
-            Name = $"plugin {_launch.PluginId} {(fromStdout ? "stdout" : "stderr")}",
+            Name = $"plugin {_launch.PluginId} {name}",
         };
         reader.Start();
+    }
+
+    /// <summary>The first failure of either reader goes to the log; the log may be what fails, so it may not throw.</summary>
+    private void ReportOnce(string what, Exception ex)
+    {
+        if (Interlocked.Exchange(ref _readerFailureReported, 1) != 0)
+        {
+            return;
+        }
+
+        try
+        {
+            _log.Warn($"Plugin {_launch.PluginId} (pid {Id}): {what}: {ex.Message}", ex);
+        }
+        catch (Exception)
+        {
+            // The log cannot take this either, and there is nowhere else to say it.
+        }
     }
 
     /// <summary>Every line of either stream goes to the log and the recent output, except the ready line it waits for.</summary>
@@ -477,11 +519,11 @@ public sealed class PluginProcess : IAsyncDisposable
         // which a process it started may put off.
         await _process.WaitForExitAsync().ConfigureAwait(false);
         var code = _process.ExitCode;
-        _log.Info($"Plugin {_launch.PluginId} (pid {Id}) exited with code {code}");
 
         // What it left running: a process that follows protocol 1 exits as its stdin closes, and the group ends the rest.
         CloseInput();
         _group.Dispose();
+        _lastLines = LogExitAfterLastLinesAsync(code);
         _ = WarnIfLeftRunningAsync();
         await _ended.CancelAsync().ConfigureAwait(false);
         return code;
@@ -544,7 +586,8 @@ public sealed class PluginProcess : IAsyncDisposable
         Release();
     }
 
-    private async Task WaitForOutputToCloseAsync()
+    /// <summary>After the last lines, so that the log shows what the plugin said before it says that it exited.</summary>
+    private async Task LogExitAfterLastLinesAsync(int code)
     {
         try
         {
@@ -554,6 +597,8 @@ public sealed class PluginProcess : IAsyncDisposable
         {
             // A process it left running holds the pipes open; its own lines have arrived by now.
         }
+
+        _log.Info($"Plugin {_launch.PluginId} (pid {Id}) exited with code {code}");
     }
 
     /// <summary>Kills the plugin with every process it started, and waits up to <see cref="KillWait"/> for it to be gone.</summary>

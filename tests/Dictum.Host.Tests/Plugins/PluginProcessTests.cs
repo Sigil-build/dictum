@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Headers;
@@ -31,10 +32,14 @@ public sealed class PluginProcessTests : IDisposable
     private static readonly TimeSpan StopWithin = TimeSpan.FromSeconds(10);
 
     /// <summary>
-    /// A start that is meant to time out after the ready line: long enough for the plugin to print it on a busy runner,
-    /// and for Windows, which tries a refused connection on this computer again for about 2 s, to give up on one.
+    /// A start that is meant to time out after the ready line. It counts from the launch, so it has to cover the test
+    /// plugin's own start on a busy 2-core runner as well as Windows, which tries a refused connection on this computer
+    /// again for about 2 s before it gives up on one.
     /// </summary>
-    private static readonly PluginTimings HealthTimeout = PluginTimings.Default with { StartTimeout = TimeSpan.FromSeconds(5) };
+    private static readonly PluginTimings HealthTimeout = PluginTimings.Default with { StartTimeout = TimeSpan.FromSeconds(10) };
+
+    /// <summary>How long <see cref="SlowLog"/> takes over its line: well inside the 2 s that Dictum gives a plugin's last lines.</summary>
+    private static readonly TimeSpan SlowLine = TimeSpan.FromSeconds(1);
 
     private readonly TempDirectory _dir = new();
     private readonly ListLog _log = new();
@@ -302,7 +307,7 @@ public sealed class PluginProcessTests : IDisposable
     }
 
     /// <summary>Ledger 59: a plugin that answers <c>/health</c>, but never with 200, used to time out without a word on why.</summary>
-    [Theory(Timeout = TestTimeout.Generous)]
+    [Theory(Timeout = TestTimeout.Extended)]
     [InlineData(404, "404 Not Found")]
     [InlineData(500, "500 Internal Server Error")]
     public async Task AStartTimeoutSaysWhatHealthLastAnswered(int status, string answer)
@@ -312,12 +317,12 @@ public sealed class PluginProcessTests : IDisposable
 
         var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => StartAsync(TestPlugins.Launch(folder), ct, HealthTimeout));
 
-        Assert.Equal($"Plugin test did not get ready within 5 s; /health last answered {answer}.", error.Message);
+        Assert.Equal($"Plugin test did not get ready within 10 s; /health last answered {answer}.", error.Message);
         Assert.Equal(Hint, error.Hint);
         Assert.False(TestPlugins.RunsIn(_dir), "the plugin still runs");
     }
 
-    [Fact(Timeout = TestTimeout.Generous)]
+    [Fact(Timeout = TestTimeout.Extended)]
     public async Task AStartTimeoutSaysWhyHealthCouldNotBeReached()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -325,13 +330,13 @@ public sealed class PluginProcessTests : IDisposable
 
         var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => StartAsync(TestPlugins.Launch(folder), ct, HealthTimeout));
 
-        const string Start = "Plugin test did not get ready within 5 s; /health could not be reached: ";
+        const string Start = "Plugin test did not get ready within 10 s; /health could not be reached: ";
         Assert.StartsWith(Start, error.Message, StringComparison.Ordinal);
         Assert.True(error.Message.Length > Start.Length + 1, $"no reason in '{error.Message}'");
         Assert.EndsWith(".", error.Message, StringComparison.Ordinal);
     }
 
-    [Fact(Timeout = TestTimeout.Generous)]
+    [Fact(Timeout = TestTimeout.Extended)]
     public async Task AStartTimeoutSaysThatHealthsAnswerCouldNotBeRead()
     {
         var ct = TestContext.Current.CancellationToken;
@@ -339,7 +344,7 @@ public sealed class PluginProcessTests : IDisposable
 
         var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => StartAsync(TestPlugins.Launch(folder), ct, HealthTimeout));
 
-        const string Start = "Plugin test did not get ready within 5 s; its last answer to /health could not be read: ";
+        const string Start = "Plugin test did not get ready within 10 s; its last answer to /health could not be read: ";
         Assert.StartsWith(Start, error.Message, StringComparison.Ordinal);
         Assert.True(error.Message.Length > Start.Length + 1, $"no reason in '{error.Message}'");
     }
@@ -411,20 +416,94 @@ public sealed class PluginProcessTests : IDisposable
     }
 
     /// <summary>
-    /// The plugin's last lines are still in its pipes when it exits, and the start's failure reports them: here the
-    /// last of a flood that fills the pipe, written right before the exit.
+    /// The plugin's last lines can still be in its pipes when it exits, and the start's failure reports them. The log is
+    /// slow on the first line here, as on a busy machine, so both lines are still unhandled when the exit is noticed.
     /// </summary>
     [Fact(Timeout = TestTimeout.Generous)]
     public async Task AnExitWhileStartingReportsItsVeryLastLines()
     {
         var ct = TestContext.Current.CancellationToken;
-        var lines = Enumerable.Range(1, 20_000).Select(i => $"err {i}").ToArray();
-        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { Stderr = lines, ExitAtStart = 3 });
+        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { Stderr = ["slow", "last"], ExitAtStart = 3 });
 
-        var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => StartAsync(TestPlugins.Launch(folder), ct));
+        var error = await Assert.ThrowsAsync<PluginUnavailableException>(
+            () => StartAsync(TestPlugins.Launch(folder), ct, log: new SlowLog(_log, "plugin test: slow")));
 
         Assert.Equal("Plugin test exited with code 3 while starting.", error.Message);
-        Assert.Equal(lines[^20..], error.Output);
+        Assert.Equal(["slow", "last"], error.Output);
+    }
+
+    /// <summary>The exit is logged after the plugin's last lines, so that dictum.log shows the cause above the exit.</summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task TheExitIsLoggedAfterTheLastLines()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { Stderr = ["slow", "last"], ExitAtStart = 3 });
+
+        await Assert.ThrowsAsync<PluginUnavailableException>(
+            () => StartAsync(TestPlugins.Launch(folder), ct, log: new SlowLog(_log, "plugin test: slow")));
+
+        var messages = _log.Messages.ToList();
+        var last = messages.IndexOf("plugin test: last");
+        var exit = messages.FindIndex(
+            message => message.StartsWith("Plugin test (pid ", StringComparison.Ordinal) && message.EndsWith(") exited with code 3", StringComparison.Ordinal));
+        Assert.True(last >= 0, "the last line is not in the log");
+        Assert.True(exit > last, $"the exit is logged at {exit}, before the last line at {last}");
+    }
+
+    /// <summary>
+    /// Lines still in the pipe when a start fails reach the log before Dictum lets go of the plugin. The log is slow on
+    /// the first line here, so the second is still unhandled when the plugin, which speaks another protocol, is killed.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task WhatIsLeftInThePipeWhenAStartFailsStillGoesToTheLog()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var folder = TestPlugins.Folder(_dir, behaviour: new TestPluginBehaviour { Stderr = ["slow", "last"], InfoProtocol = 2 });
+
+        var error = await Assert.ThrowsAsync<PluginUnavailableException>(
+            () => StartAsync(TestPlugins.Launch(folder), ct, log: new SlowLog(_log, "plugin test: slow")));
+
+        Assert.Equal("Plugin test speaks protocol 2; this Dictum speaks protocol 1.", error.Message);
+        Assert.True(_log.Has("plugin test: last"), "the line still in the pipe did not reach the log");
+    }
+
+    /// <summary>
+    /// A line that the log cannot take ends neither Dictum nor the reading of either stream: the failure is logged
+    /// once, and the lines after it, the ready line among them, are handled as usual.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task ALineThatCannotBeHandledStopsNeitherDictumNorTheOutput()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var behaviour = new TestPluginBehaviour { Stderr = ["boom", "note"], Banner = "boom", AfterReady = "listening" };
+        var folder = TestPlugins.Folder(_dir, behaviour: behaviour);
+
+        await using var plugin = await StartAsync(TestPlugins.Launch(folder), ct, log: new ThrowingLog(_log, "plugin test: boom"));
+        await Eventually.WaitForAsync(() => _log.Has("plugin test: note") && _log.Has("plugin test: listening"), "the lines after the failed ones", Patience);
+
+        var warning = Assert.Single(_log.Lines, line => line.Level == LogLevel.Warning);
+        Assert.Matches(
+            $@"^Plugin test \(pid {plugin.Id}\): a line on its std(out|err) could not be handled, so it is left out of the log: {ThrowingLog.Failure}$",
+            warning.Message);
+    }
+
+    /// <summary>
+    /// A system that will not put the plugin in a group does not keep it from running: the log says so, naming the pid,
+    /// and the stop still ends the plugin.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task APluginTheSystemWillNotGroupStillRuns()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        var plugin = await StartAsync(TestPlugins.Launch(TestPlugins.Folder(_dir)), ct, groups: new RefusingGroups());
+        var warning = $"Plugin test (pid {plugin.Id}) runs outside a process group, so a process it starts may outlive it: {RefusingGroups.Refusal.Message}";
+        Assert.Equal("Test", plugin.Endpoint.Info.Name);
+        Assert.Single(_log.Lines, line => line == (LogLevel.Warning, warning));
+
+        await plugin.StopAsync().WaitAsync(StopWithin, ct);
+
+        Assert.False(TestPlugins.RunsIn(_dir), "the plugin still runs");
     }
 
     /// <summary>
@@ -472,14 +551,14 @@ public sealed class PluginProcessTests : IDisposable
 
     /// <summary>
     /// A stop waits a little for the output to close before Dictum lets go of the plugin, so what still arrives soon
-    /// after the exit reaches the log: here a line that a process the plugin left prints half a second after it started.
+    /// after the exit reaches the log: here a line that a process the plugin left prints a moment after it started.
     /// Ledger 61: the stop does not take the plugin, which has exited, for one that would not exit.
     /// </summary>
     [Fact(Timeout = TestTimeout.Generous)]
     public async Task WhatArrivesSoonAfterTheExitStillGoesToTheLog()
     {
         var ct = TestContext.Current.CancellationToken;
-        var behaviour = new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs, LeaveChild = true, ChildSaysAfterMs = 500 };
+        var behaviour = new TestPluginBehaviour { ExitAfterReadyMs = CrashAfterMs, LeaveChild = true, ChildSaysAfterMs = 100 };
         var folder = TestPlugins.Folder(_dir, behaviour: behaviour);
 
         var plugin = await StartAsync(TestPlugins.Launch(folder), ct, groups: NullProcessGroups.Instance);
@@ -546,6 +625,49 @@ public sealed class PluginProcessTests : IDisposable
             Path.TrimEndingDirectorySeparator(Path.GetFullPath(expected)),
             Path.TrimEndingDirectorySeparator(Path.GetFullPath(actual)),
             PathComparison.Current);
+
+    /// <summary>Takes <see cref="SlowLine"/> over one line, as a log on a busy machine might, holding up the stream's reader.</summary>
+    private sealed class SlowLog(ListLog inner, string slowMessage) : ILog
+    {
+        public bool IncludeText => false;
+
+        public void Write(LogLevel level, string message, Exception? exception = null)
+        {
+            if (message == slowMessage)
+            {
+                Thread.Sleep(SlowLine);
+            }
+
+            inner.Write(level, message, exception);
+        }
+    }
+
+    /// <summary>Throws on one line, and keeps every other one.</summary>
+    private sealed class ThrowingLog(ListLog inner, string failingMessage) : ILog
+    {
+        public const string Failure = "the log cannot take this line";
+
+        public bool IncludeText => false;
+
+        public void Write(LogLevel level, string message, Exception? exception = null)
+        {
+            if (message == failingMessage)
+            {
+                throw new InvalidOperationException(Failure);
+            }
+
+            inner.Write(level, message, exception);
+        }
+    }
+
+    /// <summary>A system that will not put a process in a group.</summary>
+    private sealed class RefusingGroups : IProcessGroups
+    {
+        /// <summary>ERROR_ACCESS_DENIED.</summary>
+        public static readonly Win32Exception Refusal = new(5);
+
+        public IDisposable Enclose(Process process) => throw Refusal;
+    }
 
     /// <summary>Notes, for each line of the plugin's output that reaches the log, whether a thread-pool thread wrote it.</summary>
     private sealed class ThreadNotingLog : ILog

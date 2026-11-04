@@ -204,8 +204,8 @@ If Dictum itself is killed, the pipe closes with it, so a plugin that exits on t
 A process that the plugin starts, such as a worker or the interpreter a launcher script runs, belongs to the plugin:
 
 - When the plugin exits, by itself or because Dictum ended it, Dictum closes its stdin at once. A process that shares that stdin and exits when it closes, as above, ends too.
-- On Windows, every process the plugin starts is in one group with it, and the group ends with the plugin: whatever is left of it is killed. If Dictum itself ends, the group ends with it.
-- On Linux, a process that still holds the plugin's output 5 seconds after the plugin exited gets one warning in the log: `Plugin hello (pid 4242) exited 5 s ago, but its output is still open: a process it started is still running`. Make such a process exit with the plugin.
+- On Windows, every process the plugin starts is in one group with it, and the group ends with the plugin: whatever is left of it is killed. If Dictum itself ends, the group ends with it. If Windows will not make the group, the log says `Plugin hello (pid 4242) runs outside a process group, so a process it starts may outlive it: …`, with the reason, and the plugin runs without one.
+- Without a group, on Linux or on Windows when it could not be made, a process that still holds the plugin's output 5 seconds after the plugin exited gets one warning in the log: `Plugin hello (pid 4242) exited 5 s ago, but its output is still open: a process it started is still running`. Make such a process exit with the plugin.
 
 ## A minimal plugin in Python {#example}
 
