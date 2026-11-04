@@ -413,7 +413,7 @@ public class ConfigValidatorTests
     [Fact]
     public void AnIssueIsPrintedWithItsHiddenCharactersSpeltOutOnce()
     {
-        var config = new DictumConfig { Plugins = { ["\u001b]0;PWNED\u0007x"] = new PluginRegistration { Path = "C:/p" } } };
+        var config = new DictumConfig { Plugins = { ["\u001b]0;PWNED\u0007x"] = new PluginRegistration { Path = Path.GetTempPath() } } };
         var issue = ConfigValidator.Validate(config).Single();
 
         Assert.Equal("plugins.\u001b]0;PWNED\u0007x", issue.Path);
