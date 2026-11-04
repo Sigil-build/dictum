@@ -849,6 +849,28 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         await WaitForAsync(() => daemon.Status().WarmedUp == true);
     }
 
+    // A reload while the old engine still warms up disposes it, and that warm-up then fails: the next provider it asks
+    // for is refused. Nothing is wrong, so that is no warning; a failure of the engine in use still is.
+    [Fact]
+    public async Task AReplacedEnginesWarmUpFailureIsNoWarning()
+    {
+        var log = new ListLog();
+        var replaced = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var disposed = new ObjectDisposedException("Dictum.Host.DictumHost");
+        _warmUp = replaced.Task;
+        await using var daemon = await StartAsync(Config(), log: log);
+        _warmUp = Task.FromException(new InvalidOperationException("The model file is damaged."));
+        await daemon.ApplyConfigAsync(Config(), _ct);
+
+        replaced.SetException(disposed);
+        await daemon.IdleAsync().WaitAsync(Patience, _ct);
+
+        Assert.Equal(
+            ["Warm-up failed: The model file is damaged."],
+            log.Lines.Where(line => line.Level == LogLevel.Warning).Select(line => line.Message));
+        Assert.Contains(log.Lines, line => line.Level == LogLevel.Info && line.Message.Contains(disposed.Message, StringComparison.Ordinal));
+    }
+
     // The daemon stops the plugins no engine holds once the engine in use has warmed up and taken its own. The hook
     // gets whether its engine is still in use, which a reload ends.
     [Fact]

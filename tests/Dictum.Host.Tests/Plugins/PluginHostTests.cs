@@ -24,6 +24,9 @@ public sealed class PluginHostTests : IAsyncDisposable
     /// </summary>
     private const int CrashAfterMs = 500;
 
+    /// <summary>What a callback on a plugin's stopping token throws, as the tests that make its cancel fail have it.</summary>
+    private const string CancelFailure = "The test fails this cancel.";
+
     /// <summary>For waits on starts, crashes and restarts, which a busy runner may deliver late.</summary>
     private static readonly TimeSpan Patience = TimeSpan.FromSeconds(15);
 
@@ -130,6 +133,30 @@ public sealed class PluginHostTests : IAsyncDisposable
         Assert.NotSame(swept.Instance, next.Instance);
         Assert.Equal(1, swept.Instance.Launches);
         Assert.Equal(PluginInstanceState.Stopped, swept.Instance.State);
+    }
+
+    /// <summary>
+    /// The sweep asks whether its engine is current only once it has read the leases. Here the engine says it is, and
+    /// lets go of its lease right after it has looked, as a reload that swaps it just then would. The lease was read
+    /// before that, so the plugin is kept; the next engine's sweep, after its warm-up, decides.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task TheSweepAsksWhetherItsEngineIsCurrentAfterReadingTheLeases()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var host = Host();
+        var lease = host.Acquire(TestPlugins.Launch(ConfirmedFolder()));
+        await lease.Instance.ReadyAsync(ct);
+
+        await host.StopUnusedAsync(() =>
+        {
+            var wasCurrent = true;
+            lease.Dispose();
+            return wasCurrent;
+        }).WaitAsync(ct);
+
+        Assert.Same(lease.Instance, Assert.Single(host.Instances));
+        Assert.Equal(PluginInstanceState.Ready, lease.Instance.State);
     }
 
     /// <summary>The order of a reload: the new engine takes its lease before the old engine lets go of its own.</summary>
@@ -570,6 +597,48 @@ public sealed class PluginHostTests : IAsyncDisposable
         Assert.Equal(PluginInstanceState.Stopped, other.Instance.State);
         Assert.False(TestPlugins.RunsIn(_dir), "a plugin still runs");
         await Assert.ThrowsAsync<ObjectDisposedException>(() => host.Http.GetAsync(new Uri("http://127.0.0.1:1/"), ct));
+    }
+
+    /// <summary>
+    /// Ledger 77's main risk: the disposal's first part cancels every start, and a callback on that token that throws
+    /// fails the cancel. That used to end the disposal there, with every plugin still running.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task DisposingStopsEveryPluginWhenTheCancelThrows()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var host = Host();
+        var folder = ConfirmedFolder();
+        using var failing = host.Acquire(TestPlugins.Launch(folder, threads: 2));
+        using var other = host.Acquire(TestPlugins.Launch(folder, threads: 4));
+        await Task.WhenAll(failing.Instance.ReadyAsync(ct), other.Instance.ReadyAsync(ct));
+        _ = failing.Instance.Stopping.Register(() => throw new InvalidOperationException(CancelFailure));
+
+        var error = await Assert.ThrowsAsync<AggregateException>(() => host.DisposeAsync().AsTask().WaitAsync(ct));
+
+        Assert.Contains(CancelFailure, error.Flatten().InnerExceptions.Select(inner => inner.Message));
+        Assert.Equal(PluginInstanceState.Stopped, failing.Instance.State);
+        Assert.Equal(PluginInstanceState.Stopped, other.Instance.State);
+        Assert.False(TestPlugins.RunsIn(_dir), "a plugin still runs");
+    }
+
+    /// <summary>The same for the one plugin a sweep stops: a cancel that throws no longer leaves its process running.</summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task ASweepStopsThePluginWhenItsCancelThrows()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var host = Host();
+        var lease = host.Acquire(TestPlugins.Launch(ConfirmedFolder()));
+        await lease.Instance.ReadyAsync(ct);
+        var pid = lease.Instance.ProcessId!.Value;
+        _ = lease.Instance.Stopping.Register(() => throw new InvalidOperationException(CancelFailure));
+        lease.Dispose();
+
+        var error = await Assert.ThrowsAsync<AggregateException>(() => host.StopUnusedAsync().WaitAsync(ct));
+
+        Assert.Contains(CancelFailure, error.Flatten().InnerExceptions.Select(inner => inner.Message));
+        Assert.Empty(host.Instances);
+        Assert.False(Runs(pid), "the plugin still runs");
     }
 
     private PluginHost Host(PluginHostOptions? options = null, TimeProvider? time = null, IProcessGroups? groups = null)

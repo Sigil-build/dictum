@@ -142,6 +142,9 @@ public sealed class PluginInstance
         }
     }
 
+    /// <summary>Cancelled as it is stopped for good. For the tests, which make that cancel fail.</summary>
+    internal CancellationToken Stopping => _stopping.Token;
+
     internal bool IsLeased
     {
         get
@@ -209,7 +212,8 @@ public sealed class PluginInstance
 
     /// <summary>
     /// Stops it for good: cancels a start or a restart under way, and stops the process. The host calls it once. A part
-    /// that fails does not stop the rest, and is thrown once all of it has run.
+    /// that fails does not stop the rest, and its failure is thrown once all of it has run; should more than one part
+    /// fail, the last one is.
     /// </summary>
     internal async Task StopAsync()
     {

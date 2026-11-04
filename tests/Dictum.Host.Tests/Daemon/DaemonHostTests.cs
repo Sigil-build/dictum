@@ -92,6 +92,28 @@ public sealed class DaemonHostTests : IDisposable
     }
 
     /// <summary>
+    /// The step after the warm-up that the daemon gets: the sweep, which asks whether the warmed-up engine is still the
+    /// one in use. For an engine a reload has replaced it stops nothing, as the plugins it would stop may be the next
+    /// engine's; for the engine in use it stops what no engine holds.
+    /// </summary>
+    [Fact]
+    public async Task TheSweepAfterAWarmUpStopsNothingForAReplacedEngine()
+    {
+        var log = new ListLog();
+        await using var plugins = new PluginHost(new PluginTrustStore(_dir.File("plugin-trust.json"), log), PlatformFactory.CreateProcessGroups(), log);
+        var launch = new PluginLaunch("test", "Test", "1.0.0", _dir.Path, _dir.File("plugin.exe"), Model: null, Threads: null);
+        plugins.Acquire(launch).Dispose();
+        var sweep = DaemonHost.AfterWarmUp(plugins);
+        Assert.NotNull(sweep);
+
+        await sweep(() => false);
+        Assert.Single(plugins.Instances);
+
+        await sweep(() => true);
+        Assert.Empty(plugins.Instances);
+    }
+
+    /// <summary>
     /// Runs the daemon on a temp config and socket while <paramref name="body"/> talks to it, waits until it has started,
     /// then stops it.
     /// </summary>

@@ -510,7 +510,16 @@ public sealed class DictumDaemon : IAsyncDisposable
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _log.Warn($"Warm-up failed: {ex.Message}");
+            if (IsCurrent(engine))
+            {
+                _log.Warn($"Warm-up failed: {ex.Message}");
+            }
+            else
+            {
+                // A reload disposed the engine while it warmed up, so its next provider was refused. The new engine's
+                // own warm-up says what it finds.
+                _log.Info($"Warm-up of a replaced engine stopped: {ex.Message}");
+            }
         }
 
         // A failed warm-up ends "loading" too: the first dictation reports the problem. An engine a reload replaced

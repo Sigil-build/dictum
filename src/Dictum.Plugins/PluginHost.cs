@@ -138,7 +138,7 @@ public sealed class PluginHost(PluginTrustStore trust, IProcessGroups groups, IL
 
     /// <summary>
     /// Cancels every start and stops every plugin, those a sweep is still stopping included. A part that fails does not
-    /// stop the rest; the first failure is thrown once all of it has run.
+    /// stop the rest, and its failure is thrown once all of it has run; should more than one part fail, the last one is.
     /// </summary>
     public async ValueTask DisposeAsync()
     {

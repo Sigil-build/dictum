@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Net.Sockets;
 using Dictum.Core;
 using Dictum.Core.Audio;
@@ -117,11 +116,12 @@ public sealed class DoctorChecksTests : IDisposable
     }
 
     // Ledger 90: a plugin's row may wait out the plugin's whole start, and the System page waits 2 minutes for the whole
-    // doctor. The plugin rows wait side by side, so plugins that hang take one timeout between them, not one each.
+    // doctor. The plugin rows wait side by side, so plugins that hang take one timeout between them, not one each. Here
+    // plugin a's check hangs until plugin b's has begun: checked one after the other, a would wait out its whole timeout.
     [Fact]
     public async Task TwoHangingPluginsTakeOneTimeout()
     {
-        var timeout = TimeSpan.FromSeconds(5);
+        var bChecked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var config = new DictumConfig
         {
             Stt =
@@ -130,14 +130,26 @@ public sealed class DoctorChecksTests : IDisposable
                 ["b"] = new PluginSttConfig { Plugin = "b", Model = "m1" },
             },
         };
-        var inputs = Inputs(config) with { GetStt = _ => new SilentStt(), PluginCheckTimeout = timeout };
-        var watch = Stopwatch.StartNew();
+        var inputs = Inputs(config) with
+        {
+            GetStt = id => new CheckedStt(id == "a"
+                ? async ct =>
+                {
+                    await bChecked.Task.WaitAsync(ct);
+                    return HealthStatus.Ok("a answered");
+                }
+                : _ =>
+                {
+                    bChecked.TrySetResult();
+                    return Task.FromResult(HealthStatus.Ok("b answered"));
+                }),
+            PluginCheckTimeout = TimeSpan.FromSeconds(30),
+        };
 
         var checks = await DoctorChecks.RunAsync(inputs, _ct);
 
-        Assert.Equal("No answer within 5 s", checks.Single(c => c.Name == PlatformCheckNames.Stt("a")).Status.Detail);
-        Assert.Equal("No answer within 5 s", checks.Single(c => c.Name == PlatformCheckNames.Stt("b")).Status.Detail);
-        Assert.True(watch.Elapsed < timeout * 2, $"the doctor took {watch.Elapsed.TotalSeconds:F1} s");
+        Assert.Equal(HealthStatus.Ok("a answered"), checks.Single(c => c.Name == PlatformCheckNames.Stt("a")).Status);
+        Assert.Equal(HealthStatus.Ok("b answered"), checks.Single(c => c.Name == PlatformCheckNames.Stt("b")).Status);
     }
 
     [Fact]
@@ -198,6 +210,16 @@ public sealed class DoctorChecksTests : IDisposable
             await Task.Delay(delay, ct);
             return HealthStatus.Ok("answered");
         }
+    }
+
+    /// <summary>A provider whose check is <paramref name="check"/>.</summary>
+    private sealed class CheckedStt(Func<CancellationToken, Task<HealthStatus>> check) : ISpeechToText
+    {
+        public string Id => "checked";
+
+        public Task<Transcript> TranscribeAsync(AudioClip clip, SttRequest request, CancellationToken ct) => throw new NotSupportedException();
+
+        public Task<HealthStatus> CheckAsync(CancellationToken ct) => check(ct);
     }
 
     private sealed class SilentStt : ISpeechToText
