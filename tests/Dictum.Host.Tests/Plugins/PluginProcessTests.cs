@@ -223,7 +223,7 @@ public sealed class PluginProcessTests : IDisposable
         Assert.Equal("Test", plugin.Endpoint.Info.Name);
         Assert.Equal("модель з пробілом", plugin.Endpoint.Info.Model?.Id);
         Assert.True(SamePath(folder, cwd), $"the plugin ran in {cwd}");
-        Assert.Equal(PluginTrust.Confirmed, trust.Check(launch.PluginId, folder, launch.Executable));
+        Assert.Equal(PluginTrust.Confirmed, trust.Check(launch.PluginId, folder, launch.Executable).Trust);
     }
 
     /// <summary>

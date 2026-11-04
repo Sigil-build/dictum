@@ -6,6 +6,10 @@ using Dictum.Core.Configuration;
 namespace Dictum.Plugins;
 
 /// <summary>A plugin's <c>plugin.json</c>: who it is, the program to run for each system, and the models it offers.</summary>
+/// <param name="Program">
+/// The files and folders the program is made of, relative to the plugin's folder, such as the script a launcher runs.
+/// The trust record covers them, with <c>plugin.json</c> and the executable.
+/// </param>
 public sealed record PluginManifest(
     int Protocol,
     string Id,
@@ -14,7 +18,8 @@ public sealed record PluginManifest(
     string? Publisher,
     string? Homepage,
     IReadOnlyDictionary<string, string> Executable,
-    IReadOnlyList<PluginManifestModel>? Models)
+    IReadOnlyList<PluginManifestModel>? Models,
+    IReadOnlyList<string>? Program)
 {
     private const int Sha256HexLength = 64;
 
@@ -89,9 +94,16 @@ public sealed record PluginManifest(
         }
 
         CheckProgram(folder, problems);
+        CheckProgramFiles(folder, problems);
         CheckModels(problems);
         return problems;
     }
+
+    /// <summary>
+    /// Whether an entry of <see cref="Program"/> may be read as a path inside the plugin's folder: a relative path
+    /// without hidden characters. The trust record skips any other, as this check refuses it.
+    /// </summary>
+    internal static bool IsProgramEntry(string? entry) => entry is not null && !entry.Any(PluginText.IsHidden) && IsInsideFolder(entry);
 
     private static void RefuseHidden(string field, string? value, List<string> problems)
     {
@@ -127,6 +139,31 @@ public sealed record PluginManifest(
         else if (!File.Exists(Path.Combine(folder, file)))
         {
             problems.Add($"the program {Show(file)} for {rid} is not in the folder");
+        }
+    }
+
+    /// <summary>The files and folders the program is made of, each of which must be in the folder now.</summary>
+    private void CheckProgramFiles(string folder, List<string> problems)
+    {
+        for (var i = 0; i < (Program?.Count ?? 0); i++)
+        {
+            var entry = Program![i];
+            if (entry is null)
+            {
+                problems.Add($"program[{Index(i)}] is empty");
+            }
+            else if (entry.Any(PluginText.IsHidden))
+            {
+                RefuseHidden($"program[{Index(i)}]", entry, problems);
+            }
+            else if (!IsInsideFolder(entry))
+            {
+                problems.Add($"program lists '{Show(entry)}', which must be a file or folder name inside the plugin's folder");
+            }
+            else if (!File.Exists(Path.Combine(folder, entry)) && !Directory.Exists(Path.Combine(folder, entry)))
+            {
+                problems.Add($"program lists '{Show(entry)}', which is not in the plugin's folder");
+            }
         }
     }
 
@@ -226,10 +263,15 @@ public sealed record PluginManifest(
 
     private static string Index(int i) => i.ToString(CultureInfo.InvariantCulture);
 
-    /// <summary>Relative, with no empty, <c>.</c> or <c>..</c> segment on either kind of separator; subfolders are fine.</summary>
-    private static bool IsInsideModelFolder(string? file) =>
+    /// <summary>
+    /// Relative, with no empty, <c>.</c> or <c>..</c> segment on either kind of separator; subfolders are fine. A
+    /// manifest serves every system, so a path rooted on Windows, such as <c>C:\x</c>, is refused on Linux too.
+    /// </summary>
+    private static bool IsInsideFolder(string? file) =>
         !string.IsNullOrEmpty(file)
         && !Path.IsPathRooted(file)
+        && file[0] is not ('/' or '\\')
+        && !(file.Length >= 2 && char.IsAsciiLetter(file[0]) && file[1] == ':')
         && file.Split('/', '\\').All(segment => segment is not ("" or "." or ".."));
 
     /// <param name="modelId">Already shown: its hidden characters spelt out.</param>
@@ -238,7 +280,7 @@ public sealed record PluginManifest(
         var shown = Show(file.File);
         RefuseHidden($"model {modelId}: file name", file.File, problems);
         RefuseHidden($"model {modelId}: url", file.Url, problems);
-        if (!IsInsideModelFolder(file.File))
+        if (!IsInsideFolder(file.File))
         {
             problems.Add($"model {modelId}: {shown} must be a file name inside the model's folder");
         }

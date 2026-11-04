@@ -40,7 +40,7 @@ On Windows, run `dictum` by its full path: see [The command line](../getting-sta
 | `downloads.json` | Downloads that have not finished, so that they continue after a restart. |
 | `setup.json` | The setup wizard's answers while its files download, so that a restart returns to the wizard. |
 | `update-check.json` | When the desktop app last asked GitHub for the newest version, what it found, and the last version it told you about, so that a restart does not tell you again. See [Check for updates](settings.md#check-for-updates). |
-| `plugin-trust.json` | The plugins you confirmed with `dictum plugins add`: for each, its folder, its program and the program's SHA-256. Dictum starts a plugin only while its program still matches. See [Write a plugin](../guides/write-a-plugin.md#add). |
+| `plugin-trust.json` | The plugins you confirmed with `dictum plugins add`: for each, its folder, its program, and the SHA-256 of each of its files: `plugin.json`, the program and the files that its `program` lists. Dictum starts a plugin only while they all still match. See [Write a plugin](../guides/write-a-plugin.md#add). |
 | `remote-desktop.token` | Linux on Wayland: the desktop's permission for Dictum to press Ctrl+V. Delete it, and the desktop asks again. |
 | `tray-icons/` | Linux: the images of the tray icon. |
 | `dictum.sock` | Windows: the socket through which the desktop app and `dictum` commands talk to the daemon while it runs. On Linux it is `$XDG_RUNTIME_DIR/dictum.sock`. |

@@ -9,6 +9,9 @@ namespace Dictum.Testing;
 /// <summary>Plugin folders made from the built test plugin (<c>tests/Dictum.TestPlugin</c>), for tests that launch it.</summary>
 public static class TestPlugins
 {
+    /// <summary>The test plugin's own code, which its program, the .NET launcher, loads: what a manifest's <c>program</c> would list.</summary>
+    public const string AssemblyFile = ProgramName + ".dll";
+
     private const string ProgramName = "dictum-test-plugin";
     private const string BehaviourFile = "behaviour.json";
 
@@ -26,9 +29,15 @@ public static class TestPlugins
 
     /// <summary>
     /// A copy of the test plugin in <paramref name="dir"/>, under <paramref name="folderName"/> (else the id), with a
-    /// <c>plugin.json</c> for this system and, when given, the behaviour as <c>behaviour.json</c>.
+    /// <c>plugin.json</c> for this system, listing <paramref name="program"/> when given, and, when given, the
+    /// behaviour as <c>behaviour.json</c>.
     /// </summary>
-    public static string Folder(TempDirectory dir, string id = "test", string? folderName = null, TestPluginBehaviour? behaviour = null)
+    public static string Folder(
+        TempDirectory dir,
+        string id = "test",
+        string? folderName = null,
+        TestPluginBehaviour? behaviour = null,
+        IReadOnlyList<string>? program = null)
     {
         var folder = Path.Combine(dir.Path, folderName ?? id);
         CopyDirectory(BinDirectory, folder);
@@ -41,13 +50,18 @@ public static class TestPlugins
             ["version"] = "1.0.0",
             ["executable"] = new JsonObject { [PluginProtocol.CurrentRid] = ProgramFile },
         };
+        if (program is not null)
+        {
+            manifest["program"] = new JsonArray([.. program.Select(entry => JsonValue.Create(entry))]);
+        }
+
         File.WriteAllText(Path.Combine(folder, PluginProtocol.ManifestFile), manifest.ToJsonString());
         behaviour?.Save(Path.Combine(folder, BehaviourFile));
 
         if (!OperatingSystem.IsWindows())
         {
-            var program = Path.Combine(folder, ProgramFile);
-            File.SetUnixFileMode(program, File.GetUnixFileMode(program) | UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute);
+            var executable = Path.Combine(folder, ProgramFile);
+            File.SetUnixFileMode(executable, File.GetUnixFileMode(executable) | UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute);
         }
 
         return folder;

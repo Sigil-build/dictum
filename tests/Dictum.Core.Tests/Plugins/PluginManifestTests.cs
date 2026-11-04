@@ -216,6 +216,46 @@ public sealed class PluginManifestTests : IDisposable
         Assert.Equal([$"the program for {Rid} must be a file name inside the folder"], Problems());
     }
 
+    /// <summary>The rules for model file names, on every system: a manifest is shared, so a path rooted on Windows is refused on Linux too.</summary>
+    [Theory]
+    [InlineData("\"\"", "program lists '', which must be a file or folder name inside the plugin's folder")]
+    [InlineData("\".\"", "program lists '.', which must be a file or folder name inside the plugin's folder")]
+    [InlineData("\"a/../b\"", "program lists 'a/../b', which must be a file or folder name inside the plugin's folder")]
+    [InlineData("\"/abs\"", "program lists '/abs', which must be a file or folder name inside the plugin's folder")]
+    [InlineData("\"C:\\\\x\"", "program lists 'C:\\x', which must be a file or folder name inside the plugin's folder")]
+    [InlineData("null", "program[0] is empty")]
+    [InlineData("\"plugin\\u202e.py\"", "program[0] must not contain control or invisible formatting characters")]
+    public void ProgramEntriesFollowTheFileNameRules(string entry, string problem)
+    {
+        Write(Manifest(extra: $"\"program\": [{entry}],"));
+
+        var problems = Problems();
+
+        Assert.Equal([problem], problems);
+        Assert.All(problems, p => Assert.DoesNotContain(p, IsHidden));
+    }
+
+    [Fact]
+    public void AMissingProgramEntryIsAProblem()
+    {
+        Directory.CreateDirectory(_folder.File("lib"));
+        Write(Manifest(extra: "\"program\": [\"plugin.py\", \"lib\", \"lib/missing\"],"));
+
+        Assert.Equal(
+            ["program lists 'plugin.py', which is not in the plugin's folder", "program lists 'lib/missing', which is not in the plugin's folder"],
+            Problems());
+    }
+
+    [Fact]
+    public void AProgramOfFilesAndFoldersLoads()
+    {
+        File.WriteAllText(_folder.File("plugin.py"), "print()");
+        Directory.CreateDirectory(_folder.File("lib"));
+        Write(Manifest(extra: "\"program\": [\"plugin.py\", \"lib\"],"));
+
+        Assert.Equal(["plugin.py", "lib"], PluginManifest.Load(_folder.Path).Program);
+    }
+
     [Fact]
     public void AModelFileOverHttpIsRefused()
     {

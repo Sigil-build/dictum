@@ -78,6 +78,13 @@ internal static class PluginsCommand
                 context.Error.WriteLine($"{manifest.Id} is already added; confirming it again.");
             }
 
+            // A change to a script that a launcher runs would go unnoticed, so the user hears it before saying yes.
+            if (manifest.Program is not { Count: > 0 })
+            {
+                context.Error.WriteLine(
+                    $"plugin.json lists no program files, so Dictum checks only plugin.json and {manifest.Executable[PluginProtocol.CurrentRid]} for changes.");
+            }
+
             context.Error.WriteLine(TrustText);
             if (!parse.GetValue(yes))
             {
@@ -208,7 +215,7 @@ internal static class PluginsCommand
             }
 
             var manifest = PluginManifest.Load(folder);
-            var state = trust.Check(id, folder, manifest.ExecutablePath(folder)) switch
+            var state = trust.Check(id, folder, manifest.ExecutablePath(folder)).Trust switch
             {
                 PluginTrust.Confirmed => "confirmed",
                 PluginTrust.Changed => "changed since you added it",

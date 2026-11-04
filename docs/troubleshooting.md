@@ -419,7 +419,7 @@ The provider and the plugin's folder:
 :   The provider names a plugin that is not under `plugins` in `config.json`. Add the plugin, or correct the provider's `plugin`.
 
 `plugin.json in … is not valid: …` → `Fix its plugin.json, then confirm it with 'dictum plugins add "…"'.`
-:   The plugin's `plugin.json` changed after you added it, and has errors now; the message lists them. [Write a plugin](guides/write-a-plugin.md#manifest) describes the file.
+:   The plugin's `plugin.json` changed after you added it, and has errors now, or a file that its `program` lists is gone, as in `program lists 'plugin.py', which is not in the plugin's folder`; the message lists them. [Write a plugin](guides/write-a-plugin.md#manifest) describes the file.
 
 `The plugin in … calls itself '…', not 'hello'.` → `Add it again with 'dictum plugins add "…"'.`
 :   The `plugin.json` in that folder has another `id` now than the one you added the plugin under. Put the old id back, or run the command, which adds the plugin under its new id; then write the new id as the provider's `plugin`, and forget the old one with `dictum plugins remove hello`.
@@ -441,8 +441,11 @@ The confirmation:
 `Plugin hello has not been confirmed on this computer.` → `Confirm it with 'dictum plugins add "…"'.`
 :   The plugin is in `config.json`, but nobody confirmed it on this computer, or not with this folder and program: the file came from another computer, or was edited by hand. Run the command, which shows the plugin and asks you first.
 
-`Plugin hello changed since you added it.` → `Confirm it with 'dictum plugins add "…"'.`
-:   The program's SHA-256 is not the one Dictum recorded when you confirmed it. If you updated or edited the plugin, run the command to confirm it again. If you did not, find out what changed it before you do. Once you have confirmed it, the next dictation starts it.
+`Plugin hello changed since you added it (plugin.py).` → `Confirm it with 'dictum plugins add "…"'.`
+:   A file of the plugin is not the one Dictum recorded when you confirmed it: `plugin.json`, the program, or a file that its `program` lists. A file added to a listed folder, or gone from it, counts too. The message names the first file that differs, by its path in the plugin's folder. If you updated or edited the plugin, run the command to confirm it again. If you did not, find out what changed it before you do. Once you have confirmed it, the next dictation starts it.
+
+`… plugin-trust.json was written by a newer Dictum (file version 2; this one reads 1), so this Dictum does not change it.` → `Update Dictum, then confirm the plugin again.`
+:   A newer version of Dictum wrote the file, and may record more than this one checks. This version trusts none of its records, so no plugin you added starts, and the log says `… so no plugin counts as confirmed.` `dictum plugins add` leaves the file as it is. Install the newer version again.
 
 While the program starts. These messages come with the hint `See its output above, and the plugin's own documentation.` All of them but `Plugin … could not be started: …` also bring the lines the plugin printed last, if it printed any: after `last output:` in the row, or each after a `|` when `dictum plugins add` runs the plugin. That one has none, because the program never ran. When the daemon reports a start that failed earlier, the hint goes on: `Then save the settings or restart the daemon to try again.` The daemon does not try a plugin that failed to start again by itself; saving the settings, `dictum reload` or a restart of the daemon does.
 

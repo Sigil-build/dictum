@@ -335,13 +335,16 @@ public sealed class PluginInstance
         return process.Endpoint;
     }
 
-    /// <exception cref="PluginUnavailableException">The user has not confirmed this program, or it changed since.</exception>
+    /// <exception cref="PluginUnavailableException">The user has not confirmed this program, or one of its files changed since.</exception>
     private void ThrowUnlessConfirmed()
     {
-        var problem = _trust.Check(_launch.PluginId, _launch.Folder, _launch.Executable) switch
+        var trust = _trust.Check(_launch.PluginId, _launch.Folder, _launch.Executable);
+        var problem = trust.Trust switch
         {
             PluginTrust.Confirmed => null,
-            PluginTrust.Changed => $"Plugin {_launch.PluginId} changed since you added it.",
+
+            // A file in a listed folder is named as it is on disk, so its name is spelt out like any text from the folder.
+            PluginTrust.Changed => $"Plugin {_launch.PluginId} changed since you added it ({PluginText.Show(trust.ChangedFile)}).",
             _ => $"Plugin {_launch.PluginId} has not been confirmed on this computer.",
         };
         if (problem is not null)

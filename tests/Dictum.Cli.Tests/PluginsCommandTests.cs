@@ -42,6 +42,72 @@ public sealed class PluginsCommandTests : IDisposable
         Assert.False(TestPlugins.RunsIn(_dir));
     }
 
+    /// <summary>Without a list, a change to the script a launcher runs goes unnoticed; the user hears so before the question.</summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AddSaysWhenPluginJsonListsNoProgramFiles(bool emptyList)
+    {
+        var folder = TestPlugins.Folder(_dir, program: emptyList ? [] : null);
+        var executable = PluginManifest.Load(folder).Executable[PluginProtocol.CurrentRid];
+        SaveConfig(new DictumConfig());
+
+        var (code, _, error) = await RunAsync("add", folder, "--yes");
+
+        Assert.Equal(0, code);
+        var lines = error.Split(Environment.NewLine);
+        var line = Array.IndexOf(lines, $"plugin.json lists no program files, so Dictum checks only plugin.json and {executable} for changes.");
+        Assert.True(line > 0, error);
+        Assert.StartsWith("Test 1.0.0 by", lines[0], StringComparison.Ordinal);
+        Assert.True(line < Array.IndexOf(lines, Trust), error);
+    }
+
+    [Fact]
+    public async Task AddSaysNothingOfProgramFilesWhenPluginJsonListsThem()
+    {
+        var folder = TestPlugins.Folder(_dir, program: [TestPlugins.AssemblyFile]);
+        SaveConfig(new DictumConfig());
+
+        var (code, _, error) = await RunAsync("add", folder, "--yes");
+
+        Assert.Equal(0, code);
+        Assert.DoesNotContain("lists no program files", error, StringComparison.Ordinal);
+        Assert.Equal(PluginTrust.Confirmed, Check(folder));
+    }
+
+    /// <summary>Ledger line 48: a plugin-trust.json from a newer Dictum is left as it is, and nothing is added.</summary>
+    [Fact]
+    public async Task AddRefusesToOverwriteATrustFileANewerDictumWrote()
+    {
+        var folder = TestPlugins.Folder(_dir);
+        SaveConfig(new DictumConfig());
+        var trustFile = AppPaths.FromEnvironment().PluginTrustFile;
+        var saved = File.Exists(trustFile) ? File.ReadAllBytes(trustFile) : null;
+        Directory.CreateDirectory(Path.GetDirectoryName(trustFile)!);
+        File.WriteAllText(trustFile, """{"version":2,"custom":{}}""");
+        try
+        {
+            var (code, _, error) = await RunAsync("add", folder, "--yes");
+
+            Assert.Equal(1, code);
+            Assert.Contains($"error: {trustFile} was written by a newer Dictum", error, StringComparison.Ordinal);
+            Assert.Contains("hint: Update Dictum, then confirm the plugin again.", error, StringComparison.Ordinal);
+            Assert.Equal("""{"version":2,"custom":{}}""", File.ReadAllText(trustFile));
+            Assert.Empty(LoadConfig().Plugins);
+        }
+        finally
+        {
+            if (saved is null)
+            {
+                File.Delete(trustFile);
+            }
+            else
+            {
+                File.WriteAllBytes(trustFile, saved);
+            }
+        }
+    }
+
     [Fact]
     public async Task AddStoresTheFolderTheWayTheDaemonSpellsIt()
     {
@@ -186,7 +252,7 @@ public sealed class PluginsCommandTests : IDisposable
         Assert.DoesNotContain('\u001b', error);
         Assert.DoesNotContain(Trust, error, StringComparison.Ordinal);
         Assert.Empty(LoadConfig().Plugins);
-        Assert.Equal(PluginTrust.NotConfirmed, _trust.Check("test", folder, executable));
+        Assert.Equal(PluginTrust.NotConfirmed, _trust.Check("test", folder, executable).Trust);
     }
 
     [Fact]
@@ -356,7 +422,7 @@ public sealed class PluginsCommandTests : IDisposable
     }
 
     private PluginTrust Check(string folder) =>
-        _trust.Check("test", folder, PluginManifest.Load(folder).ExecutablePath(folder));
+        _trust.Check("test", folder, PluginManifest.Load(folder).ExecutablePath(folder)).Trust;
 
     private void SaveConfig(DictumConfig config) => new ConfigStore(_configFile, NullLog.Instance).Save(config);
 

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json.Nodes;
 using Dictum.Plugins;
 using Dictum.Testing;
 using Dictum.TestPlugin;
@@ -351,7 +352,31 @@ public sealed class PluginHostTests : IAsyncDisposable
 
         var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => lease.Instance.ReadyAsync(ct));
 
-        Assert.Equal("Plugin test changed since you added it.", error.Message);
+        Assert.Equal($"Plugin test changed since you added it ({Path.GetFileName(launch.Executable)}).", error.Message);
+        Assert.Equal($"Confirm it with 'dictum plugins add \"{folder}\"'.", error.Hint);
+        Assert.Equal(0, lease.Instance.Launches);
+        Assert.Equal(PluginInstanceState.Stopped, lease.Instance.State);
+        Assert.False(TestPlugins.RunsIn(_dir), "the plugin runs");
+    }
+
+    /// <summary>
+    /// A file that plugin.json lists, here the test plugin's own code, which its launcher loads, changed after the user
+    /// confirmed the plugin; the launcher did not. The error names the file.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task AListedFileChangedAfterConfirmingNeverStarts()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var host = Host();
+        var folder = TestPlugins.Folder(_dir, program: [TestPlugins.AssemblyFile]);
+        var launch = TestPlugins.Launch(folder);
+        _trust.Confirm(launch.PluginId, folder, launch.Executable);
+        AppendByte(Path.Combine(folder, TestPlugins.AssemblyFile));
+        using var lease = host.Acquire(launch);
+
+        var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => lease.Instance.ReadyAsync(ct));
+
+        Assert.Equal($"Plugin test changed since you added it ({TestPlugins.AssemblyFile}).", error.Message);
         Assert.Equal($"Confirm it with 'dictum plugins add \"{folder}\"'.", error.Hint);
         Assert.Equal(0, lease.Instance.Launches);
         Assert.Equal(PluginInstanceState.Stopped, lease.Instance.State);
@@ -368,6 +393,32 @@ public sealed class PluginHostTests : IAsyncDisposable
         AppendByte(launch.Executable);
         using var lease = host.Acquire(launch);
         await Assert.ThrowsAsync<PluginUnavailableException>(() => lease.Instance.ReadyAsync(ct));
+
+        _trust.Confirm(launch.PluginId, folder, launch.Executable);
+        await lease.Instance.ReadyAsync(ct);
+
+        Assert.Equal(PluginInstanceState.Ready, lease.Instance.State);
+        Assert.Equal(1, lease.Instance.Launches);
+    }
+
+    /// <summary>
+    /// The check reads plugin.json afresh, not the launch the provider resolved once, so a program list edited and
+    /// confirmed again starts at the next try too, with no reload.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task ConfirmingAnEditedProgramListAgainLetsItStartWithoutAReload()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var host = Host();
+        var folder = ConfirmedFolder();
+        var launch = TestPlugins.Launch(folder);
+        var manifestFile = Path.Combine(folder, PluginProtocol.ManifestFile);
+        var manifest = JsonNode.Parse(File.ReadAllText(manifestFile))!;
+        manifest["program"] = new JsonArray(TestPlugins.AssemblyFile);
+        File.WriteAllText(manifestFile, manifest.ToJsonString());
+        using var lease = host.Acquire(launch);
+        var error = await Assert.ThrowsAsync<PluginUnavailableException>(() => lease.Instance.ReadyAsync(ct));
+        Assert.Equal($"Plugin test changed since you added it ({TestPlugins.AssemblyFile}).", error.Message);
 
         _trust.Confirm(launch.PluginId, folder, launch.Executable);
         await lease.Instance.ReadyAsync(ct);
