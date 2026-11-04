@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json.Nodes;
 using Dictum.Core;
+using Dictum.Core.Diagnostics;
 using Dictum.Plugins;
 using Dictum.Testing;
 using Dictum.TestPlugin;
@@ -346,6 +347,52 @@ public sealed class PluginHostTests : IAsyncDisposable
         Assert.Equal("Plugin test has not been confirmed on this computer.", error.Message);
         Assert.Equal(1, lease.Instance.Launches);
         Assert.False(TestPlugins.RunsIn(_dir), "the plugin runs");
+    }
+
+    /// <summary>
+    /// A command reports a first start's failure itself, so the warning carries the marker that keeps it off its console.
+    /// A restart's failure reaches nobody else, so its warning carries no marker, and prints.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task OnlyAFirstStartsWarningCarriesTheMarkerThatKeepsItOffAConsole()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var host = Host();
+        var folder = ConfirmedFolder(new TestPluginBehaviour { CrashAfterInfoMs = CrashAfterMs });
+        using var lease = host.Acquire(TestPlugins.Launch(folder));
+        await lease.Instance.ReadyAsync(ct);
+        _trust.Forget("test");
+        await Eventually.WaitForAsync(() => lease.Instance.State == PluginInstanceState.Stopped, "the restart refused", Patience);
+
+        var restart = Assert.Single(_log.Entries, e => e.Message.Contains("has not been confirmed", StringComparison.Ordinal));
+        Assert.Equal(LogLevel.Warning, restart.Level);
+        Assert.IsNotType<PluginStartFailedException>(restart.Exception);
+
+        using var first = Host().Acquire(TestPlugins.Launch(TestPlugins.Folder(_dir, folderName: "second")));
+        await Assert.ThrowsAsync<PluginUnavailableException>(() => first.Instance.ReadyAsync(ct));
+
+        var started = Assert.Single(_log.Entries, e => e.Exception is PluginStartFailedException);
+        Assert.Equal(LogLevel.Warning, started.Level);
+        Assert.Equal("Plugin test has not been confirmed on this computer.", started.Message);
+    }
+
+    /// <summary>
+    /// A failure Dictum expects, such as an unconfirmed program or a plugin that exits while starting, is logged with its
+    /// message, hint and last lines, and no stack trace, which says nothing the user can act on.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task AnExpectedFailureIsLoggedWithItsHintAndLastLinesButNoStackTrace()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var host = Host();
+        using var lease = host.Acquire(TestPlugins.Launch(ConfirmedFolder(new TestPluginBehaviour { ExitAtStart = 3, Stderr = ["no CUDA here"] })));
+        await Assert.ThrowsAsync<PluginUnavailableException>(() => lease.Instance.ReadyAsync(ct));
+
+        var logged = Assert.Single(_log.Entries, e => e.Exception is PluginStartFailedException).Exception!.ToString();
+
+        Assert.Contains(StartHint, logged, StringComparison.Ordinal);
+        Assert.Contains("no CUDA here", logged, StringComparison.Ordinal);
+        Assert.DoesNotContain("   at ", logged, StringComparison.Ordinal);
     }
 
     /// <summary>A start that begins once a stop is under way, as a restart whose delay has just ended may, launches nothing.</summary>

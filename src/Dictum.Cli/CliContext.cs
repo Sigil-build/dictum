@@ -30,13 +30,20 @@ internal sealed class CliContext : IAsyncDisposable
         ConfigPath = Paths.ConfigFileFrom(parse.GetValue(CliApp.ConfigOption));
         Log = new DictumLog(Verbose ? LogLevel.Debug : consoleLevel ?? LogLevel.Warning, includeText: Verbose, Error, Paths.LogsDirectory)
         {
-            // A plugin that cannot start is thrown to the command, which reports it as its error; the same warning would
-            // print it twice. The log file keeps it.
-            ConsoleFilter = (level, _, exception) => level != LogLevel.Warning || exception is not PluginUnavailableException,
+            // A plugin's first start that fails is thrown to the command, which reports it as its error; the same warning would
+            // print it twice. The log file keeps it. A restart's failure reaches no command, so it prints.
+            ConsoleFilter = PrintsOnConsole,
         };
         NativeStderr.ShowDiagnostics = Verbose;
         Store = new ConfigStore(ConfigPath, Log);
     }
+
+    /// <summary>
+    /// Whether a message the level allowed also goes to the console: not a plugin's first-start warning, since the command
+    /// that started it reports the failure itself.
+    /// </summary>
+    internal static bool PrintsOnConsole(LogLevel level, string message, Exception? exception) =>
+        level != LogLevel.Warning || exception is not PluginStartFailedException;
 
     /// <summary>The OS paths, with the downloads folder of the config as loaded (and as the daemon reloads it).</summary>
     public AppPaths Paths { get; }

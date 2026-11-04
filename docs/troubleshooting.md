@@ -428,7 +428,7 @@ The provider and the plugin's folder:
 :   The provider's `model` is a full path, and there is no file or folder there.
 
 `Plugin hello starts through plugin.cmd, which cannot be given …: it holds one of & % ^ ! " < > | ( ).` → `Use a path without those characters, or ask the plugin's author for a program (.exe) instead of a script.`
-:   On Windows, a plugin whose program is a `.cmd` or `.bat` file runs under cmd.exe, which would act on those characters in an option such as the provider's `model` path: it would run what follows a `&`, for one. Move or rename the model's folder, or use a plugin that starts with a program.
+:   On Windows, a plugin whose program is a `.cmd` or `.bat` file runs under cmd.exe, which would act on those characters in an option such as the provider's `model` path: it would run what follows a `&`, for one. Move or rename the model's folder, or use a plugin that starts with a program. The same holds when the provider names its model by `id`: Dictum then passes a folder inside the downloads folder, so a character from the list in the downloads folder's own path refuses the start too. Move the downloads folder to a path without those characters, or use a plugin whose program is an `.exe`.
 
 `Plugin 'hello' has no model 'tiny'.` → `Its models: …; or set the model to an absolute path.`
 :   The provider's `model` is an id, but the plugin's `plugin.json` lists no model with it. The hint names the ids it lists, or says `It lists no models; set the model to an absolute path.` Use one of them, or the model's full path.

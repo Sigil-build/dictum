@@ -4,8 +4,9 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using Dictum.Audio;
 using Dictum.Core.Audio;
+using Dictum.Core.Configuration;
+using Dictum.Core.Stt;
 using Dictum.Host;
 using Dictum.Plugins;
 using Dictum.Testing;
@@ -52,7 +53,9 @@ public sealed partial class WritePluginGuideTests : IDisposable
         // A folder with a space and Cyrillic letters, as under C:\Users\Євген: the launcher must quote its own path.
         var folder = WriteExample(Path.Combine(_dir.Path, "плагін hello"));
         var manifest = PluginManifest.Load(folder);
-        var model = Directory.CreateDirectory(Path.Combine(_dir.Path, "models", manifest.Id, "tiny")).FullName;
+
+        // A model folder with a space and Cyrillic letters too, as one under the user's own folder has: it is passed on whole.
+        var model = Directory.CreateDirectory(Path.Combine(_dir.Path, "моделі", manifest.Id, "tiny модель")).FullName;
 
         // As 'dictum plugins add' runs it: no model, so it only says who it is.
         await using (var bare = await StartAsync(Launch(folder, manifest, model: null), ct))
@@ -65,15 +68,27 @@ public sealed partial class WritePluginGuideTests : IDisposable
         var plugin = await StartAsync(Launch(folder, manifest, model), ct);
         try
         {
-            Assert.Equal("tiny", plugin.Endpoint.Info.Model?.Id);
+            Assert.Equal("tiny модель", plugin.Endpoint.Info.Model?.Id);
 
             using var keyless = await _http.GetAsync(new Uri(plugin.Endpoint.Url, "/health"), ct);
             Assert.Equal(HttpStatusCode.Unauthorized, keyless.StatusCode);
 
-            var (status, body) = await TranscribeAsync(plugin.Endpoint, ct);
-            Assert.True(status == HttpStatusCode.OK, $"{(int)status}: {body}");
-            using var answer = JsonDocument.Parse(body);
-            Assert.Equal(Text, answer.RootElement.GetProperty("text").GetString());
+            // Every form PluginStt builds: one language, a list to pick from, and none.
+            foreach (var request in new SttRequest[] { new("en", "Dictum, Whisper"), new(null, null, ["uk", "en"]), new(LanguageList.Auto, null), new(null, null) })
+            {
+                var (status, body) = await TranscribeAsync(plugin.Endpoint, request, ct);
+                Assert.True(status == HttpStatusCode.OK, $"{request}: {(int)status}: {body}");
+                using var answer = JsonDocument.Parse(body);
+                Assert.Equal(Text, answer.RootElement.GetProperty("text").GetString());
+            }
+
+            // The same form without the key.
+            using var unsigned = new HttpRequestMessage(HttpMethod.Post, new Uri(plugin.Endpoint.Url, "/v1/audio/transcriptions"))
+            {
+                Content = await FormAsync(new SttRequest("en", null)),
+            };
+            using var refused = await _http.SendAsync(unsigned, ct);
+            Assert.Equal(HttpStatusCode.Unauthorized, refused.StatusCode);
         }
         finally
         {
@@ -106,23 +121,35 @@ public sealed partial class WritePluginGuideTests : IDisposable
         Assert.Equal(0, await plugin.Exited);
     }
 
-    /// <summary>Protocol 1's form, as the plugin provider sends it, with one field the protocol does not have.</summary>
-    private async Task<(HttpStatusCode Status, string Body)> TranscribeAsync(PluginEndpoint endpoint, CancellationToken ct)
+    /// <summary>Protocol 1's form for <paramref name="request"/>, as the plugin provider sends it, with the key.</summary>
+    private async Task<(HttpStatusCode Status, string Body)> TranscribeAsync(PluginEndpoint endpoint, SttRequest request, CancellationToken ct)
     {
-        using var form = new MultipartFormDataContent();
-        var audio = new ByteArrayContent(Wav.ToPcm16Bytes(new AudioClip(new float[AudioClip.WhisperSampleRate / 2])));
-        audio.Headers.ContentType = new MediaTypeHeaderValue("audio/wav");
-        form.Add(audio, "file", "audio.wav");
-        form.Add(new StringContent("tiny"), "model");
-        form.Add(new StringContent("json"), "response_format");
-        form.Add(new StringContent("en"), "language");
-        form.Add(new StringContent("Dictum, Whisper"), "prompt");
-        form.Add(new StringContent("a field from a later protocol"), "later_field");
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(endpoint.Url, "/v1/audio/transcriptions")) { Content = form };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", endpoint.Key);
-        using var response = await _http.SendAsync(request, ct);
+        using var message = new HttpRequestMessage(HttpMethod.Post, new Uri(endpoint.Url, "/v1/audio/transcriptions")) { Content = await FormAsync(request) };
+        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", endpoint.Key);
+        using var response = await _http.SendAsync(message, ct);
         return (response.StatusCode, await response.Content.ReadAsStringAsync(ct));
+    }
+
+    /// <summary>The form <see cref="PluginStt"/> builds, checked for the field that tells the plugin the language.</summary>
+    private static async Task<MultipartFormDataContent> FormAsync(SttRequest request)
+    {
+        var form = PluginStt.BuildForm("tiny", new AudioClip(new float[AudioClip.WhisperSampleRate / 2]), request);
+        var text = await form.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        switch (request)
+        {
+            case { Language: { } language } when language != LanguageList.Auto:
+                Assert.Contains($"name=language\r\n\r\n{language}\r\n", text, StringComparison.Ordinal);
+                Assert.DoesNotContain("name=languages", text, StringComparison.Ordinal);
+                break;
+            case { Language: null, Candidates: { Count: > 0 } list }:
+                Assert.Contains($"name=languages\r\n\r\n{string.Join(',', list)}\r\n", text, StringComparison.Ordinal);
+                break;
+            default:
+                Assert.DoesNotContain("name=language", text, StringComparison.Ordinal);
+                break;
+        }
+
+        return form;
     }
 
     private async Task<PluginProcess> StartAsync(PluginLaunch launch, CancellationToken ct)

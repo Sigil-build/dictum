@@ -253,15 +253,19 @@ public sealed class SpeechProvidersPageTests : IDisposable
     {
         var (page, session) = Open(WithPlugin());
         _secrets.Values["dictum-stt-p"] = "stray";
-        _secrets.Values["dictum-stt-remote"] = "sk-123";
+        var remote = Card(page, "remote");
+        remote.Key.Text = "sk-123";
+        await remote.Key.CommitCommand.ExecuteAsync(null);
 
+        // A remote card's secret goes in a fire-and-forget task. Once that has run, so would a plugin card's, had it any.
         Card(page, "p").RemoveCommand.Execute(null);
-        await Task.Yield();
+        remote.RemoveCommand.Execute(null);
+        await Eventually.WaitForAsync(() => !_secrets.Values.ContainsKey("dictum-stt-remote"), "the remote card's secret deleted");
 
         session.Flush();
         Assert.False(session.Config.Stt.ContainsKey("p"));
         Assert.False(Store.Load().Stt.ContainsKey("p"));
-        Assert.Equal(["dictum-stt-p", "dictum-stt-remote"], _secrets.Values.Keys.Order());
+        Assert.Equal(["dictum-stt-p"], _secrets.Values.Keys.Order());
     }
 
     [Fact]

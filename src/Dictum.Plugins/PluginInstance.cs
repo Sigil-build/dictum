@@ -341,7 +341,7 @@ public sealed class PluginInstance
 
             if (!cancelled)
             {
-                LogFailure(ex);
+                LogFailure(ex, restart);
             }
 
             if (next is not null)
@@ -490,19 +490,29 @@ public sealed class PluginInstance
 
     /// <summary>
     /// Always a warning, since a daemon's warm-up reports a status and throws nothing, so the log is where an unattended
-    /// machine shows it. The exception goes with it as a <see cref="PluginUnavailableException"/>, so that a command that
-    /// reports the same failure itself can keep it off its console (<see cref="DictumLog.ConsoleFilter"/>).
+    /// machine shows it. A first start's failure goes with a <see cref="PluginStartFailedException"/>, so that a command that
+    /// reports the same failure itself can keep it off its console (<see cref="DictumLog.ConsoleFilter"/>); a restart's
+    /// reaches no command, so it carries none. A failure Dictum expects is logged with its hint and the plugin's last
+    /// lines, and no stack trace; any other keeps its exception.
     /// </summary>
-    private void LogFailure(Exception ex)
+    private void LogFailure(Exception ex, bool restart)
     {
-        if (ex is PluginUnavailableException)
+        if (ex is PluginUnavailableException unavailable)
         {
-            _log.Warn(ex.Message, ex);
+            if (restart)
+            {
+                var details = PluginStartFailedException.Details(unavailable);
+                _log.Warn(details is null ? ex.Message : $"{ex.Message}{Environment.NewLine}{details}");
+            }
+            else
+            {
+                _log.Warn(ex.Message, new PluginStartFailedException(unavailable));
+            }
+
+            return;
         }
-        else
-        {
-            var message = $"Plugin {_launch.PluginId} could not start: {PluginText.Show(ex.Message)}";
-            _log.Warn(message, new PluginUnavailableException(message, inner: ex));
-        }
+
+        var message = $"Plugin {_launch.PluginId} could not start: {PluginText.Show(ex.Message)}";
+        _log.Warn(message, restart ? ex : new PluginStartFailedException(message, ex));
     }
 }

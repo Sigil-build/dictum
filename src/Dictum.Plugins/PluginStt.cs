@@ -52,7 +52,7 @@ public sealed class PluginStt(
         {
             // A plugin that died meanwhile refuses the connection or drops it, which the server reports as unavailable.
             answer = await server.SendAsync(
-                () => new HttpRequestMessage(HttpMethod.Post, server.Endpoint(TranscriptionsPath)) { Content = BuildForm(clip, request) },
+                () => new HttpRequestMessage(HttpMethod.Post, server.Endpoint(TranscriptionsPath)) { Content = BuildForm(config.Model, clip, request) },
                 (int)(TranscribeTimeout + (clip.Duration * 2)).TotalMilliseconds,
                 ct).ConfigureAwait(false);
         }
@@ -112,7 +112,7 @@ public sealed class PluginStt(
             // the log has it too, which is all an unattended daemon's warm-up leaves. As a PluginUnavailableException, so
             // that a command that prints the status can keep the warning off its console.
             var message = $"STT '{id}' check failed: {PluginText.Show(ex.Message)}";
-            log.Warn(message, new PluginUnavailableException(message, inner: ex));
+            log.Warn(message, new PluginStartFailedException(message, ex));
             return HealthStatus.Error($"{Name} could not start: {PluginText.Show(ex.Message)}");
         }
     }
@@ -168,13 +168,13 @@ public sealed class PluginStt(
     /// Protocol 1's form, OpenAI's with one field more: one language goes as <c>language</c>, a list to pick from as
     /// <c>languages</c>, and <c>auto</c> as neither. The model is the one configured, which the plugin already loaded.
     /// </summary>
-    private MultipartFormDataContent BuildForm(AudioClip clip, SttRequest request)
+    internal static MultipartFormDataContent BuildForm(string model, AudioClip clip, SttRequest request)
     {
         var form = new MultipartFormDataContent();
         var audio = new ByteArrayContent(Wav.ToPcm16Bytes(clip));
         audio.Headers.ContentType = new MediaTypeHeaderValue("audio/wav");
         form.Add(audio, "file", "audio.wav");
-        form.Add(new StringContent(config.Model), "model");
+        form.Add(new StringContent(model), "model");
         form.Add(new StringContent("json"), "response_format");
         if (Language(request) is { } language)
         {
