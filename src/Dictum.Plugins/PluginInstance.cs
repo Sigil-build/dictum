@@ -277,8 +277,9 @@ public sealed class PluginInstance
     /// <param name="restart">After an exit nobody asked for: a launch that fails counts against the restart budget.</param>
     private Task<PluginEndpoint> BeginStart(TimeSpan delay, bool restart)
     {
+        // The start gets the token, and always runs: only it clears _starting, even when it is cancelled at once.
         var ct = _stopping.Token;
-        var start = Task.Run(() => StartAsync(delay, restart, ct));
+        var start = Task.Run(() => StartAsync(delay, restart, ct), CancellationToken.None);
 
         // Its callers may have stopped waiting, and nobody waits for a restart: the failure is logged and kept instead.
         _ = start.ContinueWith(

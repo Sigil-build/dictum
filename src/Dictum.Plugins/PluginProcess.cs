@@ -426,46 +426,56 @@ public sealed class PluginProcess : IAsyncDisposable
     private void Read(StreamReader stream, bool fromStdout)
     {
         var name = fromStdout ? "stdout" : "stderr";
-        var reader = new Thread(() =>
-        {
-            try
-            {
-                while (stream.ReadLine() is { } line)
-                {
-                    try
-                    {
-                        OnLine(line, fromStdout);
-                    }
-                    catch (Exception ex)
-                    {
-                        // One line the log could not take: the rest are still read, so the plugin never blocks.
-                        ReportOnce($"a line on its {name} could not be handled, so it is left out of the log", ex);
-                    }
-                }
-            }
-            catch (IOException)
-            {
-                // The pipe broke rather than closed: the end of the output all the same.
-            }
-            catch (Exception ex)
-            {
-                // Nothing on this thread may end Dictum.
-                ReportOnce($"its {name} could not be read any further", ex);
-            }
-            finally
-            {
-                stream.Dispose();
-                if (Interlocked.Decrement(ref _openStreams) == 0)
-                {
-                    _outputClosed.TrySetResult();
-                }
-            }
-        })
+        var reader = new Thread(() => ReadLines(stream, name, line => OnLine(line, fromStdout), ReportOnce, OnStreamClosed))
         {
             IsBackground = true,
             Name = $"plugin {_launch.PluginId} {name}",
         };
         reader.Start();
+    }
+
+    /// <summary>
+    /// A reader thread's whole work: each line to <paramref name="onLine"/> until the stream ends, and whatever goes wrong
+    /// to <paramref name="report"/>, since nothing on such a thread may end Dictum.
+    /// </summary>
+    internal static void ReadLines(TextReader stream, string name, Action<string> onLine, Action<string, Exception> report, Action closed)
+    {
+        try
+        {
+            while (stream.ReadLine() is { } line)
+            {
+                try
+                {
+                    onLine(line);
+                }
+                catch (Exception ex)
+                {
+                    // One line the log could not take: the rest are still read, so the plugin never blocks.
+                    report($"a line on its {name} could not be handled, so it is left out of the log", ex);
+                }
+            }
+        }
+        catch (IOException)
+        {
+            // The pipe broke rather than closed: the end of the output all the same.
+        }
+        catch (Exception ex)
+        {
+            report($"its {name} could not be read any further", ex);
+        }
+        finally
+        {
+            stream.Dispose();
+            closed();
+        }
+    }
+
+    private void OnStreamClosed()
+    {
+        if (Interlocked.Decrement(ref _openStreams) == 0)
+        {
+            _outputClosed.TrySetResult();
+        }
     }
 
     /// <summary>The first failure of either reader goes to the log; the log may be what fails, so it may not throw.</summary>
@@ -538,8 +548,8 @@ public sealed class PluginProcess : IAsyncDisposable
     private async Task<int> WatchExitAsync()
     {
         // Nothing reads the streams asynchronously, so this waits for the process alone, not for its pipes to close,
-        // which a process it started may put off.
-        await _process.WaitForExitAsync().ConfigureAwait(false);
+        // which a process it started may put off. Nothing cancels this wait: its end is what cancels the others.
+        await _process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
         var code = _process.ExitCode;
 
         // What it left running: a process that follows protocol 1 exits as its stdin closes, and the group ends the rest.
@@ -559,7 +569,7 @@ public sealed class PluginProcess : IAsyncDisposable
     {
         try
         {
-            await _outputClosed.Task.WaitAsync(LeftRunningWait).ConfigureAwait(false);
+            await _outputClosed.Task.WaitAsync(LeftRunningWait, CancellationToken.None).ConfigureAwait(false);
         }
         catch (TimeoutException)
         {
@@ -591,7 +601,7 @@ public sealed class PluginProcess : IAsyncDisposable
         CloseInput();
         try
         {
-            await Exited.WaitAsync(_stopGrace).ConfigureAwait(false);
+            await Exited.WaitAsync(_stopGrace, CancellationToken.None).ConfigureAwait(false);
         }
         catch (TimeoutException)
         {
@@ -613,7 +623,7 @@ public sealed class PluginProcess : IAsyncDisposable
     {
         try
         {
-            await _outputClosed.Task.WaitAsync(LastLinesWait).ConfigureAwait(false);
+            await _outputClosed.Task.WaitAsync(LastLinesWait, CancellationToken.None).ConfigureAwait(false);
         }
         catch (TimeoutException)
         {
@@ -637,7 +647,7 @@ public sealed class PluginProcess : IAsyncDisposable
 
         try
         {
-            await Exited.WaitAsync(KillWait).ConfigureAwait(false);
+            await Exited.WaitAsync(KillWait, CancellationToken.None).ConfigureAwait(false);
         }
         catch (TimeoutException)
         {

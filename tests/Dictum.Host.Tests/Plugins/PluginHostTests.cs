@@ -407,6 +407,29 @@ public sealed class PluginHostTests : IAsyncDisposable
         Assert.DoesNotContain("   at ", logged, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A restart's failure reaches nobody else, so its hint and the plugin's last lines go to the log line by line, each
+    /// a warning of its own, spelt out: a foreground daemon prints them on its terminal.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task ARestartsFailureLogsItsLastLinesOneByOneSpeltOut()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var host = Host(NoRestartDelay, new ManualClock());
+        var folder = ConfirmedFolder(new TestPluginBehaviour { CrashAfterInfoMs = CrashAfterMs });
+        using var lease = host.Acquire(TestPlugins.Launch(folder));
+        await lease.Instance.ReadyAsync(ct);
+
+        new TestPluginBehaviour { ExitAtStart = 3, Stderr = ["no \u001b[2JCUDA here"] }.Save(Path.Combine(folder, BehaviourFile));
+        await Eventually.WaitForAsync(() => lease.Instance.State == PluginInstanceState.Failed, "the plugin given up on", Patience);
+
+        var warnings = _log.Entries.Where(e => e.Level == LogLevel.Warning).Select(e => e.Message).ToList();
+        Assert.Contains($"  Hint: {StartHint}", warnings);
+        Assert.Contains("  Last output:", warnings);
+        Assert.Contains("    no \\u001b[2JCUDA here", warnings);
+        Assert.DoesNotContain(warnings, line => line.Contains('\u001b', StringComparison.Ordinal) || line.Contains('\n', StringComparison.Ordinal));
+    }
+
     /// <summary>A start that begins once a stop is under way, as a restart whose delay has just ended may, launches nothing.</summary>
     [Fact(Timeout = TestTimeout.Generous)]
     public async Task AStartUnderAStopLaunchesNothing()

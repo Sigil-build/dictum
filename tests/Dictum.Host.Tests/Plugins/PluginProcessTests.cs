@@ -624,6 +624,81 @@ public sealed class PluginProcessTests : IDisposable
 
         // The child goes once Dictum closes its stdin, which follows the noticed exit; waiting keeps a slow runner honest.
         await plugin.Exited.WaitAsync(Patience, ct);
+        Assert.True(child is null || child.HasExited, "the child still runs");
+    }
+
+    /// <summary>
+    /// Nothing on a reader's thread may end Dictum. A stream that fails, in a way no broken pipe does, is reported once
+    /// and still counts as closed, or the wait for the plugin's last lines would last its full time at every stop.
+    /// </summary>
+    [Fact]
+    public void AReaderWhoseStreamFailsReportsItAndStillCountsAsClosed()
+    {
+        var failure = new InvalidOperationException("the stream broke");
+        var reports = new List<string>();
+        var closed = 0;
+        var lines = new List<string>();
+        var stream = new FailingReader(failure, "one line");
+
+        PluginProcess.ReadLines(stream, "stdout", lines.Add, (what, ex) => reports.Add($"{what}: {ex.Message}"), () => closed++);
+
+        Assert.Equal(["one line"], lines);
+        Assert.Equal(["its stdout could not be read any further: the stream broke"], reports);
+        Assert.Equal(1, closed);
+        Assert.True(stream.Disposed);
+    }
+
+    /// <summary>The pipe breaking is the end of the output, which needs no report.</summary>
+    [Fact]
+    public void AReaderWhosePipeBreaksReportsNothingAndCountsAsClosed()
+    {
+        var reports = new List<string>();
+        var closed = 0;
+
+        PluginProcess.ReadLines(new FailingReader(new IOException("broken pipe")), "stderr", _ => { }, (what, _) => reports.Add(what), () => closed++);
+
+        Assert.Empty(reports);
+        Assert.Equal(1, closed);
+    }
+
+    /// <summary>One line the log cannot take is reported, and the lines after it are still read, so the plugin never blocks.</summary>
+    [Fact]
+    public void ALineThatCannotBeHandledLeavesTheRestToBeRead()
+    {
+        var reports = new List<string>();
+        var lines = new List<string>();
+
+        PluginProcess.ReadLines(
+            new StringReader("first\nsecond"),
+            "stdout",
+            line =>
+            {
+                lines.Add(line);
+                if (line == "first")
+                {
+                    throw new InvalidOperationException("the log is full");
+                }
+            },
+            (what, ex) => reports.Add($"{what}: {ex.Message}"),
+            () => { });
+
+        Assert.Equal(["first", "second"], lines);
+        Assert.Equal(["a line on its stdout could not be handled, so it is left out of the log: the log is full"], reports);
+    }
+
+    private sealed class FailingReader(Exception failure, params string[] lines) : TextReader
+    {
+        private readonly Queue<string> _lines = new(lines);
+
+        public bool Disposed { get; private set; }
+
+        public override string? ReadLine() => _lines.TryDequeue(out var line) ? line : throw failure;
+
+        protected override void Dispose(bool disposing)
+        {
+            Disposed = true;
+            base.Dispose(disposing);
+        }
     }
 
     /// <summary>
