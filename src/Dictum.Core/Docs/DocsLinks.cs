@@ -17,6 +17,9 @@ public enum DocsPage
 
     /// <summary><c>dictum/privacy/</c>, from <c>docs/privacy.md</c>.</summary>
     Privacy,
+
+    /// <summary><c>dictum/guides/write-a-plugin/</c>, from <c>docs/guides/write-a-plugin.md</c>.</summary>
+    WritePlugin,
 }
 
 /// <summary>A page, and the id of a section on it, or null for the top of the page.</summary>
@@ -63,6 +66,13 @@ public static class DocsAnchors
         public const string SpeechRecognition = "speech-recognition";
         public const string LlmCleanup = "llm-cleanup";
     }
+
+    /// <summary>On <see cref="DocsPage.WritePlugin"/>.</summary>
+    public static class WritePlugin
+    {
+        /// <summary>How a speech provider and a profile use a plugin; <c>dictum plugins add</c> links to it.</summary>
+        public const string Use = "use";
+    }
 }
 
 /// <summary>
@@ -102,6 +112,7 @@ public static class DocsLinks
         new(DocsPage.Troubleshooting, DocsAnchors.Troubleshooting.SpeechRecognition),
         new(DocsPage.Troubleshooting, DocsAnchors.Troubleshooting.LlmCleanup),
         new(DocsPage.Privacy, null),
+        new(DocsPage.WritePlugin, DocsAnchors.WritePlugin.Use),
     ];
 
     /// <summary>
@@ -132,6 +143,7 @@ public static class DocsLinks
             DocsPage.Settings => "dictum/reference/settings/",
             DocsPage.Troubleshooting => "dictum/troubleshooting/",
             DocsPage.Privacy => "dictum/privacy/",
+            DocsPage.WritePlugin => "dictum/guides/write-a-plugin/",
             _ => throw new ArgumentOutOfRangeException(nameof(page), page, null),
         };
 

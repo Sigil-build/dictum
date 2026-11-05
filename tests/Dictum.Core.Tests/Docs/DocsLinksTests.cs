@@ -7,7 +7,7 @@ using Dictum.Testing;
 namespace Dictum.Core.Tests.Docs;
 
 /// <summary>
-/// The documentation URLs the app and <c>dictum doctor</c> open. Each release keeps them for years, so their scheme and
+/// The documentation URLs the app opens and <c>dictum doctor</c> and <c>dictum plugins add</c> print. Each release keeps them for years, so their scheme and
 /// sections are fixed here, and each one must name a section that both languages' pages in <c>docs/</c> have.
 /// </summary>
 public sealed partial class DocsLinksTests
@@ -20,6 +20,7 @@ public sealed partial class DocsLinksTests
     [InlineData(DocsPage.Settings, "en", "pasting", "https://docs.sigil.build/dictum/reference/settings/#pasting")]
     [InlineData(DocsPage.Troubleshooting, "uk", "hotkeys", "https://docs.sigil.build/uk/dictum/troubleshooting/#hotkeys")]
     [InlineData(DocsPage.Privacy, "uk", null, "https://docs.sigil.build/uk/dictum/privacy/")]
+    [InlineData(DocsPage.WritePlugin, "uk", "use", "https://docs.sigil.build/uk/dictum/guides/write-a-plugin/#use")]
     public void TheUrlsFollowTheSiteScheme(DocsPage page, string language, string? anchor, string expected) =>
         Assert.Equal(expected, DocsLinks.For(page, language, anchor).AbsoluteUri);
 
@@ -61,6 +62,7 @@ public sealed partial class DocsLinksTests
             .. SettingsSections.Select(id => $"dictum/reference/settings/#{id}"),
             .. TroubleshootingSections.Select(id => $"dictum/troubleshooting/#{id}"),
             "dictum/privacy/",
+            "dictum/guides/write-a-plugin/#use",
         ];
 
         Assert.Equal(expected, DocsLinks.Targets.Select(target => DocsLinks.For(target.Page, "en", target.Anchor).AbsoluteUri[DocsLinks.Root.Length..]));
@@ -72,7 +74,8 @@ public sealed partial class DocsLinksTests
     {
         var anchors = Constants(typeof(DocsAnchors)).Select(id => new DocsTarget(DocsPage.Home, id))
             .Concat(Constants(typeof(DocsAnchors.Settings)).Select(id => new DocsTarget(DocsPage.Settings, id)))
-            .Concat(Constants(typeof(DocsAnchors.Troubleshooting)).Select(id => new DocsTarget(DocsPage.Troubleshooting, id)));
+            .Concat(Constants(typeof(DocsAnchors.Troubleshooting)).Select(id => new DocsTarget(DocsPage.Troubleshooting, id)))
+            .Concat(Constants(typeof(DocsAnchors.WritePlugin)).Select(id => new DocsTarget(DocsPage.WritePlugin, id)));
 
         Assert.Empty(anchors.Except(DocsLinks.Targets));
         Assert.Equal(DocsLinks.Targets.Count, DocsLinks.Targets.Distinct().Count());

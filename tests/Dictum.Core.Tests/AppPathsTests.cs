@@ -102,4 +102,8 @@ public class AppPathsTests
         Assert.True(Path.IsPathFullyQualified(paths.DataDirectory));
         Assert.NotEqual(paths.ConfigDirectory, paths.DataDirectory);
     }
+
+    [Fact]
+    public void TheTrustRecordLivesInTheDataFolder() =>
+        Assert.Equal(Path.Combine("d", "plugin-trust.json"), new AppPaths("c", "d").WithDownloads(@"E:\x").PluginTrustFile);
 }

@@ -40,6 +40,8 @@ On Windows, run `dictum` by its full path: see [The command line](../getting-sta
 | `downloads.json` | Downloads that have not finished, so that they continue after a restart. |
 | `setup.json` | The setup wizard's answers while its files download, so that a restart returns to the wizard. |
 | `update-check.json` | When the desktop app last asked GitHub for the newest version, what it found, and the last version it told you about, so that a restart does not tell you again. See [Check for updates](settings.md#check-for-updates). |
+| `plugin-trust.json` | The plugins you confirmed with `dictum plugins add`: for each, its folder, its program, and the SHA-256 of each of its files: `plugin.json`, the program and the files that its `program` lists. Dictum starts a plugin only while they all still match. See [Write a plugin](../guides/write-a-plugin.md#add). |
+| `plugin-cache/` | A folder for each plugin, by its id, for what its program caches, such as Python's compiled modules, so that nothing of it lands in the plugin's own folder. Safe to delete while no plugin runs. See [Write a plugin](../guides/write-a-plugin.md#launch). |
 | `remote-desktop.token` | Linux on Wayland: the desktop's permission for Dictum to press Ctrl+V. Delete it, and the desktop asks again. |
 | `tray-icons/` | Linux: the images of the tray icon. |
 | `dictum.sock` | Windows: the socket through which the desktop app and `dictum` commands talk to the daemon while it runs. On Linux it is `$XDG_RUNTIME_DIR/dictum.sock`. |
@@ -50,7 +52,7 @@ Everything Dictum downloads goes into one folder: the data folder, unless you ch
 
 | File | What it holds |
 | --- | --- |
-| `models/` | The speech models, `ggml-*.bin`, and the voice activity detector. A speech model takes 265 MB to 875 MB. |
+| `models/` | The speech models, `ggml-*.bin`, and the voice activity detector. A speech model takes 265 MB to 875 MB. A plugin's model that a provider names by its id is in `models/<plugin id>/<model id>/`: see [Write a plugin](../guides/write-a-plugin.md#use). |
 
 The history, the logs and the files above stay in the data folder. One Dictum uses one downloads folder: a folder shared by two systems on one computer, or by two users, is not supported. If the folder is on a drive that is not connected, Dictum says so and downloads nothing until you connect the drive or choose another folder.
 
@@ -144,8 +146,9 @@ The notes are here, below the file, because the example is plain JSON that you c
 `stt`
 :   The speech recognition providers. Each has an id of your choice, here `local`, which profiles name.
 
-    - `type`: `whisper-local` runs Whisper on your computer; `openai-compatible` sends the recording to a server, with `baseUrl`, `model`, `apiKey` and `timeoutMs` (60000 if you leave it out).
+    - `type`: `whisper-local` runs Whisper on your computer; `openai-compatible` sends the recording to a server, with `baseUrl`, `model`, `apiKey` and `timeoutMs` (60000 if you leave it out); `plugin` runs a plugin you added, as below.
     - `model`: the model's file name in the `models` folder, or a full path.
+    - With `"type": "plugin"`, the keys are `plugin`, the id of a plugin under `plugins`; `model`, the id of a model in the plugin's `plugin.json`, which stands for the folder `models/<plugin id>/<model id>`, or the full path of a file or a folder; and `threads`, 1 or more, which the plugin gets as `--threads`, or none to let it decide. See [Write a plugin](../guides/write-a-plugin.md#use).
     - `vad` and `vadModel`: the voice activity detector, which finds the speech in a recording, so that a recording without speech gives no text.
     - `runtime`: `auto` uses the graphics card when it can and the processor otherwise; `cpu` always uses the processor.
     - Not in the example: `threads`, the processor threads Whisper uses, where 0 chooses from the number of cores.
@@ -163,6 +166,9 @@ The notes are here, below the file, because the example is plain JSON that you c
     - Not in the example: `temperature`, 0 to 2, 0.2 if you leave it out; `preserveText`, which rejects an answer that changes the text instead of fixing it, and is on for the `cleanup` prompt if you leave it out; `maxTokens`, the longest answer, which grows with the text if you leave it out.
 
     [LLM clean-up](../guides/llm-cleanup.md) sets this up step by step.
+
+`plugins`
+:   Not in the example: the plugins you added, by id, each with the full `path` of its folder, as in `"plugins": { "hello": { "path": "C:\\Users\\you\\plugins\\hello" } }`. `dictum plugins add` and `dictum plugins remove` write it. A plugin listed here starts only once you have confirmed it on this computer: see [Write a plugin](../guides/write-a-plugin.md#add).
 
 `profiles`
 :   Your profiles, in order. `dictum` commands use the first one when you name none with `--profile`.

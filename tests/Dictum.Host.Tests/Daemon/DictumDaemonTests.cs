@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Dictum.Audio;
 using Dictum.Core;
 using Dictum.Core.Audio;
@@ -8,6 +9,7 @@ using Dictum.Host.Daemon;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
 using Dictum.Platform.Hotkeys;
+using Dictum.Plugins;
 using Dictum.Testing;
 
 namespace Dictum.Host.Tests.Daemon;
@@ -485,7 +487,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         var response = await daemon.HandleAsync(new IpcRequest(IpcCommand.Start, "uk"), _ct);
 
         Assert.False(response.Ok);
-        Assert.Contains("Microphone not found", response.Error);
+        Assert.Equal("Microphone not found. Run 'dictum devices'.", response.Error);
     }
 
     [Fact]
@@ -577,6 +579,80 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         Assert.True(response.Ok, response.Error);
         Assert.Equal((1, 1), (_engines[^1].Audio.Starts, _engines[^1].Audio.Stops));
         Assert.True(response.Test!.LatencyMs >= 0);
+    }
+
+    // Settings → Speech providers → Test shows only the failure's text, which has no field for a hint: the hint goes
+    // after the message, and a plugin's last lines after both, as in doctor's row.
+    [Fact]
+    public async Task AFailedTestCarriesTheHintAndThePluginsLastLines()
+    {
+        _stt.FailWith = new PluginUnavailableException(
+            "Plugin test exited with code 1 while starting.",
+            "See the plugin's output, if it printed any, and its own documentation.",
+            ["one", "two", "three", "four", "five", "six"]);
+        await using var daemon = await StartAsync(Config());
+
+        var response = await daemon.HandleAsync(new IpcRequest(IpcCommand.TestStt, Stt: "s", Sample: true), _ct);
+
+        Assert.False(response.Ok);
+        Assert.Equal(
+            "Plugin test exited with code 1 while starting. See the plugin's output, if it printed any, and its own documentation; last output: two | three | four | five | six",
+            response.Error);
+    }
+
+    [Fact]
+    public async Task AFailedTestWithoutOutputCarriesTheHint()
+    {
+        _stt.FailWith = new PluginUnavailableException(
+            "Plugin test has not been confirmed on this computer.", "Confirm it with 'dictum plugins add \"C:\\p\"'.");
+        await using var daemon = await StartAsync(Config());
+
+        var response = await daemon.HandleAsync(new IpcRequest(IpcCommand.TestStt, Stt: "s", Sample: true), _ct);
+
+        Assert.Equal("Plugin test has not been confirmed on this computer. Confirm it with 'dictum plugins add \"C:\\p\"'.", response.Error);
+    }
+
+    /// <summary>The failure's kind is what lets the CLI exit 3 for a provider that is down, as its own commands do.</summary>
+    [Fact]
+    public async Task AFailureOfAProviderNamesItsKind()
+    {
+        await using var daemon = await StartAsync(Config());
+
+        _stt.FailWith = new PluginUnavailableException("Plugin test has not been confirmed on this computer.", "Confirm it.");
+        var plugin = await daemon.HandleAsync(new IpcRequest(IpcCommand.TestStt, Stt: "s", Sample: true), _ct);
+        _stt.FailWith = new ProviderUnavailableException("The server is not answering.");
+        var provider = await daemon.HandleAsync(new IpcRequest(IpcCommand.TestStt, Stt: "s", Sample: true), _ct);
+        _stt.FailWith = new InvalidOperationException("Something else.");
+        var other = await daemon.HandleAsync(new IpcRequest(IpcCommand.TestStt, Stt: "s", Sample: true), _ct);
+
+        Assert.Equal(IpcFailureKind.ProviderUnavailable, plugin.Kind);
+        Assert.Equal("Plugin test has not been confirmed on this computer. Confirm it.", plugin.Error);
+        Assert.Equal(IpcFailureKind.ProviderUnavailable, provider.Kind);
+        Assert.Null(other.Kind);
+    }
+
+    /// <summary>
+    /// A plugin that cannot start, such as one not confirmed, is a failure Dictum expects: the log gets a warning, with
+    /// its hint and last lines and no stack trace, as the plugin host logs it. Any other failure keeps its exception.
+    /// </summary>
+    [Fact]
+    public async Task AnExpectedPluginFailureIsLoggedWithoutAStackTrace()
+    {
+        var log = new ListLog();
+        await using var daemon = await StartAsync(Config(), log: log);
+
+        _stt.FailWith = new PluginUnavailableException("Plugin test has not been confirmed on this computer.", "Confirm it.", ["one"]);
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.TestStt, Stt: "s", Sample: true), _ct);
+        _stt.FailWith = new IOException("The disk is gone.");
+        await daemon.HandleAsync(new IpcRequest(IpcCommand.TestStt, Stt: "s", Sample: true), _ct);
+
+        var expected = Assert.Single(log.Entries, entry => entry.Message.Contains("has not been confirmed", StringComparison.Ordinal));
+        Assert.Equal(
+            (LogLevel.Warning, $"IPC '{IpcCommand.TestStt}' failed: Plugin test has not been confirmed on this computer. Confirm it; last output: one", (Exception?)null),
+            expected);
+        var unexpected = Assert.Single(log.Entries, entry => entry.Message.Contains("The disk is gone.", StringComparison.Ordinal));
+        Assert.Equal(LogLevel.Error, unexpected.Level);
+        Assert.IsType<IOException>(unexpected.Exception);
     }
 
     [Fact]
@@ -816,6 +892,71 @@ public sealed class DictumDaemonTests : IAsyncDisposable
         await WaitForAsync(() => daemon.Status().WarmedUp == true);
     }
 
+    // A reload while the old engine still warms up disposes it, and that warm-up then fails: the next provider it asks
+    // for is refused. Nothing is wrong, so that is no warning; a failure of the engine in use still is.
+    [Fact]
+    public async Task AReplacedEnginesWarmUpFailureIsNoWarning()
+    {
+        var log = new ListLog();
+        var replaced = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var disposed = new ObjectDisposedException("Dictum.Host.DictumHost");
+        _warmUp = replaced.Task;
+        await using var daemon = await StartAsync(Config(), log: log);
+        _warmUp = Task.FromException(new InvalidOperationException("The model file is damaged."));
+        await daemon.ApplyConfigAsync(Config(), _ct);
+
+        replaced.SetException(disposed);
+        await daemon.IdleAsync().WaitAsync(Patience, _ct);
+
+        Assert.Equal(
+            ["Warm-up failed: The model file is damaged."],
+            log.Lines.Where(line => line.Level == LogLevel.Warning).Select(line => line.Message));
+        Assert.Contains(log.Lines, line => line.Level == LogLevel.Info && line.Message.Contains(disposed.Message, StringComparison.Ordinal));
+    }
+
+    // The daemon stops the plugins no engine holds once the engine in use has warmed up and taken its own. The hook
+    // gets whether its engine is still in use, which a reload ends.
+    [Fact]
+    public async Task TheAfterWarmUpHookRunsForEachWarmUpOfTheCurrentEngine()
+    {
+        var runs = new ConcurrentQueue<Func<bool>>();
+        await using var daemon = await StartAsync(Config(), afterWarmUp: isCurrent =>
+        {
+            runs.Enqueue(isCurrent);
+            return Task.CompletedTask;
+        });
+        await WaitForAsync(() => runs.Count == 1);
+        await daemon.ApplyConfigAsync(Config(), _ct);
+        await WaitForAsync(() => runs.Count == 2);
+
+        // The third engine is replaced by the fourth while it still warms up, and its warm-up ends after the fourth's.
+        var replaced = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _warmUp = replaced.Task;
+        await daemon.ApplyConfigAsync(Config(), _ct);
+        _warmUp = Task.CompletedTask;
+        await daemon.ApplyConfigAsync(Config(), _ct);
+        await WaitForAsync(() => runs.Count == 3);
+        replaced.SetResult();
+
+        // Every warm-up has ended, the replaced engine's included, while the daemon still runs: a disposal would stop
+        // the hook by itself, whether or not the engine was the current one.
+        await daemon.IdleAsync().WaitAsync(Patience, _ct);
+
+        Assert.Equal(4, _engines.Count);
+        Assert.Equal([false, false, true], runs.Select(isCurrent => isCurrent()));
+    }
+
+    [Fact]
+    public async Task AFailingAfterWarmUpHookIsLoggedAndTheWarmUpStillEnds()
+    {
+        var log = new ListLog();
+        await using var daemon = await StartAsync(Config(), log: log, afterWarmUp: _ => throw new InvalidOperationException("sweep failed"));
+
+        await WaitForAsync(() => daemon.Status().WarmedUp == true && log.Has("sweep failed"));
+
+        Assert.Contains(log.Lines, l => l.Level == LogLevel.Warning && l.Message.Contains("sweep failed", StringComparison.Ordinal));
+    }
+
     private async Task<List<IpcEvent>> CollectAsync(IpcSubscriber subscriber, Func<List<IpcEvent>, bool> until)
     {
         var events = new List<IpcEvent>();
@@ -830,7 +971,12 @@ public sealed class DictumDaemonTests : IAsyncDisposable
     }
 
     private async Task<DictumDaemon> StartAsync(
-        DictumConfig config, bool withHotkeys = true, TimeProvider? time = null, DaemonHostCommands? host = null)
+        DictumConfig config,
+        bool withHotkeys = true,
+        TimeProvider? time = null,
+        DaemonHostCommands? host = null,
+        Func<Func<bool>, Task>? afterWarmUp = null,
+        ILog? log = null)
     {
         var platform = new PlatformServices(
             "test",
@@ -845,7 +991,7 @@ public sealed class DictumDaemonTests : IAsyncDisposable
             var engine = new FakeEngine(c, _stt) { WarmingUp = _warmUp };
             _engines.Add(engine);
             return engine;
-        }, platform, _sounds, NullLog.Instance, _events, host: host, time: time);
+        }, platform, _sounds, log ?? NullLog.Instance, _events, host: host, time: time, afterWarmUp: afterWarmUp);
         await daemon.StartAsync(_ct);
         return daemon;
     }

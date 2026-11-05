@@ -33,6 +33,7 @@ public sealed class DictumDaemon : IAsyncDisposable
     private readonly SttTester _tester;
     private readonly DaemonCommandRouter _router;
     private readonly BackgroundWork _work = new();
+    private readonly Func<Func<bool>, Task>? _afterWarmUp;
     private IDictationEngine _engine;
     private IReadOnlyList<ConfigIssue> _configWarnings;
     private (DictumConfig Config, IReadOnlyList<ConfigIssue>? Warnings)? _pendingConfig;
@@ -46,6 +47,11 @@ public sealed class DictumDaemon : IAsyncDisposable
     private bool _stoppingAnnounced;
     private bool _disposed;
 
+    /// <param name="afterWarmUp">
+    /// Runs after each warm-up of the engine in use, such as the sweep that stops the plugins no engine holds; not for
+    /// an engine that a reload replaced while it warmed up. It gets whether that engine is still in use, since a reload
+    /// may replace it while the step runs. A failure is logged.
+    /// </param>
     public DictumDaemon(
         DictumConfig config,
         Func<DictumConfig, IDictationEngine> createEngine,
@@ -55,9 +61,11 @@ public sealed class DictumDaemon : IAsyncDisposable
         IpcEventHub? events = null,
         IReadOnlyList<ConfigIssue>? configWarnings = null,
         DaemonHostCommands? host = null,
-        TimeProvider? time = null)
+        TimeProvider? time = null,
+        Func<Func<bool>, Task>? afterWarmUp = null)
     {
         _createEngine = createEngine;
+        _afterWarmUp = afterWarmUp;
         _platform = platform;
         _sounds = sounds;
         _log = log;
@@ -154,6 +162,12 @@ public sealed class DictumDaemon : IAsyncDisposable
         _stopping.Dispose();
         _gate.Dispose();
     }
+
+    /// <summary>
+    /// Completes once the work the daemon runs in the background has ended, warm-ups and the step after them included.
+    /// For the tests, which must see that work end without the disposal that stops it.
+    /// </summary>
+    internal Task IdleAsync() => _work.IdleAsync();
 
     /// <summary>The message a client sees: a dictation failure names its cause.</summary>
     internal static string MessageOf(Exception ex) =>
@@ -496,15 +510,49 @@ public sealed class DictumDaemon : IAsyncDisposable
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _log.Warn($"Warm-up failed: {ex.Message}");
+            if (IsCurrent(engine))
+            {
+                _log.Warn($"Warm-up failed: {ex.Message}");
+            }
+            else
+            {
+                // A reload disposed the engine while it warmed up, so its next provider was refused. The new engine's
+                // own warm-up says what it finds.
+                _log.Info($"Warm-up of a replaced engine stopped: {ex.Message}");
+            }
         }
 
         // A failed warm-up ends "loading" too: the first dictation reports the problem. An engine a reload replaced
         // meanwhile says nothing.
-        if (ReferenceEquals(engine, _engine) && !_stopping.IsCancellationRequested)
+        if (IsCurrent(engine))
         {
             _warmedUp = true;
             PublishStatus();
+            await AfterWarmUpAsync(engine).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Whether <paramref name="engine"/> is still the one in use. A reload replaces the engine before it disposes the old
+    /// one, so an engine that is still current has let go of nothing it uses.
+    /// </summary>
+    private bool IsCurrent(IDictationEngine engine) =>
+        ReferenceEquals(engine, Volatile.Read(ref _engine)) && !_stopping.IsCancellationRequested;
+
+    private async Task AfterWarmUpAsync(IDictationEngine engine)
+    {
+        if (_afterWarmUp is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _afterWarmUp(() => IsCurrent(engine)).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _log.Warn($"The step after the warm-up failed: {ex.Message}", ex);
         }
     }
 

@@ -45,6 +45,9 @@ internal sealed record DeviceJson(string Id, string Name, string HostApi, int Ch
 
 internal sealed record ModelJson(string Id, string Kind, string Title, string File, long Size, bool Installed, bool InCatalog);
 
+/// <param name="Kind"><c>built-in</c> or <c>custom</c> (a plugin the user added).</param>
+internal sealed record PluginJson(string Id, string Name, string? Version, string Kind, string? Path, string State);
+
 internal sealed record InitJson(string Config, string SpeechModel, IReadOnlyList<string> Downloaded, string Cleanup, bool? Autostart);
 
 /// <param name="Docs">The URL of the troubleshooting section that explains the row; null for a row that is OK.</param>
@@ -61,6 +64,7 @@ internal sealed record DoctorJson(string Version, string Os, string Rid, IReadOn
 [JsonSerializable(typeof(List<DeviceJson>))]
 [JsonSerializable(typeof(DoctorJson))]
 [JsonSerializable(typeof(List<ModelJson>))]
+[JsonSerializable(typeof(List<PluginJson>))]
 [JsonSerializable(typeof(InitJson))]
 [JsonSerializable(typeof(List<HistoryEntry>))]
 [JsonSerializable(typeof(DaemonStatus))]

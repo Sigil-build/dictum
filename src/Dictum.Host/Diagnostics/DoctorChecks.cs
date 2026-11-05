@@ -8,12 +8,16 @@ using Dictum.Core.Stt;
 using Dictum.Host.Daemon;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
+using Dictum.Plugins;
 using Dictum.Setup;
 
 namespace Dictum.Host.Diagnostics;
 
 /// <param name="ConfigError">Set when the config file exists but cannot be loaded; <paramref name="Config"/> is then null.</param>
 /// <param name="Daemon">The <c>daemon</c> row: the CLI asks the socket, the daemon reports on itself.</param>
+/// <param name="PluginCheckTimeout">
+/// How long a plugin provider's row waits; a little longer than a plugin may take to start, when null.
+/// </param>
 public sealed record DoctorInputs(
     string ConfigPath,
     DictumConfig? Config,
@@ -26,7 +30,8 @@ public sealed record DoctorInputs(
     Func<string, ISpeechToText> GetStt,
     Func<string, ITextProcessor> GetProcessor,
     Func<CancellationToken, Task<HealthStatus>> Daemon,
-    TimeSpan? CheckTimeout = null)
+    TimeSpan? CheckTimeout = null,
+    TimeSpan? PluginCheckTimeout = null)
 {
     /// <summary>The CLI's checks: providers from an engine built on first use, and a daemon row that asks the socket.</summary>
     public static DoctorInputs ForCli(
@@ -76,6 +81,9 @@ public sealed record DoctorInputs(
 public static class DoctorChecks
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(15);
+
+    /// <summary>A plugin's row waits this much past its start timeout, so that it shows the plugin's own reason for failing.</summary>
+    private static readonly TimeSpan PluginMargin = TimeSpan.FromSeconds(5);
 
     /// <summary>The CLI's <c>daemon</c> row: what the daemon on <paramref name="socketPath"/> says about itself.</summary>
     /// <param name="timeout">How long the daemon has to answer; the client's default when null.</param>
@@ -131,16 +139,25 @@ public static class DoctorChecks
 
         if (config is not null)
         {
+            // A plugin's check starts the plugin, which may load its model first. They all start at once, so that
+            // plugins that hang take one timeout between them, not one each: the System page waits 2 minutes for all
+            // of doctor. The rows keep the config's order.
+            var pluginTimeout = inputs.PluginCheckTimeout ?? PluginTimings.Default.StartTimeout + PluginMargin;
+            var plugins = config.Stt
+                .Where(stt => stt.Value is PluginSttConfig)
+                .ToDictionary(stt => stt.Key, stt => CheckAsync(() => inputs.GetStt(stt.Key).CheckAsync(ct), pluginTimeout, ct));
             foreach (var id in config.Stt.Keys)
             {
-                Add(PlatformCheckNames.Stt(id), await CheckAsync(() => inputs.GetStt(id).CheckAsync(ct), timeout, ct).ConfigureAwait(false));
+                var check = plugins.TryGetValue(id, out var started) ? started : CheckAsync(() => inputs.GetStt(id).CheckAsync(ct), timeout, ct);
+                Add(PlatformCheckNames.Stt(id), await check.ConfigureAwait(false));
             }
 
             foreach (var id in config.Processors.Keys)
             {
-                if (inputs.GetProcessor(id) is IHealthCheck check)
+                if (inputs.GetProcessor(id) is IHealthCheck)
                 {
-                    Add(PlatformCheckNames.Processor(id), await CheckAsync(() => check.CheckAsync(ct), timeout, ct).ConfigureAwait(false));
+                    // Asked for on each try: after a reload only the new engine's processor can answer.
+                    Add(PlatformCheckNames.Processor(id), await CheckAsync(() => ((IHealthCheck)inputs.GetProcessor(id)).CheckAsync(ct), timeout, ct).ConfigureAwait(false));
                 }
             }
         }
@@ -200,16 +217,34 @@ public static class DoctorChecks
     {
         try
         {
-            var task = check();
-            var finished = await Task.WhenAny(task, Task.Delay(timeout, ct)).ConfigureAwait(false);
-            return finished == task
-                ? await task.ConfigureAwait(false)
-                : HealthStatus.Error($"No answer within {Duration(timeout)}");
+            return await AnswerAfterAReloadAsync(check, timeout, ct).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             return HealthStatus.Error(ex.Message);
         }
+    }
+
+    /// <summary>A reload may dispose the engine under a check. The next call reaches the new engine, so it gets one more try.</summary>
+    private static async Task<HealthStatus> AnswerAfterAReloadAsync(Func<Task<HealthStatus>> check, TimeSpan timeout, CancellationToken ct)
+    {
+        try
+        {
+            return await AnswerAsync(check, timeout, ct).ConfigureAwait(false);
+        }
+        catch (ObjectDisposedException)
+        {
+            return await AnswerAsync(check, timeout, ct).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task<HealthStatus> AnswerAsync(Func<Task<HealthStatus>> check, TimeSpan timeout, CancellationToken ct)
+    {
+        var task = check();
+        var finished = await Task.WhenAny(task, Task.Delay(timeout, ct)).ConfigureAwait(false);
+        return finished == task
+            ? await task.ConfigureAwait(false)
+            : HealthStatus.Error($"No answer within {Duration(timeout)}");
     }
 
     private static string Duration(TimeSpan time) =>

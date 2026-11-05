@@ -4,6 +4,7 @@ using Dictum.Cli.Output;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Text;
 using Dictum.Core.Vocabulary;
 using Dictum.Host;
 using Dictum.Host.Ipc;
@@ -213,7 +214,7 @@ internal static class InitCommand
             }
             catch (ConfigException ex)
             {
-                context.Error.WriteLine($"warning: {ex.Message}");
+                context.Error.WriteLine($"warning: {TerminalText.Show(ex.Message)}");
             }
         }
 
@@ -358,7 +359,7 @@ internal static class InitCommand
             var status = await check.CheckAsync(ct).ConfigureAwait(false);
             if (status.Level != HealthLevel.Ok)
             {
-                context.Error.WriteLine($"warning: {status.Detail}. The setting is saved anyway; cleanup is skipped while the server is unreachable.");
+                context.Error.WriteLine($"warning: {TerminalText.Show(status.Detail)}. The setting is saved anyway; cleanup is skipped while the server is unreachable.");
             }
         }
     }

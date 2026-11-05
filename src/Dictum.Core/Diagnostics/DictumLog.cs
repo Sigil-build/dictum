@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Dictum.Core.Text;
 
 namespace Dictum.Core.Diagnostics;
 
@@ -30,6 +31,12 @@ public sealed class DictumLog : ILog, IDisposable
 
     public bool IncludeText { get; }
 
+    /// <summary>
+    /// Says whether a message goes to the console, after its level allowed it, for a command that reports a failure itself
+    /// and would print it twice. The file has every message either way.
+    /// </summary>
+    public Func<LogLevel, string, Exception?, bool>? ConsoleFilter { get; init; }
+
     /// <summary>The log file, for messages that point at it; null without a logs directory.</summary>
     public string? FilePath => _filePath;
 
@@ -37,11 +44,14 @@ public sealed class DictumLog : ILog, IDisposable
     {
         lock (_gate)
         {
-            if (_console is not null && level >= _consoleLevel)
+            if (_console is not null && level >= _consoleLevel && (ConsoleFilter?.Invoke(level, message, exception) ?? true))
             {
+                // What a plugin or a remote server said may be in the message or the exception; the file keeps it raw. A
+                // message is one line, so that its text cannot forge another; only an exception's dump keeps its breaks.
+                var line = $"{Prefix(level)}{TerminalText.Show(message)}";
                 _console.WriteLine(exception is null || _consoleLevel > LogLevel.Debug
-                    ? $"{Prefix(level)}{message}"
-                    : $"{Prefix(level)}{message}{Environment.NewLine}{exception}");
+                    ? line
+                    : $"{line}{Environment.NewLine}{TerminalText.ShowLines(exception.ToString())}");
             }
 
             WriteFile(level, message, exception);

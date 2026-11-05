@@ -6,7 +6,7 @@ Dictum works on your computer. This page says what it uses there, when, and what
 
 | What | When Dictum uses it | Where it goes |
 | --- | --- | --- |
-| The microphone | While you dictate, while **Settings → General** is open for its level meter, and during a provider **Test** | Nowhere, with local Whisper. To a speech server only if a profile uses one. |
+| The microphone | While you dictate, while **Settings → General** is open for its level meter, and during a provider **Test** | Nowhere, with local Whisper. To a speech server or a [plugin](#plugins) only if a profile uses one. |
 | The keyboard | Listens for your hotkeys while the daemon runs; presses Ctrl+V to paste | Nowhere: no key is stored or logged. |
 | The clipboard | While it pastes: saves the text that was there, and puts it back | Nowhere. |
 | The keyring | Only for API keys written as `secret:<name>` | Sent only to the server that key is for. |
@@ -28,7 +28,7 @@ The setup wizard does not open the microphone. Listing the microphones, as `dict
 
 A recording stays in memory until it is turned into text, and is never written to disk. The one exception is `dictum record --save-audio <file>`, which saves it to the file you name. History keeps the text, never the sound.
 
-With a local Whisper provider, the sound never leaves your computer. If a profile uses a remote server for speech recognition, each of its recordings goes to that server: see [Network](#network).
+With a local Whisper provider, the sound never leaves your computer. If a profile uses a remote server for speech recognition, each of its recordings goes to that server: see [Network](#network). If it uses a plugin, each recording goes to that plugin's program: see [Plugins you add](#plugins).
 
 ## Keyboard {#keyboard}
 
@@ -85,6 +85,17 @@ A profile with a local Whisper provider and no LLM prompt sends nothing over the
 
 The desktop app and the daemon talk to each other through a local socket file, which is not open to the network.
 
+### Plugins you add {#plugins}
+
+A plugin is a speech engine that runs as a program of its own: see [Write a plugin](guides/write-a-plugin.md). One that you add with `dictum plugins add` is a program that Dictum did not check.
+
+- **It runs with your rights.** Like any program you start, it can read and change your files and use the network. Dictum cannot see what it does. Add only plugins that come from someone you trust.
+- **What Dictum sends it.** For each dictation in a profile that uses the plugin, Dictum sends it the recording as a WAV file, with the profile's language and speech hint, which includes your words. It sends them only to an address on your computer, `127.0.0.1`, `::1` or `localhost`, with a key that is new at every start, and refuses a plugin that announces an address anywhere else. What the plugin does with them is up to the plugin.
+- **The check before every start.** When you confirm a plugin, Dictum records in `plugin-trust.json` the SHA-256 of its `plugin.json`, of the program that it names, and of each file in the files and folders that its `program` field lists, which may be the whole folder. Before every start it compares them with that record. After a change, or a file added to a listed folder or gone from it, it does not start the plugin until you confirm it again. The check covers `plugin.json`, the program and the listed entries, and nothing else: not a file outside the entries, such as a model the plugin loads, nor what the program itself loads from elsewhere on your computer, such as the interpreter a script runs in and its libraries.
+- **Its output.** Every line the plugin prints goes into Dictum's log, with the characters a terminal would act on spelt out. A plugin that prints the text it heard puts your dictation in the log.
+
+Dictum's own plugins arrive in a later version.
+
 ## No telemetry {#telemetry}
 
 Dictum does not collect or send usage statistics, crash reports or analytics. The update check is no telemetry: it asks which version is the newest and tells GitHub nothing but the version you run, and you can turn it off. The connections under [Network](#network) are the only ones in its code.
@@ -115,4 +126,4 @@ Dictum writes what it does to log files in the `logs` folder: `%LOCALAPPDATA%\Di
 
 ## Other files {#files}
 
-Your settings are in `config.json` in `%APPDATA%\Dictum` on Windows and `~/.config/dictum` on Linux, with your own prompts in its `prompts` folder. They hold your words, your replace rules and the addresses of your servers. The models, the history and the logs are in `%LOCALAPPDATA%\Dictum` or `~/.local/share/dictum`; the models are elsewhere if you chose another [downloads folder](reference/files.md#downloads-folder). Uninstalling Dictum keeps both folders; delete them to remove everything. [The files Dictum keeps](reference/files.md) lists each file.
+Your settings are in `config.json` in `%APPDATA%\Dictum` on Windows and `~/.config/dictum` on Linux, with your own prompts in its `prompts` folder. They hold your words, your replace rules, the addresses of your servers and the folders of your plugins. The models, the history and the logs are in `%LOCALAPPDATA%\Dictum` or `~/.local/share/dictum`; the models are elsewhere if you chose another [downloads folder](reference/files.md#downloads-folder). Uninstalling Dictum keeps both folders; delete them to remove everything. [The files Dictum keeps](reference/files.md) lists each file.

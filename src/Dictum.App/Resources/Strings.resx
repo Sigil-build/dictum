@@ -689,6 +689,9 @@
   <data name="SettingsProviderRemote" xml:space="preserve">
     <value>Remote · {0}</value>
   </data>
+  <data name="ProviderLabelPlugin" xml:space="preserve">
+    <value>Plugin {0}</value>
+  </data>
   <data name="SettingsProfilesNew" xml:space="preserve">
     <value>+ New profile</value>
   </data>
@@ -784,6 +787,18 @@
   </data>
   <data name="SettingsProvidersRemoteTitle" xml:space="preserve">
     <value>Remote server · {0}</value>
+  </data>
+  <data name="SettingsProvidersPluginTitle" xml:space="preserve">
+    <value>Plugin · {0}</value>
+  </data>
+  <data name="SettingsProvidersPlugin" xml:space="preserve">
+    <value>Plugin</value>
+  </data>
+  <data name="SettingsProvidersPluginText" xml:space="preserve">
+    <value>Runs the plugin {0} with the model {1}.</value>
+  </data>
+  <data name="SettingsProvidersPluginHint" xml:space="preserve">
+    <value>To change it, edit this provider in config.json.</value>
   </data>
   <data name="SettingsProvidersUsedBy" xml:space="preserve">
     <value>Used by: {0}</value>

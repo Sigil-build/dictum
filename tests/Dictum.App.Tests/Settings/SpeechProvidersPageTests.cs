@@ -1,3 +1,4 @@
+using System.Text;
 using Dictum.App.Daemon;
 using Dictum.App.Resources;
 using Dictum.App.Settings;
@@ -215,6 +216,66 @@ public sealed class SpeechProvidersPageTests : IDisposable
         Assert.False(session.Config.Stt.ContainsKey("remote"));
         Assert.Empty(_secrets.Values);
         Assert.Equal(["local"], page.Cards.Select(c => c.Id));
+    }
+
+    private static DictumConfig WithPlugin()
+    {
+        var config = ProfilesPageTests.Sample();
+        config.Stt["p"] = new PluginSttConfig { Plugin = "test", Model = "m1" };
+        return config;
+    }
+
+    [Fact]
+    public void APluginProviderShowsAsAPluginCard()
+    {
+        var (page, _) = Open(WithPlugin());
+
+        var card = Card(page, "p");
+        Assert.Equal(ProviderKind.Plugin, card.Kind);
+        Assert.True(card.IsPlugin);
+        Assert.False(card.IsRemote);
+        Assert.False(card.IsLocal);
+        Assert.Equal("Plugin · p", card.Title);
+        Assert.Equal("Runs the plugin test with the model m1.", card.PluginText);
+    }
+
+    // The title is one string in each language, as the Local and Remote ones are, so a translation can order it.
+    [Fact]
+    public void APluginCardsTitleIsItsFormatString()
+    {
+        var (page, _) = Open(WithPlugin());
+
+        Assert.Equal(string.Format(Strings.Culture, CompositeFormat.Parse(Strings.SettingsProvidersPluginTitle), "p"), Card(page, "p").Title);
+    }
+
+    [Fact]
+    public async Task RemovingAPluginProviderDeletesNoSecret()
+    {
+        var (page, session) = Open(WithPlugin());
+        _secrets.Values["dictum-stt-p"] = "stray";
+        var remote = Card(page, "remote");
+        remote.Key.Text = "sk-123";
+        await remote.Key.CommitCommand.ExecuteAsync(null);
+
+        // A remote card's secret goes in a fire-and-forget task. Once that has run, so would a plugin card's, had it any.
+        Card(page, "p").RemoveCommand.Execute(null);
+        remote.RemoveCommand.Execute(null);
+        await Eventually.WaitForAsync(() => !_secrets.Values.ContainsKey("dictum-stt-remote"), "the remote card's secret deleted");
+
+        session.Flush();
+        Assert.False(session.Config.Stt.ContainsKey("p"));
+        Assert.False(Store.Load().Stt.ContainsKey("p"));
+        Assert.Equal(["dictum-stt-p"], _secrets.Values.Keys.Order());
+    }
+
+    [Fact]
+    public async Task APluginCardIsTestedThroughTheDaemonLikeTheOthers()
+    {
+        var (page, _) = Open(WithPlugin());
+
+        await Card(page, "p").TestSampleCommand.ExecuteAsync(null);
+
+        Assert.Equal("p", _channel.Sent.Single(r => r.Command == IpcCommand.TestStt).Stt);
     }
 
     [Fact]

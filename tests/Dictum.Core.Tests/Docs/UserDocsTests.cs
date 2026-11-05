@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using Dictum.Testing;
@@ -94,6 +96,30 @@ public sealed partial class UserDocsTests
         Assert.Equal(majorMinor, versions[0].Groups["version"].Value);
     }
 
+    // A statement such as "what the code of Dictum 0.5 does" is one fact in two languages: a twin that names another
+    // version says something else.
+    [Fact]
+    public void EachTwinNamesTheSameVersionsOfDictum()
+    {
+        var problems = new List<string>();
+        foreach (var page in EnglishPages().Except(EnglishOnly))
+        {
+            var twin = page[..^".md".Length] + UkrainianSuffix;
+            if (!File.Exists(Full(twin)))
+            {
+                continue;
+            }
+
+            var (en, uk) = (Versions(page), Versions(twin));
+            if (!en.SequenceEqual(uk))
+            {
+                problems.Add($"{twin} names [{string.Join(", ", uk)}], but {page} names [{string.Join(", ", en)}]");
+            }
+        }
+
+        AssertNone(problems);
+    }
+
     // The site's build warns about a page outside the nav, and its strict build stops on the warning.
     [Fact]
     public void EveryPageIsInTheNav()
@@ -105,6 +131,54 @@ public sealed partial class UserDocsTests
 
         // The i18n plugin finds each page's twin itself; the nav names only the English page.
         Assert.DoesNotContain(nav, IsUkrainian);
+    }
+
+    // A control character is invalid in the published HTML, and a format character cannot be seen in review: a page that
+    // means to show one writes its escape, such as `\u001b`.
+    [Fact]
+    public void NoPageHoldsAControlOrFormatCharacter()
+    {
+        AssertNone(AllPages().SelectMany(page => HiddenCharacters(page, File.ReadAllText(Full(page)))));
+    }
+
+    /// <summary>
+    /// A form feed or a next-line character is a control character that <c>ReplaceLineEndings</c> would turn into a line
+    /// break, so the text is scanned as it is read.
+    /// </summary>
+    [Theory]
+    [InlineData("a\fb", "p.md:1 holds U+000C")]
+    [InlineData("a\nb\u0085c", "p.md:2 holds U+0085")]
+    [InlineData("a\u001bb", "p.md:1 holds U+001B")]
+    [InlineData("a\u200eb", "p.md:1 holds U+200E")]
+    public void TheScanFindsWhatALineSplitWouldHide(string text, string problem)
+    {
+        Assert.Equal([problem], HiddenCharacters("p.md", text));
+    }
+
+    [Fact]
+    public void TheScanAllowsTabsAndLineBreaks()
+    {
+        Assert.Empty(HiddenCharacters("p.md", "a\tb\r\nc\nd"));
+    }
+
+    /// <summary>Each control character other than tab, LF and CR, and each format character, with its line.</summary>
+    private static List<string> HiddenCharacters(string page, string text)
+    {
+        var problems = new List<string>();
+        var line = 1;
+        foreach (var rune in text.EnumerateRunes())
+        {
+            if (rune.Value == '\n')
+            {
+                line++;
+            }
+            else if ((Rune.IsControl(rune) && rune.Value is not ('\t' or '\r')) || Rune.GetUnicodeCategory(rune) == UnicodeCategory.Format)
+            {
+                problems.Add($"{page}:{line} holds U+{rune.Value:X4}");
+            }
+        }
+
+        return problems;
     }
 
     /// <summary>Fails with every problem on a line of its own, where <c>Assert.Empty</c> would show five, each cut short.</summary>
@@ -133,6 +207,10 @@ public sealed partial class UserDocsTests
 
     /// <summary>A page's lines outside fenced code blocks: there a <c>#</c> or a <c>](</c> is sample text, not Markdown.</summary>
     private static IEnumerable<string> ProseLines(string page) => MarkdownFences.ProseLines(Lines(Full(page)));
+
+    /// <summary>Each "Dictum 0.5" or "Dictum 0.5.1" the page names, in order.</summary>
+    private static List<string> Versions(string page) =>
+        [.. DictumVersion().Matches(File.ReadAllText(Full(page))).Select(match => match.Groups["version"].Value)];
 
     /// <summary>The ids of a page's headings, in order.</summary>
     private static List<string> Ids(string page) =>
@@ -252,6 +330,9 @@ public sealed partial class UserDocsTests
 
     [GeneratedRegex(@"^version:\s*""(?<version>[^""]*)""\s*(?:#.*)?$")]
     private static partial Regex SiteVersion();
+
+    [GeneratedRegex(@"\bDictum (?<version>\d+\.\d+(?:\.\d+)?)\b")]
+    private static partial Regex DictumVersion();
 
     /// <summary><c>- page.md</c>, or <c>- Title: page.md</c>, in the nav.</summary>
     [GeneratedRegex(@"^\s*-\s+(?:[^:#]+:\s+)?[""']?(?<path>[^\s""':#]+\.md)[""']?\s*(?:#.*)?$")]

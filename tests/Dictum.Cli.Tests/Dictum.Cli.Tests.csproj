@@ -6,4 +6,9 @@
     <ProjectReference Include="../Dictum.Testing/Dictum.Testing.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The plugin tests launch a copy of the built test plugin; nothing is referenced from it. -->
+    <ProjectReference Include="../Dictum.TestPlugin/Dictum.TestPlugin.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
 </Project>

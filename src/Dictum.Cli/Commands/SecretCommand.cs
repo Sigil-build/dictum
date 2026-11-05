@@ -1,5 +1,6 @@
 using System.CommandLine;
 using Dictum.Core.Configuration;
+using Dictum.Core.Text;
 
 namespace Dictum.Cli.Commands;
 
@@ -16,7 +17,7 @@ internal static class SecretCommand
             var name = parse.GetValue(setName)!;
             var value = Console.IsInputRedirected
                 ? (await Console.In.ReadToEndAsync(token).ConfigureAwait(false)).Trim()
-                : new ConsolePrompt(context.Error).ReadHidden($"Value for '{name}': ");
+                : new ConsolePrompt(context.Error).ReadHidden($"Value for '{TerminalText.Show(name)}': ");
             if (value.Length == 0)
             {
                 context.Error.WriteLine("error: the value is empty.");
@@ -24,7 +25,7 @@ internal static class SecretCommand
             }
 
             await context.Platform.Secrets.SetAsync(name, value, token).ConfigureAwait(false);
-            context.Error.WriteLine($"Stored. Use \"apiKey\": \"{ConfigValueResolver.SecretReference(name)}\" in the config.");
+            context.Error.WriteLine($"Stored. Use \"apiKey\": \"{TerminalText.Show(ConfigValueResolver.SecretReference(name))}\" in the config.");
             return ExitCodes.Success;
         }, ct));
 
@@ -45,11 +46,11 @@ internal static class SecretCommand
             var value = await context.Platform.Secrets.GetAsync(name, token).ConfigureAwait(false);
             if (value is null)
             {
-                context.Error.WriteLine($"'{name}' is not stored.");
+                context.Error.WriteLine($"'{TerminalText.Show(name)}' is not stored.");
                 return ExitCodes.Error;
             }
 
-            context.Error.WriteLine($"'{name}' is stored ({value.Length} characters).");
+            context.Error.WriteLine($"'{TerminalText.Show(name)}' is stored ({value.Length} characters).");
             return ExitCodes.Success;
         }, ct));
 

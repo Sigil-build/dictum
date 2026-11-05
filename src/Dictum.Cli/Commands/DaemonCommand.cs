@@ -1,5 +1,6 @@
 using System.CommandLine;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Text;
 using Dictum.Host.Daemon;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
@@ -41,26 +42,27 @@ internal static class DaemonCommand
                 context.Log,
                 context.CreateHost,
                 context.UseConfig,
-                status => PrintSummary(context, status)),
+                status => PrintSummary(context, status),
+                Plugins: context.Plugins),
             ct).ConfigureAwait(false);
         return ExitCodes.Success;
     }
 
-    private static void PrintSummary(CliContext context, DaemonStatus status)
+    internal static void PrintSummary(CliContext context, DaemonStatus status)
     {
         var e = context.Error;
         e.WriteLine($"Dictum daemon running (pid {status.ProcessId}). Ctrl+C stops it.");
-        e.WriteLine($"  hotkeys: {status.HotkeyBackend}");
-        e.WriteLine($"  paste:   {status.InjectorBackend}");
+        e.WriteLine($"  hotkeys: {TerminalText.Show(status.HotkeyBackend)}");
+        e.WriteLine($"  paste:   {TerminalText.Show(status.InjectorBackend)}");
         foreach (var profile in status.Profiles)
         {
             var hotkey = profile.Hotkey is null ? "no hotkey" : $"{profile.Hotkey} ({profile.Mode}{(profile.Registered ? "" : ", not registered")})";
-            e.WriteLine($"  {profile.Id,-16} {hotkey}");
+            e.WriteLine($"  {TerminalText.Show(profile.Id),-16} {TerminalText.Show(hotkey)}");
         }
 
         if (status.Warning is not null)
         {
-            e.WriteLine($"warning: {status.Warning}");
+            e.WriteLine($"warning: {TerminalText.Show(status.Warning)}");
         }
     }
 

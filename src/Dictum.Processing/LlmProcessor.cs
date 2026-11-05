@@ -146,7 +146,7 @@ public sealed partial class LlmProcessor(
         }
         catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or ConfigException)
         {
-            return HealthStatus.Error($"{config.BaseUrl}: {ex.Message}", "Is the LLM server running, and is baseUrl correct (including /v1)?");
+            return HealthStatus.Error($"{config.BaseUrl}: {TerminalText.Show(ex.Message)}", "Is the LLM server running, and is baseUrl correct (including /v1)?");
         }
     }
 
