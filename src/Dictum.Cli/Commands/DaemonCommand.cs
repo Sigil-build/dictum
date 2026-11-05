@@ -48,7 +48,7 @@ internal static class DaemonCommand
         return ExitCodes.Success;
     }
 
-    private static void PrintSummary(CliContext context, DaemonStatus status)
+    internal static void PrintSummary(CliContext context, DaemonStatus status)
     {
         var e = context.Error;
         e.WriteLine($"Dictum daemon running (pid {status.ProcessId}). Ctrl+C stops it.");

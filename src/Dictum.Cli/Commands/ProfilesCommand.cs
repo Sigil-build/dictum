@@ -69,7 +69,7 @@ internal static class ProfilesCommand
 
             config.Profiles[index] = config.Profiles[index] with { Hotkey = hotkey.ToString() };
             context.SaveValidated(config);
-            context.Error.WriteLine($"{id}: {hotkey}");
+            context.Error.WriteLine($"{TerminalText.Show(id)}: {hotkey}");
             return Task.FromResult(ExitCodes.Success);
         }, ct));
 

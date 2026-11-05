@@ -37,6 +37,21 @@ public sealed class CliContextTests
         Assert.Contains("warning: Plugin q kept stopping.", console.Error.ToString(), StringComparison.Ordinal);
     }
 
+    // In a daemon no command reports it on this console: the failure goes to whoever asked, in another process, or to
+    // nobody, as in a warm-up. So its own console shows that warning too.
+    [Fact]
+    public async Task ADaemonsConsoleShowsAPluginsFirstStartWarning()
+    {
+        using var console = new ConsoleCapture();
+        await using (var context = new CliContext(CliApp.BuildRoot().Parse(["daemon"]), LogLevel.Info))
+        {
+            var firstStart = new PluginStartFailedException(new PluginUnavailableException("Plugin p has not been confirmed."));
+            context.Log.Warn("Plugin p has not been confirmed.", firstStart);
+        }
+
+        Assert.Contains("Plugin p has not been confirmed.", console.Error.ToString(), StringComparison.Ordinal);
+    }
+
     // A command reports a first start's failure itself, so only that warning stays off its console. A restart's failure
     // reaches no command, and so does any other warning, whatever its exception.
     [Fact]

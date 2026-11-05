@@ -2,6 +2,7 @@ using System.CommandLine;
 using System.Text.Json;
 using Dictum.Cli.Output;
 using Dictum.Core.Configuration;
+using Dictum.Core.Text;
 using Dictum.Host;
 using Dictum.Setup;
 
@@ -29,10 +30,10 @@ internal static class ModelsCommand
             {
                 var state = row.InCatalog ? (row.Installed ? "installed" : "-") : "present";
                 var id = row.InCatalog ? row.Id : "(not in catalog)";
-                context.Out.WriteLine($"{state,-9}  {id,-28} {SetupRunner.Format(row.Size),8}  {row.Title}");
+                context.Out.WriteLine($"{state,-9}  {id,-28} {SetupRunner.Format(row.Size),8}  {TerminalText.Show(row.Title)}");
             }
 
-            context.Error.WriteLine($"Models directory: {context.Paths.ModelsDirectory}");
+            context.Error.WriteLine($"Models directory: {TerminalText.Show(context.Paths.ModelsDirectory)}");
             return Task.FromResult(ExitCodes.Success);
         }, ct));
 
@@ -47,7 +48,7 @@ internal static class ModelsCommand
             await runner.DownloadAsync(entries, HardwareProbe.Detect(context.Paths).FreeDiskBytes, view, token).ConfigureAwait(false);
             foreach (var entry in entries)
             {
-                context.Out.WriteLine(context.Paths.ResolveModel(entry.File));
+                context.WriteValue(context.Paths.ResolveModel(entry.File));
             }
 
             return ExitCodes.Success;
@@ -79,7 +80,7 @@ internal static class ModelsCommand
 
                 if (found)
                 {
-                    context.Out.WriteLine(file);
+                    context.WriteValue(file);
                 }
                 else
                 {
@@ -131,7 +132,7 @@ internal static class ModelsCommand
             var resetting = parse.GetValue(reset);
             if (requested is null && !resetting)
             {
-                context.Out.WriteLine(context.Paths.DownloadsDirectory);
+                context.WriteValue(context.Paths.DownloadsDirectory);
                 return ExitCodes.Success;
             }
 
@@ -156,7 +157,7 @@ internal static class ModelsCommand
             var moving = parse.GetValue(move) && plan.Files.Count > 0;
             if (moving)
             {
-                context.Error.WriteLine($"Moving {plan.Files.Count} file(s), {SetupRunner.Format(plan.Bytes)}, to {plan.To}");
+                context.Error.WriteLine($"Moving {plan.Files.Count} file(s), {SetupRunner.Format(plan.Bytes)}, to {TerminalText.Show(plan.To)}");
                 using var view = new SetupProgressView(context.Error, redraw: !Console.IsErrorRedirected);
                 var progress = new SyncProgress<long>(copied => view.Bar(copied, plan.Bytes));
                 await DownloadsMover.CopyAsync(plan, HardwareProbe.FreeDiskBytesAt(next.DownloadsDirectory), progress, token).ConfigureAwait(false);
@@ -164,18 +165,18 @@ internal static class ModelsCommand
 
             // The copy is complete before the config names the new folder, and the old files go only after the save.
             context.SaveValidated(config with { General = config.General with { DownloadsDirectory = target } });
-            context.Error.WriteLine($"Downloads folder: {next.DownloadsDirectory}");
+            context.Error.WriteLine($"Downloads folder: {TerminalText.Show(next.DownloadsDirectory)}");
             if (moving)
             {
                 if (DownloadsMover.DeleteSources(plan) is { Count: > 0 } left)
                 {
-                    context.Error.WriteLine($"warning: these could not be deleted from {plan.From}: {string.Join(", ", left)}");
+                    context.Error.WriteLine($"warning: these could not be deleted from {TerminalText.Show(plan.From)}: {TerminalText.Show(string.Join(", ", left))}");
                 }
             }
             else if (plan.Files.Count > 0)
             {
                 context.Error.WriteLine(
-                    $"{plan.Files.Count} file(s), {SetupRunner.Format(plan.Bytes)}, stay in {plan.From}, where Dictum no longer looks; move them to {plan.To} to use them.");
+                    $"{plan.Files.Count} file(s), {SetupRunner.Format(plan.Bytes)}, stay in {TerminalText.Show(plan.From)}, where Dictum no longer looks; move them to {TerminalText.Show(plan.To)} to use them.");
             }
 
             return ExitCodes.Success;

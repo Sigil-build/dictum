@@ -3,6 +3,7 @@ using Dictum.Audio;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Text;
 using Dictum.Host;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
@@ -20,7 +21,9 @@ internal sealed class CliContext : IAsyncDisposable
     private PlatformServices? _platform;
     private PluginHost? _plugins;
 
-    /// <param name="consoleLevel">Overrides the stderr log level (the daemon logs Info by default).</param>
+    /// <param name="consoleLevel">
+    /// For a process whose console is its log, as the daemon's is: the stderr log level, and every warning prints.
+    /// </param>
     public CliContext(ParseResult parse, LogLevel? consoleLevel = null)
     {
         Out = Console.Out;
@@ -31,8 +34,9 @@ internal sealed class CliContext : IAsyncDisposable
         Log = new DictumLog(Verbose ? LogLevel.Debug : consoleLevel ?? LogLevel.Warning, includeText: Verbose, Error, Paths.LogsDirectory)
         {
             // A plugin's first start that fails is thrown to the command, which reports it as its error; the same warning would
-            // print it twice. The log file keeps it. A restart's failure reaches no command, so it prints.
-            ConsoleFilter = PrintsOnConsole,
+            // print it twice. The log file keeps it. A restart's failure reaches no command, so it prints. In a daemon no
+            // command reports anything on this console: whoever asked is another process, so there every warning prints.
+            ConsoleFilter = consoleLevel is null ? PrintsOnConsole : null,
         };
         NativeStderr.ShowDiagnostics = Verbose;
         Store = new ConfigStore(ConfigPath, Log);
@@ -44,6 +48,9 @@ internal sealed class CliContext : IAsyncDisposable
     /// </summary>
     internal static bool PrintsOnConsole(LogLevel level, string message, Exception? exception) =>
         level != LogLevel.Warning || exception is not PluginStartFailedException;
+
+    /// <summary>Whether stdout is a terminal, rather than a file or another program. A test says which it means.</summary>
+    internal static bool OutputIsTerminal { get; set; } = !Console.IsOutputRedirected;
 
     /// <summary>The OS paths, with the downloads folder of the config as loaded (and as the daemon reloads it).</summary>
     public AppPaths Paths { get; }
@@ -61,6 +68,12 @@ internal sealed class CliContext : IAsyncDisposable
     public TextWriter Error { get; }
 
     public string SocketPath => IpcEndpoint.SocketPath(Paths);
+
+    /// <summary>
+    /// Prints a value that a script may read, such as a path or a word: whole for a file or another program, since a joiner
+    /// spelt out would name another path or word; spelt out on a terminal, which must not be given it raw.
+    /// </summary>
+    public void WriteValue(string value) => Out.WriteLine(OutputIsTerminal ? TerminalText.Show(value) : value);
 
     /// <summary>Platform services; settings are re-read from the current config at use time.</summary>
     public PlatformServices Platform => _platform ??= PlatformFactory.Create(
