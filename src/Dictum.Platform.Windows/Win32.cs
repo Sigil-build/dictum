@@ -134,7 +134,7 @@ internal static unsafe partial class Win32
 
     [LibraryImport("kernel32", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
-    public static partial bool SetInformationJobObject(JobHandle job, int informationClass, void* information, uint length);
+    public static partial bool SetInformationJobObject(JobHandle job, int informationClass, in JobObjectExtendedLimitInformation information, uint length);
 
     [LibraryImport("kernel32", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
