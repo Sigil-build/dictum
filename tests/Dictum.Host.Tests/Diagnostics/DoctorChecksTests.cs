@@ -3,6 +3,7 @@ using Dictum.Core;
 using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Processing;
 using Dictum.Core.Stt;
 using Dictum.Host.Diagnostics;
 using Dictum.Host.Ipc;
@@ -152,6 +153,79 @@ public sealed class DoctorChecksTests : IDisposable
         Assert.Equal(HealthStatus.Ok("b answered"), checks.Single(c => c.Name == PlatformCheckNames.Stt("b")).Status);
     }
 
+    // A reload disposes the engine a check has just reached, and the next call reaches the new one: the row says what the
+    // new engine finds, not that the old one is gone.
+    [Fact]
+    public async Task AnEngineThatAReloadDisposedUnderACheckIsCheckedAgainOnTheNewOne()
+    {
+        var asked = 0;
+        var inputs = Inputs(Config("m.bin")) with
+        {
+            GetStt = _ => Interlocked.Increment(ref asked) == 1
+                ? throw new ObjectDisposedException("Dictum.Host.DictumHost")
+                : new CheckedStt(_ => Task.FromResult(HealthStatus.Ok("answered"))),
+        };
+
+        var checks = await DoctorChecks.RunAsync(inputs, _ct);
+
+        Assert.Equal(HealthStatus.Ok("answered"), checks.Single(c => c.Name == PlatformCheckNames.Stt("s")).Status);
+    }
+
+    [Fact]
+    public async Task AProviderThatAReloadDisposedDuringItsCheckIsCheckedAgainOnTheNewOne()
+    {
+        var asked = 0;
+        var inputs = Inputs(Config("m.bin")) with
+        {
+            GetStt = _ => new CheckedStt(_ => Interlocked.Increment(ref asked) == 1
+                ? throw new ObjectDisposedException("whisper")
+                : Task.FromResult(HealthStatus.Ok("answered"))),
+        };
+
+        var checks = await DoctorChecks.RunAsync(inputs, _ct);
+
+        Assert.Equal(HealthStatus.Ok("answered"), checks.Single(c => c.Name == PlatformCheckNames.Stt("s")).Status);
+    }
+
+    [Fact]
+    public async Task AProcessorThatAReloadDisposedDuringItsCheckIsCheckedAgainOnTheNewOne()
+    {
+        var config = Config("m.bin");
+        config.Processors["clean"] = new ReplaceProcessorConfig();
+        var fresh = new CheckedProcessor(_ => Task.FromResult(HealthStatus.Ok("answered")));
+        ITextProcessor current = fresh;
+        current = new CheckedProcessor(_ =>
+        {
+            current = fresh;
+            throw new ObjectDisposedException("llm");
+        });
+        var inputs = Inputs(config) with { GetProcessor = _ => current };
+
+        var checks = await DoctorChecks.RunAsync(inputs, _ct);
+
+        Assert.Equal(HealthStatus.Ok("answered"), checks.Single(c => c.Name == PlatformCheckNames.Processor("clean")).Status);
+    }
+
+    // Once more, not for as long as it takes: an engine that is gone again says so in its row, and the other rows follow.
+    [Fact]
+    public async Task AnEngineGoneTwiceIsAnErrorRow()
+    {
+        var asked = 0;
+        var inputs = Inputs(Config("m.bin")) with
+        {
+            GetStt = _ =>
+            {
+                Interlocked.Increment(ref asked);
+                throw new ObjectDisposedException("Dictum.Host.DictumHost");
+            },
+        };
+
+        var checks = await DoctorChecks.RunAsync(inputs, _ct);
+
+        Assert.Equal(HealthLevel.Error, checks.Single(c => c.Name == PlatformCheckNames.Stt("s")).Status.Level);
+        Assert.Equal(2, asked);
+    }
+
     [Fact]
     public async Task ADaemonThatTakesTheConnectionButNeverAnswersIsAnErrorRow()
     {
@@ -218,6 +292,16 @@ public sealed class DoctorChecksTests : IDisposable
         public string Id => "checked";
 
         public Task<Transcript> TranscribeAsync(AudioClip clip, SttRequest request, CancellationToken ct) => throw new NotSupportedException();
+
+        public Task<HealthStatus> CheckAsync(CancellationToken ct) => check(ct);
+    }
+
+    /// <summary>A processor whose check is <paramref name="check"/>.</summary>
+    private sealed class CheckedProcessor(Func<CancellationToken, Task<HealthStatus>> check) : ITextProcessor, IHealthCheck
+    {
+        public string Id => "checked";
+
+        public Task<string> ProcessAsync(string text, ProcessingContext context, CancellationToken ct) => throw new NotSupportedException();
 
         public Task<HealthStatus> CheckAsync(CancellationToken ct) => check(ct);
     }

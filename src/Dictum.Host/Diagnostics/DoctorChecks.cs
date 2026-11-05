@@ -154,9 +154,10 @@ public static class DoctorChecks
 
             foreach (var id in config.Processors.Keys)
             {
-                if (inputs.GetProcessor(id) is IHealthCheck check)
+                if (inputs.GetProcessor(id) is IHealthCheck)
                 {
-                    Add(PlatformCheckNames.Processor(id), await CheckAsync(() => check.CheckAsync(ct), timeout, ct).ConfigureAwait(false));
+                    // Asked for on each try: after a reload only the new engine's processor can answer.
+                    Add(PlatformCheckNames.Processor(id), await CheckAsync(() => ((IHealthCheck)inputs.GetProcessor(id)).CheckAsync(ct), timeout, ct).ConfigureAwait(false));
                 }
             }
         }
@@ -216,16 +217,34 @@ public static class DoctorChecks
     {
         try
         {
-            var task = check();
-            var finished = await Task.WhenAny(task, Task.Delay(timeout, ct)).ConfigureAwait(false);
-            return finished == task
-                ? await task.ConfigureAwait(false)
-                : HealthStatus.Error($"No answer within {Duration(timeout)}");
+            return await AnswerAfterAReloadAsync(check, timeout, ct).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             return HealthStatus.Error(ex.Message);
         }
+    }
+
+    /// <summary>A reload may dispose the engine under a check. The next call reaches the new engine, so it gets one more try.</summary>
+    private static async Task<HealthStatus> AnswerAfterAReloadAsync(Func<Task<HealthStatus>> check, TimeSpan timeout, CancellationToken ct)
+    {
+        try
+        {
+            return await AnswerAsync(check, timeout, ct).ConfigureAwait(false);
+        }
+        catch (ObjectDisposedException)
+        {
+            return await AnswerAsync(check, timeout, ct).ConfigureAwait(false);
+        }
+    }
+
+    private static async Task<HealthStatus> AnswerAsync(Func<Task<HealthStatus>> check, TimeSpan timeout, CancellationToken ct)
+    {
+        var task = check();
+        var finished = await Task.WhenAny(task, Task.Delay(timeout, ct)).ConfigureAwait(false);
+        return finished == task
+            ? await task.ConfigureAwait(false)
+            : HealthStatus.Error($"No answer within {Duration(timeout)}");
     }
 
     private static string Duration(TimeSpan time) =>
