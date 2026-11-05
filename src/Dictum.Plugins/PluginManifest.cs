@@ -40,7 +40,7 @@ public sealed record PluginManifest(
         PluginManifest? manifest;
         try
         {
-            manifest = Parse(File.ReadAllBytes(path));
+            manifest = Parse(PluginProgramFiles.ReadAllBytes(path));
         }
         catch (JsonException ex)
         {
@@ -202,36 +202,13 @@ public sealed record PluginManifest(
             {
                 problems.Add($"program lists '{Show(entry)}', which is not in the plugin's folder");
             }
-            else if (IsThroughLink(folder, path))
+            else if (PluginProgramFiles.LinkOnTheWay(folder, path) is not null)
             {
+                // The trust record does not enter a linked folder, and one on the way leads out of the plugin's folder, so
+                // the author would believe a file is checked when it is not.
                 problems.Add($"program lists '{Show(entry)}', which is a link or is inside a linked folder");
             }
         }
-    }
-
-    /// <summary>
-    /// Whether the entry, or a folder on the way to it, is a link. The trust record does not enter a linked folder, and
-    /// one on the way leads out of the plugin's folder, so the author would believe a file is checked when it is not.
-    /// The plugin's folder itself may be a link: it is where the user keeps the plugin.
-    /// </summary>
-    private static bool IsThroughLink(string folder, string entry)
-    {
-        if (entry.Length == 0)
-        {
-            return false;
-        }
-
-        var path = folder;
-        foreach (var segment in entry.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
-        {
-            path = Path.Combine(path, segment);
-            if (PluginProgramFiles.IsLink(Directory.Exists(path) ? new DirectoryInfo(path) : new FileInfo(path)))
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private static bool IsInside(string folder, string file)

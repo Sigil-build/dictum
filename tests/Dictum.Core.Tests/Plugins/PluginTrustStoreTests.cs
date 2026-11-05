@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Text.Json.Nodes;
 using Dictum.Core.Diagnostics;
 using Dictum.Plugins;
@@ -7,6 +8,11 @@ namespace Dictum.Core.Tests.Plugins;
 
 public sealed class PluginTrustStoreTests : IDisposable
 {
+    private const string NoNamedPipesInAFolder = "Windows keeps its named pipes out of the file system";
+
+    /// <summary>Well past the time a file that may be a pipe has to open, so that only a real hang fails a test.</summary>
+    private static readonly TimeSpan PipePatience = TimeSpan.FromSeconds(60);
+
     private readonly TempDirectory _temp = new();
     private readonly ListLog _log = new();
     private readonly FolderLinks _links = new();
@@ -55,6 +61,22 @@ public sealed class PluginTrustStoreTests : IDisposable
     }
 
     private static PluginTrustResult Changed(string file) => new(PluginTrust.Changed, file);
+
+    /// <summary>Makes a named pipe with no writer, which a plain open would wait on for good.</summary>
+    private static async Task MakeNamedPipeAsync(string path)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        using var mkfifo = Process.Start("mkfifo", [path]);
+        await mkfifo.WaitForExitAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(0, mkfifo.ExitCode);
+    }
+
+    /// <summary>Fails rather than hangs the run when <paramref name="read"/> waits on a named pipe.</summary>
+    private static Task<T> PromptlyAsync<T>(Func<T> read)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        return Task.Run(read, ct).WaitAsync(PipePatience, ct);
+    }
 
     [Fact]
     public void AnUnknownPluginIsNotConfirmed()
@@ -314,6 +336,233 @@ public sealed class PluginTrustStoreTests : IDisposable
         store.Forget("a");
 
         Assert.Equal(before, File.ReadAllBytes(TrustFile));
+    }
+
+    /// <summary>
+    /// This Dictum never wrote such a version, so a later one did, or someone edited the file. Either way what it holds
+    /// is not this Dictum's to replace; it is not damaged, as text that is no JSON is.
+    /// </summary>
+    [Theory]
+    [InlineData("\"2\"")]
+    [InlineData("1.5")]
+    [InlineData("99999999999")]
+    [InlineData("true")]
+    [InlineData("{\"major\":2}")]
+    [InlineData("null")]
+    public void ATrustFileWhoseVersionIsNoWholeNumberIsNotOverwritten(string version)
+    {
+        var (folder, program) = Plugin("a");
+        File.WriteAllText(TrustFile, $$$"""{"version":{{{version}}},"custom":{}}""");
+        var before = File.ReadAllBytes(TrustFile);
+        var store = NewStore();
+
+        Assert.Equal(PluginTrust.NotConfirmed, store.Check("a", folder, program).Trust);
+        var error = Assert.Throws<PluginTrustException>(() => store.Confirm("a", folder, program));
+        store.Forget("a");
+
+        Assert.Contains($"(file version {version}; this one reads 1)", error.Message, StringComparison.Ordinal);
+        Assert.Equal(before, File.ReadAllBytes(TrustFile));
+    }
+
+    /// <summary>
+    /// Opening a named pipe waits for a writer, which may never come, so the check gives up after a while. A pipe has no
+    /// size, as an empty file has none, and whatever writes to it later feeds the program, so it is no match for one.
+    /// </summary>
+    [Fact]
+    public async Task AnEmptyFileReplacedByANamedPipeIsChanged()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), NoNamedPipesInAFolder);
+        var (folder, program) = Plugin("a", "env.sh");
+        Put(folder, "env.sh", "");
+        var store = NewStore();
+        store.Confirm("a", folder, program);
+
+        File.Delete(Path.Combine(folder, "env.sh"));
+        await MakeNamedPipeAsync(Path.Combine(folder, "env.sh"));
+
+        Assert.Equal(Changed("env.sh"), await PromptlyAsync(() => store.Check("a", folder, program)));
+    }
+
+    /// <summary>With a writer the pipe opens at once, and it is still no file: what it says is never hashed.</summary>
+    [Fact]
+    public async Task AnEmptyFileReplacedByANamedPipeWithAWriterIsChanged()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), NoNamedPipesInAFolder);
+        var (folder, program) = Plugin("a", "env.sh");
+        var pipe = Path.Combine(folder, "env.sh");
+        Put(folder, "env.sh", "");
+        var store = NewStore();
+        store.Confirm("a", folder, program);
+
+        File.Delete(pipe);
+        await MakeNamedPipeAsync(pipe);
+        var writer = new Thread(() =>
+        {
+            try
+            {
+                using var stream = new FileStream(pipe, FileMode.Open, FileAccess.Write);
+                stream.WriteByte((byte)'x');
+                stream.Flush();
+            }
+            catch (IOException)
+            {
+                // The reader went away first, which is what it should do.
+            }
+        })
+        { IsBackground = true };
+        writer.Start();
+
+        Assert.Equal(Changed("env.sh"), await PromptlyAsync(() => store.Check("a", folder, program)));
+    }
+
+    [Fact]
+    public async Task ALinkToANamedPipeInAListedFolderCannotBeConfirmed()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), NoNamedPipesInAFolder);
+        var (folder, program) = Plugin("a", "lib");
+        var pipe = Path.Combine(folder, "lib", "pipe");
+        await MakeNamedPipeAsync(pipe);
+        File.CreateSymbolicLink(Path.Combine(folder, "lib", "link"), pipe);
+        var store = NewStore();
+
+        var error = await PromptlyAsync(() => Assert.Throws<IOException>(() => store.Confirm("a", folder, program)));
+
+        Assert.Contains("link", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>These report no size and yet have bytes, some without end, so they are not read to any end.</summary>
+    [Theory]
+    [InlineData("/dev/zero")]
+    [InlineData("/proc/self/status")]
+    public async Task ALinkToAFileThatHidesItsSizeCannotBeConfirmed(string target)
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Windows has no such files");
+        var (folder, program) = Plugin("a", "lib");
+        Directory.CreateDirectory(Path.Combine(folder, "lib"));
+        File.CreateSymbolicLink(Path.Combine(folder, "lib", "link"), target);
+        var store = NewStore();
+
+        await PromptlyAsync(() => Assert.Throws<IOException>(() => store.Confirm("a", folder, program)));
+    }
+
+    /// <summary>
+    /// The plugin's folder may be a link, so a relative link inside it leads where the system says, up through the real
+    /// folder; a path worked out on paper leads somewhere else.
+    /// </summary>
+    [Fact]
+    public void ARelativeLinkInALinkedPluginFolderIsHashedByItsTarget()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "Windows works out a relative link by its own rules");
+        Plugin("mono/hello", "lib");
+        var real = Path.Combine(_temp.Path, "mono", "hello");
+        Put(Path.Combine(_temp.Path, "mono"), "shared/common.py", "before");
+        Directory.CreateDirectory(Path.Combine(real, "lib"));
+        File.CreateSymbolicLink(Path.Combine(real, "lib", "common.py"), "../../shared/common.py");
+        Directory.CreateDirectory(Path.Combine(_temp.Path, "plugins"));
+        var folder = Path.Combine(_temp.Path, "plugins", "hello");
+        _links.Add(folder, real);
+        var program = Path.Combine(folder, "plugin.exe");
+        var store = NewStore();
+
+        store.Confirm("a", folder, program);
+        Assert.Equal(PluginTrust.Confirmed, store.Check("a", folder, program).Trust);
+
+        File.WriteAllText(Path.Combine(_temp.Path, "mono", "shared", "common.py"), "after");
+
+        Assert.Equal(Changed("lib/common.py"), store.Check("a", folder, program));
+    }
+
+    /// <summary>The executable counts as its target, which may rightly be a link; listing it in program says it may not be one.</summary>
+    [Fact]
+    public void AnExecutableListedInProgramThatBecomesALinkIsChanged()
+    {
+        var (folder, program) = Plugin("a", "plugin.exe");
+        var store = NewStore();
+        store.Confirm("a", folder, program);
+
+        var copy = Path.Combine(_temp.Path, "copy.exe");
+        File.Copy(program, copy);
+        File.Delete(program);
+        try
+        {
+            File.CreateSymbolicLink(program, copy);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Assert.Skip($"This account cannot make symbolic links: {ex.Message}");
+        }
+
+        Assert.Equal(Changed("plugin.exe"), store.Check("a", folder, program));
+    }
+
+    [Fact]
+    public async Task APluginJsonReplacedByANamedPipeIsChangedAndCannotLoad()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), NoNamedPipesInAFolder);
+        var (folder, program) = Plugin("a");
+        var store = NewStore();
+        store.Confirm("a", folder, program);
+
+        var manifest = Path.Combine(folder, PluginProtocol.ManifestFile);
+        File.Delete(manifest);
+        await MakeNamedPipeAsync(manifest);
+
+        Assert.Equal(Changed(PluginProtocol.ManifestFile), await PromptlyAsync(() => store.Check("a", folder, program)));
+        var error = await PromptlyAsync(() => Assert.Throws<PluginManifestException>(() => PluginManifest.Load(folder)));
+        Assert.Contains("cannot be read", error.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>An empty file is opened another way than a file with a size, and must hash as any empty file always has.</summary>
+    [Fact]
+    public void AnEmptyFileHashesAsNoBytes()
+    {
+        var path = _temp.File("empty");
+        File.WriteAllBytes(path, []);
+
+        Assert.Equal("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", PluginTrustStore.HashFile(path));
+    }
+
+    /// <summary>
+    /// A restart checks the files without loading the manifest again, and the copy behind the link is the same, so only
+    /// the link itself shows it. Whatever replaces the copy later would run unchecked.
+    /// </summary>
+    [Fact]
+    public void AFolderOnTheWayToAnEntryThatBecomesALinkIsChanged()
+    {
+        var (folder, program) = Plugin("a", "lib/file.py");
+        Put(folder, "lib/file.py", "same");
+        var store = NewStore();
+        store.Confirm("a", folder, program);
+
+        var elsewhere = Path.Combine(_temp.Path, "elsewhere");
+        Put(elsewhere, "file.py", "same");
+        Directory.Delete(Path.Combine(folder, "lib"), recursive: true);
+        _links.Add(Path.Combine(folder, "lib"), elsewhere);
+
+        Assert.Equal(Changed("lib/file.py"), store.Check("a", folder, program));
+    }
+
+    [Fact]
+    public void AnEntryThatBecomesAFileLinkIsChanged()
+    {
+        var (folder, program) = Plugin("a", "file.py");
+        Put(folder, "file.py", "same");
+        var store = NewStore();
+        store.Confirm("a", folder, program);
+
+        var target = Path.Combine(_temp.Path, "elsewhere", "file.py");
+        Put(Path.GetDirectoryName(target)!, "file.py", "same");
+        File.Delete(Path.Combine(folder, "file.py"));
+        try
+        {
+            File.CreateSymbolicLink(Path.Combine(folder, "file.py"), target);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Assert.Skip($"This account cannot make symbolic links: {ex.Message}");
+        }
+
+        Assert.Equal(Changed("file.py"), store.Check("a", folder, program));
     }
 
     /// <summary>Ledger line 49: Windows' file system ignores case, so a folder spelt in other letters is the same plugin.</summary>

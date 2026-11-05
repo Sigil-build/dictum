@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Dictum.Core;
@@ -37,7 +36,7 @@ public sealed class PluginTrustStore(string path, ILog log)
     /// </summary>
     public PluginTrustResult Check(string id, string folder, string executable)
     {
-        if (!Read().Custom.TryGetValue(id, out var record)
+        if (!Read().File.Custom.TryGetValue(id, out var record)
             || !SamePath(record.Folder, folder)
             || !SamePath(record.Executable, executable))
         {
@@ -73,16 +72,16 @@ public sealed class PluginTrustStore(string path, ILog log)
     /// <exception cref="PluginTrustException">A newer Dictum wrote the file meanwhile, which this one leaves as it is.</exception>
     public void Confirm(PluginConfirmation confirmation)
     {
-        var file = Read();
-        ThrowIfNewer(file);
-        file.Custom[confirmation.Id] = confirmation.Record;
-        Write(file);
+        var contents = Read();
+        ThrowIfNewer(contents);
+        contents.File.Custom[confirmation.Id] = confirmation.Record;
+        Write(contents.File);
     }
 
     /// <summary>Drops the plugin's record; a file that a newer Dictum wrote holds none for this one, so it is left as it is.</summary>
     public void Forget(string id)
     {
-        var file = Read();
+        var file = Read().File;
         if (file.Custom.Remove(id))
         {
             Write(file);
@@ -90,22 +89,34 @@ public sealed class PluginTrustStore(string path, ILog log)
     }
 
     /// <summary>The lowercase hex SHA-256 of the file.</summary>
+    /// <exception cref="IOException">The file cannot be read, or is no plain file, such as a named pipe.</exception>
+    /// <exception cref="UnauthorizedAccessException">The file may not be read.</exception>
     public static string HashFile(string path)
     {
+        PluginProgramFiles.ThrowUnlessPlainFile(path);
         using var stream = File.OpenRead(path);
         return Convert.ToHexStringLower(SHA256.HashData(stream));
     }
 
-    private void ThrowIfNewer(PluginTrustFile file)
+    private void ThrowIfNewer(TrustContents contents)
     {
-        if (file.Version > FileVersion)
+        if (contents.NewerVersion is { } version)
         {
-            throw new PluginTrustException($"{Newer(file.Version)}, so this Dictum does not change it.", "Update Dictum, then confirm the plugin again.");
+            throw new PluginTrustException($"{Newer(version)}, so this Dictum does not change it.", "Update Dictum, then confirm the plugin again.");
         }
     }
 
-    private string Newer(int version) =>
-        $"{path} was written by a newer Dictum (file version {version.ToString(CultureInfo.InvariantCulture)}; this one reads {FileVersion})";
+    private string Newer(string version) => $"{path} was written by a newer Dictum (file version {version}; this one reads {FileVersion})";
+
+    /// <summary>
+    /// The version as the file spells it, unless it is one this Dictum reads, or there is none. What is no whole number
+    /// is no version that this Dictum ever wrote, so a later one did.
+    /// </summary>
+    private static string? VersionIfNewer(JsonElement? version) =>
+        version is not { ValueKind: not JsonValueKind.Undefined } element
+        || (element.ValueKind == JsonValueKind.Number && element.TryGetInt32(out var number) && number <= FileVersion)
+            ? null
+            : element.GetRawText();
 
     private static bool SamePath(string recorded, string actual)
     {
@@ -146,30 +157,29 @@ public sealed class PluginTrustStore(string path, ILog log)
 
     /// <summary>
     /// An absent file is an empty record; a damaged one trusts nothing, and says so. So does one that a newer Dictum
-    /// wrote, which may record more than this one checks; it keeps its version, so that a confirmation is refused.
+    /// wrote, which may record more than this one checks; its version is kept, so that a confirmation is refused.
     /// </summary>
-    private PluginTrustFile Read()
+    private TrustContents Read()
     {
         if (!File.Exists(path))
         {
-            return Empty();
+            return new TrustContents(Empty(), null);
         }
 
         try
         {
             // The version first, alone: a newer Dictum may change the rest of the shape, and its file is not damaged.
             var text = File.ReadAllText(path);
-            var version = JsonSerializer.Deserialize(text, PluginJsonContext.Default.PluginTrustVersion)?.Version ?? 0;
-            if (version > FileVersion)
+            if (VersionIfNewer(JsonSerializer.Deserialize(text, PluginJsonContext.Default.PluginTrustVersion)?.Version) is { } newer)
             {
-                log.Warn($"{Newer(version)}, so no plugin counts as confirmed.");
-                return new PluginTrustFile(version, new Dictionary<string, PluginTrustRecord>(StringComparer.Ordinal));
+                log.Warn($"{Newer(newer)}, so no plugin counts as confirmed.");
+                return new TrustContents(Empty(), newer);
             }
 
             var file = JsonSerializer.Deserialize(text, PluginJsonContext.Default.PluginTrustFile);
             if (file is not { Custom: not null })
             {
-                return Empty();
+                return new TrustContents(Empty(), null);
             }
 
             var unusable = file.Custom.Where(r => !IsUsable(r.Value)).Select(r => r.Key).ToList();
@@ -183,12 +193,12 @@ public sealed class PluginTrustStore(string path, ILog log)
                 }
             }
 
-            return file;
+            return new TrustContents(file, null);
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
             log.Warn($"{path} cannot be read, so no plugin counts as confirmed: {ex.Message}");
-            return Empty();
+            return new TrustContents(Empty(), null);
         }
     }
 
@@ -199,6 +209,10 @@ public sealed class PluginTrustStore(string path, ILog log)
     }
 
     private static PluginTrustFile Empty() => new(FileVersion, new Dictionary<string, PluginTrustRecord>(StringComparer.Ordinal));
+
+    /// <param name="File">What this Dictum may use and write back; empty for a file that a newer Dictum wrote.</param>
+    /// <param name="NewerVersion">Set for such a file: its version, as it spells it.</param>
+    private readonly record struct TrustContents(PluginTrustFile File, string? NewerVersion);
 }
 
 /// <summary><c>plugin-trust.json</c> cannot take a confirmation, such as one that a newer Dictum wrote.</summary>
@@ -223,8 +237,11 @@ public sealed class PluginConfirmation
 
 internal sealed record PluginTrustFile(int Version, Dictionary<string, PluginTrustRecord> Custom);
 
-/// <summary>Only the version of <c>plugin-trust.json</c>, which every version of the file keeps; the other fields are skipped.</summary>
-internal sealed record PluginTrustVersion(int Version);
+/// <summary>
+/// Only the version of <c>plugin-trust.json</c>, which every version of the file keeps; the other fields are skipped. Whatever
+/// JSON it is, as the file is not damaged if a later Dictum spells it another way.
+/// </summary>
+internal sealed record PluginTrustVersion(JsonElement Version);
 
 /// <param name="Files">The hash of each program file, by its path relative to <paramref name="Folder"/>, written with <c>/</c>.</param>
 internal sealed record PluginTrustRecord(string Folder, string Executable, Dictionary<string, string> Files);
