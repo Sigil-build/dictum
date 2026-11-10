@@ -67,7 +67,7 @@ Find your row here:
 | `secrets` | **Secret store** | [API keys and the keyring](#secrets) |
 | `session`, `platform` | **Desktop session**, **Platform** | [Desktop session](#desktop-session) |
 | `daemon` | **Daemon** | [Daemon](#daemon) |
-| `gpu`, `stt:<id>` | **GPU**, **Speech provider &lt;id&gt;** | [Speech recognition](#speech-recognition) |
+| `gpu`, `stt:<id>` | **GPU**, **Speech provider &lt;id&gt;** | [Speech recognition](#speech-recognition); for a plugin, [A plugin does not start](#plugin) |
 | `processor:<id>` | **Processor &lt;id&gt;** | [LLM clean-up](#llm-cleanup) |
 | — | **Tray icon** | [No tray icon](#tray-icon) |
 | — | **Listening overlay** | [No overlay](#overlay) |
@@ -368,7 +368,7 @@ When the daemon failed to start, or came from another version of Dictum after an
 
 The `gpu` row (**GPU**) names the graphics card Whisper can use, or says `none that Whisper can use; speech recognition runs on the CPU`. It is always OK: it is there so you know where recognition runs.
 
-Each speech provider has a row, `stt:<id>` (**Speech provider &lt;id&gt;**). For a local Whisper provider:
+Each speech provider has a row, `stt:<id>` (**Speech provider &lt;id&gt;**). The row of a plugin is explained in [A plugin does not start](#plugin). For a local Whisper provider:
 
 `ggml-large-v3-turbo-q8_0.bin, runtime Vulkan on …`
 :   All is well: the model, and where it runs.
@@ -402,6 +402,116 @@ For a remote server:
 :   Dictum cannot reach the server. Check that it runs, and that the **URL** ends with the API's version, such as `http://localhost:8080/v1`.
 
 If recognition is slow, pick a smaller model in **Settings → Models**. To see how long a provider takes, click **Test** in **Settings → Speech providers** and speak for five seconds: it shows "Recognised in … ms".
+
+## A plugin does not start {#plugin}
+
+A speech provider whose `type` is `plugin` has a row like the others, `stt:<id>` (**Speech provider &lt;id&gt;**). Its check starts the plugin if it is not running yet, so it can take up to a minute. `dictum doctor` in a terminal starts a copy of its own; **Settings → System** asks the daemon, which already runs the plugins that profiles use. A plugin that works:
+
+```text
+  OK stt:hello              plugin Hello 1.0.0, model tiny, pid 4242
+```
+
+When the plugin cannot start, the row says why, followed by the plugin's last lines after `last output:` when it printed any, and its second line says what to do. A dictation in a profile that uses the plugin fails with the same message, and `dictum transcribe` and `dictum stt test` print it. **Test** on the provider's card in **Settings → Speech providers** shows it with what to do after it, and then the last lines after `last output:`. [Write a plugin](guides/write-a-plugin.md) describes what a plugin has to do.
+
+The provider and the plugin's folder:
+
+`Plugin 'hello' is not added.` → `Add it with 'dictum plugins add <folder>'.`
+:   The provider names a plugin that is not under `plugins` in `config.json`. Add the plugin, or correct the provider's `plugin`.
+
+`plugin.json in … is not valid: …` → `Fix its plugin.json, then confirm it with 'dictum plugins add "…"'.`
+:   The plugin's `plugin.json` changed after you added it, and has errors now, or a file that its `program` lists is gone, as in `program lists 'plugin.py', which is not in the plugin's folder`; the message lists them. [Write a plugin](guides/write-a-plugin.md#manifest) describes the file.
+
+`The plugin in … calls itself '…', not 'hello'.` → `Add it again with 'dictum plugins add "…"'.`
+:   The `plugin.json` in that folder has another `id` now than the one you added the plugin under. Put the old id back, or run the command, which adds the plugin under its new id; then write the new id as the provider's `plugin`, and forget the old one with `dictum plugins remove hello`.
+
+`Model not found: …` → `Check stt.<id>.model in config.json.`
+:   The provider's `model` is a full path, and there is no file or folder there.
+
+`Plugin hello starts through plugin.cmd, which cannot be given …: it holds one of & % ^ ! " < > | ( ).` → `Use a path without those characters, or ask the plugin's author for a program (.exe) instead of a script.`
+:   On Windows, a plugin whose program is a `.cmd` or `.bat` file runs under cmd.exe, which would act on those characters in an option such as the provider's `model` path: it would run what follows a `&`, for one. Move or rename the model's folder, or use a plugin that starts with a program. The same holds when the provider names its model by `id`: Dictum then passes a folder inside the downloads folder, so a character from the list in the downloads folder's own path refuses the start too. Move the downloads folder to a path without those characters, or use a plugin whose program is an `.exe`.
+
+`Plugin 'hello' has no model 'tiny'.` → `Its models: …; or set the model to an absolute path.`
+:   The provider's `model` is an id, but the plugin's `plugin.json` lists no model with it. The hint names the ids it lists, or says `It lists no models; set the model to an absolute path.` Use one of them, or the model's full path.
+
+`Model 'tiny' of plugin 'hello' is not in ….` → `Put its files there, or set the model to an absolute path.`
+:   The model's folder, `models/hello/tiny` in the [downloads folder](reference/files.md#downloads-folder), does not exist. This version of Dictum does not download a plugin's models: put the files there yourself, or give the provider the model's full path.
+
+The confirmation:
+
+`Plugin hello has not been confirmed on this computer.` → `Confirm it with 'dictum plugins add "…"'.`
+:   The plugin is in `config.json`, but nobody confirmed it on this computer, or not with this folder and program: the file came from another computer, or was edited by hand. Run the command, which shows the plugin and asks you first.
+
+`Plugin hello changed since you added it (plugin.py).` → `Confirm it with 'dictum plugins add "…"'.`
+:   A file of the plugin is not the one Dictum recorded when you confirmed it: `plugin.json`, the program, or a file that its `program` lists. A file added to a listed folder or gone from it counts too, and so does a link in it that is added, removed or pointed elsewhere. The message names the first file that differs, by its path in the plugin's folder. If you updated or edited the plugin, run the command to confirm it again. If you did not, find out what changed it before you do. Once you have confirmed it, the next dictation starts it.
+
+`… plugin-trust.json was written by a newer Dictum (file version 2; this one reads 1), so this Dictum does not change it.` → `Update Dictum, then confirm the plugin again.`
+:   A newer version of Dictum wrote the file, and may record more than this one checks. This version trusts none of its records, so no plugin you added starts, and the log says `… so no plugin counts as confirmed.` `dictum plugins add` leaves the file as it is, and says so before it asks you or runs the plugin. Install the newer version again.
+
+While the program starts. These messages come with the hint `See the plugin's output, if it printed any, and its own documentation.` All of them but `Plugin … could not be started: …` also bring the lines the plugin printed last, if it printed any. The doctor row, `dictum stt test` and the daemon's answer to a command such as `dictum start` show them after `last output:`, separated by `|`. `dictum transcribe` and `dictum plugins add`, which start the plugin themselves, show each on a line of its own after a `|`. Every command but `dictum doctor` then exits with code 3. Characters a terminal would act on, such as escape codes, are spelt out: the escape character as `\u001b`. That one has none, because the program never ran. When the daemon reports a start that failed earlier, the hint goes on: `Then save the settings or restart the daemon to try again.` The daemon does not try a plugin that failed to start again by itself; saving the settings, `dictum reload` or a restart of the daemon does.
+
+`Plugin hello could not be started: …`
+:   The system did not run the program that `plugin.json` names, and the rest of the text says why. On Linux, the file needs its execute bit: `chmod +x plugin.sh`. A script's first line must name an interpreter that exists.
+
+`Plugin hello exited with code 1 while starting.`
+:   The program stopped before it was ready. Its last lines usually say why: a missing library or model file, or an interpreter that a launcher script calls but that is not on the `PATH` Dictum sees, as in `'python' is not recognized as an internal or external command,` on an English Windows.
+
+`Plugin hello did not get ready within 60 s.`
+:   The program printed no ready line in time. Check that it prints `{"dictumPlugin":1,"url":"…"}` on stdout and flushes it.
+
+`Plugin hello did not get ready within 60 s; /health last answered 503 Service Unavailable.`
+:   The program announced its address, but `/health` did not answer 200 in time. The rest says what Dictum heard last instead: a status, such as 503 while the model loads; `/health did not answer`, when no answer came at all; `/health could not be reached: …`, with the reason, when nothing listens at the address the ready line names; or `its last answer to /health could not be read: …`, when the answer broke off. Check that its model loads within a minute, and that it listens where it said. `/dictum/v1/info did not answer` means that `/health` answered 200, but `/dictum/v1/info` did not answer in time.
+
+`Plugin hello announced https://127.0.0.1:…, but protocol 1 is plain http on this computer.`
+:   The ready line names an address on your computer, but not with `http`. Protocol 1 is plain `http` on your computer: announce `http://127.0.0.1:<port>`, without TLS.
+
+`Plugin hello announced …, which is not on this computer.`
+:   The ready line names an address that is not on `127.0.0.1`, `::1` or `localhost`. Dictum talks to a plugin only on your computer.
+
+`Plugin hello rejected Dictum's key.`
+:   The plugin answered 401 or 403. It must take the key from the environment variable `DICTUM_PLUGIN_KEY`, and accept `Authorization: Bearer <key>`.
+
+`Plugin hello speaks protocol 2; this Dictum speaks protocol 1.`
+:   The plugin is made for another version of Dictum. Use a version of the plugin for protocol 1, or update Dictum.
+
+`Plugin hello answered 404 to /dictum/v1/info.`, `Plugin hello did not answer /dictum/v1/info: …` or `Plugin hello answered /dictum/v1/info with invalid JSON: …`
+:   `/health` answered, but `/dictum/v1/info` did not answer as protocol 1 asks: see [What it must answer](guides/write-a-plugin.md#endpoints).
+
+After it ran:
+
+`Plugin hello kept stopping; Dictum stopped restarting it after 3 restarts within 5 minutes.` → `Save the settings or restart the daemon to try again.`
+:   The plugin exited by itself again and again, or could not start again after it exited. Dictum starts it again up to three times within five minutes, a start that fails counting as one of them, then gives up. Its last lines and the log say why. Fix the cause, then save the settings, run `dictum reload`, or restart the daemon.
+
+`Plugin hello could not start: …` → `Save the settings or restart the daemon to try again.`
+:   Another error stopped the start; the rest of the text says which.
+
+During a dictation:
+
+`Plugin provider 'hello' answered 500 Internal Server Error: …`
+:   The plugin failed on the recording. The rest is the start of its answer, and its lines in the log may say more.
+
+`Plugin provider 'hello' returned invalid JSON: …`
+:   The plugin's answer is not JSON such as `{"text": "…"}`.
+
+`Plugin provider 'hello' did not answer within … ms.`
+:   The plugin took longer than 60 seconds and twice the recording's length.
+
+`Plugin provider 'hello' is unreachable at http://127.0.0.1:…/v1: …`
+:   The plugin's process ended or dropped the connection. If it exited by itself, Dictum starts it again: try once more.
+
+`Plugin provider 'hello' was stopped while in use.`
+:   Dictum stopped the plugin during the dictation, as it does when the daemon quits. Try again.
+
+`dictum plugins add` and `dictum plugins remove` say in their own messages what is wrong and what to do, such as `A plugin named hello is already added from …. Remove it first: dictum plugins remove hello`.
+
+The plugin's own lines are in `dictum.log` (see [Logs](#logs)), each after `plugin <id>:` and with the characters a terminal would act on spelt out, with what Dictum did with the plugin:
+
+```text
+2026-11-02 10:15:02.481 +02:00 INFO plugin hello: loading /home/you/models/tiny
+2026-11-02 10:15:03.902 +02:00 INFO Plugin hello is ready at http://127.0.0.1:53126/ (pid 4242)
+2026-11-02 10:42:17.011 +02:00 INFO plugin hello: CUDA error: out of memory
+2026-11-02 10:42:17.015 +02:00 INFO Plugin hello (pid 4242) exited with code 1
+2026-11-02 10:42:17.016 +02:00 WARNING Plugin hello (pid 4242) stopped by itself with code 1; restarting it
+```
 
 ## LLM clean-up {#llm-cleanup}
 

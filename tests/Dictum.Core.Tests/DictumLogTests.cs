@@ -17,6 +17,28 @@ public class DictumLogTests
         Assert.Equal($"warning: shown{Environment.NewLine}", console.ToString());
     }
 
+    /// <summary>A message the console is told to skip, because the command reports it itself, is still in the file.</summary>
+    [Fact]
+    public void AMessageTheConsoleSkipsIsStillInTheFile()
+    {
+        using var dir = new TempDirectory();
+        var console = new StringWriter();
+        using (var log = new DictumLog(LogLevel.Warning, includeText: false, console, dir.Path)
+        {
+            ConsoleFilter = (_, _, exception) => exception is null,
+        })
+        {
+            log.Warn("skipped", new InvalidOperationException());
+            log.Warn("shown");
+        }
+
+        Assert.Equal($"warning: shown{Environment.NewLine}", console.ToString());
+        Assert.Collection(
+            File.ReadAllLines(dir.File("dictum.log")).Where(l => !l.StartsWith("System.", StringComparison.Ordinal) && !l.StartsWith("   at", StringComparison.Ordinal)),
+            l => Assert.EndsWith("WARNING skipped", l),
+            l => Assert.EndsWith("WARNING shown", l));
+    }
+
     [Fact]
     public void FileGetsEveryLevel()
     {
@@ -59,6 +81,61 @@ public class DictumLogTests
         using var log = new DictumLog(LogLevel.Error, includeText, console: null, logsDirectory: null);
 
         Assert.Equal(expected, log.Redact("secret words"));
+    }
+
+    [Fact]
+    public void HiddenCharactersInAMessageOrAnExceptionReachTheConsoleSpeltOutAndTheFileRaw()
+    {
+        using var dir = new TempDirectory();
+        var console = new StringWriter();
+        using (var log = new DictumLog(LogLevel.Debug, includeText: false, console, dir.Path))
+        {
+            log.Warn("from \u001b[2Jserver", new InvalidOperationException("bad \u001b]0;PWNED\u0007 header"));
+        }
+
+        var shown = console.ToString();
+        Assert.DoesNotContain('\u001b', shown);
+        Assert.DoesNotContain('\u0007', shown);
+        Assert.Contains("from \\u001b[2Jserver", shown, StringComparison.Ordinal);
+        Assert.Contains("bad \\u001b]0;PWNED\\u0007 header", shown, StringComparison.Ordinal);
+        Assert.Contains(Environment.NewLine, shown, StringComparison.Ordinal);
+        var file = File.ReadAllText(dir.File("dictum.log"));
+        Assert.Contains("from \u001b[2Jserver", file, StringComparison.Ordinal);
+        Assert.Contains("bad \u001b]0;PWNED\u0007 header", file, StringComparison.Ordinal);
+    }
+
+    /// <summary>Text from a server or a plugin in a message must not start a console line of its own.</summary>
+    [Fact]
+    public void ALineBreakInAMessageDoesNotMakeAnotherConsoleLine()
+    {
+        var console = new StringWriter();
+        using var log = new DictumLog(LogLevel.Debug, includeText: false, console, logsDirectory: null);
+
+        log.Warn("seen\nerror: forged\r\nmore");
+
+        Assert.Equal($"warning: seen\\u000aerror: forged\\u000d\\u000amore{Environment.NewLine}", console.ToString());
+    }
+
+    [Fact]
+    public void AnExceptionsDumpKeepsItsLineBreaksOnTheConsole()
+    {
+        var console = new StringWriter();
+        using var log = new DictumLog(LogLevel.Debug, includeText: false, console, logsDirectory: null);
+        Exception thrown;
+        try
+        {
+            throw new InvalidOperationException("one\ntwo");
+        }
+        catch (InvalidOperationException ex)
+        {
+            thrown = ex;
+        }
+
+        log.Warn("failed", thrown);
+
+        var lines = console.ToString().Split(Environment.NewLine);
+        Assert.Equal("warning: failed", lines[0]);
+        Assert.Contains(lines, l => l.StartsWith("   at ", StringComparison.Ordinal));
     }
 
     [Fact]

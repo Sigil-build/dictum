@@ -6,7 +6,9 @@ using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Pipeline;
+using Dictum.Core.Text;
 using Dictum.Host.Ipc;
+using Dictum.Plugins;
 using Dictum.Setup;
 
 namespace Dictum.Cli;
@@ -46,6 +48,7 @@ internal static class CliApp
         root.Add(ProfilesCommand.Create());
         root.Add(VocabCommand.Create());
         root.Add(ModelsCommand.Create());
+        root.Add(PluginsCommand.Create());
         root.Add(DevicesCommand.Create());
         root.Add(ConfigCommand.Create());
         root.Add(HistoryCommand.Create());
@@ -85,10 +88,10 @@ internal static class CliApp
 
     private static int Fail(CliContext context, string message, int exitCode, string? hint = null)
     {
-        context.Error.WriteLine($"error: {message}");
+        context.Error.WriteLine($"error: {TerminalText.Show(message)}");
         if (hint is not null)
         {
-            context.Error.WriteLine($"  hint: {hint}");
+            context.Error.WriteLine($"  hint: {TerminalText.Show(hint)}");
         }
 
         return exitCode;
@@ -97,11 +100,11 @@ internal static class CliApp
     private static int Report(CliContext context, Exception ex)
     {
         var inner = ex is DictationException { InnerException: { } cause } ? cause : ex;
-        context.Log.Write(LogLevel.Debug, ex.ToString());
+        context.Log.Write(LogLevel.Debug, $"{ex.GetType().Name} ended the command", ex);
         switch (inner)
         {
             case ConfigException config:
-                context.Error.WriteLine($"error: {config.Message}");
+                context.Error.WriteLine($"error: {TerminalText.Show(config.Message)}");
                 foreach (var issue in config.Issues)
                 {
                     context.Error.WriteLine($"  {issue}");
@@ -110,6 +113,16 @@ internal static class CliApp
                 return ExitCodes.InvalidConfig;
             case ProviderUnavailableException or HttpRequestException:
                 return Fail(context, ex.Message, ExitCodes.ProviderUnavailable);
+            case PluginUnavailableException plugin:
+                // A plugin that cannot start or answer is an unavailable provider, whichever command asked: with its
+                // hint, then the lines it printed last, which often say why. Only here, so that they print once.
+                var code = Fail(context, plugin.Message, ExitCodes.ProviderUnavailable, plugin.Hint);
+                foreach (var line in plugin.Output)
+                {
+                    context.Error.WriteLine($"  | {TerminalText.Show(line)}");
+                }
+
+                return code;
             case DaemonNotRunningException:
                 return Fail(context, inner.Message, ExitCodes.DaemonNotRunning);
             case IHasHint hinted:
@@ -120,14 +133,14 @@ internal static class CliApp
             case WavFormatException or FileNotFoundException or DirectoryNotFoundException:
                 return Fail(context, ex.Message, ExitCodes.Error);
             default:
-                context.Error.WriteLine($"error: {ex.Message}");
+                context.Error.WriteLine($"error: {TerminalText.Show(ex.Message)}");
                 if (!context.Verbose)
                 {
                     context.Error.WriteLine("  (run with --verbose for details)");
                 }
                 else
                 {
-                    context.Error.WriteLine(ex);
+                    context.Error.WriteLine(TerminalText.ShowLines(ex.ToString()));
                 }
 
                 return ExitCodes.Error;

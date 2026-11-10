@@ -12,8 +12,8 @@ public sealed class CommandNamesTests
     public void TheRootCommandKeepsItsVerbs() =>
         Assert.Equal(
             [
-                "cancel", "config", "daemon", "devices", "doctor", "history", "init", "models", "process", "profiles", "record",
-                "reload", "secret", "shutdown", "start", "status", "stop", "stt", "toggle", "transcribe", "vocab",
+                "cancel", "config", "daemon", "devices", "doctor", "history", "init", "models", "plugins", "process", "profiles",
+                "record", "reload", "secret", "shutdown", "start", "status", "stop", "stt", "toggle", "transcribe", "vocab",
             ],
             CliApp.BuildRoot().Subcommands.Select(c => c.Name).Order(StringComparer.Ordinal));
 

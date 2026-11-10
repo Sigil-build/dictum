@@ -1,5 +1,6 @@
 using System.CommandLine;
 using Dictum.Core.Configuration;
+using Dictum.Core.Text;
 using Dictum.Core.Vocabulary;
 
 namespace Dictum.Cli.Commands;
@@ -24,7 +25,7 @@ internal static class VocabCommand
             var profile = config.Profiles[IndexOf(config, parse.GetValue(ProfileOption))];
             foreach (var term in profile.Vocabulary)
             {
-                context.Out.WriteLine(term);
+                context.WriteValue(term);
             }
 
             WarnAboutDroppedTerms(context, profile);
@@ -44,7 +45,7 @@ internal static class VocabCommand
                 var (remaining, notFound) = VocabularyList.Remove(current, parse.GetValue(removeTerms) ?? []);
                 if (notFound.Count > 0)
                 {
-                    context.Error.WriteLine($"warning: not in the list: {string.Join(", ", notFound)}");
+                    context.Error.WriteLine($"warning: not in the list: {TerminalText.Show(string.Join(", ", notFound))}");
                 }
 
                 return remaining;
@@ -81,7 +82,7 @@ internal static class VocabCommand
         var updated = config.Profiles[index] with { Vocabulary = change(config.Profiles[index].Vocabulary) };
         config.Profiles[index] = updated;
         context.SaveValidated(config);
-        context.Error.WriteLine($"{updated.Id}: {updated.Vocabulary.Count} word(s)");
+        context.Error.WriteLine($"{TerminalText.Show(updated.Id)}: {updated.Vocabulary.Count} word(s)");
         WarnAboutDroppedTerms(context, updated);
         return ExitCodes.Success;
     }
@@ -109,7 +110,7 @@ internal static class VocabCommand
         {
             context.Error.WriteLine(
                 $"warning: the speech hint holds {SttPromptBuilder.MaxLength} characters, so these words are left out: "
-                + $"{string.Join(", ", dropped)}. Put the most important words first.");
+                + $"{TerminalText.Show(string.Join(", ", dropped))}. Put the most important words first.");
         }
     }
 }

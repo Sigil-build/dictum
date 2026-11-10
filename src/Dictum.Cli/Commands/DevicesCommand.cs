@@ -1,6 +1,8 @@
 using System.CommandLine;
 using System.Text.Json;
 using Dictum.Cli.Output;
+using Dictum.Core.Audio;
+using Dictum.Core.Text;
 
 namespace Dictum.Cli.Commands;
 
@@ -28,11 +30,15 @@ internal static class DevicesCommand
 
             foreach (var d in devices)
             {
-                context.Out.WriteLine($"{(d.IsDefault ? "*" : " ")} {d.Id,3}  {d.Name}  ({d.HostApi}, {d.DefaultSampleRate:F0} Hz, {d.MaxInputChannels} ch)");
+                context.Out.WriteLine(Line(d));
             }
 
             return Task.FromResult(ExitCodes.Success);
         }, ct));
         return command;
     }
+
+    /// <summary>One microphone in the listing; its names are the driver's own, spelt out.</summary>
+    internal static string Line(AudioDevice d) =>
+        $"{(d.IsDefault ? "*" : " ")} {d.Id,3}  {TerminalText.Show(d.Name)}  ({TerminalText.Show(d.HostApi)}, {d.DefaultSampleRate:F0} Hz, {d.MaxInputChannels} ch)";
 }

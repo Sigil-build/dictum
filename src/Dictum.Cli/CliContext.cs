@@ -3,21 +3,27 @@ using Dictum.Audio;
 using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Text;
 using Dictum.Host;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
+using Dictum.Plugins;
 
 namespace Dictum.Cli;
 
 /// <summary>Per-invocation state: paths, logging, config, the platform and a lazily built host.</summary>
 internal sealed class CliContext : IAsyncDisposable
 {
+    private readonly Lock _gate = new();
     private DictumHost? _host;
     private DictumConfig? _config;
     private bool _configLoaded;
     private PlatformServices? _platform;
+    private PluginHost? _plugins;
 
-    /// <param name="consoleLevel">Overrides the stderr log level (the daemon logs Info by default).</param>
+    /// <param name="consoleLevel">
+    /// For a process whose console is its log, as the daemon's is: the stderr log level, and every warning prints.
+    /// </param>
     public CliContext(ParseResult parse, LogLevel? consoleLevel = null)
     {
         Out = Console.Out;
@@ -25,10 +31,26 @@ internal sealed class CliContext : IAsyncDisposable
         Paths = AppPaths.FromEnvironment().WithDownloads(ConfiguredDownloads);
         Verbose = parse.GetValue(CliApp.VerboseOption);
         ConfigPath = Paths.ConfigFileFrom(parse.GetValue(CliApp.ConfigOption));
-        Log = new DictumLog(Verbose ? LogLevel.Debug : consoleLevel ?? LogLevel.Warning, includeText: Verbose, Error, Paths.LogsDirectory);
+        Log = new DictumLog(Verbose ? LogLevel.Debug : consoleLevel ?? LogLevel.Warning, includeText: Verbose, Error, Paths.LogsDirectory)
+        {
+            // A plugin's first start that fails is thrown to the command, which reports it as its error; the same warning would
+            // print it twice. The log file keeps it. A restart's failure reaches no command, so it prints. In a daemon no
+            // command reports anything on this console: whoever asked is another process, so there every warning prints.
+            ConsoleFilter = consoleLevel is null ? PrintsOnConsole : null,
+        };
         NativeStderr.ShowDiagnostics = Verbose;
         Store = new ConfigStore(ConfigPath, Log);
     }
+
+    /// <summary>
+    /// Whether a message the level allowed also goes to the console: not a plugin's first-start warning, since the command
+    /// that started it reports the failure itself.
+    /// </summary>
+    internal static bool PrintsOnConsole(LogLevel level, string message, Exception? exception) =>
+        level != LogLevel.Warning || exception is not PluginStartFailedException;
+
+    /// <summary>Whether stdout is a terminal, rather than a file or another program. A test says which it means.</summary>
+    internal static bool OutputIsTerminal { get; set; } = !Console.IsOutputRedirected;
 
     /// <summary>The OS paths, with the downloads folder of the config as loaded (and as the daemon reloads it).</summary>
     public AppPaths Paths { get; }
@@ -47,6 +69,12 @@ internal sealed class CliContext : IAsyncDisposable
 
     public string SocketPath => IpcEndpoint.SocketPath(Paths);
 
+    /// <summary>
+    /// Prints a value that a script may read, such as a path or a word: whole for a file or another program, since a joiner
+    /// spelt out would name another path or word; spelt out on a terminal, which must not be given it raw.
+    /// </summary>
+    public void WriteValue(string value) => Out.WriteLine(OutputIsTerminal ? TerminalText.Show(value) : value);
+
     /// <summary>Platform services; settings are re-read from the current config at use time.</summary>
     public PlatformServices Platform => _platform ??= PlatformFactory.Create(
         Log,
@@ -56,6 +84,21 @@ internal sealed class CliContext : IAsyncDisposable
             return new PlatformSettings(general.TerminalApps, general.Injector);
         },
         Paths.DataDirectory);
+
+    /// <summary>
+    /// The plugin processes this invocation starts, which end with it. Made on first use, so that a command that makes
+    /// no plugin provider starts no plugin client; a provider asks for it as it is made, on whichever thread.
+    /// </summary>
+    public PluginHost Plugins
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _plugins ??= new PluginHost(new PluginTrustStore(Paths.PluginTrustFile, Log), PlatformFactory.CreateProcessGroups(), Log);
+            }
+        }
+    }
 
     /// <summary>The config, or null when the file does not exist. Invalid files throw <see cref="ConfigException"/>.</summary>
     public DictumConfig? TryLoadConfig()
@@ -115,13 +158,24 @@ internal sealed class CliContext : IAsyncDisposable
 
     public DictumHost Host() => _host ??= CreateHost(TryLoadConfig());
 
-    public DictumHost CreateHost(DictumConfig? config) => DictumHost.Create(Paths, Log, config, Platform.Secrets, Platform.ActiveApp);
+    /// <summary>
+    /// A host for <paramref name="config"/>. It gets <see cref="Plugins"/> when it first makes a plugin provider, one
+    /// that the config names or one made ad hoc.
+    /// </summary>
+    public DictumHost CreateHost(DictumConfig? config) =>
+        DictumHost.Create(Paths, Log, config, Platform.Secrets, Platform.ActiveApp, () => Plugins);
 
+    /// <summary>The host first, which lets go of its plugins, then the plugins, which log while they stop.</summary>
     public async ValueTask DisposeAsync()
     {
         if (_host is not null)
         {
             await _host.DisposeAsync().ConfigureAwait(false);
+        }
+
+        if (_plugins is not null)
+        {
+            await _plugins.DisposeAsync().ConfigureAwait(false);
         }
 
         Log.Dispose();

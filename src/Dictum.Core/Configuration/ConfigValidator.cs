@@ -37,6 +37,11 @@ public static class ConfigValidator
             }
         }
 
+        foreach (var (id, plugin) in config.Plugins)
+        {
+            ValidatePlugin(issues, ConfigPaths.Plugin(id), id, plugin);
+        }
+
         var seenIds = new HashSet<string>(StringComparer.Ordinal);
         var takenHotkeys = new HashSet<Hotkey>();
         for (var i = 0; i < config.Profiles.Count; i++)
@@ -175,6 +180,43 @@ public static class ConfigValidator
                 }
 
                 break;
+            case PluginSttConfig plugin:
+                ValidatePluginProvider(issues, path, plugin);
+                break;
+        }
+    }
+
+    private static void ValidatePluginProvider(List<ConfigIssue> issues, string path, PluginSttConfig plugin)
+    {
+        var pluginPath = ConfigPaths.Field(path, nameof(PluginSttConfig.Plugin));
+        if (Required(issues, pluginPath, plugin.Plugin) && !PluginIds.IsValid(plugin.Plugin))
+        {
+            Error(issues, pluginPath, PluginIds.Rule);
+        }
+
+        var modelPath = ConfigPaths.Field(path, nameof(PluginSttConfig.Model));
+        if (Required(issues, modelPath, plugin.Model) && !PluginIds.IsValidModelId(plugin.Model) && !Path.IsPathFullyQualified(plugin.Model))
+        {
+            Error(issues, modelPath, "must be a model id from the plugin or an absolute path");
+        }
+
+        if (plugin.Threads < 1)
+        {
+            Error(issues, ConfigPaths.Field(path, nameof(PluginSttConfig.Threads)), "must be 1 or more, or left out");
+        }
+    }
+
+    private static void ValidatePlugin(List<ConfigIssue> issues, string path, string id, PluginRegistration plugin)
+    {
+        if (!PluginIds.IsValid(id))
+        {
+            Error(issues, path, PluginIds.Rule);
+        }
+
+        // The span overload takes a null that JSON can still produce for the non-nullable property, as an empty path.
+        if (!Path.IsPathFullyQualified(plugin.Path.AsSpan()))
+        {
+            Error(issues, ConfigPaths.Field(path, nameof(PluginRegistration.Path)), "must be an absolute path to the plugin's folder");
         }
     }
 
@@ -286,12 +328,16 @@ public static class ConfigValidator
         }
     }
 
-    private static void Required(List<ConfigIssue> issues, string path, string? value)
+    /// <summary>Whether the value is there; when it is not, the issue is added.</summary>
+    private static bool Required(List<ConfigIssue> issues, string path, string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
             Error(issues, path, "must not be empty");
+            return false;
         }
+
+        return true;
     }
 
     private static void Error(List<ConfigIssue> issues, string path, string message) =>

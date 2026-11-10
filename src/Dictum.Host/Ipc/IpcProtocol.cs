@@ -69,17 +69,29 @@ public static class StoppingReason
 /// <param name="Sample">For <c>test-stt</c>: transcribe the built-in sample instead of recording.</param>
 public sealed record IpcRequest(string Command, string? Profile = null, string? Stt = null, string? Device = null, int? Seconds = null, bool? Sample = null);
 
+/// <param name="Kind">
+/// What kind of failure <paramref name="Error"/> is, one of <see cref="IpcFailureKind"/>; null when it is no kind a client
+/// acts on, and from a daemon that does not say.
+/// </param>
 public sealed record IpcResponse(
     bool Ok,
     string? Error = null,
     DaemonStatus? Status = null,
     IReadOnlyList<AudioDevice>? Devices = null,
     IReadOnlyList<PlatformCheck>? Checks = null,
-    SttTestResult? Test = null)
+    SttTestResult? Test = null,
+    string? Kind = null)
 {
     public static IpcResponse Success(DaemonStatus status) => new(true, Status: status);
 
-    public static IpcResponse Failure(string error) => new(false, error);
+    public static IpcResponse Failure(string error, string? kind = null) => new(false, error, Kind: kind);
+}
+
+/// <summary>The kinds of failure an <see cref="IpcResponse"/> names, so that a client can end with the exit code of its kind.</summary>
+public static class IpcFailureKind
+{
+    /// <summary>A speech provider or a plugin could not start or answer.</summary>
+    public const string ProviderUnavailable = "providerUnavailable";
 }
 
 /// <param name="State">Pipeline state: Idle, Recording, Transcribing, Processing or Output.</param>

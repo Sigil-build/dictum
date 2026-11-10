@@ -303,4 +303,124 @@ public class ConfigValidatorTests
             (issue.Severity, issue.Path, issue.Message));
         Assert.Empty(ConfigValidator.Validate(absolute));
     }
+
+    private static DictumConfig WithPlugin(PluginSttConfig plugin)
+    {
+        var config = DefaultConfig.Create();
+        config.Stt["p"] = plugin;
+        return config;
+    }
+
+    private static string ModelPath => Path.Combine(Path.GetTempPath(), "models", "x.onnx");
+
+    [Fact]
+    public void APluginProviderNeedsAPluginAndAModel()
+    {
+        var issues = ConfigValidator.Validate(WithPlugin(new PluginSttConfig { Plugin = " ", Model = "" }));
+
+        Assert.Equal(
+            [
+                (ConfigIssueSeverity.Error, "stt.p.plugin", "must not be empty"),
+                (ConfigIssueSeverity.Error, "stt.p.model", "must not be empty"),
+            ],
+            issues.Select(i => (i.Severity, i.Path, i.Message)));
+    }
+
+    [Fact]
+    public void APluginProviderNamesAValidPluginId()
+    {
+        var issue = Assert.Single(ConfigValidator.Validate(WithPlugin(new PluginSttConfig { Plugin = "My_Sherpa", Model = "m" })));
+
+        Assert.Equal((ConfigIssueSeverity.Error, "stt.p.plugin", PluginIds.Rule), (issue.Severity, issue.Path, issue.Message));
+    }
+
+    [Fact]
+    public void APluginModelIsAnIdOrAnAbsolutePath()
+    {
+        foreach (var bad in new[] { "models/x.onnx", "..", "C:model", " x ", "My Model" })
+        {
+            var issue = Assert.Single(ConfigValidator.Validate(WithPlugin(new PluginSttConfig { Plugin = "p", Model = bad })));
+
+            Assert.Equal(
+                (ConfigIssueSeverity.Error, "stt.p.model", "must be a model id from the plugin or an absolute path"),
+                (issue.Severity, issue.Path, issue.Message));
+        }
+
+        Assert.Empty(ConfigValidator.Validate(WithPlugin(new PluginSttConfig { Plugin = "p", Model = "parakeet-int8" })));
+        Assert.Empty(ConfigValidator.Validate(WithPlugin(new PluginSttConfig { Plugin = "p", Model = ModelPath })));
+    }
+
+    [Fact]
+    public void PluginThreadsMustBePositive()
+    {
+        var issue = Assert.Single(ConfigValidator.Validate(WithPlugin(new PluginSttConfig { Plugin = "p", Model = "m", Threads = 0 })));
+
+        Assert.Equal(
+            (ConfigIssueSeverity.Error, "stt.p.threads", "must be 1 or more, or left out"),
+            (issue.Severity, issue.Path, issue.Message));
+        Assert.Empty(ConfigValidator.Validate(WithPlugin(new PluginSttConfig { Plugin = "p", Model = "m", Threads = 1 })));
+    }
+
+    [Fact]
+    public void ARegisteredPluginNeedsAValidIdAndAnAbsolutePath()
+    {
+        var config = DefaultConfig.Create();
+        config.Plugins["Bad"] = new PluginRegistration { Path = Path.GetTempPath() };
+        config.Plugins["ok"] = new PluginRegistration { Path = "rel" };
+        config.Plugins["whisper"] = new PluginRegistration { Path = Path.GetTempPath() };
+        config.Plugins["fine"] = new PluginRegistration { Path = Path.GetTempPath() };
+
+        var issues = ConfigValidator.Validate(config);
+
+        Assert.Equal(
+            [
+                (ConfigIssueSeverity.Error, "plugins.Bad", PluginIds.Rule),
+                (ConfigIssueSeverity.Error, "plugins.ok.path", "must be an absolute path to the plugin's folder"),
+                (ConfigIssueSeverity.Error, "plugins.whisper", PluginIds.Rule),
+            ],
+            issues.Select(i => (i.Severity, i.Path, i.Message)));
+    }
+
+    /// <summary>JSON can say <c>"path": null</c> though the property is not nullable: the validator reports it and does not throw.</summary>
+    [Fact]
+    public void ARegisteredPluginWithANullPathFromJsonIsAnErrorNotACrash()
+    {
+        var config = ConfigStore.Parse("""{ "schemaVersion": 1, "plugins": { "p": { "path": null } } }""");
+
+        var issue = Assert.Single(ConfigValidator.Validate(config), i => i.Path == "plugins.p.path");
+
+        Assert.Equal("must be an absolute path to the plugin's folder", issue.Message);
+    }
+
+    [Fact]
+    public void AProfileWithALanguageListOnAPluginGetsNoWarning()
+    {
+        var config = WithPlugin(new PluginSttConfig { Plugin = "p", Model = "m" });
+        config.Profiles[0] = config.Profiles[0] with { Stt = "p", Language = "uk, en" };
+
+        Assert.Empty(ConfigValidator.Validate(config));
+    }
+
+    // Core cannot see the official plugins (2b); Host reports a plugin that is missing.
+    [Fact]
+    public void APluginTheConfigDoesNotRegisterIsNotAnError() =>
+        Assert.Empty(ConfigValidator.Validate(WithPlugin(new PluginSttConfig { Plugin = "unregistered", Model = "m" })));
+
+    /// <summary>
+    /// A key or a value of a copied config.json reaches the issue as it is, which Settings matches by its path; printed,
+    /// the issue spells out what a terminal would act on, once, however often it is printed.
+    /// </summary>
+    [Fact]
+    public void AnIssueIsPrintedWithItsHiddenCharactersSpeltOutOnce()
+    {
+        var config = new DictumConfig { Plugins = { ["\u001b]0;PWNED\u0007x"] = new PluginRegistration { Path = Path.GetTempPath() } } };
+        var issue = ConfigValidator.Validate(config).Single();
+
+        Assert.Equal("plugins.\u001b]0;PWNED\u0007x", issue.Path);
+        Assert.Equal($@"plugins.\u001b]0;PWNED\u0007x: {PluginIds.Rule}", issue.ToString());
+        Assert.Equal(
+            @"line 3: profiles[0].language: '\u202e' is not a language",
+            new ConfigIssue(ConfigIssueSeverity.Error, "profiles[0].language", "'\u202e' is not a language", 3).ToString());
+        Assert.Equal(@"stt.a: '\u001b' is spelt out already", new ConfigIssue(ConfigIssueSeverity.Warning, "stt.a", @"'\u001b' is spelt out already").ToString());
+    }
 }

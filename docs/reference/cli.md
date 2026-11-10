@@ -286,6 +286,52 @@ Usage: `dictum models delete <ids>...`
 | --- | --- |
 | `<ids>` | Catalog ids of downloaded models |
 
+## `dictum plugins` {#plugins}
+
+List, add and remove speech engines that run as plugins
+
+Usage: `dictum plugins <command>`
+
+| Command | Description |
+| --- | --- |
+| [`list`](#plugins-list) | Show Whisper and the plugins you added, and whether each is confirmed |
+| [`add`](#plugins-add) | Add a plugin from a folder, or confirm it again after it changed |
+| [`remove`](#plugins-remove) | Forget a plugin; its folder is left alone |
+
+## `dictum plugins list` {#plugins-list}
+
+Show Whisper and the plugins you added, and whether each is confirmed
+
+Usage: `dictum plugins list [options]`
+
+| Option | Description |
+| --- | --- |
+| `--json` | Print JSON |
+
+## `dictum plugins add` {#plugins-add}
+
+Add a plugin from a folder, or confirm it again after it changed
+
+Usage: `dictum plugins add <folder> [options]`
+
+| Argument | Description |
+| --- | --- |
+| `<folder>` | The plugin's folder, with its plugin.json |
+
+| Option | Description |
+| --- | --- |
+| `--yes`, `-y` | Do not ask whether to add it |
+
+## `dictum plugins remove` {#plugins-remove}
+
+Forget a plugin; its folder is left alone
+
+Usage: `dictum plugins remove <id>`
+
+| Argument | Description |
+| --- | --- |
+| `<id>` | The plugin's id, as 'dictum plugins list' shows it |
+
 ## `dictum devices` {#devices}
 
 List microphones

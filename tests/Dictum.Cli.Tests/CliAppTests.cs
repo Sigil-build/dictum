@@ -286,6 +286,40 @@ public sealed class CliAppTests(CliSandbox sandbox)
         Assert.Contains("whisper-tiny-en is not installed", console.Error.ToString(), StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Review focus 4: a key from a copied config.json reaches the terminal spelt out, in an error and in a warning alike,
+    /// whichever command loads the config. A plugin id that sets the terminal's title is an error; a processor id that
+    /// no profile runs, a warning.
+    /// </summary>
+    [Theory]
+    [InlineData("plugins", "list")]
+    [InlineData("config", "validate")]
+    public async Task AConfigKeyIsPrintedSpeltOut(string command, string subcommand)
+    {
+        const string Key = "\u001b]0;PWNED\u0007x";
+        using var dir = new TempDirectory();
+        var invalid = dir.File("invalid.json");
+        var warned = dir.File("warned.json");
+        await File.WriteAllTextAsync(invalid, ConfigStore.Serialize(new DictumConfig { Plugins = { [Key] = new PluginRegistration { Path = dir.Path } } }), _ct);
+        var unused = DefaultConfig.Create();
+        unused.Processors[Key] = new ReplaceProcessorConfig();
+        await File.WriteAllTextAsync(warned, ConfigStore.Serialize(unused), _ct);
+
+        using (var console = new ConsoleCapture())
+        {
+            Assert.Equal(ExitCodes.InvalidConfig, await console.RunAsync(command, subcommand, "--config", invalid));
+            Assert.Contains($@"  plugins.\u001b]0;PWNED\u0007x: {PluginIds.Rule}", console.Error.ToString(), StringComparison.Ordinal);
+            Assert.DoesNotContain('\u001b', console.Error.ToString());
+        }
+
+        using (var console = new ConsoleCapture())
+        {
+            Assert.Equal(0, await console.RunAsync(command, subcommand, "--config", warned));
+            Assert.Contains(@"processors.\u001b]0;PWNED\u0007x: no profile's pipeline runs it", console.Error.ToString(), StringComparison.Ordinal);
+            Assert.DoesNotContain('\u001b', console.Error.ToString());
+        }
+    }
+
     /// <summary>The starter config with <paramref name="downloads"/> as its downloads folder, in <paramref name="dir"/>.</summary>
     private async Task<string> ConfigWithDownloadsAsync(TempDirectory dir, string downloads)
     {

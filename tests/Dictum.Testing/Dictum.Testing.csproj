@@ -16,6 +16,12 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Dictum.Audio/Dictum.Audio.csproj" />
     <ProjectReference Include="../../src/Dictum.Platform/Dictum.Platform.csproj" />
+    <ProjectReference Include="../../src/Dictum.Plugins/Dictum.Plugins.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- TestPlugins writes the behaviour that the test plugin reads. -->
+    <Compile Include="../Dictum.TestPlugin/TestPluginBehaviour.cs" Link="TestPluginBehaviour.cs" />
   </ItemGroup>
 
 </Project>

@@ -3,7 +3,7 @@ using Dictum.Core.Configuration;
 
 namespace Dictum.App.Settings;
 
-/// <summary>How a speech provider reads in a dropdown: "Local Whisper · large-v3-turbo-q8_0", "Remote · home-server:9000".</summary>
+/// <summary>How a speech provider reads in a dropdown: "Local Whisper · large-v3-turbo-q8_0", "Remote · home-server:9000", "Plugin whisper-cpp".</summary>
 public static class ProviderLabels
 {
     private const string GgmlPrefix = "ggml-";
@@ -13,6 +13,7 @@ public static class ProviderLabels
         WhisperLocalSttConfig local => UiText.Format(Strings.SettingsProviderLocal, ModelName(local.Model)),
         OpenAiCompatibleSttConfig remote => UiText.Format(Strings.SettingsProviderRemote,
             Uri.TryCreate(remote.BaseUrl, UriKind.Absolute, out var uri) ? uri.Authority : remote.BaseUrl),
+        PluginSttConfig plugin => UiText.Format(Strings.ProviderLabelPlugin, plugin.Plugin),
         _ => config.GetType().Name,
     };
 

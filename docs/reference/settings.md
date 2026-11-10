@@ -209,6 +209,10 @@ Remote server. Leave it empty for a server on your computer. A key you type goes
 
 Remote server. How long Dictum waits for the server's answer, from 1 to 600 seconds; 60 for a new provider. Raise it for a slow server or long dictations.
 
+#### Plugin {#provider-plugin}
+
+A provider whose `type` is `plugin` in `config.json` shows as a read-only card: the plugin it runs and the model it uses. It has no fields, because a plugin has no server address and no API key; to change it, edit the provider in `config.json`. **Remove provider** deletes no key for it. **Test** works as for the other providers. [Write a plugin](../guides/write-a-plugin.md#use) shows how to add a plugin and write its provider.
+
 #### Test {#provider-test}
 
 **Test** records 5 seconds from your microphone, with a level bar, and shows what the provider recognised and how long it took. **Test with a sample** sends a built-in recording instead. Both save your pending changes first and need the daemon to run. Fix any field marked in red before you test.

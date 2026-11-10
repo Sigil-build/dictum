@@ -3,6 +3,7 @@ using Dictum.Core;
 using Dictum.Core.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Processing;
 using Dictum.Core.Stt;
 using Dictum.Host.Diagnostics;
 using Dictum.Host.Ipc;
@@ -89,6 +90,142 @@ public sealed class DoctorChecksTests : IDisposable
         Assert.Contains("No answer within", checks.Single(c => c.Name == "stt:s").Status.Detail);
     }
 
+    // A plugin's check may have to start it, which takes far longer than asking a server. The row returns as soon as
+    // the check does, so the long limit costs nothing and leaves a busy runner room.
+    [Fact]
+    public async Task APluginRowGetsItsStartTimeout()
+    {
+        var config = new DictumConfig
+        {
+            Stt =
+            {
+                ["p"] = new PluginSttConfig { Plugin = "test", Model = "m1" },
+                ["w"] = new WhisperLocalSttConfig { Model = "m.bin" },
+            },
+        };
+        var inputs = Inputs(config) with
+        {
+            GetStt = _ => new SlowStt(TimeSpan.FromMilliseconds(500)),
+            CheckTimeout = TimeSpan.FromMilliseconds(100),
+            PluginCheckTimeout = TimeSpan.FromSeconds(30),
+        };
+
+        var checks = await DoctorChecks.RunAsync(inputs, _ct);
+
+        Assert.Equal(HealthLevel.Ok, checks.Single(c => c.Name == PlatformCheckNames.Stt("p")).Status.Level);
+        Assert.Contains("No answer within", checks.Single(c => c.Name == PlatformCheckNames.Stt("w")).Status.Detail);
+    }
+
+    // Ledger 90: a plugin's row may wait out the plugin's whole start, and the System page waits 2 minutes for the whole
+    // doctor. The plugin rows wait side by side, so plugins that hang take one timeout between them, not one each. Here
+    // plugin a's check hangs until plugin b's has begun: checked one after the other, a would wait out its whole timeout.
+    [Fact]
+    public async Task TwoHangingPluginsTakeOneTimeout()
+    {
+        var bChecked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var config = new DictumConfig
+        {
+            Stt =
+            {
+                ["a"] = new PluginSttConfig { Plugin = "a", Model = "m1" },
+                ["b"] = new PluginSttConfig { Plugin = "b", Model = "m1" },
+            },
+        };
+        var inputs = Inputs(config) with
+        {
+            GetStt = id => new CheckedStt(id == "a"
+                ? async ct =>
+                {
+                    await bChecked.Task.WaitAsync(ct);
+                    return HealthStatus.Ok("a answered");
+                }
+                : _ =>
+                {
+                    bChecked.TrySetResult();
+                    return Task.FromResult(HealthStatus.Ok("b answered"));
+                }),
+            PluginCheckTimeout = TimeSpan.FromSeconds(30),
+        };
+
+        var checks = await DoctorChecks.RunAsync(inputs, _ct);
+
+        Assert.Equal(HealthStatus.Ok("a answered"), checks.Single(c => c.Name == PlatformCheckNames.Stt("a")).Status);
+        Assert.Equal(HealthStatus.Ok("b answered"), checks.Single(c => c.Name == PlatformCheckNames.Stt("b")).Status);
+    }
+
+    // A reload disposes the engine a check has just reached, and the next call reaches the new one: the row says what the
+    // new engine finds, not that the old one is gone.
+    [Fact]
+    public async Task AnEngineThatAReloadDisposedUnderACheckIsCheckedAgainOnTheNewOne()
+    {
+        var asked = 0;
+        var inputs = Inputs(Config("m.bin")) with
+        {
+            GetStt = _ => Interlocked.Increment(ref asked) == 1
+                ? throw new ObjectDisposedException("Dictum.Host.DictumHost")
+                : new CheckedStt(_ => Task.FromResult(HealthStatus.Ok("answered"))),
+        };
+
+        var checks = await DoctorChecks.RunAsync(inputs, _ct);
+
+        Assert.Equal(HealthStatus.Ok("answered"), checks.Single(c => c.Name == PlatformCheckNames.Stt("s")).Status);
+    }
+
+    [Fact]
+    public async Task AProviderThatAReloadDisposedDuringItsCheckIsCheckedAgainOnTheNewOne()
+    {
+        var asked = 0;
+        var inputs = Inputs(Config("m.bin")) with
+        {
+            GetStt = _ => new CheckedStt(_ => Interlocked.Increment(ref asked) == 1
+                ? throw new ObjectDisposedException("whisper")
+                : Task.FromResult(HealthStatus.Ok("answered"))),
+        };
+
+        var checks = await DoctorChecks.RunAsync(inputs, _ct);
+
+        Assert.Equal(HealthStatus.Ok("answered"), checks.Single(c => c.Name == PlatformCheckNames.Stt("s")).Status);
+    }
+
+    [Fact]
+    public async Task AProcessorThatAReloadDisposedDuringItsCheckIsCheckedAgainOnTheNewOne()
+    {
+        var config = Config("m.bin");
+        config.Processors["clean"] = new ReplaceProcessorConfig();
+        var fresh = new CheckedProcessor(_ => Task.FromResult(HealthStatus.Ok("answered")));
+        ITextProcessor current = fresh;
+        current = new CheckedProcessor(_ =>
+        {
+            current = fresh;
+            throw new ObjectDisposedException("llm");
+        });
+        var inputs = Inputs(config) with { GetProcessor = _ => current };
+
+        var checks = await DoctorChecks.RunAsync(inputs, _ct);
+
+        Assert.Equal(HealthStatus.Ok("answered"), checks.Single(c => c.Name == PlatformCheckNames.Processor("clean")).Status);
+    }
+
+    // Once more, not for as long as it takes: an engine that is gone again says so in its row, and the other rows follow.
+    [Fact]
+    public async Task AnEngineGoneTwiceIsAnErrorRow()
+    {
+        var asked = 0;
+        var inputs = Inputs(Config("m.bin")) with
+        {
+            GetStt = _ =>
+            {
+                Interlocked.Increment(ref asked);
+                throw new ObjectDisposedException("Dictum.Host.DictumHost");
+            },
+        };
+
+        var checks = await DoctorChecks.RunAsync(inputs, _ct);
+
+        Assert.Equal(HealthLevel.Error, checks.Single(c => c.Name == PlatformCheckNames.Stt("s")).Status.Level);
+        Assert.Equal(2, asked);
+    }
+
     [Fact]
     public async Task ADaemonThatTakesTheConnectionButNeverAnswersIsAnErrorRow()
     {
@@ -135,6 +272,39 @@ public sealed class DoctorChecksTests : IDisposable
         Stt = new() { ["s"] = new WhisperLocalSttConfig { Model = model } },
         Profiles = [new ProfileConfig { Id = "p", Stt = "s" }],
     };
+
+    private sealed class SlowStt(TimeSpan delay) : ISpeechToText
+    {
+        public string Id => "slow";
+
+        public Task<Transcript> TranscribeAsync(AudioClip clip, SttRequest request, CancellationToken ct) => throw new NotSupportedException();
+
+        public async Task<HealthStatus> CheckAsync(CancellationToken ct)
+        {
+            await Task.Delay(delay, ct);
+            return HealthStatus.Ok("answered");
+        }
+    }
+
+    /// <summary>A provider whose check is <paramref name="check"/>.</summary>
+    private sealed class CheckedStt(Func<CancellationToken, Task<HealthStatus>> check) : ISpeechToText
+    {
+        public string Id => "checked";
+
+        public Task<Transcript> TranscribeAsync(AudioClip clip, SttRequest request, CancellationToken ct) => throw new NotSupportedException();
+
+        public Task<HealthStatus> CheckAsync(CancellationToken ct) => check(ct);
+    }
+
+    /// <summary>A processor whose check is <paramref name="check"/>.</summary>
+    private sealed class CheckedProcessor(Func<CancellationToken, Task<HealthStatus>> check) : ITextProcessor, IHealthCheck
+    {
+        public string Id => "checked";
+
+        public Task<string> ProcessAsync(string text, ProcessingContext context, CancellationToken ct) => throw new NotSupportedException();
+
+        public Task<HealthStatus> CheckAsync(CancellationToken ct) => check(ct);
+    }
 
     private sealed class SilentStt : ISpeechToText
     {

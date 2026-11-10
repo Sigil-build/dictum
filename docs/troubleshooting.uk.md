@@ -67,7 +67,7 @@ WARN config warnings        1 warning(s)
 | `secrets` | **Сховище секретів** | [API-ключі та сховище ключів](#secrets) |
 | `session`, `platform` | **Сеанс робочого столу**, **Платформа** | [Сеанс робочого столу](#desktop-session) |
 | `daemon` | **Демон** | [Демон](#daemon) |
-| `gpu`, `stt:<id>` | **Відеокарта**, **Розпізнавання мовлення &lt;id&gt;** | [Розпізнавання мовлення](#speech-recognition) |
+| `gpu`, `stt:<id>` | **Відеокарта**, **Розпізнавання мовлення &lt;id&gt;** | [Розпізнавання мовлення](#speech-recognition); для плагіна — [Плагін не запускається](#plugin) |
 | `processor:<id>` | **Обробник &lt;id&gt;** | [Чищення тексту мовною моделлю](#llm-cleanup) |
 | — | **Значок у треї** | [Немає значка в треї](#tray-icon) |
 | — | **Індикатор диктування** | [Немає індикатора](#overlay) |
@@ -368,7 +368,7 @@ API-ключ сервера може бути в конфігурації трь
 
 Рядок `gpu` (**Відеокарта**) називає відеокарту, яку може використати Whisper, або пише `none that Whisper can use; speech recognition runs on the CPU`. Він завжди «OK»: він потрібен, щоб ви знали, де працює розпізнавання.
 
-Кожен постачальник розпізнавання має свій рядок `stt:<id>` (**Розпізнавання мовлення &lt;id&gt;**). Для локального Whisper:
+Кожен постачальник розпізнавання має свій рядок `stt:<id>` (**Розпізнавання мовлення &lt;id&gt;**). Рядок плагіна пояснено в розділі [Плагін не запускається](#plugin). Для локального Whisper:
 
 `ggml-large-v3-turbo-q8_0.bin, runtime Vulkan on …`
 :   Усе гаразд: модель і те, на чому вона працює.
@@ -402,6 +402,116 @@ API-ключ сервера може бути в конфігурації трь
 :   Dictum не може достукатися до сервера. Перевірте, що сервер працює і що **URL** закінчується версією API, наприклад `http://localhost:8080/v1`.
 
 Якщо розпізнавання повільне, виберіть меншу модель у **Налаштування → Моделі**. Щоб побачити, скільки часу потребує постачальник, натисніть **Перевірити** в **Налаштування → Розпізнавання мовлення** і говоріть п'ять секунд: з'явиться «Розпізнано за … мс».
+
+## Плагін не запускається {#plugin}
+
+Постачальник розпізнавання з `type` `plugin` має такий самий рядок, як інші, `stt:<id>` (**Розпізнавання мовлення &lt;id&gt;**). Його перевірка запускає плагін, якщо той ще не працює, тож може тривати до хвилини. `dictum doctor` у терміналі запускає власну копію плагіна; **Налаштування → Система** питає демон, у якому вже працюють плагіни, якими користуються профілі. Плагін, що працює:
+
+```text
+  OK stt:hello              plugin Hello 1.0.0, model tiny, pid 4242
+```
+
+Коли плагін не може запуститися, рядок каже чому й, якщо плагін щось вивів, наводить його останні рядки після `last output:`, а другий рядок каже, що зробити. Диктування в профілі, що використовує плагін, завершується помилкою з тим самим повідомленням, а `dictum transcribe` і `dictum stt test` його виводять. **Перевірити** на карті постачальника в **Налаштування → Розпізнавання мовлення** показує його, після нього — що зробити, а далі після `last output:` — останні рядки. Що має робити плагін, описано в посібнику [Створення плагіна](guides/write-a-plugin.md).
+
+Постачальник і тека плагіна:
+
+`Plugin 'hello' is not added.` → `Add it with 'dictum plugins add <folder>'.`
+:   Постачальник називає плагін, якого немає в `plugins` у `config.json`. Додайте плагін або виправте `plugin` постачальника.
+
+`plugin.json in … is not valid: …` → `Fix its plugin.json, then confirm it with 'dictum plugins add "…"'.`
+:   `plugin.json` плагіна змінився відтоді, як ви його додали, і тепер має помилки, або зник файл, який перелічує його `program`, як у `program lists 'plugin.py', which is not in the plugin's folder`; повідомлення їх перелічує. Сам файл описано в посібнику [Створення плагіна](guides/write-a-plugin.md#manifest).
+
+`The plugin in … calls itself '…', not 'hello'.` → `Add it again with 'dictum plugins add "…"'.`
+:   `plugin.json` у цій теці тепер має інший `id`, ніж той, під яким ви додали плагін. Поверніть старий ідентифікатор або виконайте команду, яка додасть плагін під новим; потім запишіть новий ідентифікатор у `plugin` постачальника, а старий забудьте командою `dictum plugins remove hello`.
+
+`Model not found: …` → `Check stt.<id>.model in config.json.`
+:   `model` постачальника — повний шлях, а за ним немає ні файла, ні теки.
+
+`Plugin hello starts through plugin.cmd, which cannot be given …: it holds one of & % ^ ! " < > | ( ).` → `Use a path without those characters, or ask the plugin's author for a program (.exe) instead of a script.`
+:   У Windows плагін, програма якого — файл `.cmd` чи `.bat`, працює під cmd.exe, а той зреагував би на ці символи в параметрі, як-от у шляху `model` постачальника: скажімо, виконав би те, що стоїть після `&`. Перемістіть чи перейменуйте теку моделі або візьміть плагін, що запускається програмою. Те саме, коли постачальник називає модель за `id`: Dictum тоді передає теку всередині теки завантажень, тож символ зі списку в самому шляху теки завантажень теж відмовляє в запуску. Перемістіть теку завантажень на шлях без цих символів або візьміть плагін, програма якого — `.exe`.
+
+`Plugin 'hello' has no model 'tiny'.` → `Its models: …; or set the model to an absolute path.`
+:   `model` постачальника — ідентифікатор, але `plugin.json` плагіна не має моделі з таким. Підказка називає ідентифікатори, які там є, або пише `It lists no models; set the model to an absolute path.` Візьміть один із них або повний шлях до моделі.
+
+`Model 'tiny' of plugin 'hello' is not in ….` → `Put its files there, or set the model to an absolute path.`
+:   Теки моделі, `models/hello/tiny` у [теці завантажень](reference/files.md#downloads-folder), немає. Ця версія Dictum не завантажує моделей плагінів: покладіть файли туди самі або вкажіть постачальнику повний шлях до моделі.
+
+Підтвердження:
+
+`Plugin hello has not been confirmed on this computer.` → `Confirm it with 'dictum plugins add "…"'.`
+:   Плагін є в `config.json`, але на цьому комп'ютері його ніхто не підтверджував або підтверджував з іншою текою чи програмою: файл прийшов з іншого комп'ютера або його редагували вручну. Виконайте команду: вона спершу покаже плагін і спитає вас.
+
+`Plugin hello changed since you added it (plugin.py).` → `Confirm it with 'dictum plugins add "…"'.`
+:   Файл плагіна не той, який Dictum записав, коли ви його підтвердили: `plugin.json`, програма чи файл, який перелічує поле `program`. Файл, що з'явився в переліченій теці чи зник із неї, теж рахується, як і посилання в ній, що з'явилося, зникло чи вказує деінде. Повідомлення називає перший файл, що відрізняється, за його шляхом у теці плагіна. Якщо ви оновили чи відредагували плагін, виконайте команду, щоб підтвердити його знову. Якщо ні — спершу з'ясуйте, що його змінило. Щойно ви його підтвердите, наступне диктування його запустить.
+
+`… plugin-trust.json was written by a newer Dictum (file version 2; this one reads 1), so this Dictum does not change it.` → `Update Dictum, then confirm the plugin again.`
+:   Файл записала новіша версія Dictum, і вона може записувати більше, ніж ця перевіряє. Ця версія не довіряє жодному його запису, тож жоден доданий вами плагін не запускається, а в журналі є `… so no plugin counts as confirmed.` `dictum plugins add` лишає файл як є і каже про це, ще не спитавши вас і не запустивши плагін. Установіть новішу версію знову.
+
+Під час запуску програми. Ці повідомлення мають підказку `See the plugin's output, if it printed any, and its own documentation.` Усі, крім `Plugin … could not be started: …`, ще й наводять останні рядки плагіна, якщо той щось вивів. Рядок doctor, `dictum stt test` і відповідь демона на команду, як-от `dictum start`, показують їх після `last output:`, розділені `|`. `dictum transcribe` і `dictum plugins add`, які запускають плагін самі, показують кожен окремим рядком після `|`. Кожна команда, крім `dictum doctor`, тоді завершується з кодом 3. Символи, на які реагував би термінал, як-от керівні коди, записано кодом: символ escape як `\u001b`. У цього повідомлення рядків немає, бо програма так і не запустилася. Коли демон повідомляє про запуск, що не вдався раніше, підказка має продовження: `Then save the settings or restart the daemon to try again.` Плагін, що не запустився, демон сам більше не пробує; це роблять збереження налаштувань, `dictum reload` або перезапуск демона.
+
+`Plugin hello could not be started: …`
+:   Система не запустила програму, яку називає `plugin.json`, а решта тексту каже чому. У Linux файлу потрібне право на виконання: `chmod +x plugin.sh`. Перший рядок скрипта має називати інтерпретатор, який справді є.
+
+`Plugin hello exited with code 1 while starting.`
+:   Програма завершилася, не встигнувши підготуватися. Чому — зазвичай кажуть її останні рядки: бракує бібліотеки чи файла моделі або інтерпретатора, якого викликає скрипт-запускач, немає в `PATH`, який бачить Dictum, як-от `'python' is not recognized as an internal or external command,` в англійській Windows.
+
+`Plugin hello did not get ready within 60 s.`
+:   Програма не вивела вчасно рядка готовності. Перевірте, що вона виводить `{"dictumPlugin":1,"url":"…"}` у stdout і скидає буфер.
+
+`Plugin hello did not get ready within 60 s; /health last answered 503 Service Unavailable.`
+:   Програма назвала свою адресу, але `/health` не відповів 200 вчасно. Решта тексту каже, що Dictum почув замість цього востаннє: код відповіді, як-от 503, поки модель вантажиться; `/health did not answer`, коли відповіді не було зовсім; `/health could not be reached: …` із причиною, коли за адресою з рядка готовності ніщо не слухає; або `its last answer to /health could not be read: …`, коли відповідь обірвалася. Перевірте, що модель завантажується за хвилину і що програма слухає там, де сказала. `/dictum/v1/info did not answer` означає, що `/health` відповів 200, а `/dictum/v1/info` вчасно не відповів.
+
+`Plugin hello announced https://127.0.0.1:…, but protocol 1 is plain http on this computer.`
+:   Рядок готовності називає адресу на вашому комп'ютері, але не з `http`. Протокол 1 на вашому комп'ютері — це звичайний `http`: назвіть `http://127.0.0.1:<port>`, без TLS.
+
+`Plugin hello announced …, which is not on this computer.`
+:   Рядок готовності називає адресу не на `127.0.0.1`, `::1` чи `localhost`. Dictum говорить із плагіном лише на вашому комп'ютері.
+
+`Plugin hello rejected Dictum's key.`
+:   Плагін відповів 401 або 403. Він має брати ключ зі змінної середовища `DICTUM_PLUGIN_KEY` і приймати `Authorization: Bearer <key>`.
+
+`Plugin hello speaks protocol 2; this Dictum speaks protocol 1.`
+:   Плагін зроблено для іншої версії Dictum. Візьміть версію плагіна для протоколу 1 або оновіть Dictum.
+
+`Plugin hello answered 404 to /dictum/v1/info.`, `Plugin hello did not answer /dictum/v1/info: …` або `Plugin hello answered /dictum/v1/info with invalid JSON: …`
+:   `/health` відповів, а `/dictum/v1/info` — не так, як вимагає протокол 1: див. [На що він має відповідати](guides/write-a-plugin.md#endpoints).
+
+Після запуску:
+
+`Plugin hello kept stopping; Dictum stopped restarting it after 3 restarts within 5 minutes.` → `Save the settings or restart the daemon to try again.`
+:   Плагін раз у раз завершувався сам або не зміг знову запуститися після того, як завершився. Dictum запускає його знову до трьох разів за п'ять хвилин, і запуск, що не вдався, теж серед них, а тоді облишає. Чому — кажуть його останні рядки й журнал. Усуньте причину, а тоді збережіть налаштування, виконайте `dictum reload` або перезапустіть демон.
+
+`Plugin hello could not start: …` → `Save the settings or restart the daemon to try again.`
+:   Запуск зупинила інша помилка; яка — каже решта тексту.
+
+Під час диктування:
+
+`Plugin provider 'hello' answered 500 Internal Server Error: …`
+:   Плагін не впорався із записом. Далі йде початок його відповіді, а його рядки в журналі можуть сказати більше.
+
+`Plugin provider 'hello' returned invalid JSON: …`
+:   Відповідь плагіна — не JSON на кшталт `{"text": "…"}`.
+
+`Plugin provider 'hello' did not answer within … ms.`
+:   Плагін працював довше, ніж 60 секунд і ще дві тривалості запису.
+
+`Plugin provider 'hello' is unreachable at http://127.0.0.1:…/v1: …`
+:   Процес плагіна завершився або обірвав з'єднання. Якщо плагін завершився сам, Dictum запустить його знову: спробуйте ще раз.
+
+`Plugin provider 'hello' was stopped while in use.`
+:   Dictum зупинив плагін посеред диктування, як це буває, коли демон завершує роботу. Спробуйте ще раз.
+
+`dictum plugins add` і `dictum plugins remove` у власних повідомленнях кажуть, що не так і що зробити, як-от `A plugin named hello is already added from …. Remove it first: dictum plugins remove hello`.
+
+Власні рядки плагіна лежать у `dictum.log` (див. [Журнали](#logs)), кожен після `plugin <id>:` і з символами, на які реагував би термінал, записаними кодом, разом із тим, що Dictum робив із плагіном:
+
+```text
+2026-11-02 10:15:02.481 +02:00 INFO plugin hello: loading /home/you/models/tiny
+2026-11-02 10:15:03.902 +02:00 INFO Plugin hello is ready at http://127.0.0.1:53126/ (pid 4242)
+2026-11-02 10:42:17.011 +02:00 INFO plugin hello: CUDA error: out of memory
+2026-11-02 10:42:17.015 +02:00 INFO Plugin hello (pid 4242) exited with code 1
+2026-11-02 10:42:17.016 +02:00 WARNING Plugin hello (pid 4242) stopped by itself with code 1; restarting it
+```
 
 ## Чищення тексту мовною моделлю {#llm-cleanup}
 

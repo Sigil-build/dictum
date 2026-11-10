@@ -1,6 +1,7 @@
 using System.CommandLine;
 using Dictum.Core.Configuration;
 using Dictum.Core.Hotkeys;
+using Dictum.Core.Text;
 
 namespace Dictum.Cli.Commands;
 
@@ -15,7 +16,7 @@ internal static class ProfilesCommand
         {
             foreach (var profile in context.LoadConfig().Profiles)
             {
-                context.Out.WriteLine($"{profile.Id,-20} {profile.Hotkey ?? "-",-18} {profile.Mode,-11} stt={profile.Stt} lang={profile.Language ?? LanguageList.Auto} pipeline=[{string.Join(", ", profile.Pipeline)}]");
+                context.Out.WriteLine($"{TerminalText.Show(profile.Id),-20} {TerminalText.Show(profile.Hotkey ?? "-"),-18} {profile.Mode,-11} stt={TerminalText.Show(profile.Stt)} lang={TerminalText.Show(profile.Language ?? LanguageList.Auto)} pipeline=[{TerminalText.Show(string.Join(", ", profile.Pipeline))}]");
             }
 
             return Task.FromResult(ExitCodes.Success);
@@ -31,17 +32,17 @@ internal static class ProfilesCommand
                 ?? throw new ConfigException($"Unknown profile '{wanted}'.");
 
             var o = context.Out;
-            o.WriteLine($"id:         {profile.Id}");
-            o.WriteLine($"name:       {profile.Name ?? "-"}");
-            o.WriteLine($"hotkey:     {profile.Hotkey ?? "-"} ({profile.Mode})");
-            o.WriteLine($"stt:        {profile.Stt}  {(config.Stt.TryGetValue(profile.Stt, out var stt) ? SttCommand.Describe(stt) : "(missing)")}");
-            o.WriteLine($"language:   {profile.Language ?? LanguageList.Auto}");
-            o.WriteLine($"sttPrompt:  {profile.SttPrompt ?? "-"}");
-            o.WriteLine($"vocabulary: {(profile.Vocabulary.Count == 0 ? "-" : string.Join(", ", profile.Vocabulary))}");
-            o.WriteLine($"pipeline:   {(profile.Pipeline.Count == 0 ? "-" : string.Join(" → ", profile.Pipeline))}");
+            o.WriteLine($"id:         {TerminalText.Show(profile.Id)}");
+            o.WriteLine($"name:       {TerminalText.Show(profile.Name ?? "-")}");
+            o.WriteLine($"hotkey:     {TerminalText.Show(profile.Hotkey ?? "-")} ({profile.Mode})");
+            o.WriteLine($"stt:        {TerminalText.Show(profile.Stt)}  {(config.Stt.TryGetValue(profile.Stt, out var stt) ? SttCommand.Describe(stt) : "(missing)")}");
+            o.WriteLine($"language:   {TerminalText.Show(profile.Language ?? LanguageList.Auto)}");
+            o.WriteLine($"sttPrompt:  {TerminalText.Show(profile.SttPrompt ?? "-")}");
+            o.WriteLine($"vocabulary: {TerminalText.Show(profile.Vocabulary.Count == 0 ? "-" : string.Join(", ", profile.Vocabulary))}");
+            o.WriteLine($"pipeline:   {TerminalText.Show(profile.Pipeline.Count == 0 ? "-" : string.Join(" → ", profile.Pipeline))}");
             foreach (var step in profile.Pipeline)
             {
-                o.WriteLine($"  {step,-16} {(config.Processors.TryGetValue(step, out var p) ? Describe(p) : "(missing)")}");
+                o.WriteLine($"  {TerminalText.Show(step),-16} {(config.Processors.TryGetValue(step, out var p) ? Describe(p) : "(missing)")}");
             }
 
             o.WriteLine($"output:     {profile.Output.ToString().ToLowerInvariant()}");
@@ -68,7 +69,7 @@ internal static class ProfilesCommand
 
             config.Profiles[index] = config.Profiles[index] with { Hotkey = hotkey.ToString() };
             context.SaveValidated(config);
-            context.Error.WriteLine($"{id}: {hotkey}");
+            context.Error.WriteLine($"{TerminalText.Show(id)}: {hotkey}");
             return Task.FromResult(ExitCodes.Success);
         }, ct));
 
@@ -81,7 +82,7 @@ internal static class ProfilesCommand
     private static string Describe(ProcessorConfig config) => config switch
     {
         ReplaceProcessorConfig r => $"{ReplaceProcessorConfig.TypeName}, {r.Rules.Count} rules",
-        LlmProcessorConfig l => $"{LlmProcessorConfig.TypeName}, {l.BaseUrl} model={l.Model} prompt={l.Prompt}",
+        LlmProcessorConfig l => $"{LlmProcessorConfig.TypeName}, {TerminalText.Show(l.BaseUrl)} model={TerminalText.Show(l.Model)} prompt={TerminalText.Show(l.Prompt)}",
         _ => config.GetType().Name,
     };
 }

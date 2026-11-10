@@ -33,4 +33,29 @@ public sealed class DictumConfigTests
         Assert.Equal(folder, ConfigStore.Parse(json).General.DownloadsDirectory);
         Assert.DoesNotContain("downloadsDirectory", ConfigStore.Serialize(DefaultConfig.Create()));
     }
+
+    [Fact]
+    public void APluginProviderAndARegistrationRoundTrip()
+    {
+        var config = DefaultConfig.Create();
+        config.Stt["p"] = new PluginSttConfig { Plugin = "my-sherpa", Model = @"D:\m", Threads = 4 };
+        config.Plugins["my-sherpa"] = new PluginRegistration { Path = @"D:\plugins\my-sherpa" };
+
+        var json = ConfigStore.Serialize(config);
+        var parsed = ConfigStore.Parse(json);
+
+        Assert.Contains("\"type\": \"plugin\"", json);
+        Assert.Contains("\"plugins\"", json);
+        Assert.Equal(config.Stt["p"], parsed.Stt["p"]);
+        Assert.Equal(config.Plugins["my-sherpa"], parsed.Plugins["my-sherpa"]);
+    }
+
+    [Fact]
+    public void AConfigWithoutPluginsLoadsWithAnEmptySection()
+    {
+        var parsed = ConfigStore.Parse("""{ "schemaVersion": 1, "stt": {}, "processors": {}, "profiles": [] }""");
+
+        Assert.NotNull(parsed.Plugins);
+        Assert.Empty(parsed.Plugins);
+    }
 }

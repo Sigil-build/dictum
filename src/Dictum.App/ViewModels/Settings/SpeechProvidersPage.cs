@@ -74,6 +74,13 @@ public sealed partial class SpeechProvidersPage : SettingsPage
             c.Stt.Remove(card.Id);
             return c;
         });
+
+        // A plugin provider has no key, so there is no secret to delete.
+        if (card.IsPlugin)
+        {
+            return;
+        }
+
         _ = ApiKeys.RemoveAsync(_services.Secrets, card.SecretName, key, _session.Config, _services.Log, CancellationToken.None);
     }
 
@@ -84,7 +91,12 @@ public sealed partial class SpeechProvidersPage : SettingsPage
         var cards = new List<ProviderCard>();
         foreach (var (id, stt) in config.Stt)
         {
-            var kind = stt is WhisperLocalSttConfig ? ProviderKind.Local : ProviderKind.Remote;
+            var kind = stt switch
+            {
+                WhisperLocalSttConfig => ProviderKind.Local,
+                PluginSttConfig => ProviderKind.Plugin,
+                _ => ProviderKind.Remote,
+            };
             var card = _cards.GetValueOrDefault(id) is { } existing && existing.Kind == kind
                 ? existing
                 : new ProviderCard(id, kind, _session, _services, Remove, () => _lastSave);

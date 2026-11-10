@@ -28,6 +28,28 @@ public sealed class IpcTests : IDisposable
 
     public void Dispose() => _dir.Dispose();
 
+    /// <summary>A daemon of an older build says nothing of a failure's kind; its answer reads as before.</summary>
+    [Fact]
+    public void AnAnswerWithoutAFailureKindStillReads()
+    {
+        var response = System.Text.Json.JsonSerializer.Deserialize("""{"ok":false,"error":"It failed."}""", IpcJsonContext.Default.IpcResponse)!;
+
+        Assert.False(response.Ok);
+        Assert.Equal("It failed.", response.Error);
+        Assert.Null(response.Kind);
+    }
+
+    [Fact]
+    public async Task AFailureKindTravelsToTheClient()
+    {
+        await using var server = new IpcServer(SocketPath, NullLog.Instance);
+        server.Start((_, _) => Task.FromResult(IpcResponse.Failure("Down.", IpcFailureKind.ProviderUnavailable)));
+
+        var response = await new IpcClient(SocketPath).SendAsync(new IpcRequest(IpcCommand.Start), _ct);
+
+        Assert.Equal(IpcFailureKind.ProviderUnavailable, response.Kind);
+    }
+
     [Fact]
     public async Task RequestReachesTheHandlerAndTheAnswerComesBack()
     {

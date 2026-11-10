@@ -1,4 +1,5 @@
 using Dictum.Core.Configuration;
+using Dictum.Plugins;
 using Dictum.Setup;
 
 namespace Dictum.Core.Tests.Configuration;
@@ -33,6 +34,19 @@ public sealed class KeyRedactionTests
             Assert.Contains($"BaseUrl = {Server}", text, StringComparison.Ordinal);
             Assert.Contains("ApiKey = ***", text, StringComparison.Ordinal);
         });
+    }
+
+    /// <summary>A ready plugin's endpoint carries the key of its launch, which goes only into the plugin's environment.</summary>
+    [Fact]
+    public void APluginEndpointPrintsItsAddressButNotTheKey()
+    {
+        var key = new string('a', 64);
+        var endpoint = new PluginEndpoint(new Uri("http://127.0.0.1:50123"), key, new PluginInfo(1, "Hello", "1.0.0", null));
+
+        var text = endpoint.ToString();
+
+        Assert.DoesNotContain(key, text, StringComparison.Ordinal);
+        Assert.Equal("PluginEndpoint { Url = http://127.0.0.1:50123/, Key = ***, Info = PluginInfo { Protocol = 1, Name = Hello, Version = 1.0.0, Model =  } }", text);
     }
 
     [Fact]

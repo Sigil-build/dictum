@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Dictum.Core.Diagnostics;
+using Dictum.Core.Text;
 
 namespace Dictum.Core.Configuration;
 
@@ -149,7 +150,9 @@ public sealed class ConfigStore
     {
         long? line = ex.LineNumber is { } l ? l + 1 : null;
         var path = ex.Path is { Length: > 1 } p ? p.TrimStart('$', '.') : string.Empty;
-        var message = FirstSentence(ex.Message);
+
+        // The reader quotes a value it cannot read, such as an unknown type, as the file has it.
+        var message = TerminalText.Show(FirstSentence(ex.Message));
         return new ConfigException(
             $"Config is not valid JSON for Dictum: {message}",
             [new ConfigIssue(ConfigIssueSeverity.Error, path, message, line)],

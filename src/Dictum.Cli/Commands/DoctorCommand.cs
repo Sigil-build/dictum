@@ -6,6 +6,7 @@ using Dictum.Cli.Output;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Docs;
+using Dictum.Core.Text;
 using Dictum.Host.Diagnostics;
 using Dictum.Platform;
 
@@ -52,10 +53,10 @@ internal static class DoctorCommand
                 context.Out.WriteLine($"dictum {CliApp.Version} on {RuntimeInformation.OSDescription} ({RuntimeInformation.RuntimeIdentifier})");
                 foreach (var check in checks)
                 {
-                    context.Out.WriteLine($"{Label(check.Level)} {check.Name,-NameWidth} {check.Detail}");
+                    context.Out.WriteLine($"{Label(check.Level)} {TerminalText.Show(check.Name),-NameWidth} {TerminalText.Show(check.Detail)}");
                     if (check.Hint is not null && check.Level != HealthLevel.Ok)
                     {
-                        context.Out.WriteLine($"     {"",-NameWidth} → {check.Hint}");
+                        context.Out.WriteLine($"     {"",-NameWidth} → {TerminalText.Show(check.Hint)}");
                     }
 
                     if (check.Docs is not null)

@@ -21,10 +21,20 @@ public sealed record DictumConfig
     /// <summary>Named text processors, chained by profiles.</summary>
     public Dictionary<string, ProcessorConfig> Processors { get; set; } = [];
 
+    /// <summary>The user's own plugins by id, each registered by the folder it lives in.</summary>
+    public Dictionary<string, PluginRegistration> Plugins { get; set; } = [];
+
     public List<ProfileConfig> Profiles { get; set; } = [];
 
     /// <summary>The profile with id <paramref name="id"/>, compared as written; null when there is none.</summary>
     public ProfileConfig? FindProfile(string? id) => Profiles.Find(p => p.Id == id);
+}
+
+/// <summary>A plugin the user added, found in <see cref="Path"/>.</summary>
+public sealed record PluginRegistration
+{
+    /// <summary>The plugin's folder, an absolute path.</summary>
+    public required string Path { get; init; }
 }
 
 public sealed record GeneralSettings

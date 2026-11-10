@@ -3,6 +3,7 @@ using Dictum.Audio;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Stt;
+using Dictum.Core.Text;
 using Dictum.Host;
 
 namespace Dictum.Cli.Commands;
@@ -27,7 +28,7 @@ internal static class SttCommand
             var config = context.LoadConfig();
             foreach (var (id, stt) in config.Stt)
             {
-                context.Out.WriteLine($"{id,-20} {Describe(stt)}");
+                context.Out.WriteLine($"{TerminalText.Show(id),-20} {Describe(stt)}");
             }
 
             return Task.FromResult(ExitCodes.Success);
@@ -49,10 +50,10 @@ internal static class SttCommand
             var stt = context.Host().GetStt(parse.GetValue(id)!);
 
             var status = await stt.CheckAsync(token).ConfigureAwait(false);
-            context.Error.WriteLine($"{status.Level}: {status.Detail}");
+            context.Error.WriteLine($"{status.Level}: {TerminalText.Show(status.Detail)}");
             if (status.Hint is not null)
             {
-                context.Error.WriteLine($"  hint: {status.Hint}");
+                context.Error.WriteLine($"  hint: {TerminalText.Show(status.Hint)}");
             }
 
             if (status.Level == HealthLevel.Error)
@@ -90,8 +91,9 @@ internal static class SttCommand
 
     public static string Describe(SttConfig config) => config switch
     {
-        WhisperLocalSttConfig w => $"{WhisperLocalSttConfig.TypeName}  model={w.Model} runtime={w.Runtime.ToString().ToLowerInvariant()} vad={w.Vad.ToString().ToLowerInvariant()}",
-        OpenAiCompatibleSttConfig o => $"{OpenAiCompatibleSttConfig.TypeName}  {o.BaseUrl} model={o.Model}",
+        WhisperLocalSttConfig w => $"{WhisperLocalSttConfig.TypeName}  model={TerminalText.Show(w.Model)} runtime={w.Runtime.ToString().ToLowerInvariant()} vad={w.Vad.ToString().ToLowerInvariant()}",
+        OpenAiCompatibleSttConfig o => $"{OpenAiCompatibleSttConfig.TypeName}  {TerminalText.Show(o.BaseUrl)} model={TerminalText.Show(o.Model)}",
+        PluginSttConfig p => $"plugin {TerminalText.Show(p.Plugin)} · model {TerminalText.Show(p.Model)}",
         _ => config.GetType().Name,
     };
 }

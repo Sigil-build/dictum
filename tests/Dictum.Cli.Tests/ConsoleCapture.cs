@@ -7,11 +7,14 @@ internal sealed class ConsoleCapture : IDisposable
 {
     private readonly TextWriter _out = Console.Out;
     private readonly TextWriter _error = Console.Error;
+    private readonly bool _outputIsTerminal = CliContext.OutputIsTerminal;
 
-    public ConsoleCapture()
+    /// <param name="terminal">Whether the CLI takes its stdout for a terminal; left false, it takes it for a file or a program.</param>
+    public ConsoleCapture(bool terminal = false)
     {
         Console.SetOut(Out);
         Console.SetError(Error);
+        CliContext.OutputIsTerminal = terminal;
     }
 
     public StringWriter Out { get; } = new();
@@ -22,6 +25,7 @@ internal sealed class ConsoleCapture : IDisposable
     {
         Console.SetOut(_out);
         Console.SetError(_error);
+        CliContext.OutputIsTerminal = _outputIsTerminal;
     }
 
     /// <summary>Runs the CLI with <paramref name="args"/>, as <c>dictum</c> would, and returns its exit code.</summary>
