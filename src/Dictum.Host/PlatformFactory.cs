@@ -37,11 +37,13 @@ public static class PlatformFactory
         : null;
 
     /// <summary>
-    /// The groups that plugin processes start in, without building the rest of the platform: a job object on Windows,
-    /// so that what a plugin starts ends with it. Other systems have none.
+    /// The groups that plugin processes start in, without building the rest of the platform: a job object on Windows and
+    /// a setsid session on Linux, so that what a plugin starts ends with it. macOS has none.
     /// </summary>
     public static IProcessGroups CreateProcessGroups() =>
-        OperatingSystem.IsWindows() ? new JobObjectProcessGroups() : NullProcessGroups.Instance;
+        OperatingSystem.IsWindows() ? new JobObjectProcessGroups()
+        : OperatingSystem.IsLinux() ? SessionProcessGroups.Create()
+        : NullProcessGroups.Instance;
 
     /// <summary>The OS secret store, without building the rest of the platform: the desktop app needs only this.</summary>
     public static ISecretStore CreateSecretStore(ILog log) =>

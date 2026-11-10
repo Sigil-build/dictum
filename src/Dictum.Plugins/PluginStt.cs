@@ -41,6 +41,17 @@ public sealed class PluginStt(
     /// <summary>How messages name this provider.</summary>
     private string Name => $"Plugin provider '{id}'";
 
+    private bool IsDisposed
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _disposed;
+            }
+        }
+    }
+
     /// <exception cref="PluginUnavailableException">The plugin is not added, its model is missing, or it could not start.</exception>
     /// <exception cref="ProviderUnavailableException">It did not answer, answered an error, or was stopped meanwhile.</exception>
     public async Task<Transcript> TranscribeAsync(AudioClip clip, SttRequest request, CancellationToken ct)
@@ -88,15 +99,23 @@ public sealed class PluginStt(
     }
 
     /// <summary>
-    /// Starts the plugin if it is not running yet, which may take as long as its start timeout. Only a cancellation of
-    /// <paramref name="ct"/> throws: any other failure is an error status, so a warm-up goes on to the next provider.
+    /// Starts the plugin if it is not running yet, which may take as long as its start timeout. A failure is an error
+    /// status, so a warm-up goes on to the next provider.
     /// </summary>
+    /// <exception cref="OperationCanceledException"><paramref name="ct"/> was cancelled.</exception>
+    /// <exception cref="ObjectDisposedException">
+    /// A reload let go of this provider: as with a disposed engine, the caller asks the provider that replaced it.
+    /// </exception>
     public async Task<HealthStatus> CheckAsync(CancellationToken ct)
     {
         try
         {
             var (launch, instance, endpoint) = await ReadyAsync(ct).ConfigureAwait(false);
             return HealthStatus.Ok($"plugin {launch.Name} {launch.Version}, model {endpoint.Info.Model?.Id ?? config.Model}, pid {instance.ProcessId}");
+        }
+        catch (ProviderUnavailableException ex) when (ex.InnerException is ObjectDisposedException && IsDisposed)
+        {
+            throw new ObjectDisposedException(Name, ex);
         }
         catch (PluginUnavailableException ex)
         {
