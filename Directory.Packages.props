@@ -30,7 +30,7 @@
     <PackageVersion Include="Whisper.net.Runtime" Version="1.9.1" />
     <PackageVersion Include="Whisper.net.Runtime.Vulkan" Version="1.9.1" />
     <PackageVersion Include="SharpHook" Version="8.0.1" />
-    <PackageVersion Include="Tmds.DBus.Protocol" Version="0.95.1" />
+    <PackageVersion Include="Tmds.DBus.Protocol" Version="0.95.2" />
   </ItemGroup>
 
   <ItemGroup Label="Tests">
