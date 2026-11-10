@@ -29,10 +29,8 @@ public sealed class TerminalTextTests
     [InlineData("a\tb", "a\\u0009b")]
     [InlineData("a\u202Eb\r\n", "a\\u202eb\r\n")]
     [InlineData(null, "")]
-    public void ShowLinesKeepsLineBreaksAndSpellsOutTheRest(string? value, string shown)
-    {
+    public void ShowLinesKeepsLineBreaksAndSpellsOutTheRest(string? value, string shown) =>
         Assert.Equal(shown, TerminalText.ShowLines(value));
-    }
 
     /// <summary>
     /// A surrogate with no partner is no character at all: it is not hidden, and a terminal draws it as the replacement

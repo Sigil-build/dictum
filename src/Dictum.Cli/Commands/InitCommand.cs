@@ -359,7 +359,7 @@ internal static class InitCommand
             var status = await check.CheckAsync(ct).ConfigureAwait(false);
             if (status.Level != HealthLevel.Ok)
             {
-                context.Error.WriteLine($"warning: {TerminalText.Show(status.Detail)}. The setting is saved anyway; cleanup is skipped while the server is unreachable.");
+                await context.Error.WriteLineAsync($"warning: {TerminalText.Show(status.Detail)}. The setting is saved anyway; cleanup is skipped while the server is unreachable.").ConfigureAwait(false);
             }
         }
     }

@@ -136,10 +136,8 @@ public sealed partial class UserDocsTests
     // A control character is invalid in the published HTML, and a format character cannot be seen in review: a page that
     // means to show one writes its escape, such as `\u001b`.
     [Fact]
-    public void NoPageHoldsAControlOrFormatCharacter()
-    {
+    public void NoPageHoldsAControlOrFormatCharacter() =>
         AssertNone(AllPages().SelectMany(page => HiddenCharacters(page, File.ReadAllText(Full(page)))));
-    }
 
     /// <summary>
     /// A form feed or a next-line character is a control character that <c>ReplaceLineEndings</c> would turn into a line
@@ -150,16 +148,11 @@ public sealed partial class UserDocsTests
     [InlineData("a\nb\u0085c", "p.md:2 holds U+0085")]
     [InlineData("a\u001bb", "p.md:1 holds U+001B")]
     [InlineData("a\u200eb", "p.md:1 holds U+200E")]
-    public void TheScanFindsWhatALineSplitWouldHide(string text, string problem)
-    {
+    public void TheScanFindsWhatALineSplitWouldHide(string text, string problem) =>
         Assert.Equal([problem], HiddenCharacters("p.md", text));
-    }
 
     [Fact]
-    public void TheScanAllowsTabsAndLineBreaks()
-    {
-        Assert.Empty(HiddenCharacters("p.md", "a\tb\r\nc\nd"));
-    }
+    public void TheScanAllowsTabsAndLineBreaks() => Assert.Empty(HiddenCharacters("p.md", "a\tb\r\nc\nd"));
 
     /// <summary>Each control character other than tab, LF and CR, and each format character, with its line.</summary>
     private static List<string> HiddenCharacters(string page, string text)

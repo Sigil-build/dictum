@@ -499,7 +499,7 @@ public sealed class PluginsCommandTests : IDisposable
     private async Task<(int Code, string Output, string Error)> RunAsync(params string[] args)
     {
         using var console = new ConsoleCapture();
-        string[] full = args[0] == "stt" ? args : ["plugins", .. args];
+        var full = args[0] == "stt" ? args : ["plugins", .. args];
         var code = await console.RunAsync([.. full, "--config", _configFile]);
         return (code, console.Out.ToString(), console.Error.ToString());
     }
