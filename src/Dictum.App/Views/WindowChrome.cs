@@ -8,7 +8,7 @@ namespace Dictum.App.Views;
 /// What Dictum's windows share: their own colour, Mica behind the content where Windows 11 has it, and Dictum's mark as
 /// the window icon. The colour comes from the <c>chrome</c> style in Resources/Controls.axaml.
 /// </summary>
-internal static class WindowChrome
+public static class WindowChrome
 {
     /// <summary>Gives the window its own colour; Resources/Controls.axaml styles it.</summary>
     public const string ChromeClass = "chrome";
@@ -21,10 +21,13 @@ internal static class WindowChrome
 
     private const int IconSize = 32;
 
-    public static void Apply(Window window)
+    public static void Apply(Window window) => Apply(window, offerMica: OperatingSystem.IsWindowsVersionAtLeast(10, 0, Windows11Build));
+
+    /// <param name="offerMica">Whether to ask for Mica: on Windows 11 only.</param>
+    public static void Apply(Window window, bool offerMica)
     {
         window.Classes.Add(ChromeClass);
-        if (OperatingSystem.IsWindowsVersionAtLeast(10, 0, Windows11Build))
+        if (offerMica)
         {
             // Mica is only a request: Avalonia draws it when it renders on the GPU, and answers None when it renders in
             // software (a VM without 3D, Remote Desktop, a blocked driver) or loses the GPU while the window is open. The
@@ -34,16 +37,17 @@ internal static class WindowChrome
             {
                 if (e.Property == TopLevel.ActualTransparencyLevelProperty)
                 {
-                    ShowMica(window);
+                    ShowMica(window, window.ActualTransparencyLevel);
                 }
             };
-            ShowMica(window);
+            ShowMica(window, window.ActualTransparencyLevel);
         }
 
         // The tray's idle glyph, so the title bar and the task switcher show Dictum's mark.
         window.Icon = new WindowIcon(TrayIconRenderer.Render(TrayGlyph.Idle, frame: 0, IconSize, Color.Parse(TrayGeometry.MonoOnDark), colourLayer: true));
     }
 
-    private static void ShowMica(Window window) =>
-        window.Classes.Set(MicaClass, window.ActualTransparencyLevel == WindowTransparencyLevel.Mica);
+    /// <summary>Lets Mica through while <paramref name="level"/> says Avalonia draws it.</summary>
+    public static void ShowMica(Window window, WindowTransparencyLevel level) =>
+        window.Classes.Set(MicaClass, level == WindowTransparencyLevel.Mica);
 }

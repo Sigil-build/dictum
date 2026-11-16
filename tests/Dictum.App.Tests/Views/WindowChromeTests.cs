@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Dictum.App.Views;
 using Dictum.App.Views.Settings;
 using Dictum.App.Views.Setup;
 
@@ -22,16 +23,60 @@ public sealed class WindowChromeTests(AvaloniaFixture fx)
             ? solid
             : throw new InvalidOperationException("color.bg.base is missing");
 
-    // A headless window, like one rendered in software, answers a Mica request with None.
+    private static Color Colour(Window window) => Assert.IsAssignableFrom<ISolidColorBrush>(window.Background).Color;
+
     [Theory]
     [MemberData(nameof(Windows))]
-    public Task AWindowWithoutMicaHasItsOwnColour(string name) => fx.Ui(() =>
+    public Task SettingsAndTheWizardHaveTheirOwnColour(string name) => fx.Ui(() =>
     {
         var window = Create(name);
         window.Show();
 
         Assert.NotEqual(WindowTransparencyLevel.Mica, window.ActualTransparencyLevel);
         Assert.Same(Base(), window.Background);
+        window.Close();
+    });
+
+    // On any OS, as on Windows 11: a headless window, like one rendered in software, answers a Mica request with None.
+    [Fact]
+    public Task AWindowThatAsksForMicaAndGetsNoneKeepsItsColour() => fx.Ui(() =>
+    {
+        var window = new Window();
+        WindowChrome.Apply(window, offerMica: true);
+        window.Show();
+
+        Assert.Equal([WindowTransparencyLevel.Mica], window.TransparencyLevelHint);
+        Assert.NotEqual(WindowTransparencyLevel.Mica, window.ActualTransparencyLevel);
+        Assert.Same(Base(), window.Background);
+        window.Close();
+    });
+
+    // Mica can come after the window opens, and go while it is open, when Avalonia loses the GPU and falls back.
+    [Fact]
+    public Task TheColourGivesWayToMicaOnlyWhileMicaIsDrawn() => fx.Ui(() =>
+    {
+        var window = new Window();
+        WindowChrome.Apply(window, offerMica: true);
+        window.Show();
+
+        WindowChrome.ShowMica(window, WindowTransparencyLevel.Mica);
+        Assert.Equal(Colors.Transparent, Colour(window));
+
+        WindowChrome.ShowMica(window, WindowTransparencyLevel.None);
+        Assert.Same(Base(), window.Background);
+        window.Close();
+    });
+
+    [Fact]
+    public Task AWindowNotOfferedMicaAsksForNothing() => fx.Ui(() =>
+    {
+        var window = new Window();
+        WindowChrome.Apply(window, offerMica: false);
+        window.Show();
+
+        Assert.Empty(window.TransparencyLevelHint);
+        Assert.Same(Base(), window.Background);
+        Assert.NotNull(window.Icon);
         window.Close();
     });
 }
