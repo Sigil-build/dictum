@@ -8,8 +8,7 @@
         Title="{x:Static res:Strings.SetupWindowTitle}"
         Width="640" Height="600" CanResize="False"
         WindowStartupLocation="CenterScreen"
-        ExtendClientAreaToDecorationsHint="True" ExtendClientAreaTitleBarHeightHint="40"
-        Background="{DynamicResource color.bg.base}">
+        ExtendClientAreaToDecorationsHint="True" ExtendClientAreaTitleBarHeightHint="40">
   <DockPanel>
     <!-- The title bar Settings has, only where the window really extends into its decorations (Windows). -->
     <Border DockPanel.Dock="Top" Height="40" Background="Transparent"

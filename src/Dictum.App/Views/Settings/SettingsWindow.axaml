@@ -7,8 +7,7 @@
         Title="{x:Static res:Strings.SettingsWindowTitle}"
         Width="960" Height="640" MinWidth="800" MinHeight="560"
         WindowStartupLocation="CenterScreen"
-        ExtendClientAreaToDecorationsHint="True" ExtendClientAreaTitleBarHeightHint="40"
-        Background="{DynamicResource color.bg.base}">
+        ExtendClientAreaToDecorationsHint="True" ExtendClientAreaTitleBarHeightHint="40">
   <Window.Styles>
     <Style Selector="ListBox.rail">
       <Setter Property="Background" Value="Transparent" />
