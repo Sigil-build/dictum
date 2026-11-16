@@ -47,6 +47,15 @@
     </ResourceDictionary>
   </Styles.Resources>
 
+  <!-- Settings and the wizard (Views/WindowChrome.cs): their own colour, or Windows 11's Mica while Avalonia draws it. A
+       window rendered in software gets no Mica, and a transparent background there shows black. -->
+  <Style Selector=":is(Window).chrome">
+    <Setter Property="Background" Value="{DynamicResource color.bg.base}" />
+  </Style>
+  <Style Selector=":is(Window).chrome.mica">
+    <Setter Property="Background" Value="Transparent" />
+  </Style>
+
   <!-- Editor rows: the label column, and the narrowest field beside it before the field wraps under its label. -->
   <Style Selector="controls|FieldRow">
     <Setter Property="LabelWidth" Value="{DynamicResource settings.label.width}" />

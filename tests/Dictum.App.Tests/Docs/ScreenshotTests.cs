@@ -323,7 +323,6 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
             }
 
             window.FindControl<TransitioningContentControl>("PageHost")!.PageTransition = null;
-            Opaque(window);
             window.Show();
             model.Open(shot.Key);
             shot.Arrange?.Invoke(pages.Single(p => p.Key == shot.Key).Page);
@@ -483,7 +482,6 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
         var wizard = new SetupViewModel(services);
 
         var window = new SetupWindow { DataContext = wizard };
-        Opaque(window);
         window.Show();
         wizard.OnOpened();
         Dispatcher.UIThread.RunJobs();
@@ -621,12 +619,6 @@ public sealed class ScreenshotTests(AvaloniaFixture fx)
                 Model: ModelsPageTests.TurboFile, Backend: "vulkan", TranscribeMs: (long)(seconds * 110)));
         }
     }
-
-    private static IBrush Base(ThemeVariant theme) =>
-        Application.Current!.TryGetResource("color.bg.base", theme, out var brush) && brush is IBrush solid ? solid : Brushes.Transparent;
-
-    /// <summary>The window colour behind the content: on Windows 11 the app asks for Mica, which a headless window does not draw.</summary>
-    private static void Opaque(Window window) => window.Background = Base(Application.Current!.ActualThemeVariant);
 
     /// <summary>Runs the queued work and lets layout and the theme's transitions finish.</summary>
     private static void Settle()
