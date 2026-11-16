@@ -71,7 +71,7 @@ Whisper.net 1.9.1
   License:   MIT
   Copyright (c) 2024 sandrohanea
 
-SharpHook 8.0.1
+SharpHook 8.0.3
   Source:    https://github.com/TolikPylypchuk/SharpHook
   License:   MIT
   Copyright (c) 2021 Anatoliy Pylypchuk
@@ -159,7 +159,7 @@ PortAudio V19.7.0, in portaudio.dll (Windows) and libportaudio.so (Linux)
 
 libuiohook, SharpHook's fork, in uiohook.dll (Windows) and libuiohook.so, libuiohook-x11.so,
 libuiohook-wayland.so, libuiohook-xrecord.so (Linux)
-  Built by:  SharpHook 8.0.1, from the fork's commit 3890543a1aa09f20966b1784650487093daad97e
+  Built by:  SharpHook 8.0.3, from the fork's commit 9e1f4bdd40c841017321849c2cb06d9b23dd8d1c
   Source:    https://github.com/TolikPylypchuk/libuiohook,
              a fork of https://github.com/kwhat/libuiohook
   License:   LGPL-3.0-or-later: the GNU Lesser General Public License, version 3 or (as upstream's
@@ -170,7 +170,7 @@ libuiohook-wayland.so, libuiohook-xrecord.so (Linux)
   they load them at run time from the program's folder, so you can put your own build of
   libuiohook in their place under the same file names. The source code of the libraries
   shipped here:
-  https://github.com/TolikPylypchuk/libuiohook/tree/3890543a1aa09f20966b1784650487093daad97e
+  https://github.com/TolikPylypchuk/libuiohook/tree/9e1f4bdd40c841017321849c2cb06d9b23dd8d1c
 
 In the MSI only
 ---------------
