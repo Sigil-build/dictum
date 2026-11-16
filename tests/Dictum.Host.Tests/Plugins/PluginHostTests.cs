@@ -276,13 +276,14 @@ public sealed class PluginHostTests : IAsyncDisposable
     }
 
     /// <summary>
-    /// Review focus 2: on Windows the plugin and every process it starts are in one group, which ends with the plugin.
-    /// Without a group the child runs on for a minute, as <c>AProcessLeftRunningAfterTheExitIsWarnedOfOnce</c> shows.
+    /// Review focus 2: the plugin and every process it starts are in one group, which ends with the plugin: a job object
+    /// on Windows, a session started through setsid on Linux. Without a group the child runs on for a minute, as
+    /// <c>AProcessLeftRunningAfterTheExitIsWarnedOfOnce</c> shows.
     /// </summary>
     [Fact(Timeout = TestTimeout.Generous)]
     public async Task AChildLeftByACrashIsEnded()
     {
-        Assert.SkipUnless(OperatingSystem.IsWindows(), "Only Windows has a group that ends what a plugin started");
+        Assert.SkipUnless(OperatingSystem.IsWindows() || OperatingSystem.IsLinux(), "macOS has no group that ends what a plugin started");
         var ct = TestContext.Current.CancellationToken;
         var host = Host();
         var folder = ConfirmedFolder(new TestPluginBehaviour { CrashAfterInfoMs = CrashAfterMs, LeaveChild = true });
@@ -769,6 +770,8 @@ public sealed class PluginHostTests : IAsyncDisposable
         public const string Failure = "The test cannot let go of this group.";
 
         private int _enclosed;
+
+        public void Prepare(ProcessStartInfo start) => groups.Prepare(start);
 
         public IDisposable Enclose(Process process)
         {

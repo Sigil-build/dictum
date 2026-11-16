@@ -819,6 +819,10 @@ public sealed class PluginProcessTests : IDisposable
     /// <summary>A system that will not put a process in a group, with <paramref name="refusal"/>, such as ERROR_ACCESS_DENIED.</summary>
     private sealed class RefusingGroups(Exception refusal) : IProcessGroups
     {
+        public void Prepare(ProcessStartInfo start)
+        {
+        }
+
         public IDisposable Enclose(Process process) => throw refusal;
     }
 

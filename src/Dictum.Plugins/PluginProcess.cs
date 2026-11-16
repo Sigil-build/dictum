@@ -100,7 +100,9 @@ public sealed class PluginProcess : IAsyncDisposable
         _log = log;
         _stopGrace = stopGrace;
         _stopping = new Lazy<Task>(StopCoreAsync);
-        _process = new Process { StartInfo = StartInfo(launch, arguments, key) };
+        var start = StartInfo(launch, arguments, key);
+        groups.Prepare(start);
+        _process = new Process { StartInfo = start };
         try
         {
             _process.Start();

@@ -23,11 +23,7 @@ internal static class PluginsCommand
 
     public static Command Create()
     {
-        var command = new Command("plugins", "List, add and remove speech engines that run as plugins");
-        command.Add(List());
-        command.Add(Add());
-        command.Add(Remove());
-        return command;
+        return new Command("plugins", "List, add and remove speech engines that run as plugins") { List(), Add(), Remove() };
     }
 
     private static Command List()

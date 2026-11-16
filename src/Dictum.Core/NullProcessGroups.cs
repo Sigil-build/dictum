@@ -7,6 +7,10 @@ public sealed class NullProcessGroups : IProcessGroups
 {
     public static NullProcessGroups Instance { get; } = new();
 
+    public void Prepare(ProcessStartInfo start)
+    {
+    }
+
     public IDisposable Enclose(Process process) => Nothing.Instance;
 
     private sealed class Nothing : IDisposable

@@ -14,6 +14,11 @@ namespace Dictum.Platform.Windows;
 [SupportedOSPlatform("windows")]
 public sealed class JobObjectProcessGroups : IProcessGroups
 {
+    /// <summary>A job object takes a process that already runs, so its start needs nothing.</summary>
+    public void Prepare(ProcessStartInfo start)
+    {
+    }
+
     public IDisposable Enclose(Process process)
     {
         var job = Win32.CreateJobObject(0, 0);

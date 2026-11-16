@@ -204,6 +204,21 @@ public sealed class PluginSttTests : IAsyncDisposable
         Assert.IsType<ObjectDisposedException>(error.InnerException);
     }
 
+    /// <summary>
+    /// A reload lets go of the provider that a check is about to ask. The check throws, as a disposed engine's does, so
+    /// that doctor asks the provider that replaced it, rather than reporting one that no longer serves.
+    /// </summary>
+    [Fact(Timeout = TestTimeout.Generous)]
+    public async Task ACheckOnAProviderAReloadLetGoOfThrowsSoTheNextOneIsAsked()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var provider = Provider(Echo());
+
+        provider.Dispose();
+
+        await Assert.ThrowsAsync<ObjectDisposedException>(() => provider.CheckAsync(ct));
+    }
+
     [Fact(Timeout = TestTimeout.Generous)]
     public async Task CheckReportsTheRunningPlugin()
     {
