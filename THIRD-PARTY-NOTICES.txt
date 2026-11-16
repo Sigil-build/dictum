@@ -42,7 +42,7 @@ System.CommandLine 2.0.14 (dictum)
   License:   MIT
   Copyright © .NET Foundation and Contributors
 
-Avalonia 12.1.5 (dictum-gui): Avalonia, Avalonia.Desktop, Avalonia.Themes.Fluent, Avalonia.Skia,
+Avalonia 12.1.6 (dictum-gui): Avalonia, Avalonia.Desktop, Avalonia.Themes.Fluent, Avalonia.Skia,
 Avalonia.HarfBuzz, Avalonia.Win32, Avalonia.X11, Avalonia.FreeDesktop, Avalonia.FreeDesktop.AtSpi,
 Avalonia.Native, Avalonia.Remote.Protocol
   Source:    https://github.com/AvaloniaUI/Avalonia
@@ -2091,7 +2091,7 @@ Part 3. Notices that components ship for code they include
 
 Reproduced as the components ship them.
 
-Avalonia 12.1.5: NOTICE.md
+Avalonia 12.1.6: NOTICE.md
 --------------------------
 
 # WPF
