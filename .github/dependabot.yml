@@ -42,3 +42,8 @@ updates:
     commit-message:
       prefix: ci
       include: scope
+    # CodeQL refuses to run when its init and analyze steps are on different versions, and upload-sarif comes from the
+    # same repository, so all three move in one pull request.
+    groups:
+      codeql:
+        patterns: ['github/codeql-action', 'github/codeql-action/*']
