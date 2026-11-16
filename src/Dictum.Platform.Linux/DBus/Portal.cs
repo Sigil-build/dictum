@@ -112,7 +112,7 @@ public sealed class Portal(ILog log, string? address = null) : IDisposable
                 {
                     response.TrySetResult(notification.Value);
                 }
-                else if (notification.Exception is { } exception)
+                else if (notification.CompletionReason is { } exception)
                 {
                     response.TrySetException(exception);
                 }
