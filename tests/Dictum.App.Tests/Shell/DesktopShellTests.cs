@@ -20,6 +20,7 @@ using Dictum.Core.Diagnostics;
 using Dictum.Core.Pipeline;
 using Dictum.Host.Ipc;
 using Dictum.Setup;
+using Dictum.Updates;
 
 namespace Dictum.App.Tests.Shell;
 
@@ -464,8 +465,68 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
 
         await WaitAsync(() => presenter.Shown[^1].Menu.Any(i => i.Label == "Update available: 0.5.0"));
         var shown = Assert.Single(popup.Shown);
-        Assert.Equal(("Dictum 0.5.0 is available", "Click to open the release page and download it."), (shown.Title, shown.Text));
+        Assert.Equal(("Dictum 0.5.0 is available", "Click to update it in About Dictum."), (shown.Title, shown.Text));
         Assert.Same(presenter, shown.Tray);
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
+    [Fact]
+    public Task TheNotificationOpensAbout() => fx.UiAsync(async () =>
+    {
+        var (updates, timers) = Updates("v0.5.0");
+        var popup = new FakePopup();
+        var (shell, launcher, presenter) = Create(updates: updates, popup: popup);
+        shell.Start(Application.Current!, _ => { });
+        await WaitAsync(() => presenter.Shown.Count > 0);
+        timers.Fire();
+        timers.Fire();
+        await WaitAsync(() => popup.Shown.Count == 1);
+
+        popup.Shown[0].Clicked();
+
+        await WaitAsync(() => SettingsWindow.Open.Count == 1);
+        Assert.IsType<AboutPage>(((SettingsViewModel)SettingsWindow.Open[0].DataContext!).Current);
+        CloseSettings();
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
+    [Fact]
+    public Task TheTrayItemOpensAbout() => fx.UiAsync(async () =>
+    {
+        var (updates, _) = Updates("v0.5.0");
+        var (shell, launcher, presenter) = Create(updates: updates, popup: new FakePopup());
+        shell.Start(Application.Current!, _ => { });
+        await WaitAsync(() => presenter.Shown.Count > 0);
+
+        shell.OpenUpdate();
+
+        await WaitAsync(() => SettingsWindow.Open.Count == 1);
+        Assert.IsType<AboutPage>(((SettingsViewModel)SettingsWindow.Open[0].DataContext!).Current);
+        CloseSettings();
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
+    // The update a runner installed: this start is the new version, so it says so once and the record is gone.
+    [Fact]
+    public Task AFinishedUpdateIsReportedOnceOnStart() => fx.UiAsync(async () =>
+    {
+        var paths = Paths();
+        new PendingUpdateFile(paths.UpdatesDirectory, NullLog.Instance).Save(new PendingUpdate
+        {
+            Version = "0.4.0", Kind = InstallKind.Msi, Log = "install.log", Started = DateTimeOffset.Now,
+        });
+        var (updates, _) = Updates("v0.4.0");
+        var popup = new FakePopup();
+        var (shell, launcher, presenter) = Create(updates: updates, popup: popup);
+
+        shell.Start(Application.Current!, _ => { });
+
+        await WaitAsync(() => popup.Shown.Count == 1);
+        Assert.Equal("Dictum was updated to 0.4.0", popup.Shown[0].Title);
+        Assert.False(File.Exists(Path.Combine(paths.UpdatesDirectory, PendingUpdateFile.Name)));
         await shell.DisposeAsync();
         await launcher.DisposeAsync();
     });

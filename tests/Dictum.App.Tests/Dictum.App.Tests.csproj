@@ -11,6 +11,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- About Dictum updates from a fake GitHub, with attestations a test Sigstore mints, as the Updates tests do. -->
+    <Compile Include="../Dictum.Core.Tests/FakeHttpHandler.cs" Link="Updates/FakeHttpHandler.cs" />
+    <Compile Include="../Dictum.Core.Tests/Updates/TestSigstore.cs" Link="Updates/TestSigstore.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Avalonia.Headless" />
     <PackageReference Include="Avalonia.Skia" />
   </ItemGroup>
