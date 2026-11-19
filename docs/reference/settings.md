@@ -434,7 +434,7 @@ The page shows the version, as the foot of the column does, and the operating sy
 
 **Updates**, under the version, says what the last [update check](#check-for-updates) found: "Dictum is up to date.", "Version 0.7.0 is available." with a link to **Open the release page**, or "Not checked yet." Under it is when Dictum last checked. **Check now** asks GitHub at once, whether **Check for updates** is on or off. If a check fails, for example without a network, the page says why, such as "The last check failed: GitHub could not be reached.", and the next check tries again. See [Troubleshooting](../troubleshooting.md#update-check).
 
-#### Update now {#update-now}
+#### Updates {#updates}
 
 When a newer version is out, the **Updates** card says what to do with your copy of Dictum:
 
