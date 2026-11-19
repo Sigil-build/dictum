@@ -67,6 +67,8 @@ foreach ($file in 'dictum.exe', 'dictum-gui.exe', 'runtimes\vulkan\win-x64\whisp
     Check (Test-Path (Join-Path $folder $file)) "$file is installed in $folder"
 }
 Check (Test-Path $shortcut) 'the Start menu shortcut exists'
+$recorded = (Get-ItemProperty 'HKCU:\Software\Dictum' -Name InstallFolder -ErrorAction SilentlyContinue).InstallFolder
+Check ($recorded -eq "$folder\") "HKCU\Software\Dictum\InstallFolder is $folder\ (got $recorded)"
 $installed = Products
 Check ($installed.Count -eq 1 -and $installed[0].Version -like "$Version*") "Windows Installer lists Dictum $Version once for this user"
 Check ((& $dictum --version) -like "$Version*") "dictum --version prints $Version"
