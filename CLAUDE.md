@@ -27,6 +27,7 @@ https://claude.ai/code/artifact/ba039eea-3640-41cc-898a-b1b024e07370
 - Docs: pages live in `docs/` and go live from a `docs/X.Y` branch, which `.github/workflows/docs.yml` cuts from the `vX.Y.Z` tag when a release is published (a patch release or a pre-release cuts nothing). Fix a typo on `docs/X.Y`, then merge it back into `main`.
 - Native AOT cannot cross-compile between OSes. Publish on the target OS or in a container.
 - Check the user docs (twins, heading ids, links, nav, version): `dotnet test --project tests/Dictum.Core.Tests --filter-class "*.UserDocsTests"`
+- Check a release's attestation as Dictum's updater does (release.yml runs it before the draft): `DICTUM_CHECK_RELEASE=<folder with the release files> DICTUM_RELEASE_VERSION=X.Y.Z dotnet test --project tests/Dictum.Core.Tests --filter-class "*.ReleaseAttestationTests"`. Bump `actions/attest` only together with `Dictum.Updates`' verifier; Dependabot leaves it alone.
 
 ## Layout
 - `src/Dictum.Core`: contracts, pipeline, profiles, history. No project references, no interop or OS APIs; plain .NET `OperatingSystem` branches are fine.

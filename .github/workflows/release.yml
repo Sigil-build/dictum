@@ -1,8 +1,9 @@
 # A tag v<version> builds the packages and opens a DRAFT release with them, their provenance attestations (also as
 # .intoto.jsonl files) and the SBOM; then virustotal.yml adds links to VirusTotal's reports to its notes. Publishing it is a person's call, and
 # publishing runs virustotal.yml again, which puts the section back if the draft's notes were replaced meanwhile.
-# The draft exists only once the packages, the SBOM and both attestations are done: if the sbom job or an attestation
-# fails, there is no draft, and "Re-run failed jobs" on this run makes it, from the packages this run built.
+# The draft exists only once the packages, the SBOM and both attestations are done and Dictum's own verifier accepts
+# the provenance attestation (ReleaseAttestationTests): if the sbom job, an attestation or that check fails, there is
+# no draft, and "Re-run failed jobs" on this run makes it, from the packages this run built.
 name: Release
 
 on:
@@ -82,7 +83,7 @@ jobs:
   release:
     needs: [check, packages, sbom]
     runs-on: ubuntu-22.04
-    timeout-minutes: 15
+    timeout-minutes: 25
     permissions:
       contents: write
       # The attestations: a Sigstore certificate for this run, and GitHub's store that gh attestation verify reads.
@@ -142,6 +143,19 @@ jobs:
           set -euo pipefail
           jq -c . "$PROVENANCE_BUNDLE" > "release/dictum-$VERSION.intoto.jsonl"
           jq -c . "$SBOM_BUNDLE" > "release/dictum-$VERSION-sbom.intoto.jsonl"
+
+      # Dictum updates itself only from a release whose attestation its own verifier accepts. The same check runs here,
+      # on these files, before the draft: a change on GitHub's side (actions/attest, Fulcio, Rekor) that the verifier
+      # does not follow stops this release instead of every installed Dictum's update.
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+
+      - name: Dictum's own verifier accepts the attestation
+        env:
+          DICTUM_CHECK_RELEASE: ${{ github.workspace }}/release
+          DICTUM_RELEASE_VERSION: ${{ needs.check.outputs.version }}
+        run: dotnet test --project tests/Dictum.Core.Tests --filter-class "*.ReleaseAttestationTests"
 
       - name: Draft release
         env:
