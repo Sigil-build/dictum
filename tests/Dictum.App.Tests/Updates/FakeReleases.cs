@@ -1,4 +1,4 @@
-using Dictum.App.Updates;
+using Dictum.Updates;
 
 namespace Dictum.App.Tests.Updates;
 

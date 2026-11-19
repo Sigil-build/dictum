@@ -1,6 +1,6 @@
-using Dictum.App.Updates;
+using Dictum.Updates;
 
-namespace Dictum.App.Tests.Updates;
+namespace Dictum.Core.Tests.Updates;
 
 public sealed class ReleaseVersionTests
 {

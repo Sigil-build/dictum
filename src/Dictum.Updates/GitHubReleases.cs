@@ -4,10 +4,19 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Dictum.App.Updates;
+namespace Dictum.Updates;
 
-/// <summary>Dictum's newest release: its tag, such as <c>v0.5.0</c>, and its page on GitHub.</summary>
-public sealed record LatestRelease(string Tag, Uri Page);
+/// <summary>A file of a release, as GitHub lists it: its name and size in bytes. Its URL is never used: Dictum builds that itself.</summary>
+public sealed record ReleaseAsset(string Name, long Size);
+
+/// <summary>Dictum's newest release: its tag, such as <c>v0.5.0</c>, its page on GitHub and its files.</summary>
+public sealed record LatestRelease(string Tag, Uri Page, IReadOnlyList<ReleaseAsset> Assets)
+{
+    public LatestRelease(string tag, Uri page)
+        : this(tag, page, [])
+    {
+    }
+}
 
 /// <summary>Why a check found no release.</summary>
 public enum UpdateCheckFailure
@@ -43,7 +52,8 @@ public interface IReleaseSource
 
 /// <summary>
 /// <c>GET https://api.github.com/repos/Sigil-build/dictum/releases/latest</c>, which skips drafts and pre-releases,
-/// without a token, with <c>User-Agent: Dictum/&lt;version&gt;</c>. Only <c>tag_name</c> and <c>html_url</c> are read.
+/// without a token, with <c>User-Agent: Dictum/&lt;version&gt;</c>. Only <c>tag_name</c>, <c>html_url</c> and the assets' <c>name</c> and
+/// <c>size</c> are read.
 /// </summary>
 public sealed class GitHubReleases(HttpClient http, string version, TimeSpan? timeout = null) : IReleaseSource
 {
@@ -91,9 +101,9 @@ public sealed class GitHubReleases(HttpClient http, string version, TimeSpan? ti
             }
 
             await using var body = await response.Content.ReadAsStreamAsync(limit.Token).ConfigureAwait(false);
-            var release = await JsonSerializer.DeserializeAsync(body, UpdateJsonContext.Default.GitHubRelease, limit.Token).ConfigureAwait(false);
+            var release = await JsonSerializer.DeserializeAsync(body, UpdatesJsonContext.Default.GitHubRelease, limit.Token).ConfigureAwait(false);
             return release is { TagName: { Length: > 0 } tag, HtmlUrl: { } url } && IsReleasePage(url, out var page)
-                ? new ReleaseLookup(new LatestRelease(tag, page))
+                ? new ReleaseLookup(new LatestRelease(tag, page, Assets(release)))
                 : new ReleaseLookup(null, UpdateCheckFailure.BadAnswer, Detail: "the answer names no release page of Dictum");
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
@@ -117,12 +127,18 @@ public sealed class GitHubReleases(HttpClient http, string version, TimeSpan? ti
             && response.Headers.TryGetValues(RateLimitRemaining, out var remaining) && remaining.FirstOrDefault() == "0");
 
     /// <summary>An https page under Dictum's releases on github.com, the only kind the browser is asked to open.</summary>
-    internal static bool IsReleasePage(string? url, out Uri page) =>
+    public static bool IsReleasePage(string? url, out Uri page) =>
         Uri.TryCreate(url, UriKind.Absolute, out page!) && page.Scheme == Uri.UriSchemeHttps
         && page.AbsoluteUri.StartsWith(PagePrefix, StringComparison.Ordinal);
+
+    /// <summary>The assets with a name and a size; any other entry is skipped.</summary>
+    private static ReleaseAsset[] Assets(GitHubRelease release) =>
+        release.Assets is { } assets
+            ? [.. assets.Where(a => a is { Name.Length: > 0, Size: >= 0 }).Select(a => new ReleaseAsset(a.Name!, a.Size!.Value))]
+            : [];
 }
 
-/// <summary>The two fields of GitHub's release object that Dictum reads; the rest of the answer is skipped.</summary>
+/// <summary>The fields of GitHub's release object that Dictum reads; the rest of the answer is skipped.</summary>
 internal sealed class GitHubRelease
 {
     [JsonPropertyName("tag_name")]
@@ -130,4 +146,17 @@ internal sealed class GitHubRelease
 
     [JsonPropertyName("html_url")]
     public string? HtmlUrl { get; init; }
+
+    [JsonPropertyName("assets")]
+    public IReadOnlyList<GitHubAsset>? Assets { get; init; }
+}
+
+/// <summary>A release file's name and size; GitHub's download URL and digest are not read.</summary>
+internal sealed class GitHubAsset
+{
+    [JsonPropertyName("name")]
+    public string? Name { get; init; }
+
+    [JsonPropertyName("size")]
+    public long? Size { get; init; }
 }

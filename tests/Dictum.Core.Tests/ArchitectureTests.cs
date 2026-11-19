@@ -17,6 +17,7 @@ public sealed partial class ArchitectureTests
     private const string Platform = "Dictum.Platform";
     private const string PlatformWindows = "Dictum.Platform.Windows";
     private const string PlatformLinux = "Dictum.Platform.Linux";
+    private const string Updates = "Dictum.Updates";
     private const string Host = "Dictum.Host";
     private const string App = "Dictum.App";
     private const string Cli = "Dictum.Cli";
@@ -28,13 +29,14 @@ public sealed partial class ArchitectureTests
         [Audio] = [Core],
         [Processing] = [Core],
         [Setup] = [Core],
+        [Updates] = [Core, Setup],
         [Plugins] = [Core, Audio],
         [SttWhisper] = [Core, Audio],
         [SttOpenAi] = [Core, Audio],
         [Platform] = [Core],
         [PlatformWindows] = [Platform],
         [PlatformLinux] = [Platform],
-        [Host] = [Core, Audio, Processing, Setup, Plugins, SttWhisper, SttOpenAi, Platform, PlatformWindows, PlatformLinux],
+        [Host] = [Core, Audio, Processing, Setup, Updates, Plugins, SttWhisper, SttOpenAi, Platform, PlatformWindows, PlatformLinux],
         [App] = [Host],
         [Cli] = [Host],
     };

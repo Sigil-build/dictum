@@ -6,6 +6,7 @@ using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.App.Shell;
 using Dictum.App.Updates;
+using Dictum.Updates;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Docs;
 using Dictum.Setup;

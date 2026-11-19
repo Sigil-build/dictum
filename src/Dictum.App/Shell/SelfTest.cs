@@ -13,6 +13,7 @@ using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.App.Tray;
 using Dictum.App.Updates;
+using Dictum.Updates;
 using Dictum.App.ViewModels;
 using Dictum.App.ViewModels.Settings;
 using Dictum.Core;
