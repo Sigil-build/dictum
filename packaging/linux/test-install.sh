@@ -65,6 +65,17 @@ leftovers=$(find "$HOME/.local/lib" -maxdepth 1 -name 'dictum.*' | head -1)
 [ -z "$leftovers" ] || fail "the upgrade left $leftovers"
 pass "upgrade"
 
+# The second rename fails (a stand-in mv refuses the staging folder): the old folder is put back.
+mkdir -p "$work/failmv"
+printf '#!/bin/sh\ncase "$1" in *.new.*) echo "mv: refused by the test" >&2; exit 1;; esac\nexec %s "$@"\n' "$(command -v mv)" > "$work/failmv/mv"
+chmod +x "$work/failmv/mv"
+package "$work/v3" 0.3.2
+if PATH="$work/failmv:$PATH" "$work/v3/install.sh" > "$work/install-failed.log" 2>&1; then fail "install.sh succeeded although the swap failed"; fi
+[ "$("$HOME/.local/bin/dictum")" = 0.3.1 ] || fail "after a failed swap the old version is installed"
+leftovers=$(find "$HOME/.local/lib" -maxdepth 1 -name 'dictum.*' | head -1)
+[ -z "$leftovers" ] || fail "the failed swap left $leftovers"
+pass "a failed swap puts the old folder back"
+
 # Everything that starts this install goes; settings and models stay.
 mkdir -p "$HOME/.config/autostart" "$HOME/.config/systemd/user" "$HOME/.config/dictum" "$HOME/.local/share/dictum/models"
 printf '[Desktop Entry]\nExec="%s/dictum-gui"\n' "$lib" > "$HOME/.config/autostart/dictum.desktop"

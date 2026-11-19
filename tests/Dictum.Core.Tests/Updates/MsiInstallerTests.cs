@@ -30,12 +30,22 @@ public sealed class MsiInstallerTests : IDisposable
 
     private const string System32 = @"C:\Windows\system32";
 
+    /// <summary>The runner joins paths with the separator of the system it runs on: Windows, for an MSI.</summary>
+    private static void SkipOffWindows()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Windows paths");
+        }
+    }
+
     private MsiInstaller Installer(FakeLauncher launcher, string system = System32) =>
         new(launcher, new PendingUpdateFile(Updates, _log), msiexec: null, system: system);
 
     [Fact]
     public void TheScriptRunsMsiexecPassivelyWithALog()
     {
+        SkipOffWindows();
         var launcher = new FakeLauncher();
 
         Installer(launcher).Start(Update(@"C:\u\updates\0.7.1"), 4242, RestartTarget.DesktopApp);
@@ -57,6 +67,7 @@ public sealed class MsiInstallerTests : IDisposable
     [Fact]
     public void TheScriptWaitsInstallsRecordsAndRestartsInThatOrder()
     {
+        SkipOffWindows();
         var launcher = new FakeLauncher();
 
         Installer(launcher).Start(Update(), 4242, RestartTarget.Daemon);
@@ -164,6 +175,7 @@ public sealed class MsiInstallerTests : IDisposable
     [Fact]
     public void AUnicodePathIsKept()
     {
+        SkipOffWindows();
         var launcher = new FakeLauncher();
 
         Installer(launcher).Start(Update(target: @"C:\Users\Євген\AppData\Local\Programs\Dictum"), 4242, RestartTarget.DesktopApp);
