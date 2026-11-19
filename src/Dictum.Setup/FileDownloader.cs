@@ -8,10 +8,24 @@ namespace Dictum.Setup;
 public sealed record DownloadProgress(string File, long Bytes, long Total);
 
 /// <summary>A download failed for good: an HTTP error, network errors after every retry, a wrong hash, or no disk space.</summary>
-public sealed class DownloadException(string message, Exception? inner = null) : Exception(message, inner);
+/// <param name="wrongHash">The file arrived whole but its SHA-256 is not the expected one, so it was deleted.</param>
+public sealed class DownloadException(string message, Exception? inner = null, bool wrongHash = false) : Exception(message, inner)
+{
+    public bool WrongHash { get; } = wrongHash;
+}
+
+/// <summary>A file to download: its name for messages and progress, its URL, and the SHA-256 and size it must have.</summary>
+public sealed record DownloadSource(string Name, string Url, string Sha256, long Size)
+{
+    public static DownloadSource Of(CatalogEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+        return new DownloadSource(entry.File, entry.Url, entry.Sha256, entry.Size);
+    }
+}
 
 /// <summary>
-/// Downloads a catalog file to <c>&lt;target&gt;.partial</c>, resuming with an HTTP Range request after a dropped or
+/// Downloads a catalog file, or any file whose hash and size are known, to <c>&lt;target&gt;.partial</c>, resuming with an HTTP Range request after a dropped or
 /// stalled connection, and moves it into place only when its SHA-256 matches the catalog. Cancelling keeps the
 /// partial file, so the next attempt continues where this one stopped.
 /// </summary>
@@ -45,8 +59,12 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
         return client;
     }
 
-    public async Task DownloadAsync(CatalogEntry entry, string target, IProgress<DownloadProgress>? progress, CancellationToken ct)
+    public Task DownloadAsync(CatalogEntry entry, string target, IProgress<DownloadProgress>? progress, CancellationToken ct) =>
+        DownloadAsync(DownloadSource.Of(entry), target, progress, ct);
+
+    public async Task DownloadAsync(DownloadSource entry, string target, IProgress<DownloadProgress>? progress, CancellationToken ct)
     {
+        ArgumentNullException.ThrowIfNull(entry);
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(target))!);
         var partial = PartialPath(target);
         for (var attempt = 0; ; attempt++)
@@ -60,7 +78,7 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
             {
                 if (attempt >= _retryDelays.Count)
                 {
-                    throw new DownloadException($"Could not download {entry.File} from {entry.Url}: {ex.Message}", ex);
+                    throw new DownloadException($"Could not download {entry.Name} from {entry.Url}: {ex.Message}", ex);
                 }
 
                 await Task.Delay(_retryDelays[attempt], ct).ConfigureAwait(false);
@@ -80,7 +98,7 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
 
     private static bool IsTransient(Exception ex) => ex is HttpRequestException or IOException;
 
-    private async Task FetchAsync(CatalogEntry entry, string partial, IProgress<DownloadProgress>? progress, CancellationToken ct)
+    private async Task FetchAsync(DownloadSource entry, string partial, IProgress<DownloadProgress>? progress, CancellationToken ct)
     {
         var existing = File.Exists(partial) ? new FileInfo(partial).Length : 0;
         if (existing > entry.Size)
@@ -123,7 +141,7 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
     }
 
     /// <summary>A refused resume and a server error are transient, so they are retried; any other error status is final.</summary>
-    private static void ThrowIfFailed(CatalogEntry entry, string partial, HttpResponseMessage response)
+    private static void ThrowIfFailed(DownloadSource entry, string partial, HttpResponseMessage response)
     {
         if (response.StatusCode == HttpStatusCode.RequestedRangeNotSatisfiable)
         {
@@ -144,7 +162,7 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
 
     /// <summary>Appends the body to the partial file when <paramref name="resumeFrom"/> is past 0, otherwise replaces it.</summary>
     private async Task CopyAsync(
-        CatalogEntry entry,
+        DownloadSource entry,
         HttpResponseMessage response,
         string partial,
         long resumeFrom,
@@ -157,7 +175,7 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
         await using var file = new FileStream(partial, resumeFrom > 0 ? FileMode.Append : FileMode.Create, FileAccess.Write, FileShare.None, BufferSize, useAsync: true);
         var buffer = new byte[BufferSize];
         var sinceReport = Stopwatch.StartNew();
-        progress?.Report(new DownloadProgress(entry.File, written, entry.Size));
+        progress?.Report(new DownloadProgress(entry.Name, written, entry.Size));
         while (true)
         {
             stall.CancelAfter(_stallTimeout);
@@ -180,17 +198,17 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
             written += read;
             if (written > entry.Size)
             {
-                throw new DownloadException($"{entry.File} is larger than the expected {entry.Size} bytes; the server sent something else.");
+                throw new DownloadException($"{entry.Name} is larger than the expected {entry.Size} bytes; the server sent something else.");
             }
 
             if (sinceReport.Elapsed >= ProgressInterval)
             {
-                progress?.Report(new DownloadProgress(entry.File, written, entry.Size));
+                progress?.Report(new DownloadProgress(entry.Name, written, entry.Size));
                 sinceReport.Restart();
             }
         }
 
-        progress?.Report(new DownloadProgress(entry.File, written, entry.Size));
+        progress?.Report(new DownloadProgress(entry.Name, written, entry.Size));
         if (written < entry.Size)
         {
             throw new IOException($"the connection closed after {written} of {entry.Size} bytes");
@@ -206,7 +224,7 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
         return Convert.ToHexStringLower(await SHA256.HashDataAsync(stream, ct).ConfigureAwait(false));
     }
 
-    private static async Task VerifyAsync(CatalogEntry entry, string partial, CancellationToken ct)
+    private static async Task VerifyAsync(DownloadSource entry, string partial, CancellationToken ct)
     {
         var actual = await HashAsync(partial, ct).ConfigureAwait(false);
 
@@ -214,7 +232,7 @@ public sealed class FileDownloader(HttpClient http, IReadOnlyList<TimeSpan>? ret
         {
             File.Delete(partial);
             throw new DownloadException(
-                $"{entry.File} failed the integrity check (SHA-256 {actual}, expected {entry.Sha256}). The download was deleted; run the command again.");
+                $"{entry.Name} failed the integrity check (SHA-256 {actual}, expected {entry.Sha256}). The download was deleted; run the command again.", wrongHash: true);
         }
     }
 }
