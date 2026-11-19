@@ -8,4 +8,5 @@ namespace Dictum.Updates;
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     WriteIndented = true)]
 [JsonSerializable(typeof(GitHubRelease))]
+[JsonSerializable(typeof(PendingUpdate))]
 internal sealed partial class UpdatesJsonContext : JsonSerializerContext;
