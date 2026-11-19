@@ -33,7 +33,7 @@ public sealed class TarballInstaller(IRunnerLauncher launcher, PendingUpdateFile
             _ => ((string?)null, (string?)null),
         };
         var exitCode = Path.Combine(update.Folder, PendingUpdateFile.ExitCodeFile);
-        var script = ShellScript.Begin(Runner.Log(update), waitForProcess)
+        var script = ShellScript.Begin(update.InstallLog, waitForProcess)
             .Append(ShellScript.Quote(Path.Combine(root, "install.sh"))).Append('\n')
             .Append(CultureInfo.InvariantCulture, $"echo $? > {ShellScript.Quote(exitCode)}\n")
             .Restart(program, argument);

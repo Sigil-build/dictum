@@ -94,6 +94,54 @@ public sealed class PendingUpdateTests : IDisposable
         Assert.False(System.IO.File.Exists(Path.Combine(Updates, PendingUpdateFile.Name)));
     }
 
+    // `dictum update` exits before the runner starts; a second `dictum update` right after must not judge the update
+    // unfinished and drop the record that the restarted app reports.
+    [Fact]
+    public void AnUpdateStartedMinutesAgoWithoutAnExitCodeIsStillInstalling()
+    {
+        File.Save(Pending());
+
+        Assert.Equal(Pending(), File.Installing(V060, Pending().Started.AddMinutes(5)));
+        Assert.True(System.IO.File.Exists(Path.Combine(Updates, PendingUpdateFile.Name)));
+    }
+
+    [Fact]
+    public void AnExitCodeMeansTheInstallerIsDone()
+    {
+        File.Save(Pending());
+        ExitCode("0.7.1", "1603");
+
+        Assert.Null(File.Installing(V060, Pending().Started.AddMinutes(5)));
+    }
+
+    [Fact]
+    public void AnHourOldRecordIsNoLongerInstalling()
+    {
+        File.Save(Pending());
+
+        Assert.Null(File.Installing(V060, Pending().Started.AddHours(1)));
+    }
+
+    [Fact]
+    public void ReachingTheTargetIsNotInstalling()
+    {
+        File.Save(Pending());
+
+        Assert.Null(File.Installing(V071, Pending().Started.AddMinutes(5)));
+    }
+
+    // The AppImage is renamed before the runner starts; its runner writes no exit code.
+    [Fact]
+    public void AnAppImageUpdateIsNeverStillInstalling()
+    {
+        File.Save(Pending() with { Kind = InstallKind.AppImage });
+
+        Assert.Null(File.Installing(V060, Pending().Started.AddMinutes(5)));
+    }
+
+    [Fact]
+    public void NoRecordIsNotInstalling() => Assert.Null(File.Installing(V060, DateTimeOffset.Now));
+
     [Fact]
     public void TheRecordIsJsonInTheUpdatesFolder()
     {

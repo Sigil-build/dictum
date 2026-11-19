@@ -61,6 +61,25 @@ public sealed class PendingUpdateFile(string updatesDirectory, ILog log)
         AtomicFile.WriteAllText(Path, JsonSerializer.Serialize(pending, UpdatesJsonContext.Default.PendingUpdate));
     }
 
+    /// <summary>How long after its start an update without an exit code may still be installing.</summary>
+    public static readonly TimeSpan InstallTime = TimeSpan.FromMinutes(30);
+
+    /// <summary>
+    /// The record, left in place, while its runner may still be at work: <paramref name="current"/> is older than its target,
+    /// the installer wrote no exit code yet, and it started less than <see cref="InstallTime"/> before <paramref name="now"/>.
+    /// An AppImage is replaced before its runner starts, so it never is. Null otherwise.
+    /// </summary>
+    public PendingUpdate? Installing(ReleaseVersion current, DateTimeOffset now)
+    {
+        if (!File.Exists(Path) || Read() is not { } pending || pending.Kind == InstallKind.AppImage
+            || ReleaseVersion.Parse(pending.Version) is not { } target || current >= target)
+        {
+            return null;
+        }
+
+        return ExitCode(pending.Version) is null && now - pending.Started < InstallTime ? pending : null;
+    }
+
     /// <summary>Judges the update the record names against the running <paramref name="current"/> version, and deletes the record.</summary>
     public UpdateReport Take(ReleaseVersion current)
     {
@@ -69,16 +88,7 @@ public sealed class PendingUpdateFile(string updatesDirectory, ILog log)
             return new UpdateReport(UpdateOutcome.None, null, null);
         }
 
-        PendingUpdate? pending = null;
-        try
-        {
-            pending = JsonSerializer.Deserialize(File.ReadAllText(Path), UpdatesJsonContext.Default.PendingUpdate);
-        }
-        catch (Exception ex) when (ex is JsonException or NotSupportedException or IOException or UnauthorizedAccessException)
-        {
-            log.Warn($"{Name} could not be read, so the last update is not reported: {ex.Message}");
-        }
-
+        var pending = Read();
         Delete();
         if (pending is null || ReleaseVersion.Parse(pending.Version) is not { } target)
         {
@@ -89,6 +99,19 @@ public sealed class PendingUpdateFile(string updatesDirectory, ILog log)
             : ExitCode(pending.Version) == RestartRequired ? UpdateOutcome.NeedsRestart
             : UpdateOutcome.DidNotFinish;
         return new UpdateReport(outcome, pending.Version, pending.Log);
+    }
+
+    private PendingUpdate? Read()
+    {
+        try
+        {
+            return JsonSerializer.Deserialize(File.ReadAllText(Path), UpdatesJsonContext.Default.PendingUpdate);
+        }
+        catch (Exception ex) when (ex is JsonException or NotSupportedException or IOException or UnauthorizedAccessException)
+        {
+            log.Warn($"{Name} could not be read, so the last update is not reported: {ex.Message}");
+            return null;
+        }
     }
 
     /// <summary>Drops the record of an update whose runner never started.</summary>

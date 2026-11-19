@@ -66,7 +66,7 @@ internal static class Runner
         {
             Version = update.Offer.Version.ToString(),
             Kind = update.Offer.Installation.Kind,
-            Log = Log(update),
+            Log = update.InstallLog,
             Started = DateTimeOffset.Now,
         });
         try
@@ -79,9 +79,6 @@ internal static class Runner
             throw new UpdateException(UpdateFailure.CannotInstall, $"The installer could not be started: {ex.Message}", ex);
         }
     }
-
-    /// <summary>The installer's log, in the version's folder.</summary>
-    public static string Log(DownloadedUpdate update) => Path.Combine(update.Folder, "install.log");
 
     public static string Target(DownloadedUpdate update, InstallKind kind) =>
         update.Offer.Installation is { Target: { } target } installation && installation.Kind == kind

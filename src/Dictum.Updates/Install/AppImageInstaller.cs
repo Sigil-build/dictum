@@ -37,7 +37,7 @@ public sealed class AppImageInstaller(IRunnerLauncher launcher, PendingUpdateFil
             RestartTarget.Daemon => (appImage, "dictum daemon"),
             _ => ((string?)null, (string?)null),
         };
-        var script = ShellScript.Begin(Runner.Log(update), waitForProcess)
+        var script = ShellScript.Begin(update.InstallLog, waitForProcess)
             .Append(ShellScript.Quote(appImage)).Append(" --quit\n")
             .Restart(program, argument);
         Runner.Start(launcher, pending, update, ShellScript.Start(script.ToString()));

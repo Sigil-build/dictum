@@ -54,7 +54,7 @@ public sealed class MsiInstaller : IUpdateInstaller
     {
         ArgumentNullException.ThrowIfNull(update);
         var target = Runner.Target(update, InstallKind.Msi);
-        var log = Runner.Log(update);
+        var log = update.InstallLog;
         var exitCode = Path.Combine(update.Folder, PendingUpdateFile.ExitCodeFile);
         var (program, argument) = restart switch
         {

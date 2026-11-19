@@ -8,7 +8,11 @@ namespace Dictum.Updates;
 /// <summary>A verified package on disk, ready for its installer.</summary>
 /// <param name="Folder"><c>&lt;data&gt;/updates/&lt;V&gt;/</c>: the install log and the runner's exit code go there.</param>
 /// <param name="PackageFile">The package: in <paramref name="Folder"/>, or beside the AppImage it replaces.</param>
-public sealed record DownloadedUpdate(UpdateOffer Offer, string Folder, string PackageFile);
+public sealed record DownloadedUpdate(UpdateOffer Offer, string Folder, string PackageFile)
+{
+    /// <summary>The installer's log, in the version's folder.</summary>
+    public string InstallLog => Path.Combine(Folder, "install.log");
+}
 
 /// <summary>
 /// Fetches the release's attestation, verifies it, and only then downloads the package with the SHA-256 it names, through
