@@ -5,4 +5,9 @@
     <ProjectReference Include="../Dictum.Setup/Dictum.Setup.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Dictum.Core.Tests" />
+    <InternalsVisibleTo Include="Dictum.Integration.Tests" />
+  </ItemGroup>
+
 </Project>

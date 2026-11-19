@@ -91,6 +91,9 @@ public sealed class PendingUpdateFile(string updatesDirectory, ILog log)
         return new UpdateReport(outcome, pending.Version, pending.Log);
     }
 
+    /// <summary>Drops the record of an update whose runner never started.</summary>
+    public void Discard() => Delete();
+
     private int? ExitCode(string version)
     {
         try

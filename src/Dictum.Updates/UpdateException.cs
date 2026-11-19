@@ -14,6 +14,9 @@ public enum UpdateFailure
 
     /// <summary>Not enough free space for the package.</summary>
     NoRoom,
+
+    /// <summary>The installer could not be started from here; nothing changed.</summary>
+    CannotInstall,
 }
 
 /// <summary>An update that cannot go on; <see cref="Exception.Message"/> says why, in English, for the log.</summary>
