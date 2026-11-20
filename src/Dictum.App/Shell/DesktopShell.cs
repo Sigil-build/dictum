@@ -117,7 +117,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             paths, Catalog.BuiltIn, Supervisor, Status, Frames, UiTimers.Instance, autostart, OwnExecutable(), _sounds,
             () => _secrets.Value, () => _runner.Value, () => _modelDownloads ?? IModelDownloads.None, Hardware, FreeDiskBytes,
             new SpeedMeasurements(), desktop, _integration, wait => Task.Delay(wait), OpenDocsPage, TimeProvider.System, log, updates, Downloads,
-            updateService, () => _dictating, WhenIdle, Quit, () => _updateReport);
+            updateService, () => _dictating, WhenIdle, Quit, () => _updateReport, new UpdateRun());
         _setup = new SetupCoordinator(_services, store, Supervisor.Restart, Supervisor.ConfigSaved, () => _settings?.Session.Flush());
     }
 
@@ -334,7 +334,8 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
 
     /// <summary>
     /// What the update the last run started came to, from <c>pending.json</c>, which is then deleted; About Dictum says
-    /// it this run. Then the folders of versions up to this one go.
+    /// it this run. A record whose runner may still be at work stays for the next start. Then the folders of versions up
+    /// to this one go.
     /// </summary>
     private void ReportLastUpdate()
     {
@@ -343,7 +344,17 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             return;
         }
 
-        _updateReport = new PendingUpdateFile(_paths.UpdatesDirectory, _log).Take(current);
+        var pending = new PendingUpdateFile(_paths.UpdatesDirectory, _log);
+        if (pending.Installing(current, DateTimeOffset.Now) is { } installing)
+        {
+            // Started while the runner still works, as from the tray during an MSI's install: the next start reports it.
+            _log.Info($"The update to {installing.Version} is still being installed");
+        }
+        else
+        {
+            _updateReport = pending.Take(current);
+        }
+
         UpdatesFolder.Clean(_paths.UpdatesDirectory, current, _log);
     }
 

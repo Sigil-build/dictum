@@ -144,6 +144,15 @@ public sealed class AttestationVerifierTests : IDisposable
         Assert.Equal(AttestationFailure.Malformed, VerifyReal(bundle).Failure);
     }
 
+    // A long, but past the last second DateTimeOffset holds.
+    [Fact]
+    public void ALogTimeOutOfRangeIsMalformed()
+    {
+        var bundle = Changed(Real060(), json => json["verificationMaterial"]!["tlogEntries"]![0]!["integratedTime"] = "99999999999999999");
+
+        Assert.Equal(AttestationFailure.Malformed, VerifyReal(bundle).Failure);
+    }
+
     [Fact]
     public void AMintedBundleVerifies()
     {

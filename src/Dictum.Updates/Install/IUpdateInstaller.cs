@@ -56,19 +56,28 @@ internal static class Runner
 {
     public static void Start(IRunnerLauncher launcher, PendingUpdateFile pending, DownloadedUpdate update, ProcessStartInfo start)
     {
-        var exitCode = Path.Combine(update.Folder, PendingUpdateFile.ExitCodeFile);
-        if (File.Exists(exitCode))
+        try
         {
-            File.Delete(exitCode);
+            var exitCode = Path.Combine(update.Folder, PendingUpdateFile.ExitCodeFile);
+            if (File.Exists(exitCode))
+            {
+                File.Delete(exitCode);
+            }
+
+            pending.Save(new PendingUpdate
+            {
+                Version = update.Offer.Version.ToString(),
+                Kind = update.Offer.Installation.Kind,
+                Log = update.InstallLog,
+                Started = DateTimeOffset.Now,
+            });
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // A full or read-only data folder: without the record the next start could not report the update.
+            throw new UpdateException(UpdateFailure.CannotInstall, $"The update's record could not be written: {ex.Message}", ex);
         }
 
-        pending.Save(new PendingUpdate
-        {
-            Version = update.Offer.Version.ToString(),
-            Kind = update.Offer.Installation.Kind,
-            Log = update.InstallLog,
-            Started = DateTimeOffset.Now,
-        });
         try
         {
             launcher.Start(start);

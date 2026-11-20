@@ -531,6 +531,28 @@ public sealed class DesktopShellTests(AvaloniaFixture fx) : IDisposable
         await launcher.DisposeAsync();
     });
 
+    // Started from the tray while msiexec still runs: the update is not over, so it is neither reported nor forgotten.
+    [Fact]
+    public Task AnUpdateStillInstallingIsLeftForTheNextStart() => fx.UiAsync(async () =>
+    {
+        var paths = Paths();
+        var pending = Path.Combine(paths.UpdatesDirectory, PendingUpdateFile.Name);
+        new PendingUpdateFile(paths.UpdatesDirectory, NullLog.Instance).Save(new PendingUpdate
+        {
+            Version = "99.0.0", Kind = InstallKind.Msi, Log = "install.log", Started = DateTimeOffset.Now,
+        });
+        var (updates, _) = Updates("v0.4.0");
+        var popup = new FakePopup();
+        var (shell, launcher, _) = Create(updates: updates, popup: popup);
+
+        shell.Start(Application.Current!, _ => { });
+
+        Assert.True(File.Exists(pending));
+        Assert.Empty(popup.Shown);
+        await shell.DisposeAsync();
+        await launcher.DisposeAsync();
+    });
+
     [Fact]
     public Task TurningTheCheckOffInTheConfigStopsItsTimers() => fx.UiAsync(async () =>
     {

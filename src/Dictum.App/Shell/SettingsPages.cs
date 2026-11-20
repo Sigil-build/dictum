@@ -39,7 +39,7 @@ internal static class SettingsPages
             SettingsViewModel.AppVersion(), AboutPage.ThisSystem(services.Desktop), RuntimeInformation.RuntimeIdentifier,
             AboutPage.Notices(AppContext.BaseDirectory), services.Hardware, clipboard, services.OpenDocs, url => WebLinks.Open(url, services.Log),
             services.Log, services.Updates, services.UpdateService, services.IsDictating, services.WhenIdle, services.Quit,
-            services.LastUpdate?.Invoke(), action => Dispatcher.UIThread.Post(action)));
+            services.LastUpdate?.Invoke(), action => Dispatcher.UIThread.Post(action), services.UpdateRun));
         return
         [
             (SettingsPageKey.General, general),

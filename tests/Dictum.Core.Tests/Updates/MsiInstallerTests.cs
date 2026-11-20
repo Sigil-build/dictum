@@ -156,6 +156,19 @@ public sealed class MsiInstallerTests : IDisposable
         Assert.False(File.Exists(Path.Combine(Updates, PendingUpdateFile.Name)));
     }
 
+    // A full or read-only data folder: the record cannot be written, so nothing starts, and the update says why.
+    [Fact]
+    public void ARecordThatCannotBeWrittenStartsNothing()
+    {
+        File.WriteAllText(Updates, "a file where the updates folder goes");
+        var launcher = new FakeLauncher();
+
+        var ex = Assert.Throws<UpdateException>(() => Installer(launcher).Start(Update(), 4242, RestartTarget.DesktopApp));
+
+        Assert.Equal(UpdateFailure.CannotInstall, ex.Failure);
+        Assert.Empty(launcher.Started);
+    }
+
     [Theory]
     [InlineData(@"C:\Users\100%\Programs\Dictum")]
     [InlineData(@"C:\Users\Wow!\Programs\Dictum")]

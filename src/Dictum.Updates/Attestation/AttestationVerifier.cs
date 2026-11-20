@@ -53,7 +53,8 @@ public sealed class AttestationVerifier(SigstoreTrust trust)
         {
             return Verify(parsed, version);
         }
-        catch (Exception ex) when (ex is FormatException or CryptographicException or JsonException or AsnContentException or OverflowException)
+        catch (Exception ex) when (ex is FormatException or CryptographicException or JsonException or AsnContentException or OverflowException
+            or ArgumentException)
         {
             return AttestationResult.Refused(AttestationFailure.Malformed, $"a field cannot be decoded: {ex.Message}");
         }

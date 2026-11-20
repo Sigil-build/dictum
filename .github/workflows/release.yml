@@ -80,17 +80,20 @@ jobs:
           path: dictum-${{ needs.check.outputs.version }}-sbom.spdx.json
           if-no-files-found: error
 
-  release:
+  # The attestations, in a job of their own: its tokens sign for this run, so it builds and runs no project code.
+  attest:
     needs: [check, packages, sbom]
     runs-on: ubuntu-22.04
-    timeout-minutes: 25
+    timeout-minutes: 15
     permissions:
-      contents: write
+      contents: read
       # The attestations: a Sigstore certificate for this run, and GitHub's store that gh attestation verify reads.
       id-token: write
       attestations: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       # The packages this run built: an attestation never covers files from an earlier run or release.
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -144,9 +147,32 @@ jobs:
           jq -c . "$PROVENANCE_BUNDLE" > "release/dictum-$VERSION.intoto.jsonl"
           jq -c . "$SBOM_BUNDLE" > "release/dictum-$VERSION-sbom.intoto.jsonl"
 
-      # Dictum updates itself only from a release whose attestation its own verifier accepts. The same check runs here,
-      # on these files, before the draft: a change on GitHub's side (actions/attest, Fulcio, Rekor) that the verifier
-      # does not follow stops this release instead of every installed Dictum's update.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release
+          path: release/
+          if-no-files-found: error
+
+  # Dictum updates itself only from a release whose attestation its own verifier accepts. The same check runs here, on
+  # these files, before the draft: a change on GitHub's side (actions/attest, Fulcio, Rekor) that the verifier does not
+  # follow stops this release instead of every installed Dictum's update. It builds the tests, so it holds no token
+  # that writes.
+  verify-attestation:
+    needs: [check, attest]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
+          path: release
+
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
@@ -157,12 +183,25 @@ jobs:
           DICTUM_RELEASE_VERSION: ${{ needs.check.outputs.version }}
         run: dotnet test --project tests/Dictum.Core.Tests --filter-class "*.ReleaseAttestationTests"
 
+  # Only the files the attest job made, which the verifier accepted; no checkout, nothing built.
+  release:
+    needs: [check, attest, verify-attestation]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release
+          path: release
+
       - name: Draft release
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.check.outputs.version }}
         run: >
-          gh release create "$GITHUB_REF_NAME" --draft --title "Dictum $VERSION"
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --title "Dictum $VERSION"
           --notes "Dictum $VERSION. Windows: the MSI (per user, no admin rights) or the portable zip. Linux: the AppImage, the tarball with install.sh, or the PKGBUILD (Arch, CachyOS). SHA-256 sums in SHA256SUMS. The SBOM of the source is dictum-$VERSION-sbom.spdx.json. gh attestation verify <file> -R $GITHUB_REPOSITORY checks that a file was built by this release's workflow; with --bundle dictum-$VERSION.intoto.jsonl and -R it checks without GitHub's attestation API (dictum-$VERSION-sbom.intoto.jsonl is the SBOM's attestation)."
           release/*
 

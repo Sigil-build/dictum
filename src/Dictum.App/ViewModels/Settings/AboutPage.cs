@@ -30,6 +30,7 @@ namespace Dictum.App.ViewModels.Settings;
 /// <param name="Quit">The shell's Quit, once the installer waits for the app to exit.</param>
 /// <param name="Report">What the update the last run started came to, read once on this start.</param>
 /// <param name="Post">Runs on the UI thread; download progress comes from another. Null runs in place, as tests want.</param>
+/// <param name="Run">The shell's update, which outlives the Settings window; null gives the page one of its own.</param>
 public sealed record AboutServices(
     string Version,
     string System,
@@ -46,7 +47,8 @@ public sealed record AboutServices(
     Action<Action>? WhenIdle = null,
     Action? Quit = null,
     UpdateReport? Report = null,
-    Action<Action>? Post = null);
+    Action<Action>? Post = null,
+    UpdateRun? Run = null);
 
 /// <summary>Which update card About Dictum shows (§4.2 of the self-update design).</summary>
 public enum UpdateCard
@@ -91,12 +93,13 @@ public sealed partial class AboutPage : SettingsPage, IDisposable
     /// <summary>The offer for this installation, with its package and size; null until a lookup found it.</summary>
     private UpdateOffer? _offer;
 
-    private CancellationTokenSource? _cancel;
-    private bool _working;
+    /// <summary>The update that runs, which a page opened later joins.</summary>
+    private readonly UpdateRun _run;
 
     public AboutPage(AboutServices services)
     {
         _services = services;
+        _run = services.Run ?? new UpdateRun();
         UpdateReportText = services.Report switch
         {
             { Outcome: UpdateOutcome.DidNotFinish, Version: { } version } => UiText.Format(Strings.SettingsAboutUpdateDidNotFinish, version),
@@ -107,6 +110,12 @@ public sealed partial class AboutPage : SettingsPage, IDisposable
         {
             updates.Changed += ShowUpdates;
             ShowUpdates();
+        }
+
+        _run.Changed += ShowRun;
+        if (_run.Running)
+        {
+            ShowRun();
         }
     }
 
@@ -189,6 +198,7 @@ public sealed partial class AboutPage : SettingsPage, IDisposable
             updates.Changed -= ShowUpdates;
         }
 
+        _run.Changed -= ShowRun;
         _stop.Cancel();
         _stop.Dispose();
     }
@@ -268,85 +278,98 @@ public sealed partial class AboutPage : SettingsPage, IDisposable
     [RelayCommand(CanExecute = nameof(CanCheckNow))]
     private Task CheckNowAsync() => _services.Updates?.CheckNowAsync() ?? Task.CompletedTask;
 
-    private bool CanCheckNow() => !_working;
+    private bool CanCheckNow() => !_run.Running;
 
-    private bool CanUpdateNow() => !_working && _services.Service is not null && Card is UpdateCard.CanUpdate or UpdateCard.Failed;
+    private bool CanUpdateNow() => !_run.Running && _services.Service is not null && Card is UpdateCard.CanUpdate or UpdateCard.Failed;
 
     /// <summary>
     /// One click is the consent: download, verify, wait for a dictation to end, hand the package to the installer and
-    /// quit, so the installer can replace this version and start the new one.
+    /// quit, so the installer can replace this version and start the new one. The state goes to the shell's run, so
+    /// it outlives this page.
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanUpdateNow))]
     private async Task UpdateNowAsync()
     {
-        if (_working || _services.Service is not { } service)
+        using var cancel = new CancellationTokenSource();
+        if (_services.Service is not { } service || !_run.Start(cancel.Cancel))
         {
             return;
         }
 
-        _working = true;
-        _cancel = new CancellationTokenSource();
-        (UpdateProblem, CanRetry, WorkText, Card) = (null, false, null, UpdateCard.Working);
-        NotifyUpdateCommands();
         try
         {
             if (_offer is not { Package: not null })
             {
-                var (offer, lookup) = await service.FindAsync(_cancel.Token);
+                var (offer, lookup) = await service.FindAsync(cancel.Token);
                 _offer = offer ?? throw new UpdateException(Dictum.Updates.UpdateFailure.Download, lookup.Detail ?? lookup.Failure.ToString());
             }
 
-            CanCancel = true;
-            var update = await service.DownloadAsync(_offer, new WorkReporter(this), _cancel.Token);
-            CanCancel = false;
+            _run.AllowCancel(true);
+            var update = await service.DownloadAsync(_offer, new WorkReporter(this), cancel.Token);
+            _run.AllowCancel(false);
             if (_services.IsDictating?.Invoke() == true && _services.WhenIdle is { } whenIdle)
             {
-                WorkText = Strings.SettingsAboutWaitingForDictation;
+                _run.Show(Strings.SettingsAboutWaitingForDictation);
                 var idle = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                 whenIdle(() => idle.TrySetResult());
                 await idle.Task;
             }
 
-            WorkText = Strings.SettingsAboutInstalling;
+            _run.Show(Strings.SettingsAboutInstalling);
             service.Install(update, RestartTarget.DesktopApp);
             _services.Log.Info($"Installing Dictum {update.Offer.Version}; the app quits so the installer can replace it");
             _services.Quit?.Invoke();
         }
         catch (OperationCanceledException)
         {
-            _working = false;
-            WorkText = null;
-            Card = UpdateCard.None;
-            ShowCard();
+            _run.Stop(null, canRetry: false);
         }
         catch (UpdateException ex)
         {
             _services.Log.Warn($"The update stopped ({ex.Failure}): {ex.Message}");
-            _working = false;
-            WorkText = null;
-            UpdateProblem = ex.Failure switch
-            {
-                Dictum.Updates.UpdateFailure.Download => UiText.Format(Strings.SettingsAboutUpdateDownloadFailed, ex.Message.TrimEnd('.')),
-                Dictum.Updates.UpdateFailure.NotVerified => Strings.SettingsAboutUpdateNotVerified,
-                Dictum.Updates.UpdateFailure.NoPackage => Strings.SettingsAboutUpdateNoPackage,
-                Dictum.Updates.UpdateFailure.NoRoom => Strings.SettingsAboutUpdateNoRoom,
-                _ => Strings.SettingsAboutUpdateCannotInstall,
-            };
-            CanRetry = ex.Failure == Dictum.Updates.UpdateFailure.Download;
-            Card = UpdateCard.Failed;
+            _run.Stop(Problem(ex), ex.Failure == Dictum.Updates.UpdateFailure.Download);
         }
-        finally
+        catch (Exception ex)
         {
-            CanCancel = false;
-            _cancel.Dispose();
-            _cancel = null;
-            NotifyUpdateCommands();
+            // A full or read-only data folder, or anything else nobody foresaw: the update stops, dictum-gui stays.
+            _services.Log.Error($"The update stopped: {ex.Message}", ex);
+            _run.Stop(Strings.SettingsAboutUpdateCannotInstall, canRetry: false);
         }
     }
 
+    private static string Problem(UpdateException ex) => ex.Failure switch
+    {
+        Dictum.Updates.UpdateFailure.Download => UiText.Format(Strings.SettingsAboutUpdateDownloadFailed, ex.Message.TrimEnd('.')),
+        Dictum.Updates.UpdateFailure.NotVerified => Strings.SettingsAboutUpdateNotVerified,
+        Dictum.Updates.UpdateFailure.NoPackage => Strings.SettingsAboutUpdateNoPackage,
+        Dictum.Updates.UpdateFailure.NoRoom => Strings.SettingsAboutUpdateNoRoom,
+        _ => Strings.SettingsAboutUpdateCannotInstall,
+    };
+
     /// <summary>Possible while downloading and verifying; not once the install waits or has started.</summary>
     [RelayCommand(CanExecute = nameof(CanCancel))]
-    private void CancelUpdate() => _cancel?.Cancel();
+    private void CancelUpdate() => _run.Cancel();
+
+    /// <summary>The run's state on this page: working, failed, or, once it is over without a problem, the card again.</summary>
+    private void ShowRun()
+    {
+        WorkText = _run.WorkText;
+        CanCancel = _run.CanCancel;
+        if (_run.Running)
+        {
+            (UpdateProblem, CanRetry, Card) = (null, false, UpdateCard.Working);
+        }
+        else if (_run.Problem is { } problem)
+        {
+            (UpdateProblem, CanRetry, Card) = (problem, _run.CanRetry, UpdateCard.Failed);
+        }
+        else
+        {
+            ShowCard();
+        }
+
+        NotifyUpdateCommands();
+    }
 
     [RelayCommand]
     private async Task CopyCommandsAsync()
@@ -392,7 +415,7 @@ public sealed partial class AboutPage : SettingsPage, IDisposable
     /// <summary>The card for what the check found and how Dictum was installed; a failure stays until the next check.</summary>
     private void ShowCard()
     {
-        if (_working)
+        if (_run.Running)
         {
             return;
         }
@@ -445,11 +468,11 @@ public sealed partial class AboutPage : SettingsPage, IDisposable
         };
         if (_services.Post is { } post)
         {
-            post(() => WorkText = text);
+            post(() => _run.Show(text));
         }
         else
         {
-            WorkText = text;
+            _run.Show(text);
         }
     }
 

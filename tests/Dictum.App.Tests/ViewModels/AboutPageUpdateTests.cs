@@ -36,6 +36,7 @@ public sealed class AboutPageUpdateTests : IDisposable
     };
 
     private readonly RecordingInstaller _installer = new(InstallKind.Msi);
+    private readonly UpdateRun _run = new();
     private readonly RecordingClipboard _clipboard = new();
     private readonly List<Uri> _urls = [];
     private readonly List<Action> _whenIdle = [];
@@ -52,7 +53,7 @@ public sealed class AboutPageUpdateTests : IDisposable
 
     private static Installation Kind(InstallKind kind) => new(kind, kind == InstallKind.Portable ? null : @"C:\Programs\Dictum");
 
-    private async Task<AboutPage> PageAsync(InstallKind kind = InstallKind.Msi, UpdateReport? report = null)
+    private async Task<AboutPage> PageAsync(InstallKind kind = InstallKind.Msi, UpdateReport? report = null, UpdateRun? run = null)
     {
         _checker = new UpdateChecker(_found, new UpdateCheckFile(_dir.File("update-check.json"), NullLog.Instance), new ManualTimers(),
             TimeProvider.System, "0.4.0", NullLog.Instance);
@@ -65,7 +66,7 @@ public sealed class AboutPageUpdateTests : IDisposable
         var page = new AboutPage(new AboutServices(
             "0.4.0", "Windows 11 (10.0.26200), x64", "win-x64", null, () => Task.FromResult(new HardwareInfo(null, 0)), _clipboard,
             (_, _) => { }, _urls.Add, NullLog.Instance, _checker,
-            Service: service, IsDictating: () => _dictating, WhenIdle: _whenIdle.Add, Quit: () => _quits++, Report: report));
+            Service: service, IsDictating: () => _dictating, WhenIdle: _whenIdle.Add, Quit: () => _quits++, Report: report, Run: run));
         await page.Loading;
         return page;
     }
@@ -274,13 +275,78 @@ public sealed class AboutPageUpdateTests : IDisposable
         Assert.False(page.OpenUpdateLogCommand.CanExecute(null));
     }
 
+    // Closing Settings leaves the update running; Settings opened again shows it, and offers no second one.
+    [Fact]
+    public async Task ASettingsWindowOpenedAgainJoinsTheRunningUpdate()
+    {
+        Serve();
+        _dictating = true;
+        var first = await PageAsync(run: _run);
+        var running = first.UpdateNowCommand.ExecuteAsync(null);
+        await Eventually.WaitForAsync(() => _whenIdle.Count == 1, "the wait for idle");
+        first.Dispose();
+
+        using var second = await PageAsync(run: _run);
+
+        Assert.Equal(UpdateCard.Working, second.Card);
+        Assert.Equal(Strings.SettingsAboutWaitingForDictation, second.WorkText);
+        Assert.False(second.UpdateNowCommand.CanExecute(null));
+        Assert.False(second.CheckNowCommand.CanExecute(null));
+        _whenIdle[0]();
+        await running;
+        Assert.Single(_installer.Calls);
+        Assert.Equal(Strings.SettingsAboutInstalling, second.WorkText);
+    }
+
+    [Fact]
+    public async Task AFailureShowsInTheWindowOpenedMeanwhile()
+    {
+        var answer = new TaskCompletionSource<HttpResponseMessage>();
+        _http.Respond((_, _) => answer.Task);
+        var first = await PageAsync(run: _run);
+        var running = first.UpdateNowCommand.ExecuteAsync(null);
+        first.Dispose();
+        using var second = await PageAsync(run: _run);
+
+        answer.SetResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+        await running;
+
+        Assert.Equal((UpdateCard.Failed, Strings.SettingsAboutUpdateNoPackage), (second.Card, second.UpdateProblem));
+        Assert.True(second.CheckNowCommand.CanExecute(null));
+    }
+
+    // A full or read-only data folder, or anything else the installers do not foresee: the card says so, the app stays.
+    [Fact]
+    public async Task AnUnexpectedErrorStopsTheUpdateWithoutClosingTheApp()
+    {
+        Serve();
+        _installer.Throws = new IOException("disk full");
+        using var page = await PageAsync();
+
+        await page.UpdateNowCommand.ExecuteAsync(null);
+
+        Assert.Equal((UpdateCard.Failed, Strings.SettingsAboutUpdateCannotInstall), (page.Card, page.UpdateProblem));
+        Assert.Equal(0, _quits);
+        Assert.True(page.CheckNowCommand.CanExecute(null));
+    }
+
     private sealed class RecordingInstaller(InstallKind kind) : IUpdateInstaller
     {
         public List<(DownloadedUpdate Update, RestartTarget Restart)> Calls { get; } = [];
 
+        public Exception? Throws { get; set; }
+
         public InstallKind Kind => kind;
 
-        public void Start(DownloadedUpdate update, int waitForProcess, RestartTarget restart) => Calls.Add((update, restart));
+        public void Start(DownloadedUpdate update, int waitForProcess, RestartTarget restart)
+        {
+            if (Throws is { } exception)
+            {
+                throw exception;
+            }
+
+            Calls.Add((update, restart));
+        }
     }
 
     private sealed class RecordingClipboard : ITextClipboard

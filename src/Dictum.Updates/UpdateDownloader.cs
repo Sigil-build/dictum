@@ -52,7 +52,15 @@ public sealed class UpdateDownloader(HttpClient http, FileDownloader files, Atte
             throw new UpdateException(UpdateFailure.NotVerified, $"The attestation of {version} does not name {package.Name}.");
         }
 
-        Directory.CreateDirectory(folder);
+        try
+        {
+            Directory.CreateDirectory(folder);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw new UpdateException(UpdateFailure.CannotInstall, $"{folder} could not be made: {ex.Message}", ex);
+        }
+
         EnsureRoom(Path.GetDirectoryName(target)!, package.Size);
         var source = new DownloadSource(package.Name, ReleaseFiles.DownloadUrl(version, package.Name).AbsoluteUri, sha256, package.Size);
         try

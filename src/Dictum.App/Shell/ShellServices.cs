@@ -28,6 +28,7 @@ namespace Dictum.App.Shell;
 /// <param name="WhenIdle">Runs an action once no dictation runs (UI thread).</param>
 /// <param name="Quit">The shell's Quit, after the installer took over.</param>
 /// <param name="LastUpdate">What the update the last run started came to, read at start.</param>
+/// <param name="UpdateRun">The update About Dictum started, which outlives the Settings window.</param>
 /// <param name="Location">The downloads folder that <paramref name="Paths"/> follows; null in tests that leave it alone.</param>
 internal sealed record ShellServices(
     AppPaths Paths,
@@ -57,4 +58,5 @@ internal sealed record ShellServices(
     Func<bool>? IsDictating = null,
     Action<Action>? WhenIdle = null,
     Action? Quit = null,
-    Func<UpdateReport?>? LastUpdate = null);
+    Func<UpdateReport?>? LastUpdate = null,
+    UpdateRun? UpdateRun = null);

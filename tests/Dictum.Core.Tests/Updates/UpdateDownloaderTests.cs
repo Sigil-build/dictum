@@ -113,6 +113,18 @@ public sealed class UpdateDownloaderTests : IDisposable
     }
 
     [Fact]
+    public async Task AnUpdatesFolderThatCannotBeMadeCannotInstall()
+    {
+        File.WriteAllText(Updates, "a file where the updates folder goes");
+        _http.Respond(_ => Ok(Attestation(Sha256(Package)))).Respond(_ => Ok(Package));
+
+        var ex = await Assert.ThrowsAsync<UpdateException>(() => Downloader().DownloadAsync(Offer(), null, _ct));
+
+        Assert.Equal(UpdateFailure.CannotInstall, ex.Failure);
+        Assert.Single(_http.Requests);
+    }
+
+    [Fact]
     public async Task AMissingAttestationIsNoPackage()
     {
         _http.Respond(_ => new HttpResponseMessage(HttpStatusCode.NotFound));
