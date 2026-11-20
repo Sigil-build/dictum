@@ -517,3 +517,14 @@ Usage: `dictum secret delete <name>`
 | Argument | Description |
 | --- | --- |
 | `<name>` | Secret name |
+
+## `dictum update` {#update}
+
+Download, verify and install the newest Dictum, the way this copy was installed. Exit code 5: the download failed; 7: it did not verify
+
+Usage: `dictum update [options]`
+
+| Option | Description |
+| --- | --- |
+| `--check` | Only check: exit code 0 when up to date, 6 when an update is available |
+| `--yes`, `-y` | Do not ask before downloading and installing |

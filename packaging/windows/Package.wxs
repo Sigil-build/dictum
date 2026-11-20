@@ -26,6 +26,9 @@
       <Shortcut Id="DictumShortcut" Name="Dictum" Description="Voice to text" Target="[INSTALLFOLDER]dictum-gui.exe"
                 WorkingDirectory="INSTALLFOLDER" Icon="dictum.ico" />
       <RegistryValue Root="HKCU" Key="Software\Dictum" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
+      <!-- The updater tells an MSI install from the zip by this folder: Dictum updates through a newer MSI only when it
+           runs from here. -->
+      <RegistryValue Root="HKCU" Key="Software\Dictum" Name="InstallFolder" Type="string" Value="[INSTALLFOLDER]" />
     </Component>
 
     <!-- Before files are checked, replaced or removed, the installed copy quits a running Dictum (the GUI and its daemon).

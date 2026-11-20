@@ -1,8 +1,8 @@
 using System.Net;
 using System.Text;
-using Dictum.App.Updates;
+using Dictum.Updates;
 
-namespace Dictum.App.Tests.Updates;
+namespace Dictum.Core.Tests.Updates;
 
 /// <summary>The latest-release request against a fake handler; never the real GitHub API.</summary>
 public sealed class GitHubReleasesTests : IDisposable
@@ -37,8 +37,40 @@ public sealed class GitHubReleasesTests : IDisposable
 
         var lookup = await Releases().LatestAsync(_ct);
 
-        Assert.Equal(new LatestRelease("v0.5.0", new Uri("https://github.com/Sigil-build/dictum/releases/tag/v0.5.0")), lookup.Release);
+        Assert.Equal("v0.5.0", lookup.Release?.Tag);
+        Assert.Equal(new Uri("https://github.com/Sigil-build/dictum/releases/tag/v0.5.0"), lookup.Release?.Page);
         Assert.Equal(UpdateCheckFailure.None, lookup.Failure);
+    }
+
+    // The size is what the update button shows and what the download must come to; the URL is never used.
+    [Fact]
+    public async Task TheAnswersAssetsComeWithTheirSizes()
+    {
+        _github.Answer = _ => Json("""
+            {
+              "html_url": "https://github.com/Sigil-build/dictum/releases/tag/v0.7.1",
+              "tag_name": "v0.7.1",
+              "assets": [
+                { "name": "dictum-0.7.1-win-x64.msi", "size": 28725248, "browser_download_url": "https://evil.example/x" },
+                { "size": 5 },
+                { "name": "negative", "size": -1 }
+              ]
+            }
+            """);
+
+        var lookup = await Releases().LatestAsync(_ct);
+
+        Assert.Equal([new ReleaseAsset("dictum-0.7.1-win-x64.msi", 28725248)], lookup.Release!.Assets);
+    }
+
+    [Fact]
+    public async Task AnAnswerWithoutAssetsHasNone()
+    {
+        _github.Answer = _ => Json("""{ "html_url": "https://github.com/Sigil-build/dictum/releases/tag/v0.7.1", "tag_name": "v0.7.1" }""");
+
+        var lookup = await Releases().LatestAsync(_ct);
+
+        Assert.Empty(lookup.Release!.Assets);
     }
 
     // Unauthenticated, as GitHub's REST API asks: a User-Agent with the version, and its media type.

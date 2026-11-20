@@ -40,6 +40,50 @@
                      IsVisible="{Binding LastChecked, Converter={x:Static ObjectConverters.IsNotNull}}" />
           <TextBlock Text="{Binding UpdateFailure}" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource color.text.secondary}"
                      IsVisible="{Binding UpdateFailure, Converter={x:Static ObjectConverters.IsNotNull}}" />
+
+          <!-- What the last run's update came to: unfinished, with its log, or waiting for a restart of Windows. -->
+          <StackPanel Spacing="4" Margin="0,8,0,0" IsVisible="{Binding UpdateReportText, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <SelectableTextBlock Text="{Binding UpdateReportText}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
+            <Button Classes="link" Content="{x:Static res:Strings.SettingsAboutOpenUpdateLog}" Command="{Binding OpenUpdateLogCommand}"
+                    IsVisible="{Binding HasUpdateLog}" />
+          </StackPanel>
+
+          <!-- MSI, AppImage, tarball: one click downloads, verifies and installs. -->
+          <StackPanel Spacing="8" Margin="0,8,0,0" IsVisible="{Binding ShowsUpdateNow}">
+            <TextBlock Text="{x:Static res:Strings.SettingsAboutUpdateRestarts}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.secondary}" />
+            <Button Classes="primary" Content="{Binding UpdateNowLabel}" Command="{Binding UpdateNowCommand}" HorizontalAlignment="Left" />
+          </StackPanel>
+
+          <!-- While it runs: the stage, and Cancel until the install starts. -->
+          <StackPanel Spacing="8" Margin="0,8,0,0" IsVisible="{Binding ShowsWork}">
+            <TextBlock Text="{Binding WorkText}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
+            <Button Content="{x:Static res:Strings.SettingsAboutCancelUpdate}" Command="{Binding CancelUpdateCommand}" HorizontalAlignment="Left"
+                    IsVisible="{Binding CanCancel}" />
+          </StackPanel>
+
+          <!-- Why it stopped; Try again after a failed download. -->
+          <StackPanel Spacing="8" Margin="0,8,0,0" IsVisible="{Binding ShowsProblem}">
+            <SelectableTextBlock Text="{Binding UpdateProblem}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.primary}" />
+            <Button Content="{x:Static res:Strings.SettingsAboutTryAgain}" Command="{Binding UpdateNowCommand}" HorizontalAlignment="Left"
+                    IsVisible="{Binding CanRetry}" />
+          </StackPanel>
+
+          <!-- A copy that was not installed: the new version's page. -->
+          <StackPanel Spacing="8" Margin="0,8,0,0" IsVisible="{Binding ShowsPortable}">
+            <TextBlock Text="{x:Static res:Strings.SettingsAboutPortable}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.secondary}" />
+            <Button Content="{x:Static res:Strings.SettingsAboutDownloadNewVersion}" Command="{Binding OpenReleaseCommand}" HorizontalAlignment="Left" />
+          </StackPanel>
+
+          <!-- The Arch package: the commands that build the new one. -->
+          <StackPanel Spacing="8" Margin="0,8,0,0" IsVisible="{Binding ShowsPackageManager}">
+            <TextBlock Text="{x:Static res:Strings.SettingsAboutPackageManager}" TextWrapping="Wrap" Foreground="{DynamicResource color.text.secondary}" />
+            <SelectableTextBlock Text="{Binding PackageManagerCommands}" FontFamily="{DynamicResource font.family.mono}" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource color.text.primary}" />
+            <Button Content="{x:Static res:Strings.SettingsAboutCopyCommands}" Command="{Binding CopyCommandsCommand}" HorizontalAlignment="Left" />
+            <TextBlock Text="{Binding CommandsCopyStatus}" FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource color.text.secondary}"
+                       IsVisible="{Binding CommandsCopyStatus, Converter={x:Static ObjectConverters.IsNotNull}}" />
+          </StackPanel>
+
           <WrapPanel ItemSpacing="24" LineSpacing="8" Margin="0,8,0,0">
             <Button Content="{x:Static res:Strings.SettingsAboutCheckNow}" Command="{Binding CheckNowCommand}" />
             <Button Classes="link" Content="{x:Static res:Strings.SettingsAboutOpenRelease}" Command="{Binding OpenReleaseCommand}"

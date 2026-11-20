@@ -17,10 +17,12 @@ using Dictum.Core;
 using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Core.Docs;
+using Dictum.Core.Pipeline;
 using Dictum.Host;
 using Dictum.Host.Ipc;
 using Dictum.Platform;
 using Dictum.Setup;
+using Dictum.Updates;
 
 namespace Dictum.App.Shell;
 
@@ -50,7 +52,13 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     private readonly SetupCoordinator _setup;
     private readonly StartGate _start = new();
     private readonly UpdateChecker? _updates;
+    private readonly UpdateService? _updateService;
     private readonly IUpdatePopup _updatePopup;
+    private UpdateReport? _updateReport;
+
+    /// <summary>The daemon's pipeline is not idle: a dictation records or is processed.</summary>
+    private bool _dictating;
+    private readonly List<Action> _whenIdle = [];
     private SettingsViewModel? _settings;
     private SettingsWindow? _settingsWindow;
     private ConfigWatcher? _watcher;
@@ -69,6 +77,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     /// <param name="desktop">The desktop, read once at start; this one when left out.</param>
     /// <param name="updates">The update check, which the shell starts and disposes; none when left out, so tests never reach GitHub.</param>
     /// <param name="updatePopup">The OS's notification of a new version; none when left out.</param>
+    /// <param name="updateService">Downloads and installs an update from About Dictum; none when left out, so tests never install.</param>
     public DesktopShell(
         AppPaths paths,
         DictumLog log,
@@ -81,7 +90,8 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         Func<HardwareInfo>? probeHardware = null,
         DesktopEnvironment? desktop = null,
         UpdateChecker? updates = null,
-        IUpdatePopup? updatePopup = null)
+        IUpdatePopup? updatePopup = null,
+        UpdateService? updateService = null)
     {
         desktop ??= DesktopEnvironment.Detect();
         paths = paths.WithDownloads(() => Downloads.Current);
@@ -89,6 +99,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         _log = log;
         _store = store;
         _updates = updates;
+        _updateService = updateService;
         _updatePopup = updatePopup ?? UpdatePopup.None;
         var logFile = log.FilePath ?? Path.Combine(paths.LogsDirectory, AppPaths.GuiLogName);
         Supervisor = new DaemonSupervisor(daemonSocket, () => store.Exists, launcher, log, logFile);
@@ -105,7 +116,8 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         _services = new ShellServices(
             paths, Catalog.BuiltIn, Supervisor, Status, Frames, UiTimers.Instance, autostart, OwnExecutable(), _sounds,
             () => _secrets.Value, () => _runner.Value, () => _modelDownloads ?? IModelDownloads.None, Hardware, FreeDiskBytes,
-            new SpeedMeasurements(), desktop, _integration, wait => Task.Delay(wait), OpenDocsPage, TimeProvider.System, log, updates, Downloads);
+            new SpeedMeasurements(), desktop, _integration, wait => Task.Delay(wait), OpenDocsPage, TimeProvider.System, log, updates, Downloads,
+            updateService, () => _dictating, WhenIdle, Quit, () => _updateReport, new UpdateRun());
         _setup = new SetupCoordinator(_services, store, Supervisor.Restart, Supervisor.ConfigSaved, () => _settings?.Session.Flush());
     }
 
@@ -160,6 +172,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
         Downloads.Restore(config, SavedSetupFile.Load(_paths, _log)?.DownloadsDirectory);
         _tray.OnConfig(config);
         Overlay.OnConfig(config);
+        ReportLastUpdate();
         StartUpdates(config);
         WatchConfig();
         _tick = new DispatcherTimer { Interval = TrayTickInterval };
@@ -202,6 +215,12 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
     {
         Supervisor.LinkChanged += link => Dispatcher.UIThread.Post(() =>
         {
+            if (link.State != DaemonLinkState.Connected)
+            {
+                // A daemon that is gone dictates nothing; one that comes back starts idle.
+                OnPipeline(nameof(PipelineState.Idle));
+            }
+
             Status.OnLink(link);
             _tray.OnLink(link);
             Overlay.OnLink(link);
@@ -220,6 +239,11 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
 
             Dispatcher.UIThread.Post(() =>
             {
+                if (message is { Event: IpcEventKind.State, State: { } state })
+                {
+                    OnPipeline(state);
+                }
+
                 _tray.OnEvent(message);
                 Overlay.OnEvent(message);
                 _setup.Walk?.OnEvent(message);
@@ -275,12 +299,79 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
 
     public void ShowAbout() => ShowSettings(SettingsPageKey.About);
 
-    /// <summary>The tray's "Update available": the release page in the browser. Any thread.</summary>
-    public void OpenUpdate()
+    /// <summary>UI thread. Idle again: what waited for the dictation to end runs now.</summary>
+    private void OnPipeline(string state)
     {
-        if (_updates?.Status.Available is { } update)
+        _dictating = state != nameof(PipelineState.Idle);
+        if (_dictating || _whenIdle.Count == 0)
         {
-            WebLinks.Open(update.Page, _log);
+            return;
+        }
+
+        var waiting = _whenIdle.ToList();
+        _whenIdle.Clear();
+        foreach (var action in waiting)
+        {
+            action();
+        }
+    }
+
+    /// <summary>UI thread. Runs <paramref name="action"/> now when no dictation runs, else once the daemon is idle again.</summary>
+    private void WhenIdle(Action action)
+    {
+        if (_dictating)
+        {
+            _whenIdle.Add(action);
+        }
+        else
+        {
+            action();
+        }
+    }
+
+    /// <summary>The tray's "Update available": About Dictum, where the update happens. Any thread.</summary>
+    public void OpenUpdate() => Dispatcher.UIThread.Post(ShowAbout);
+
+    /// <summary>
+    /// What the update the last run started came to, from <c>pending.json</c>, which is then deleted; About Dictum says
+    /// it this run. A record whose runner may still be at work stays for the next start. Then the folders of versions up
+    /// to this one go.
+    /// </summary>
+    private void ReportLastUpdate()
+    {
+        if ((_updateService?.Current ?? ReleaseVersion.OfApp(SettingsViewModel.AppVersion())) is not { } current)
+        {
+            return;
+        }
+
+        var pending = new PendingUpdateFile(_paths.UpdatesDirectory, _log);
+        if (pending.Installing(current, DateTimeOffset.Now) is { } installing)
+        {
+            // Started while the runner still works, as from the tray during an MSI's install: the next start reports it.
+            _log.Info($"The update to {installing.Version} is still being installed");
+        }
+        else
+        {
+            _updateReport = pending.Take(current);
+        }
+
+        UpdatesFolder.Clean(_paths.UpdatesDirectory, current, _log);
+    }
+
+    /// <summary>The last update's outcome, once, in a notification that opens About Dictum.</summary>
+    private void ShowLastUpdate()
+    {
+        var title = _updateReport switch
+        {
+            { Outcome: UpdateOutcome.Updated, Version: { } version } => UiText.Format(Strings.UpdateInstalledTitle, version),
+            { Outcome: UpdateOutcome.DidNotFinish, Version: { } version } => UiText.Format(Strings.UpdateUnfinishedTitle, version),
+            { Outcome: UpdateOutcome.NeedsRestart, Version: { } version } => UiText.Format(Strings.UpdateRestartTitle, version),
+            _ => null,
+        };
+        if (title is not null)
+        {
+            _log.Info($"The last update: {_updateReport!.Outcome} ({_updateReport.Version})");
+            _updatePopup.Show(_integration.Tray, title, Strings.UpdateReportText, ShowAbout);
         }
     }
 
@@ -298,8 +389,7 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
 
         updates.Changed += () => _tray.OnUpdate(updates.Status.Available);
         updates.Announced += update => _updatePopup.Show(
-            _integration.Tray, UiText.Format(Strings.UpdateNotificationTitle, update.Version), Strings.UpdateNotificationText,
-            () => WebLinks.Open(update.Page, _log));
+            _integration.Tray, UiText.Format(Strings.UpdateNotificationTitle, update.Version), Strings.UpdateNotificationText, ShowAbout);
         _tray.OnUpdate(updates.Status.Available);
         updates.Enable(config?.General.CheckForUpdates ?? !_store.Exists);
     }
@@ -443,6 +533,11 @@ public sealed class DesktopShell : ITrayCommands, IAsyncDisposable
             // Without a tray the app goes on: the System page says so and stands in for it.
             _log.Error($"The tray icon could not start: {ex.Message}", ex);
             NoTray();
+        }
+        finally
+        {
+            // Windows carries the notification on the tray icon, so it waits for the icon.
+            ShowLastUpdate();
         }
     }
 

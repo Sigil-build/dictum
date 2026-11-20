@@ -1,6 +1,8 @@
 using Dictum.App.Settings;
 using Dictum.Core.Diagnostics;
 
+using Dictum.Updates;
+
 namespace Dictum.App.Updates;
 
 /// <summary>A newer Dictum than this one, and its release page.</summary>

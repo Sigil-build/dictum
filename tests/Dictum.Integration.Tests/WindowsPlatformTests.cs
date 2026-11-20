@@ -164,6 +164,58 @@ public class WindowsPlatformTests
         }
     }
 
+    // The MSI writes HKCU\Software\Dictum\InstallFolder; a throwaway key stands in for it, so the real one is never touched.
+    [Fact]
+    public void MsiInstallFolderReadsTheValueTheInstallerWrites()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Windows only");
+            return;
+        }
+
+        var keyPath = $@"{RunKeyRoot}\Msi-{Guid.NewGuid():N}";
+        try
+        {
+            using (var key = Registry.CurrentUser.CreateSubKey(keyPath))
+            {
+                key.SetValue(MsiInstallFolder.ValueName, @"C:\Users\u\AppData\Local\Programs\Dictum\");
+            }
+
+            Assert.Equal(@"C:\Users\u\AppData\Local\Programs\Dictum\", MsiInstallFolder.Read(keyPath));
+        }
+        finally
+        {
+            Registry.CurrentUser.DeleteSubKeyTree(RunKeyRoot, throwOnMissingSubKey: false);
+        }
+    }
+
+    [Fact]
+    public void AMissingInstallFolderReadsAsNull()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Skip("Windows only");
+            return;
+        }
+
+        var keyPath = $@"{RunKeyRoot}\Msi-{Guid.NewGuid():N}";
+        try
+        {
+            Assert.Null(MsiInstallFolder.Read(keyPath));
+            using (var key = Registry.CurrentUser.CreateSubKey(keyPath))
+            {
+                key.SetValue(MsiInstallFolder.ValueName, 1);
+            }
+
+            Assert.Null(MsiInstallFolder.Read(keyPath));
+        }
+        finally
+        {
+            Registry.CurrentUser.DeleteSubKeyTree(RunKeyRoot, throwOnMissingSubKey: false);
+        }
+    }
+
     [Theory]
     [SupportedOSPlatform("windows")]
     [InlineData("\"C:\\Tools\\Dictum\\dictum.exe\" daemon", LoginApp.Daemon)]

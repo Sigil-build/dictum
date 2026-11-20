@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="../Dictum.Core/Dictum.Core.csproj" />
+    <ProjectReference Include="../Dictum.Setup/Dictum.Setup.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Dictum.Core.Tests" />
+    <InternalsVisibleTo Include="Dictum.Integration.Tests" />
+  </ItemGroup>
+
+</Project>

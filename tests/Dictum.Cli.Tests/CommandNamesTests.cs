@@ -13,7 +13,7 @@ public sealed class CommandNamesTests
         Assert.Equal(
             [
                 "cancel", "config", "daemon", "devices", "doctor", "history", "init", "models", "plugins", "process", "profiles",
-                "record", "reload", "secret", "shutdown", "start", "status", "stop", "stt", "toggle", "transcribe", "vocab",
+                "record", "reload", "secret", "shutdown", "start", "status", "stop", "stt", "toggle", "transcribe", "update", "vocab",
             ],
             CliApp.BuildRoot().Subcommands.Select(c => c.Name).Order(StringComparer.Ordinal));
 

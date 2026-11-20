@@ -69,5 +69,4 @@ public sealed class UpdateCheckFile(string path, ILog log)
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
     WriteIndented = true)]
 [JsonSerializable(typeof(UpdateCheckState))]
-[JsonSerializable(typeof(GitHubRelease))]
 internal sealed partial class UpdateJsonContext : JsonSerializerContext;

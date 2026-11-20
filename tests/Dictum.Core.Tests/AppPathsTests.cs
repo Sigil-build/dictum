@@ -16,6 +16,7 @@ public class AppPathsTests
         Assert.Equal(Path.Combine(data, "models"), paths.ModelsDirectory);
         Assert.Equal(Path.Combine(data, "history.jsonl"), paths.HistoryFile);
         Assert.Equal(Path.Combine(data, "update-check.json"), paths.UpdateCheckFile);
+        Assert.Equal(Path.Combine(data, "updates"), paths.UpdatesDirectory);
     }
 
     [Fact]

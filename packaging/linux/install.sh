@@ -29,7 +29,13 @@ rm -f "${staging:?}/install.sh"
 if [ -e "$lib" ]; then
   mv "$lib" "$retired"
 fi
-mv "$staging" "$lib"
+# A failed swap puts the old folder back, so $lib always holds a version that runs.
+if ! mv "$staging" "$lib"; then
+  if [ -e "$retired" ]; then mv "$retired" "$lib"; fi
+  rm -rf "${staging:?}"
+  echo "install.sh: the new version could not be moved to $lib; the old one stays." >&2
+  exit 1
+fi
 rm -rf "${retired:?}"
 
 ln -sfn "$lib/dictum" "$bin/dictum"

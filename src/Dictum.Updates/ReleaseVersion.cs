@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace Dictum.App.Updates;
+namespace Dictum.Updates;
 
 /// <summary>
 /// A release's <c>X.Y.Z</c>, as Dictum's tags name them (<c>v0.4.0</c>). Only plain versions count: a tag with a

@@ -25,6 +25,13 @@ internal sealed class FakeHttpHandler : HttpMessageHandler
         return this;
     }
 
+    /// <summary>Answers when <paramref name="respond"/> completes; it gets the request's token.</summary>
+    public FakeHttpHandler Respond(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> respond)
+    {
+        _responses.Enqueue(respond);
+        return this;
+    }
+
     public FakeHttpHandler Throw(Exception exception)
     {
         _responses.Enqueue((_, _) => throw exception);

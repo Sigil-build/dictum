@@ -273,7 +273,7 @@
     <value>Dictum {0} is available</value>
   </data>
   <data name="UpdateNotificationText" xml:space="preserve">
-    <value>Click to open the release page and download it.</value>
+    <value>Click to update it in About Dictum.</value>
   </data>
   <data name="SettingsAboutDocumentation" xml:space="preserve">
     <value>Documentation</value>
@@ -1672,5 +1672,83 @@
   </data>
   <data name="SetupReadyHotkeyFailed" xml:space="preserve">
     <value>The hotkey could not be registered: {0}</value>
+  </data>
+  <data name="SettingsAboutUpdateNow" xml:space="preserve">
+    <value>Update now</value>
+  </data>
+  <data name="SettingsAboutUpdateNowSize" xml:space="preserve">
+    <value>Update now · {0}</value>
+  </data>
+  <data name="SettingsAboutUpdateRestarts" xml:space="preserve">
+    <value>Dictum will close and start again with the new version.</value>
+  </data>
+  <data name="SettingsAboutDownloading" xml:space="preserve">
+    <value>Downloading… {0} of {1}</value>
+  </data>
+  <data name="SettingsAboutVerifying" xml:space="preserve">
+    <value>Verifying…</value>
+  </data>
+  <data name="SettingsAboutWaitingForDictation" xml:space="preserve">
+    <value>Waiting for the dictation to finish…</value>
+  </data>
+  <data name="SettingsAboutInstalling" xml:space="preserve">
+    <value>Installing: Dictum will close now.</value>
+  </data>
+  <data name="SettingsAboutCancelUpdate" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="SettingsAboutPortable" xml:space="preserve">
+    <value>This copy of Dictum was not installed, so it does not update itself.</value>
+  </data>
+  <data name="SettingsAboutDownloadNewVersion" xml:space="preserve">
+    <value>Download the new version</value>
+  </data>
+  <data name="SettingsAboutPackageManager" xml:space="preserve">
+    <value>Dictum was installed by your package manager. Build the new package:</value>
+  </data>
+  <data name="SettingsAboutCopyCommands" xml:space="preserve">
+    <value>Copy the commands</value>
+  </data>
+  <data name="SettingsAboutCommandsCopied" xml:space="preserve">
+    <value>Copied. Paste them into a terminal.</value>
+  </data>
+  <data name="SettingsAboutUpdateDownloadFailed" xml:space="preserve">
+    <value>The download failed: {0}.</value>
+  </data>
+  <data name="SettingsAboutUpdateNotVerified" xml:space="preserve">
+    <value>The update could not be verified, so nothing was installed.</value>
+  </data>
+  <data name="SettingsAboutUpdateNoPackage" xml:space="preserve">
+    <value>This release has no package for this installation.</value>
+  </data>
+  <data name="SettingsAboutUpdateNoRoom" xml:space="preserve">
+    <value>Not enough free space for the update.</value>
+  </data>
+  <data name="SettingsAboutUpdateCannotInstall" xml:space="preserve">
+    <value>The installer could not be started, so nothing changed.</value>
+  </data>
+  <data name="SettingsAboutTryAgain" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="SettingsAboutUpdateDidNotFinish" xml:space="preserve">
+    <value>The update to {0} did not finish.</value>
+  </data>
+  <data name="SettingsAboutUpdateNeedsRestart" xml:space="preserve">
+    <value>Restart Windows to finish the update to {0}.</value>
+  </data>
+  <data name="SettingsAboutOpenUpdateLog" xml:space="preserve">
+    <value>Open the log</value>
+  </data>
+  <data name="UpdateInstalledTitle" xml:space="preserve">
+    <value>Dictum was updated to {0}</value>
+  </data>
+  <data name="UpdateReportText" xml:space="preserve">
+    <value>Click to open About Dictum.</value>
+  </data>
+  <data name="UpdateUnfinishedTitle" xml:space="preserve">
+    <value>The update to {0} did not finish</value>
+  </data>
+  <data name="UpdateRestartTitle" xml:space="preserve">
+    <value>Restart Windows to finish the update to {0}</value>
   </data>
 </root>

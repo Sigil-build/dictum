@@ -1,5 +1,4 @@
 # dictum-bin: Dictum's release tarball for Arch and CachyOS.
-# While the repository is private, put dictum-<version>-linux-x64.tar.gz next to this file and run makepkg -si.
 pkgname=dictum-bin
 pkgver=0.6.0
 pkgrel=1

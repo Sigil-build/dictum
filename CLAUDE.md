@@ -27,11 +27,13 @@ https://claude.ai/code/artifact/ba039eea-3640-41cc-898a-b1b024e07370
 - Docs: pages live in `docs/` and go live from a `docs/X.Y` branch, which `.github/workflows/docs.yml` cuts from the `vX.Y.Z` tag when a release is published (a patch release or a pre-release cuts nothing). Fix a typo on `docs/X.Y`, then merge it back into `main`.
 - Native AOT cannot cross-compile between OSes. Publish on the target OS or in a container.
 - Check the user docs (twins, heading ids, links, nav, version): `dotnet test --project tests/Dictum.Core.Tests --filter-class "*.UserDocsTests"`
+- Check a release's attestation as Dictum's updater does (release.yml runs it before the draft): `DICTUM_CHECK_RELEASE=<folder with the release files> DICTUM_RELEASE_VERSION=X.Y.Z dotnet test --project tests/Dictum.Core.Tests --filter-class "*.ReleaseAttestationTests"`. Bump `actions/attest` only together with `Dictum.Updates`' verifier; Dependabot leaves it alone.
 
 ## Layout
 - `src/Dictum.Core`: contracts, pipeline, profiles, history. No project references, no interop or OS APIs; plain .NET `OperatingSystem` branches are fine.
 - `src/Dictum.Audio`, `Dictum.Processing`: reference Core. `src/Dictum.Stt.Whisper`, `Dictum.Stt.OpenAi`: reference Core and Audio.
 - `src/Dictum.Setup`: model catalog, downloader, setup planner and runner (`dictum init`). References Core only.
+- `src/Dictum.Updates`: self-update: release lookup, install kinds, the attestation verifier, the update download and the per-kind installers. References Core and Setup.
 - `src/Dictum.Plugins`: plugin manifests, the trust record, plugin processes and their host, and the plugin speech provider. References Core and Audio.
 - `src/Dictum.Platform`: platform abstractions (hotkeys, injection, clipboard, secrets, autostart) and the SharpHook implementations that Windows and X11 share. References Core.
 - `src/Dictum.Platform.{Windows,Linux}`: per-OS implementations. Reference Platform. macOS is unsupported and has no project: it gets Platform's `UnsupportedPlatform`. Core's `IProcessGroups`, which ends what a plugin started, is a job object on Windows and a `setsid` session on Linux; Host's `PlatformFactory` gives other systems `NullProcessGroups`.

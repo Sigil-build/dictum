@@ -7,6 +7,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- dictum update on a fake GitHub and a test Sigstore, as the updater's own tests use. -->
+    <Compile Include="../Dictum.Core.Tests/FakeHttpHandler.cs" Link="Updates/FakeHttpHandler.cs" />
+    <Compile Include="../Dictum.Core.Tests/Updates/TestSigstore.cs" Link="Updates/TestSigstore.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- The plugin tests launch a copy of the built test plugin; nothing is referenced from it. -->
     <ProjectReference Include="../Dictum.TestPlugin/Dictum.TestPlugin.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>

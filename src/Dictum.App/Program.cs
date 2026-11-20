@@ -6,6 +6,7 @@ using Dictum.App.Overlay;
 using Dictum.App.Settings;
 using Dictum.App.Shell;
 using Dictum.App.Updates;
+using Dictum.Updates;
 using Dictum.App.ViewModels.Settings;
 using Dictum.Core;
 using Dictum.Core.Audio;
@@ -13,6 +14,7 @@ using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Host;
 using Dictum.Host.Ipc;
+using Dictum.Host.Updates;
 using Dictum.Platform.Linux.X11;
 
 namespace Dictum.App;
@@ -58,12 +60,13 @@ internal static class Program
         var appSocket = SingleInstance.SocketPathFor(daemonSocket);
         using var updateHttp = GitHubReleases.CreateHttpClient();
         var version = SettingsViewModel.AppVersion();
+        var updateService = UpdatesFactory.Create(paths, version, log);
         var updates = new UpdateChecker(
             new GitHubReleases(updateHttp, version), new UpdateCheckFile(paths.UpdateCheckFile, log), UiTimers.Instance, TimeProvider.System, version, log);
         var shell = new DesktopShell(paths, log, store, daemonSocket, DaemonProcessLauncher.NextToApp(log),
             (app, highContrast) => DesktopIntegration.CreateTrayAsync(desktop, app, highContrast, paths, log),
             OverlayDesktop.ForThisDesktop(desktop, log), PlatformFactory.CreateAutostart(), desktop: desktop,
-            updates: updates, updatePopup: UpdatePopup.For(desktop, log));
+            updates: updates, updatePopup: UpdatePopup.For(desktop, updateService.Installation, log), updateService: updateService);
 
         // No synchronisation context exists yet, so blocking here cannot deadlock.
         var instance = SingleInstance.AcquireAsync(appSocket, shell.OnCommand, log).GetAwaiter().GetResult();

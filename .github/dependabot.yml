@@ -47,3 +47,7 @@ updates:
     groups:
       codeql:
         patterns: ['github/codeql-action', 'github/codeql-action/*']
+    # actions/attest is bumped by hand, together with Dictum.Updates' verifier: the bundles it writes are what every
+    # installed Dictum checks before it updates itself, and the release job refuses a release the verifier does not accept.
+    ignore:
+      - dependency-name: 'actions/attest'

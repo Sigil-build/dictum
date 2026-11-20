@@ -8,6 +8,7 @@ using Dictum.Core.Configuration;
 using Dictum.Core.Diagnostics;
 using Dictum.Platform;
 using Dictum.Setup;
+using Dictum.Updates;
 
 namespace Dictum.App.Shell;
 
@@ -22,6 +23,12 @@ namespace Dictum.App.Shell;
 /// <param name="Delay">The waits for the daemon's reload before a test.</param>
 /// <param name="OpenDocs">Opens the documentation in the browser: Settings' Help, System's "How to fix", the wizard's step 1.</param>
 /// <param name="Updates">The update check that About Dictum shows; null where the shell has none (tests, the self-test).</param>
+/// <param name="UpdateService">Downloads and installs an update from About Dictum; null in tests and the self-test.</param>
+/// <param name="IsDictating">The daemon records or processes a dictation now.</param>
+/// <param name="WhenIdle">Runs an action once no dictation runs (UI thread).</param>
+/// <param name="Quit">The shell's Quit, after the installer took over.</param>
+/// <param name="LastUpdate">What the update the last run started came to, read at start.</param>
+/// <param name="UpdateRun">The update About Dictum started, which outlives the Settings window.</param>
 /// <param name="Location">The downloads folder that <paramref name="Paths"/> follows; null in tests that leave it alone.</param>
 internal sealed record ShellServices(
     AppPaths Paths,
@@ -46,4 +53,10 @@ internal sealed record ShellServices(
     TimeProvider Time,
     ILog Log,
     UpdateChecker? Updates = null,
-    DownloadsLocation? Location = null);
+    DownloadsLocation? Location = null,
+    UpdateService? UpdateService = null,
+    Func<bool>? IsDictating = null,
+    Action<Action>? WhenIdle = null,
+    Action? Quit = null,
+    Func<UpdateReport?>? LastUpdate = null,
+    UpdateRun? UpdateRun = null);

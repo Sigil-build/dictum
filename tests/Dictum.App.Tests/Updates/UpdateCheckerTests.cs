@@ -1,5 +1,6 @@
 using Dictum.App.Tests.Settings;
 using Dictum.App.Updates;
+using Dictum.Updates;
 using Dictum.Core.Diagnostics;
 
 namespace Dictum.App.Tests.Updates;

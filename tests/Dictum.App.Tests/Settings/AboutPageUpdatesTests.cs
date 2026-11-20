@@ -4,6 +4,7 @@ using Dictum.App.Resources;
 using Dictum.App.Settings;
 using Dictum.App.Tests.Updates;
 using Dictum.App.Updates;
+using Dictum.Updates;
 using Dictum.App.ViewModels.Settings;
 using Dictum.Core.Diagnostics;
 using Dictum.Setup;

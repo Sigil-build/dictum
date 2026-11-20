@@ -594,6 +594,29 @@ Both lines must show the same hash.
 
 You can always see the releases yourself: **Releases** on the same page opens them on GitHub.
 
+### An update that stops {#update-stopped}
+
+When **Update now** or `dictum update` stops before the install, nothing changed and your version keeps working. The reason in English is in the log: `dictum-gui.log` for the desktop app, `dictum.log` for `dictum update` (see [Logs](#logs)).
+
+- "The download failed:" and the reason: the network or GitHub failed. The update downloads from `github.com` and GitHub's file storage, so a firewall or proxy has to let those through as well as `api.github.com`. **Try again**, or `dictum update` again, goes on from where the download stopped.
+- "The update could not be verified, so nothing was installed.": the download did not match the release's attestation, or the attestation itself did not check out. Dictum deleted the file. A proxy that changes downloads can cause this. Try again later; if it stays, [report it](https://github.com/Sigil-build/dictum/issues) with the line from the log, and update by hand meanwhile: [Update and remove](guides/update-and-remove.md).
+- "This release has no package for this installation.": the release lacks the file for your kind of install. Update by hand from the release's page.
+- "Not enough free space for the update.": the download needs room in Dictum's data folder (see [Files](reference/files.md#data-folder)). Free some space and try again.
+- "The installer could not be started, so nothing changed.": Dictum could not start the program that installs the update. The log says why.
+
+### An update that did not finish {#update-unfinished}
+
+If the installer fails or is cancelled, the old version starts again, and About Dictum says "The update to 0.7.0 did not finish." `dictum update` says the same the next time it runs. **Open the log** opens the installer's log:
+
+| | Windows | Linux |
+| --- | --- | --- |
+| The installer's log | `%LOCALAPPDATA%\Dictum\updates\0.7.0\install.log` | `~/.local/share/dictum/updates/0.7.0/install.log` |
+
+- **Windows**: it is Windows Installer's log. The step that failed is just above the first line with `Return value 3`. Install the newer MSI by hand, see [Windows installer](guides/update-and-remove.md#msi), and it shows the error on screen.
+- **Linux**: it holds what the new `install.sh` printed, or the start of the new AppImage. Run the steps by hand, see [Update and remove](guides/update-and-remove.md), to see where it stops.
+
+"Restart Windows to finish the update to 0.7.0." means that Windows Installer replaced files that were in use: the new version takes over when Windows restarts.
+
 ## Logs {#logs}
 
 Dictum writes what it does to log files:

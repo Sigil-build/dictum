@@ -10,6 +10,7 @@ using Dictum.Core.Text;
 using Dictum.Host.Ipc;
 using Dictum.Plugins;
 using Dictum.Setup;
+using Dictum.Updates;
 
 namespace Dictum.Cli;
 
@@ -60,6 +61,7 @@ internal static class CliApp
         }
 
         root.Add(SecretCommand.Create());
+        root.Add(UpdateCommand.Create());
         return root;
     }
 
@@ -127,6 +129,13 @@ internal static class CliApp
                 return Fail(context, inner.Message, ExitCodes.DaemonNotRunning);
             case IHasHint hinted:
                 return Fail(context, inner.Message, ExitCodes.Error, hinted.Hint);
+            case UpdateException update:
+                return Fail(context, update.Message, update.Failure switch
+                {
+                    UpdateFailure.Download => ExitCodes.DownloadFailed,
+                    UpdateFailure.NotVerified => ExitCodes.NotVerified,
+                    _ => ExitCodes.Error,
+                });
             case DownloadException download:
                 return Fail(context, download.Message, ExitCodes.DownloadFailed);
             case DaemonAlreadyRunningException:

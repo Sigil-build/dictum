@@ -4,8 +4,8 @@ using Dictum.App.Resources;
 using Dictum.App.Shell;
 using Dictum.App.Tray;
 using Dictum.Core.Diagnostics;
-using Dictum.Platform;
 using Dictum.Platform.Linux.DBus;
+using Dictum.Updates;
 
 namespace Dictum.App.Updates;
 
@@ -28,15 +28,16 @@ public static class UpdatePopup
 {
     public static IUpdatePopup None { get; } = new NoPopup();
 
-    public static IUpdatePopup For(DesktopEnvironment desktop, ILog log)
+    public static IUpdatePopup For(DesktopEnvironment desktop, Installation installation, ILog log)
     {
         ArgumentNullException.ThrowIfNull(desktop);
+        ArgumentNullException.ThrowIfNull(installation);
         if (desktop.IsWindows)
         {
             return new TrayBalloon(log);
         }
 
-        if (desktop.IsLinux && ShowsOnLinux(InstallLocation.AppImage, Environment.ProcessPath, Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)))
+        if (desktop.IsLinux && ShowsOnLinux(installation.Kind))
         {
             return new DesktopNotification(log);
         }
@@ -45,24 +46,10 @@ public static class UpdatePopup
     }
 
     /// <summary>
-    /// Linux: an AppImage, or a program in the user's home folder, such as the tarball's <c>~/.local/lib/dictum</c>,
-    /// which only the user updates. A program elsewhere, such as the AUR package's <c>/opt/dictum</c>, is updated by a
-    /// package manager, so the notification would only repeat what it says.
+    /// Linux: an AppImage, the tarball and a portable copy, which Dictum or the user updates. A package manager's
+    /// install, such as the AUR package's <c>/opt/dictum</c>, is updated by it, so the notification would only repeat it.
     /// </summary>
-    public static bool ShowsOnLinux(string? appImage, string? processPath, string? home)
-    {
-        if (appImage is not null)
-        {
-            return true;
-        }
-
-        if (processPath is null || string.IsNullOrEmpty(home))
-        {
-            return false;
-        }
-
-        return processPath.StartsWith(home.TrimEnd('/') + "/", StringComparison.Ordinal);
-    }
+    public static bool ShowsOnLinux(InstallKind kind) => kind != InstallKind.PackageManager;
 
     private sealed class NoPopup : IUpdatePopup
     {
@@ -97,7 +84,7 @@ public static class UpdatePopup
         private readonly DesktopNotifications _notifications = new(log);
 
         public void Show(ITrayPresenter? tray, string title, string text, Action clicked) =>
-            _ = _notifications.ShowAsync(title, text, Strings.SettingsAboutOpenRelease, () => Dispatcher.UIThread.Post(clicked), CancellationToken.None);
+            _ = _notifications.ShowAsync(title, text, Strings.SettingsAbout, () => Dispatcher.UIThread.Post(clicked), CancellationToken.None);
 
         public void Dispose() => _notifications.Dispose();
     }

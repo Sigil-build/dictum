@@ -68,6 +68,8 @@ Check ($upgrade.Count -eq 1 -and $upgrade[0][0] -eq $Version -and ([int]$upgrade
 $shortcut = Rows 'SELECT Directory_, Target FROM Shortcut'
 Check ($shortcut.Count -eq 1 -and $shortcut[0][0] -eq 'ProgramMenuFolder' -and $shortcut[0][1] -eq '[INSTALLFOLDER]dictum-gui.exe') 'one Start menu shortcut to dictum-gui.exe'
 Check ((Property 'ARPPRODUCTICON') -eq 'dictum.ico') 'Apps & features shows the Dictum icon'
+$installFolder = Rows "SELECT Root, ``Key``, Value FROM Registry WHERE Name = 'InstallFolder'"
+Check ($installFolder.Count -eq 1 -and $installFolder[0][0] -eq '1' -and $installFolder[0][1] -eq 'Software\Dictum' -and $installFolder[0][2] -eq '[INSTALLFOLDER]') 'HKCU\Software\Dictum\InstallFolder records the install folder for the updater'
 
 $target = Join-Path ([IO.Path]::GetTempPath()) ('dictum-msi-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
 try {
