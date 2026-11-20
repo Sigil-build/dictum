@@ -36,6 +36,13 @@ public interface IRunnerLauncher
 /// </summary>
 public sealed class DetachedRunner : IRunnerLauncher
 {
+    /// <summary>Where util-linux puts setsid; a system that keeps it elsewhere has it in a folder on PATH.</summary>
+    private static readonly string[] SetsidPlaces = ["/usr/bin/setsid", "/bin/setsid"];
+
+    private const UnixFileMode Executable = UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute;
+
+    private const int NoSuchFile = 2;
+
     public void Start(ProcessStartInfo start)
     {
         ArgumentNullException.ThrowIfNull(start);
@@ -44,11 +51,26 @@ public sealed class DetachedRunner : IRunnerLauncher
         if (OperatingSystem.IsLinux())
         {
             start.ArgumentList.Insert(0, start.FileName);
-            start.FileName = "setsid";
+            start.FileName = FindSetsid(Environment.GetEnvironmentVariable("PATH"), CanRun)
+                ?? throw new Win32Exception(NoSuchFile, $"setsid was not found in {string.Join(" or ", SetsidPlaces)} or on PATH");
         }
 
         Process.Start(start)?.Dispose();
     }
+
+    /// <summary>
+    /// setsid by its full path: util-linux's places first, then the folders on <paramref name="path"/>. A relative folder
+    /// is skipped, so the runner never starts whatever setsid the current directory holds.
+    /// </summary>
+    internal static string? FindSetsid(string? path, Func<string, bool> canRun) =>
+        SetsidPlaces
+            .Concat((path ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+                .Where(Path.IsPathFullyQualified)
+                .Select(folder => Path.Combine(folder, "setsid")))
+            .FirstOrDefault(canRun);
+
+    private static bool CanRun(string path) =>
+        !OperatingSystem.IsWindows() && File.Exists(path) && (File.GetUnixFileMode(path) & Executable) != 0;
 }
 
 /// <summary>Shared steps of the installers: the record first, then the runner, and no record when the runner fails.</summary>
