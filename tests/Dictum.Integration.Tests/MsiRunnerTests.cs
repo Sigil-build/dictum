@@ -38,11 +38,16 @@ public sealed class MsiRunnerTests : IDisposable
         return path;
     }
 
-    /// <summary>A stand-in for the old version. <c>start</c> runs a batch file in <c>cmd /k</c>, so it ends with <c>exit</c>.</summary>
+    /// <summary>
+    /// A stand-in for the old version. <c>start</c> runs a batch file in <c>cmd /k</c>, so it ends with <c>exit</c>, on the
+    /// marker's own line: cmd reads a batch file a line at a time, and once the marker is there the test may delete the
+    /// folder. A second line would never be read, and the <c>cmd /k</c> left behind would wait on the test host's stdin and
+    /// keep <c>dotnet test</c> from ending.
+    /// </summary>
     private string FakeOldVersion()
     {
         var folder = Directory.CreateDirectory(_dir.File("Programs")).FullName;
-        File.WriteAllText(Path.Combine(folder, "dictum-gui.cmd"), $"@echo started> \"{Marker}\"\r\n@exit\r\n");
+        File.WriteAllText(Path.Combine(folder, "dictum-gui.cmd"), $"@echo started> \"{Marker}\" & exit\r\n");
         return folder;
     }
 
