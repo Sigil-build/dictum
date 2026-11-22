@@ -27,7 +27,7 @@
     В AppImage допишіть `dictum` після імені файла:
 
     ```sh
-    ./dictum-0.6.0-linux-x64.AppImage dictum doctor
+    ./dictum-0.7.0-linux-x64.AppImage dictum doctor
     ```
 
 Кожен рядок починається з `OK`, `WARN` або `ERR`, далі йдуть назва перевірки й те, що вона знайшла. Під рядком, який не «OK», є ще два: після `→` — що зробити, після `see:` — посилання на його розділ цієї сторінки. Посилання веде на сторінку мовою, яку задає поле **Мова інтерфейсу** в **Налаштування → Загальні**. Якщо там вибрано **Як у системі**, це українська в українській системі й англійська в будь-якій іншій. Перший рядок виводу називає версію Dictum і вашу систему. Ось частина виводу у Windows:
@@ -206,7 +206,7 @@ WARN config warnings        1 warning(s)
 
 - **KDE Plasma 6:** під час першого запуску Dictum з'являється діалог. Погодьтеся. Щоб змінити чи призначити клавішу пізніше, відкрийте «Системні параметри» → «Скорочення» (System Settings → Shortcuts) і знайдіть Dictum. Якщо ви закрили діалог, Dictum напише `Binding the shortcuts was cancelled in the desktop dialog.` Вийдіть із Dictum і запустіть його знову, щоб діалог з'явився ще раз.
 - **GNOME 48 і новіші:** у GNOME є цей портал, і він питає так само.
-- **Старіші GNOME** (як-от GNOME 46 в Ubuntu 24.04) **і композитори без порталу:** рядок пише `org.freedesktop.portal.GlobalShortcuts is not available`. Призначте в налаштуваннях клавіш робочого столу клавішу, що запускає `dictum toggle`: перше натискання починає диктування, друге — зупиняє й вставляє текст. У GNOME це «Параметри» → «Клавіатура» → власні скорочення (Settings → Keyboard → View and Customize Shortcuts → Custom Shortcuts). Указуйте команду з повним шляхом, наприклад `/home/you/.local/bin/dictum toggle` для архіву tar.gz або `/home/you/Apps/dictum-0.6.0-linux-x64.AppImage dictum toggle` для AppImage.
+- **Старіші GNOME** (як-от GNOME 46 в Ubuntu 24.04) **і композитори без порталу:** рядок пише `org.freedesktop.portal.GlobalShortcuts is not available`. Призначте в налаштуваннях клавіш робочого столу клавішу, що запускає `dictum toggle`: перше натискання починає диктування, друге — зупиняє й вставляє текст. У GNOME це «Параметри» → «Клавіатура» → власні скорочення (Settings → Keyboard → View and Customize Shortcuts → Custom Shortcuts). Указуйте команду з повним шляхом, наприклад `/home/you/.local/bin/dictum toggle` для архіву tar.gz або `/home/you/Apps/dictum-0.7.0-linux-x64.AppImage dictum toggle` для AppImage.
 - **Sway та інші композитори з власними прив'язками клавіш:** прив'яжіть `dictum start` до натискання і `dictum stop` до відпускання, щоб працювало утримання:
 
     ```text
@@ -576,8 +576,8 @@ Whisper 'local' picked 'uk' from uk, en (detected 'en', p=0.42; the first langua
 Перш ніж запускати, перевірте, що файл саме той, що опубліковано. Кожен випуск на [GitHub](https://github.com/Sigil-build/dictum/releases) має файл `SHA256SUMS`. Завантажте його в ту саму теку, що й інсталятор, і виконайте в PowerShell у цій теці:
 
 ```powershell
-(Get-FileHash .\dictum-0.6.0-win-x64.msi -Algorithm SHA256).Hash.ToLower()
-Select-String -Path .\SHA256SUMS -Pattern "dictum-0.6.0-win-x64.msi"
+(Get-FileHash .\dictum-0.7.0-win-x64.msi -Algorithm SHA256).Hash.ToLower()
+Select-String -Path .\SHA256SUMS -Pattern "dictum-0.7.0-win-x64.msi"
 ```
 
 Обидва рядки мають показати однаковий хеш.
@@ -606,16 +606,16 @@ Select-String -Path .\SHA256SUMS -Pattern "dictum-0.6.0-win-x64.msi"
 
 ### Оновлення, що не завершилося {#update-unfinished}
 
-Якщо інсталятор не впорався або його скасували, знову запускається стара версія, а «Про Dictum» пише «Оновлення до 0.7.0 не завершилося.» Наступний запуск `dictum update` скаже те саме. **Відкрити журнал** відкриває журнал інсталятора:
+Якщо інсталятор не впорався або його скасували, знову запускається стара версія, а «Про Dictum» пише «Оновлення до 0.8.0 не завершилося.» Наступний запуск `dictum update` скаже те саме. **Відкрити журнал** відкриває журнал інсталятора:
 
 | | Windows | Linux |
 | --- | --- | --- |
-| Журнал інсталятора | `%LOCALAPPDATA%\Dictum\updates\0.7.0\install.log` | `~/.local/share/dictum/updates/0.7.0/install.log` |
+| Журнал інсталятора | `%LOCALAPPDATA%\Dictum\updates\0.8.0\install.log` | `~/.local/share/dictum/updates/0.8.0/install.log` |
 
 - **Windows**: це журнал Windows Installer. Крок, що не вдався, — просто над першим рядком із `Return value 3`. Встановіть новіший MSI вручну, див. [Інсталятор для Windows](guides/update-and-remove.md#msi), і він покаже помилку на екрані.
 - **Linux**: тут те, що вивів новий `install.sh`, або запуск нового AppImage. Виконайте кроки вручну, див. [Оновлення й видалення](guides/update-and-remove.md), щоб побачити, де вони зупиняються.
 
-«Перезапустіть Windows, щоб завершити оновлення до 0.7.0.» означає, що Windows Installer замінив файли, які саме використовувалися: нова версія запрацює після перезапуску Windows.
+«Перезапустіть Windows, щоб завершити оновлення до 0.8.0.» означає, що Windows Installer замінив файли, які саме використовувалися: нова версія запрацює після перезапуску Windows.
 
 ## Журнали {#logs}
 
