@@ -43,7 +43,7 @@ The language of the desktop app: **Same as the system**, **English** or **Укр
 
 #### Check for updates {#check-for-updates}
 
-A minute after the desktop app starts, and then once a day while it runs, Dictum asks GitHub which version of Dictum is the newest. When it is newer than yours, **Update available: 0.7.0**, with that version, shows in the tray icon's menu, the [About Dictum](#about) page says so, and a notification tells you once for each new version. The menu item and the notification open About Dictum, where **Update now** installs the new version. The check itself downloads and installs nothing: see [How Dictum updates itself](../guides/update-and-remove.md#self-update).
+A minute after the desktop app starts, and then once a day while it runs, Dictum asks GitHub which version of Dictum is the newest. When it is newer than yours, **Update available: 0.8.0**, with that version, shows in the tray icon's menu, the [About Dictum](#about) page says so, and a notification tells you once for each new version. The menu item and the notification open About Dictum, where **Update now** installs the new version. The check itself downloads and installs nothing: see [How Dictum updates itself](../guides/update-and-remove.md#self-update).
 
 On Linux the notification comes for an AppImage, the tarball and a copy you unpacked yourself. The [Arch package](../guides/update-and-remove.md#pkgbuild), which pacman installs in `/opt/dictum`, gets no notification: there the new version shows in the menu and on About Dictum only.
 
@@ -432,7 +432,7 @@ The page shows the version, as the foot of the column does, and the operating sy
 
 #### Check now {#check-now}
 
-**Updates**, under the version, says what the last [update check](#check-for-updates) found: "Dictum is up to date.", "Version 0.7.0 is available." with a link to **Open the release page**, or "Not checked yet." Under it is when Dictum last checked. **Check now** asks GitHub at once, whether **Check for updates** is on or off. If a check fails, for example without a network, the page says why, such as "The last check failed: GitHub could not be reached.", and the next check tries again. See [Troubleshooting](../troubleshooting.md#update-check).
+**Updates**, under the version, says what the last [update check](#check-for-updates) found: "Dictum is up to date.", "Version 0.8.0 is available." with a link to **Open the release page**, or "Not checked yet." Under it is when Dictum last checked. **Check now** asks GitHub at once, whether **Check for updates** is on or off. If a check fails, for example without a network, the page says why, such as "The last check failed: GitHub could not be reached.", and the next check tries again. See [Troubleshooting](../troubleshooting.md#update-check).
 
 #### Updates {#updates}
 
@@ -442,14 +442,14 @@ When a newer version is out, the **Updates** card says what to do with your copy
 - **The zip, and a copy you unpacked or built yourself**: "This copy of Dictum was not installed, so it does not update itself." and **Download the new version**, which opens the release's page.
 - **The Arch package**: "Dictum was installed by your package manager. Build the new package:", the commands, and **Copy the commands**.
 
-If the update stops, the card says why: "The download failed:" with the reason and **Try again**, which goes on from where the download stopped; "The update could not be verified, so nothing was installed."; "This release has no package for this installation."; "Not enough free space for the update."; or "The installer could not be started, so nothing changed." After an update that did not finish, the card says "The update to 0.7.0 did not finish." with **Open the log**, or, when Windows must restart to replace files in use, "Restart Windows to finish the update to 0.7.0." See [Update and remove](../guides/update-and-remove.md#self-update) and [Troubleshooting](../troubleshooting.md#update-check).
+If the update stops, the card says why: "The download failed:" with the reason and **Try again**, which goes on from where the download stopped; "The update could not be verified, so nothing was installed."; "This release has no package for this installation."; "Not enough free space for the update."; or "The installer could not be started, so nothing changed." After an update that did not finish, the card says "The update to 0.8.0 did not finish." with **Open the log**, or, when Windows must restart to replace files in use, "Restart Windows to finish the update to 0.8.0." See [Update and remove](../guides/update-and-remove.md#self-update) and [Troubleshooting](../troubleshooting.md#update-check).
 
 #### Copy version and system info {#copy-system-info}
 
 Puts two lines on the clipboard for a bug report, in English whatever the app's language:
 
 ```text
-Dictum 0.6.0 · Windows 11 (10.0.26200), x64 · win-x64
+Dictum 0.7.0 · Windows 11 (10.0.26200), x64 · win-x64
 GPU: NVIDIA GeForce RTX 3060, 12.0 GB VRAM · .NET 10.0.0
 ```
 

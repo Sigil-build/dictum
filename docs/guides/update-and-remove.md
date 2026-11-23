@@ -2,21 +2,21 @@
 
 How you update or remove Dictum depends on how you installed it. Whichever way you choose, your settings, your downloaded models, your history and the API keys in the keyring stay: an update or a reinstall picks up where you left off. [Start fresh](#start-fresh) says how to delete them as well.
 
-The desktop app tells you when a new version is out: **Update available: 0.7.0**, with that version, shows in the tray icon's menu and opens **Settings → About Dictum**, where you update. See [Check for updates](../reference/settings.md#check-for-updates).
+The desktop app tells you when a new version is out: **Update available: 0.8.0**, with that version, shows in the tray icon's menu and opens **Settings → About Dictum**, where you update. See [Check for updates](../reference/settings.md#check-for-updates).
 
-Package names are shown here with `<version>` in place of the version. The commands set it in a variable first, `version=0.6.0`: put in the version you downloaded.
+Package names are shown here with `<version>` in place of the version. The commands set it in a variable first, `version=0.7.0`: put in the version you downloaded.
 
 ## How Dictum updates itself {#self-update}
 
 When a newer version is out, **Settings → About Dictum** shows what to do with your copy of Dictum:
 
-- **The Windows installer, the AppImage and the tarball**: **Update now · 29 MB**, with the size of the download. One click downloads the new version, verifies it, closes Dictum, installs the new version the way you installed Dictum, and starts it again. While it downloads, **Cancel** stops it. A dictation in progress finishes first. When the new version starts, a notification says "Dictum was updated to 0.7.0".
+- **The Windows installer, the AppImage and the tarball**: **Update now · 29 MB**, with the size of the download. One click downloads the new version, verifies it, closes Dictum, installs the new version the way you installed Dictum, and starts it again. While it downloads, **Cancel** stops it. A dictation in progress finishes first. When the new version starts, a notification says "Dictum was updated to 0.8.0".
 - **The zip, and a copy you unpacked or built yourself**: **Download the new version** opens the release's page. Update by hand, as below.
 - **The Arch package**: the commands that build the new package, and **Copy the commands**. See [Arch package](#pkgbuild).
 
 Before it installs anything, Dictum checks the download against the release's provenance attestation: a record, signed through Sigstore, that Dictum's release workflow on GitHub built this file from Dictum's source. A file that does not match is deleted, and nothing is installed. [Privacy](../privacy.md#network) lists what is downloaded and from where.
 
-If the installer fails, the old version starts again, and About Dictum says "The update to 0.7.0 did not finish." with **Open the log**. See [Troubleshooting](../troubleshooting.md#update-check).
+If the installer fails, the old version starts again, and About Dictum says "The update to 0.8.0 did not finish." with **Open the log**. See [Troubleshooting](../troubleshooting.md#update-check).
 
 ### From the command line {#command-line}
 
@@ -24,13 +24,13 @@ If the installer fails, the old version starts again, and About Dictum says "The
 
 ```text
 $ dictum update
-Dictum 0.6.0 → 0.7.0 is available. https://github.com/Sigil-build/dictum/releases/tag/v0.7.0
+Dictum 0.7.0 → 0.8.0 is available. https://github.com/Sigil-build/dictum/releases/tag/v0.8.0
 Installed as: AppImage (/home/you/Applications/Dictum.AppImage)
-Dictum will download dictum-0.7.0-linux-x64.AppImage (38 MB), verify it, replace /home/you/Applications/Dictum.AppImage and restart Dictum.
+Dictum will download dictum-0.8.0-linux-x64.AppImage (38 MB), verify it, replace /home/you/Applications/Dictum.AppImage and restart Dictum.
 Continue? [y/N]:
 ```
 
-It downloads and verifies the new version, then hands the install over and exits, so that it does not stand in the installer's way: "Installing 0.7.0 now; Dictum starts again when it is done." with the path of the installer's log. What ran before starts again: the desktop app, or else the daemon, or else nothing. The next `dictum update` says how the install ended.
+It downloads and verifies the new version, then hands the install over and exits, so that it does not stand in the installer's way: "Installing 0.8.0 now; Dictum starts again when it is done." with the path of the installer's log. What ran before starts again: the desktop app, or else the daemon, or else nothing. The next `dictum update` says how the install ended.
 
 - `--yes` (or `-y`) skips the question. Without a terminal, as in a script, `dictum update` does nothing unless you pass it.
 - `--check` only checks: exit code 0 when Dictum is up to date, 6 when an update is available.
@@ -84,7 +84,7 @@ These steps assume the AppImage lives at `~/Applications/Dictum.AppImage`, as [G
 2. Put the new file in place of the old one, under the same name, and make it executable:
 
     ```sh
-    version=0.6.0
+    version=0.7.0
     mv ~/Downloads/dictum-$version-linux-x64.AppImage ~/Applications/Dictum.AppImage
     chmod +x ~/Applications/Dictum.AppImage
     ```
@@ -116,7 +116,7 @@ Under the same name, start at login keeps working. If you keep each version unde
 **By hand**, unpack the newer tarball and run its `install.sh`, as for the first install:
 
 ```sh
-version=0.6.0
+version=0.7.0
 cd ~/Downloads
 tar -xzf dictum-$version-linux-x64.tar.gz
 ./dictum-$version-linux-x64/install.sh
@@ -144,8 +144,8 @@ At the end, it prints where your settings and models are, which it keeps.
 Dictum does not update a package that pacman installed. About Dictum and `dictum update` show the commands that build the new one, and **Copy the commands** puts them on the clipboard:
 
 ```sh
-mkdir -p ~/dictum-0.7.0 && cd ~/dictum-0.7.0
-curl -LO https://github.com/Sigil-build/dictum/releases/download/v0.7.0/PKGBUILD
+mkdir -p ~/dictum-0.8.0 && cd ~/dictum-0.8.0
+curl -LO https://github.com/Sigil-build/dictum/releases/download/v0.8.0/PKGBUILD
 makepkg -si
 ```
 
